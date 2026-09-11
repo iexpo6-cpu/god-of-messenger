@@ -117,6 +117,51 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #64748b; 
       }
+      
+      /* ======================================================== */
+      /* [MOBILE/TABLET PERFORMANCE OPTIMIZATION]                 */
+      /* Disable GPU-heavy backdrop-filter (blur) and shake       */
+      /* ======================================================== */
+      @media (max-width: 1024px), (pointer: coarse) {
+        [class*="backdrop-blur"],
+        .backdrop-blur-none,
+        .backdrop-blur-sm,
+        .backdrop-blur-md,
+        .backdrop-blur-lg,
+        .backdrop-blur-xl,
+        .backdrop-blur-2xl,
+        .backdrop-blur-3xl {
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+        }
+        /* Enhance contrast for overlays when blur is removed on mobile */
+        .fixed.inset-0[class*="bg-black\/"] {
+          background-color: rgba(3, 7, 18, 0.92) !important;
+        }
+        /* Disable heavy shake animations on mobile/tablet */
+        .animate-shake {
+          animation: none !important;
+        }
+      }
+
+      /* Manual toggle class for disabling blur across all devices */
+      body.no-backdrop-blur [class*="backdrop-blur"],
+      body.no-backdrop-blur .backdrop-blur-sm,
+      body.no-backdrop-blur .backdrop-blur-md,
+      body.no-backdrop-blur .backdrop-blur-lg,
+      body.no-backdrop-blur .backdrop-blur-xl {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+      }
+      body.no-backdrop-blur .fixed.inset-0[class*="bg-black\/"] {
+        background-color: rgba(3, 7, 18, 0.92) !important;
+      }
+
+      /* Manual toggle class for disabling screen and unit shake */
+      body.no-screen-shake .animate-shake {
+        animation: none !important;
+      }
+
       body {
     /* 상단 상태바에 가려지지 않게 여백을 줍니다 */
     padding-top: env(safe-area-inset-top);
