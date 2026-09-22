@@ -118,11 +118,42 @@
         background: #64748b; 
       }
       
+       /* ======================================================== */
+      /* [TOUCH LATENCY & ACCELERATION OPTIMIZATION]               */
+      /* Remove 300ms touch delay and enable hardware compositing  */
       /* ======================================================== */
-      /* [MOBILE/TABLET PERFORMANCE OPTIMIZATION]                 */
+      html, body {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        text-rendering: optimizeSpeed;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button, a, input, select, textarea, [role="button"], [tabindex] {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      * {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Hardware Accelerated Layer for overlays and modals */
+      .fixed.inset-0,
+      .fixed,
+      [role="dialog"] {
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+      }
+
+      /* ======================================================== */
+      /* [TABLET/MOBILE PERFORMANCE OPTIMIZATION]                 */
       /* Disable GPU-heavy backdrop-filter (blur) and shake       */
+      /* Covers all iPads, Galaxy Tabs, touch & high-res tablets  */
       /* ======================================================== */
-      @media (max-width: 1024px), (pointer: coarse) {
+      @media (max-width: 1600px), (pointer: coarse), (hover: none) {
         [class*="backdrop-blur"],
         .backdrop-blur-none,
         .backdrop-blur-sm,
@@ -134,15 +165,45 @@
           -webkit-backdrop-filter: none !important;
           backdrop-filter: none !important;
         }
-        /* Enhance contrast for overlays when blur is removed on mobile */
+        /* Enhance contrast and readability when blur is removed on tablet/mobile */
         .fixed.inset-0[class*="bg-black\/"] {
-          background-color: rgba(3, 7, 18, 0.92) !important;
+          background-color: rgba(3, 7, 18, 0.94) !important;
         }
-        /* Disable heavy shake animations on mobile/tablet */
+        [class*="bg-slate-900\/"], [class*="bg-slate-950\/"] {
+          background-color: rgba(15, 23, 42, 0.95) !important;
+        }
+        [class*="bg-black\/80"], [class*="bg-black\/90"] {
+          background-color: rgba(5, 5, 8, 0.96) !important;
+        }
+        /* Heavy continuous animations that trigger full-screen repaints */
         .animate-shake {
           animation: none !important;
         }
+        .animate-pulse {
+          animation: none !important;
+          opacity: 0.9 !important;
+        }
+        .animate-ping {
+          animation: none !important;
+        }
+        .animate-bounce {
+          animation: none !important;
+        }
       }
+
+      /* Manual toggle class for disabling blur across all devices */
+      body.no-backdrop-blur [class*="backdrop-blur"],
+      body.no-backdrop-blur .backdrop-blur-sm,
+      body.no-backdrop-blur .backdrop-blur-md,
+      body.no-backdrop-blur .backdrop-blur-lg,
+      body.no-backdrop-blur .backdrop-blur-xl {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+      }
+      body.no-backdrop-blur .fixed.inset-0[class*="bg-black\/"] {
+        background-color: rgba(3, 7, 18, 0.94) !important;
+      }
+
 
       /* Manual toggle class for disabling blur across all devices */
       body.no-backdrop-blur [class*="backdrop-blur"],
