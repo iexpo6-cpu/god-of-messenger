@@ -189,6 +189,28 @@
         .animate-bounce {
           animation: none !important;
         }
+        
+        /* Tablet GPU rasterization optimization: simplify heavy multi-layer glows */
+        [class*="shadow-[0_0_15px"],
+        [class*="shadow-[0_0_20px"],
+        [class*="shadow-[0_0_30px"],
+        [class*="shadow-[0_0_50px"] {
+          box-shadow: 0 0 6px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        /* Filter drop-shadow rasterization bypass on touch screens */
+        [class*="drop-shadow-"] {
+          filter: none !important;
+        }
+
+        /* Hardware scroll and compositing isolation */
+        .custom-scrollbar,
+        .overflow-y-auto,
+        .overflow-x-auto {
+          contain: layout paint;
+          transform: translateZ(0);
+          -webkit-transform: translateZ(0);
+        }
       }
 
       /* Manual toggle class for disabling blur across all devices */
@@ -202,6 +224,7 @@
       }
       body.no-backdrop-blur .fixed.inset-0[class*="bg-black\/"] {
         background-color: rgba(3, 7, 18, 0.94) !important;
+        
       }
 
 
@@ -242,7 +265,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="./index-CTg1BGMw.js"></script>
+  <script type="module" crossorigin src="./index-DHgISUzA.js"></script>
 </head>
   <body>
     <div id="root"></div>
