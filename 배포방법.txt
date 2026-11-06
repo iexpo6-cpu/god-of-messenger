@@ -1,0 +1,15 @@
+cd .. 이전 디렉토리
+
+
+firebase init - 초기화
+npm run dev - 시험
+npm run build - 재빌드 (업데이트시 필수 작업) 
+firebase deploy - 앱배포
+
+
+
+src 폴더안에서 빌드
+
+dist 파일 폴더에서 '신의 사자 RPG'에 이동시키고
+
+신의 사자 RPG 폴더에서 firebase deploy

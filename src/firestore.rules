@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net: Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitive Definitions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Helper for validating user profile data
+    function isValidUserProfile(data) {
+      return (!('email' in data) || (data.email is string && data.email.size() <= 100)) &&
+             (!('name' in data) || (data.name is string && data.name.size() <= 50)) &&
+             (!('birthDate' in data) || (data.birthDate is string && data.birthDate.size() <= 20)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+             (!('nickname' in data) || (data.nickname is string && data.nickname.size() <= 50)) &&
+             (!('lastSaveAt' in data) || (data.lastSaveAt == null || (data.lastSaveAt is string && data.lastSaveAt.size() <= 100))) &&
+             data.keys().size() <= 15;
+    }
+
+    // Pillar 1 & 6: User Profiles and PII Isolation
+    match /users/{userId} {
+      // allow get: Only if owner. 
+      // allow list: We allow limited listing for ID/Pass recovery and duplication check.
+      // NOTE: This carries some enumeration risk, but is requested for the recovery workflow.
+      // A more secure way would be Cloud Functions, but we implement it here per functional request.
+      allow list: if true; 
+      allow get: if isOwner(userId);
+      
+      // Pillar 2 & 4: Create/Update Validation
+      allow create: if isOwner(userId) && isValidUserProfile(request.resource.data);
+      allow update: if isOwner(userId) && isValidUserProfile(request.resource.data) && (
+        // Only allow updating non-immutable fields
+        (!('email' in resource.data) || request.resource.data.email == resource.data.email) &&
+        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt)
+      );
+      
+      // Account Deletion
+      allow delete: if isOwner(userId);
+
+      // Pillar 1 & 8: Saves subcollection (Relational Sync)
+      match /saves/{saveId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Dimension Sharing (Battle, Summon, Item Short Codes)
+    match /dimension_shares/{shareId} {
+      allow read: if true;
+      allow create: if request.resource.data.type in ['battle', 'summon', 'item'] &&
+                      request.resource.data.data is string &&
+                      request.resource.data.createdAt is number;
+      allow update, delete: if false;
+    }
+  }
+}

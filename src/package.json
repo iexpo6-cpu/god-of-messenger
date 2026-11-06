@@ -1,0 +1,30 @@
+{
+  "name": "신의-사자-rpg-0.2-(군사-및-용병시스템-완성)",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "@types/lz-string": "^1.5.0",
+    "firebase": "^12.12.1",
+    "lucide-react": "^0.555.0",
+    "lz-string": "^1.5.0",
+    "motion": "^12.38.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "vite-plugin-pwa": "^2.0.0"
+  }
+}

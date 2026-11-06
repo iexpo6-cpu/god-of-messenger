@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "SaveData": {
+      "title": "SaveData",
+      "description": "Game save data for a specific slot",
+      "type": "object",
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time" },
+        "character": { "type": "object", "description": "The full character state object" }
+      },
+      "required": ["timestamp", "character"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public user profile information",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "nickname": { "type": "string" },
+        "lastSaveAt": { "type": "string", "format": "date-time" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "birthDate": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}/saves/{slotId}": {
+      "schema": "SaveData",
+      "description": "Individual save slots for a user"
+    },
+    "users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile data and identity info"
+    },
+    "dimension_shares/{shareId}": {
+      "schema": "DimensionShare",
+      "description": "Short code records for cross-dimensional sharing"
+    }
+  }
+}

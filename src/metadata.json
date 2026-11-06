@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Remix: 신의 사자 RPG 0.3",
+  "description": "A text-based AI RPG game master system featuring the Shinryoku power system, dynamic world-building, companion mechanics, and a new royal audience/coup system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

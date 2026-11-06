@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>신의 사자 RPG</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Sans+KR:wght@300;400;700&display=swap');
+      
+      body {
+        font-family: 'Noto Sans KR', sans-serif;
+        background-color: #0f172a; /* slate-900 */
+        color: #e2e8f0; /* slate-200 */
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      h1, h2, h3, h4, h5, h6 {
+        font-family: 'Cinzel', 'Noto Sans KR', serif;
+      }
+
+      /* ======================================================== */
+      /* [THEME] 1. CLASSIC THEME (Default)                      */
+      /* ======================================================== */
+      body.theme-classic {
+        background-color: #0f172a;
+        color: #e2e8f0;
+      }
+
+      /* ======================================================== */
+      /* [THEME] 2. ULTIMATE DARK THEME (Real Black & Charcoal)  */
+      /* ======================================================== */
+      body.theme-dark {
+        background-color: #050505 !important;
+        color: #e5e5e5 !important;
+      }
+      body.theme-dark .bg-slate-900 {
+        background-color: #0a0a0a !important;
+      }
+      body.theme-dark .bg-slate-950 {
+        background-color: #050505 !important;
+      }
+      body.theme-dark .bg-slate-800 {
+        background-color: #121212 !important;
+      }
+      body.theme-dark .bg-slate-800\/80 {
+        background-color: rgba(18, 18, 18, 0.8) !important;
+      }
+      body.theme-dark .border-slate-800, 
+      body.theme-dark .border-slate-700, 
+      body.theme-dark .border-slate-700\/80 {
+        border-color: #1f1f1f !important;
+      }
+      body.theme-dark .text-slate-400 {
+        color: #a3a3a3 !important;
+      }
+      body.theme-dark .text-slate-300 {
+        color: #d4d4d4 !important;
+      }
+
+      /* ======================================================== */
+      /* [THEME] 3. DIVINE HOLY THEME (Amber Gold Temple Aura)    */
+      /* ======================================================== */
+      body.theme-holy {
+        background-color: #130e05 !important;
+        color: #fef3c7 !important;
+      }
+      body.theme-holy .bg-slate-900 {
+        background-color: #1a1206 !important;
+      }
+      body.theme-holy .bg-slate-950 {
+        background-color: #120c04 !important;
+      }
+      body.theme-holy .bg-slate-800 {
+        background-color: #241a0b !important;
+      }
+      body.theme-holy .bg-slate-800\/80 {
+        background-color: rgba(36, 26, 11, 0.8) !important;
+      }
+      body.theme-holy .border-slate-800, 
+      body.theme-holy .border-slate-700, 
+      body.theme-holy .border-slate-700\/80 {
+        border-color: #5c3e15 !important;
+      }
+      body.theme-holy .text-slate-400 {
+        color: #d97706 !important; /* amber-600 */
+      }
+      body.theme-holy .text-slate-300 {
+        color: #f59e0b !important; /* amber-500 */
+      }
+      body.theme-holy .text-amber-500 {
+        color: #fbbf24 !important; /* amber-400 */
+      }
+      
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track {
+        background: #1e293b; 
+      }
+      body.theme-dark ::-webkit-scrollbar-track {
+        background: #0d0d0d;
+      }
+      body.theme-holy ::-webkit-scrollbar-track {
+        background: #1c1408;
+      }
+      ::-webkit-scrollbar-thumb, .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #475569; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover, .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #64748b; 
+      }
+
+      /* ======================================================== */
+      /* [TOUCH LATENCY & ACCELERATION OPTIMIZATION]               */
+      /* Remove 300ms touch delay and enable hardware compositing  */
+      /* ======================================================== */
+      html, body {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        text-rendering: optimizeSpeed;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button, a, input, select, textarea, [role="button"], [tabindex] {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      * {
+        -webkit-overflow-scrolling: touch;
+      }
+
+      /* Hardware Accelerated Layer for overlays and modals */
+      .fixed.inset-0,
+      .fixed,
+      [role="dialog"] {
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+      }
+
+      /* ======================================================== */
+      /* [TABLET/MOBILE PERFORMANCE OPTIMIZATION]                 */
+      /* Disable GPU-heavy backdrop-filter (blur) and shake       */
+      /* Covers all iPads, Galaxy Tabs, touch & high-res tablets  */
+      /* ======================================================== */
+      @media (max-width: 1600px), (pointer: coarse), (hover: none) {
+        [class*="backdrop-blur"],
+        .backdrop-blur-none,
+        .backdrop-blur-sm,
+        .backdrop-blur-md,
+        .backdrop-blur-lg,
+        .backdrop-blur-xl,
+        .backdrop-blur-2xl,
+        .backdrop-blur-3xl {
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+        }
+        /* Enhance contrast and readability when blur is removed on tablet/mobile */
+        .fixed.inset-0[class*="bg-black\/"] {
+          background-color: rgba(3, 7, 18, 0.94) !important;
+        }
+        [class*="bg-slate-900\/"], [class*="bg-slate-950\/"] {
+          background-color: rgba(15, 23, 42, 0.95) !important;
+        }
+        [class*="bg-black\/80"], [class*="bg-black\/90"] {
+          background-color: rgba(5, 5, 8, 0.96) !important;
+        }
+        /* Heavy continuous animations that trigger full-screen repaints */
+        .animate-shake {
+          animation: none !important;
+        }
+        .animate-pulse {
+          animation: none !important;
+          opacity: 0.9 !important;
+        }
+        .animate-ping {
+          animation: none !important;
+        }
+        .animate-bounce {
+          animation: none !important;
+        }
+      }
+
+      /* Manual toggle class for disabling blur across all devices */
+      body.no-backdrop-blur [class*="backdrop-blur"],
+      body.no-backdrop-blur .backdrop-blur-sm,
+      body.no-backdrop-blur .backdrop-blur-md,
+      body.no-backdrop-blur .backdrop-blur-lg,
+      body.no-backdrop-blur .backdrop-blur-xl {
+        -webkit-backdrop-filter: none !important;
+        backdrop-filter: none !important;
+      }
+      body.no-backdrop-blur .fixed.inset-0[class*="bg-black\/"] {
+        background-color: rgba(3, 7, 18, 0.94) !important;
+      }
+
+      /* Manual toggle class for disabling screen and unit shake */
+      body.no-screen-shake .animate-shake {
+        animation: none !important;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-markdown": "https://aistudiocdn.com/react-markdown@^10.1.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react-dom": "https://esm.sh/react-dom@^19.2.4"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+  </body>
+</html>

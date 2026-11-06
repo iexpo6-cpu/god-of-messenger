@@ -1,0 +1,13 @@
+{
+  "appId": "com.godmessenger.rpg",
+  "appName": "신의 사자 RPG",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#020617"
+  }
+}
