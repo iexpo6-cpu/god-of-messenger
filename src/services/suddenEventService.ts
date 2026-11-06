@@ -34,11 +34,11 @@ export interface SuddenEventData {
 }
 
 /**
- * 일반 필드/던전 전투 승리 후 확률적으로 돌발 이벤트 4종 중 하나를 발생시킵니다.
- * - 차원의 균열 (폭주하는 신력 결정체 난입): 7% (5~8% 구간)
- * - 라이벌 / 수배범 / 타락한 사자 기습 난입: 5%
- * - 떠돌이 고대 대장장이 조우: 5%
- * - 몬스터 군락의 광폭화 (연쇄 토벌 보너스): 6%
+ * 일반 필드/던전 전투 승리 후 확률적으로 돌발 이벤트 4종 중 하나를 발생시킵니다. (총합 10%)
+ * - 차원의 균열 (폭주하는 신력 결정체 난입): 3%
+ * - 라이벌 / 수배범 / 타락한 사자 기습 난입: 2%
+ * - 떠돌이 고대 대장장이 조우: 2%
+ * - 몬스터 군락의 광폭화 (연쇄 토벌 보너스): 3%
  */
 export const rollSuddenPostCombatEvent = (
     character: Character,
@@ -57,8 +57,8 @@ export const rollSuddenPostCombatEvent = (
         ? Math.max(1, Math.round(defeatedEnemies.reduce((sum, e) => sum + (e.level || character.level || 1), 0) / defeatedEnemies.length))
         : Math.max(1, character.level || 1);
 
-    // 1. 「차원의 균열 / 폭주하는 신력 결정체 난입」 (7% 확률: 0 ~ 7)
-    if (roll < 7) {
+    // 1. 「차원의 균열 / 폭주하는 신력 결정체 난입」 (3% 확률: 0 ~ 3)
+    if (roll < 3) {
         const expMult = Math.floor(Math.random() * 11) + 10; // 10 ~ 20배
         const masteryBonus = Math.floor(Math.random() * 41) + 40; // +40 ~ +80 숙련도 EXP
         const crystalLevel = Math.max(avgEnemyLevel, character.level || 1);
@@ -119,8 +119,8 @@ export const rollSuddenPostCombatEvent = (
         };
     }
 
-    // 2. ⚔️ 「라이벌 / 수배범 / 타락한 사자의 기습 난입」 (5% 확률: 7 ~ 12)
-    if (roll < 12) {
+    // 2. ⚔️ 「라이벌 / 수배범 / 타락한 사자의 기습 난입」 (2% 확률: 3 ~ 5)
+    if (roll < 5) {
         const levelUpCount = Math.floor(Math.random() * 3) + 1; // 1 ~ 3회분 레벨업 경험치
         const playerLevel = Math.max(1, character.level || 1);
 
@@ -198,8 +198,8 @@ export const rollSuddenPostCombatEvent = (
         };
     }
 
-    // 3. 🔨 「떠돌이 고대 대장장이 조우」 (5% 확률: 12 ~ 17)
-    if (roll < 17) {
+    // 3. 🔨 「떠돌이 고대 대장장이 조우」 (2% 확률: 5 ~ 7)
+    if (roll < 7) {
         return {
             id: `sudden_blacksmith_${Date.now()}`,
             type: 'ancient_blacksmith',
@@ -211,8 +211,8 @@ export const rollSuddenPostCombatEvent = (
         };
     }
 
-    // 4. 🔥 「몬스터 군락의 광폭화 (연쇄 토벌 보너스)」 (6% 확률: 17 ~ 23)
-    if (roll < 23 && defeatedEnemies.length > 0) {
+    // 4. 🔥 「몬스터 군락의 광폭화 (연쇄 토벌 보너스)」 (3% 확률: 7 ~ 10)
+    if (roll < 10 && defeatedEnemies.length > 0) {
         const statMult = 2.5;
         const rewardMult = 5;
 
