@@ -12,6 +12,7 @@ import { getTrainingMonster } from '../monsters';
 import { ResultData } from '../components/ActionResultModal';
 import { NATION_THEMES, HUNT_LEVEL_BANDS, getMonsterInfo, getMonsterPoolForBand } from '../monsterfield';
 import { getBossByLocation } from '../bossMonsters';
+import { rollSuddenPostCombatEvent, calculateRivalAmbushVictoryExp } from '../services/suddenEventService';
 import { processInterCompanionEvents } from '../services/relationService'; 
 import { updateNationalDiplomacy } from '../services/diplomacyService';
 import { generateWarEnemies } from '../warbattlesystem';
@@ -1975,21 +1976,50 @@ if (!timeAdvancedChar.divineRelations) {
             if (isSpecialRealm) exp *= 5;
 
             const levelGapMultiplier = getLevelGapMultiplier(e);
-            return Math.max(1, Math.floor(exp * levelGapMultiplier));
+            let finalExp = Math.max(1, Math.floor(exp * levelGapMultiplier));
+
+            if ((currentCombat as any)?.suddenEventType === 'rift_crystal' || (e as any).isRiftCrystal) {
+                const riftMult = (currentCombat as any)?.suddenExpMultiplier || 15;
+                const refExp = Math.max(finalExp, (currentCombat as any)?.baseCombatExp || finalExp);
+                finalExp = Math.floor(refExp * riftMult);
+            } else if ((currentCombat as any)?.suddenRewardMultiplier) {
+                finalExp = Math.floor(finalExp * ((currentCombat as any).suddenRewardMultiplier || 1));
+            }
+
+            return Math.max(1, finalExp);
         };
 
         const calculateMonsterGold = (e: Enemy) => {
             const lvl = e.level || 1;
             const baseGold = lvl * 100;
             const levelGapMultiplier = getLevelGapMultiplier(e);
-            return Math.max(1, Math.floor(baseGold * levelGapMultiplier));
+            let finalGold = Math.max(1, Math.floor(baseGold * levelGapMultiplier));
+
+            if ((currentCombat as any)?.suddenEventType === 'rift_crystal' || (e as any).isRiftCrystal) {
+                const riftMult = (currentCombat as any)?.suddenExpMultiplier || 15;
+                finalGold = Math.floor(finalGold * riftMult);
+            } else if ((currentCombat as any)?.suddenRewardMultiplier) {
+                finalGold = Math.floor(finalGold * ((currentCombat as any).suddenRewardMultiplier || 1));
+            }
+
+            return Math.max(1, finalGold);
+        };
+
+        const generateCombatLoot = (enemy: Enemy, nation: string | undefined, charState: Character): Item[] => {
+            const rolls = (currentCombat as any)?.suddenLootRolls || 1;
+            const items: Item[] = [];
+            for (let r = 0; r < rolls; r++) {
+                items.push(...generateLoot(enemy, nation, charState));
+            }
+            return items;
         };
 
         const applyCombatStyleExpForKill = (charState: Character, enemy: Enemy) => {
             const isBoss = enemy.isBoss === true || /\[BOSS\]|\[WANTED\]|\[정예\]|\[침략군\]|\[사자\]|\[군주\]|\[사신\]|\[신\]/i.test(enemy.name || '');
             const styleMult = getTrainerBranchMultiplier(charState, TrainerBranch.COMBAT_STYLE);
             const defaultExp = Math.max(20, Math.floor((enemy.level || 1) * 15 + (isBoss ? 500 : 80)));
-            const gain = Math.floor(defaultExp * styleMult);
+            const suddenMult = (currentCombat as any)?.suddenRewardMultiplier || 1;
+            const gain = Math.floor(defaultExp * styleMult * suddenMult);
             
             const processEntity = (entity: any) => {
                 if (!entity.targetCombatStyle) return;
@@ -2004,6 +2034,11 @@ if (!timeAdvancedChar.divineRelations) {
                 if ('isDead' in entity && entity.isDead) return;
 
                 let amount = isBoss ? 2 : 1;
+                if ((currentCombat as any)?.suddenEventType === 'rift_crystal' || (enemy as any).isRiftCrystal) {
+                    amount = (currentCombat as any)?.suddenMasteryBonus || 50;
+                } else if ((currentCombat as any)?.suddenRewardMultiplier) {
+                    amount *= (currentCombat as any).suddenRewardMultiplier;
+                }
                 const weaponMasteryMult = getWeaponMasteryMultiplier(entity as any);
                 amount = Math.round(amount * weaponMasteryMult);
 
@@ -2050,7 +2085,7 @@ if (!timeAdvancedChar.divineRelations) {
             const goldMultiplier = curBonuses.goldMultiplier || 1.0;
             const exp = Math.floor(rawExp * (1 + curBonuses.expBonus / 100) * expMultiplier);
             const gold = Math.floor(rawGold * (1 + curBonuses.goldBonus / 100) * goldMultiplier);
-            const loot = generateLoot(enemy, nextCharState.currentLocation?.nation, nextCharState);
+            const loot = generateCombatLoot(enemy, nextCharState.currentLocation?.nation, nextCharState);
             accumulatedLoot.push(...loot);
             if (loot.length > 0) { 
                 if (nextCharState.inventory.length + loot.length <= calculateInventorySize(nextCharState.stats)) {
@@ -2133,7 +2168,7 @@ if (!timeAdvancedChar.divineRelations) {
                         const goldMultiplier = curBonuses.goldMultiplier || 1.0;
                         const exp = Math.floor(rawExp * (1 + curBonuses.expBonus / 100) * expMultiplier);
                         const gold = Math.floor(rawGold * (1 + curBonuses.goldBonus / 100) * goldMultiplier);
-                        const loot = generateLoot(enemy, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
+                        const loot = generateCombatLoot(enemy, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
                         if (loot.length > 0) { 
                             if (nextCharState.inventory.length + loot.length <= calculateInventorySize(nextCharState.stats)) {
                                 nextCharState.inventory = [...nextCharState.inventory, ...loot];
@@ -2210,7 +2245,7 @@ if (!timeAdvancedChar.divineRelations) {
                         const goldMultiplier = curBonuses.goldMultiplier || 1.0;
                         const exp = Math.floor(rawExp * (1 + curBonuses.expBonus / 100) * expMultiplier);
                         const gold = Math.floor(rawGold * (1 + curBonuses.goldBonus / 100) * goldMultiplier);
-                        const loot = generateLoot(enemy, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
+                        const loot = generateCombatLoot(enemy, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
                         if (loot.length > 0) { 
                             if (nextCharState.inventory.length + loot.length <= calculateInventorySize(nextCharState.stats)) {
                                 nextCharState.inventory = [...nextCharState.inventory, ...loot];
@@ -2954,7 +2989,7 @@ if (!timeAdvancedChar.divineRelations) {
                             const rawGold = calculateMonsterGold(t.entity);
                             const exp = Math.floor(rawExp * (1 + curBonuses.expBonus / 100) * (curBonuses.expMultiplier || 1.0));
                             const gold = Math.floor(rawGold * (1 + curBonuses.goldBonus / 100) * (curBonuses.goldMultiplier || 1.0));
-                            const loot = generateLoot(t.entity, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
+                            const loot = generateCombatLoot(t.entity, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
                             if (loot.length > 0) { 
                                 if (nextCharState.inventory.length + loot.length <= calculateInventorySize(nextCharState.stats)) {
                                     nextCharState.inventory = [...nextCharState.inventory, ...loot];
@@ -3139,7 +3174,7 @@ if (!timeAdvancedChar.divineRelations) {
                             const goldMultiplier = curBonuses.goldMultiplier || 1.0;
                             const exp = Math.floor(rawExp * (1 + curBonuses.expBonus / 100) * expMultiplier);
                             const gold = Math.floor(rawGold * (1 + curBonuses.goldBonus / 100) * goldMultiplier);
-                            const loot = generateLoot(targetEnemy, nextCharState.currentLocation?.nation, nextCharState);
+                            const loot = generateCombatLoot(targetEnemy, nextCharState.currentLocation?.nation, nextCharState);
                             accumulatedLoot.push(...loot);
                             if (loot.length > 0) {
                                 if (nextCharState.inventory.length + loot.length <= calculateInventorySize(nextCharState.stats)) {
@@ -3251,7 +3286,7 @@ if (!timeAdvancedChar.divineRelations) {
                                                 const rawGold = calculateMonsterGold(target); 
                                                 const exp = Math.floor(rawExp * (1 + curBonuses.expBonus / 100) * (curBonuses.expMultiplier || 1.0));
                                                 const gold = Math.floor(rawGold * (1 + curBonuses.goldBonus / 100) * (curBonuses.goldMultiplier || 1.0));
-                                                const loot = generateLoot(target, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
+                                                const loot = generateCombatLoot(target, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
                                                 if (loot.length > 0) { 
                                                     if (nextCharState.inventory.length + loot.length <= calculateInventorySize(nextCharState.stats)) {
                                                         nextCharState.inventory = [...nextCharState.inventory, ...loot];
@@ -3480,6 +3515,14 @@ if (!timeAdvancedChar.divineRelations) {
                 
                 if (skipTurn) { 
                     totalLog += `\n[시스템] ${enemy.name} 행동불가 (${ccName})`; 
+                } else if (((currentCombat as any)?.suddenEventType === 'rift_crystal' || (enemy as any).isRiftCrystal) && (currentCombat?.turn || 1) >= 3 && Math.random() < 0.20) {
+                    const fleeMsg = `[시스템] 🌌 ${enemy.name}이(가) 불안정하게 요동치더니 차원의 균열 너머로 도망쳤습니다!`;
+                    setSceneType('normal');
+                    setCombatState(prev => ({ ...prev, isEnded: true, log: [...prev.log, fleeMsg] }));
+                    setCharacterSafe(nextCharState);
+                    setMessages(prev => [...prev, { role: 'ai', text: fleeMsg }]);
+                    setIsLoading(false);
+                    return;
                 } else {
                     let possibleTargets: { type: 'player' | 'companion' | 'enemy', ref: any }[] = [];
                     if (isOneOnOne) {
@@ -4112,7 +4155,7 @@ if (!timeAdvancedChar.divineRelations) {
                             const rawGold = calculateMonsterGold(enemy);
                             const exp = Math.floor(rawExp * (1 + curBonuses.expBonus / 100) * (curBonuses.expMultiplier || 1.0));
                             const gold = Math.floor(rawGold * (1 + curBonuses.goldBonus / 100) * (curBonuses.goldMultiplier || 1.0));
-                            const loot = generateLoot(enemy, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
+                            const loot = generateCombatLoot(enemy, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
                             if (loot.length > 0) { 
                                 if (nextCharState.inventory.length + loot.length <= calculateInventorySize(nextCharState.stats)) {
                                     nextCharState.inventory = [...nextCharState.inventory, ...loot];
@@ -4563,7 +4606,7 @@ let targetIdx = -1;
                                     const rawGold = calculateMonsterGold(target); 
                                     const exp = Math.floor(rawExp * (1 + curBonuses.expBonus / 100) * (curBonuses.expMultiplier || 1.0));
                                     const gold = Math.floor(rawGold * (1 + curBonuses.goldBonus / 100) * (curBonuses.goldMultiplier || 1.0));
-                                    const loot = generateLoot(target, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
+                                    const loot = generateCombatLoot(target, nextCharState.currentLocation?.nation, nextCharState); accumulatedLoot.push(...loot);
                                     if (loot.length > 0) { 
                                         if (nextCharState.inventory.length + loot.length <= calculateInventorySize(nextCharState.stats)) {
                                             nextCharState.inventory = [...nextCharState.inventory, ...loot];
@@ -4823,6 +4866,26 @@ let targetIdx = -1;
                 totalLog += `\n[시스템] ${comp.name}의 사망 방지 옵션 발동! 죽음의 문턱에서 부활했습니다!`;
             }
         });
+
+        if (
+            simulationEnemies.length > 0 &&
+            simulationEnemies.every((e: Enemy) => e.hp <= 0) &&
+            nextCharState.stats.hp > 0 &&
+            (currentCombat as any)?.suddenEventType === 'rival_ambush' &&
+            !(currentCombat as any)?._rivalBonusGranted
+        ) {
+            (currentCombat as any)._rivalBonusGranted = true;
+            const lvCount = (currentCombat as any)?.suddenLevelUpCount || (Math.floor(Math.random() * 3) + 1);
+            const rivalBonusExp = calculateRivalAmbushVictoryExp(nextCharState.level || 1, lvCount);
+            accumulatedExp += rivalBonusExp;
+            nextCharState.currentExp += rivalBonusExp;
+            nextCharState.companions.forEach(c => {
+                if (c.stats.hp > 0 && !c.isDead) {
+                    c.currentExp += rivalBonusExp;
+                }
+            });
+            totalLog += `\n[시스템] ⚔️ 기습 난입한 숙적을 격퇴하여 즉시 ${lvCount}레벨업 분량의 폭풍 경험치(+${rivalBonusExp.toLocaleString()} EXP)를 획득했습니다!`;
+        }
 
         systemInjectedNarrative += totalLog;
 
@@ -5086,6 +5149,16 @@ let targetIdx = -1;
             collectEntityRewardBuffs(finalChar);
             finalChar.companions?.forEach(collectEntityRewardBuffs);
 
+            const suddenEvent = (isVictory && !(currentCombat as any)?.suddenEventType)
+                ? rollSuddenPostCombatEvent(
+                    finalChar,
+                    finalEnemies,
+                    accumulatedExp,
+                    currentCombat?.type,
+                    (currentCombat as any)?.dungeonId || finalChar.dungeonProgress?.dungeonId
+                  )
+                : undefined;
+
             const resultPayload = {
                 initialStates: currentCombat?.initialParticipantStates || [],
                 finalStates: createInitialParticipantStates(finalChar),
@@ -5100,7 +5173,8 @@ let targetIdx = -1;
                 activeExpBuffs: Array.from(new Set(activeExpBuffs)),
                 activeGoldBuffs: Array.from(new Set(activeGoldBuffs)),
                 combatType: currentCombat?.type,
-                dungeonId: (currentCombat as any)?.dungeonId || finalChar.dungeonProgress?.dungeonId
+                dungeonId: (currentCombat as any)?.dungeonId || finalChar.dungeonProgress?.dungeonId,
+                suddenEvent
             };
 
             setTimeout(() => {
@@ -6864,11 +6938,7 @@ return {
   };
 };
 export const calculateRequiredExp = (lvl: number, stats?: Stats) => {
-    if (lvl < 30) return lvl * 100;
-    if (lvl < 100) return lvl * 200; 
-    if (lvl < 300) return lvl * 500; 
-    if (lvl < 1000) return lvl * 1500;
-    return lvl * 3000;
+    return getRequiredExp(lvl);
 };
 
 export const createInitialParticipantStates = (char: Character) => {

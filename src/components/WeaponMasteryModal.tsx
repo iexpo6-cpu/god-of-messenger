@@ -67,30 +67,34 @@ const WeaponMasteryModal: React.FC<Props> = ({ character, onClose }) => {
 
       // Stats Description Logic
       const accBonus = Math.min(100, mastery.level * 1);
+      const weaponAmpBonus = (mastery.level * 0.5).toFixed(1);
       let statDesc = <></>;
       if (isSub) {
           if (type === 'Shield') {
               statDesc = (
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800"><span className="text-slate-300 font-medium">물리 방어력</span><span className="text-slate-100 font-bold font-mono">+{(mastery.level * 0.5).toFixed(1)}%</span></div>
-                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800"><span className="text-blue-300 font-medium">마법 방어력</span><span className="text-slate-100 font-bold font-mono">+{(mastery.level * 0.5).toFixed(1)}%</span></div>
-                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800 col-span-2"><span className="text-emerald-400 font-medium">물리 / 마법 명중률</span><span className="text-emerald-200 font-bold font-mono">+{accBonus}%</span></div>
+                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800"><span className="text-slate-300 font-medium">물리 방어력(곱)</span><span className="text-slate-100 font-bold font-mono">+{(mastery.level * 0.5).toFixed(1)}%</span></div>
+                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800"><span className="text-blue-300 font-medium">마법 방어력(곱)</span><span className="text-slate-100 font-bold font-mono">+{(mastery.level * 0.5).toFixed(1)}%</span></div>
+                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800 col-span-2"><span className="text-amber-300 font-medium">보조무기 자체 스탯 증폭(곱)</span><span className="text-amber-200 font-bold font-mono">+{weaponAmpBonus}%</span></div>
+                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800 col-span-2"><span className="text-emerald-400 font-medium">물리 / 마법 명중률(곱)</span><span className="text-emerald-200 font-bold font-mono">+{accBonus}% (×{(1 + accBonus / 100).toFixed(2)})</span></div>
                   </div>
               );
           } else if (type === 'Orb') {
               statDesc = (
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800"><span className="text-blue-300 font-medium">마법 방어력</span><span className="text-slate-100 font-bold font-mono">+{(mastery.level * 0.5).toFixed(1)}%</span></div>
+                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800"><span className="text-blue-300 font-medium">마법 방어력(곱)</span><span className="text-slate-100 font-bold font-mono">+{(mastery.level * 0.5).toFixed(1)}%</span></div>
                       <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800"><span className="text-yellow-400 font-medium">치명타 확률</span><span className="text-yellow-200 font-bold font-mono">+{(mastery.level * 0.1).toFixed(1)}%</span></div>
-                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800 col-span-2"><span className="text-cyan-400 font-medium">마법 명중률</span><span className="text-cyan-200 font-bold font-mono">+{accBonus}%</span></div>
+                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800 col-span-2"><span className="text-amber-300 font-medium">보조무기 자체 스탯 증폭(곱)</span><span className="text-amber-200 font-bold font-mono">+{weaponAmpBonus}%</span></div>
+                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800 col-span-2"><span className="text-cyan-400 font-medium">마법 명중률(곱)</span><span className="text-cyan-200 font-bold font-mono">+{accBonus}% (×{(1 + accBonus / 100).toFixed(2)})</span></div>
                   </div>
               );
           } else if (type === 'SubSword') {
               statDesc = (
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800"><span className="text-red-400 font-medium">물리 공격력</span><span className="text-slate-100 font-bold font-mono">+{(mastery.level * 0.5).toFixed(1)}%</span></div>
+                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800"><span className="text-red-400 font-medium">물리 공격력(곱)</span><span className="text-slate-100 font-bold font-mono">+{(mastery.level * 0.5).toFixed(1)}%</span></div>
                       <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800"><span className="text-yellow-400 font-medium">치명타 확률</span><span className="text-yellow-200 font-bold font-mono">+{(mastery.level * 0.1).toFixed(1)}%</span></div>
-                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800 col-span-2"><span className="text-emerald-400 font-medium">물리 명중률</span><span className="text-emerald-200 font-bold font-mono">+{accBonus}%</span></div>
+                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800 col-span-2"><span className="text-amber-300 font-medium">보조무기 자체 스탯 증폭(곱)</span><span className="text-amber-200 font-bold font-mono">+{weaponAmpBonus}%</span></div>
+                      <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800 col-span-2"><span className="text-emerald-400 font-medium">물리 명중률(곱)</span><span className="text-emerald-200 font-bold font-mono">+{accBonus}% (×{(1 + accBonus / 100).toFixed(2)})</span></div>
                   </div>
               );
           }
@@ -101,7 +105,7 @@ const WeaponMasteryModal: React.FC<Props> = ({ character, onClose }) => {
           statDesc = (
               <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800">
-                      <span className={isMagic ? "text-purple-400 font-medium" : "text-red-400 font-medium"}>{isMagic ? "마법 공격력" : "물리 공격력"}</span>
+                      <span className={isMagic ? "text-purple-400 font-medium" : "text-red-400 font-medium"}>{isMagic ? "마법 공격력(곱)" : "물리 공격력(곱)"}</span>
                       <span className="text-slate-100 font-bold font-mono">+{atkBonus}%</span>
                   </div>
                   <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800">
@@ -109,8 +113,12 @@ const WeaponMasteryModal: React.FC<Props> = ({ character, onClose }) => {
                       <span className="text-yellow-200 font-bold font-mono">+{critBonus}%</span>
                   </div>
                   <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800 col-span-2">
-                      <span className={isMagic ? "text-cyan-400 font-medium" : "text-emerald-400 font-medium"}>{isMagic ? "마법 명중률" : "물리 명중률"}</span>
-                      <span className="text-slate-100 font-bold font-mono">+{accBonus}%</span>
+                      <span className="text-amber-300 font-medium">무기 자체 스탯 증폭(곱)</span>
+                      <span className="text-amber-200 font-bold font-mono">+{weaponAmpBonus}%</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-800 col-span-2">
+                      <span className={isMagic ? "text-cyan-400 font-medium" : "text-emerald-400 font-medium"}>{isMagic ? "마법 명중률(곱)" : "물리 명중률(곱)"}</span>
+                      <span className="text-slate-100 font-bold font-mono">+{accBonus}% (×{(1 + accBonus / 100).toFixed(2)})</span>
                   </div>
               </div>
           );
@@ -158,9 +166,17 @@ const WeaponMasteryModal: React.FC<Props> = ({ character, onClose }) => {
               {/* Stats Box */}
               <div className="bg-slate-950/70 p-3 rounded-lg border border-slate-800 mb-3">
                   <div className="text-xs font-bold text-amber-300 mb-2 flex items-center gap-1">
-                      <Sparkles size={13} className="text-amber-400" /> 패시브 보너스 효과
+                      <Sparkles size={13} className="text-amber-400" /> 패시브 보너스 효과 (곱연산 적용)
                   </div>
                   {statDesc}
+                  <div className="mt-2 pt-2 border-t border-slate-800/70 flex flex-wrap gap-1.5 text-[10px]">
+                      <span className={`px-2 py-0.5 rounded border font-bold ${mastery.level >= 50 ? 'bg-amber-500/20 text-amber-300 border-amber-500/50' : 'bg-slate-900 text-slate-500 border-slate-800'}`}>
+                          {mastery.level >= 50 ? '✓ 전설 무기 해금 (Lv.50)' : '🔒 전설 무기 (Lv.50 필요)'}
+                      </span>
+                      <span className={`px-2 py-0.5 rounded border font-bold ${mastery.level >= 100 ? 'bg-rose-500/20 text-rose-300 border-rose-500/50' : 'bg-slate-900 text-slate-500 border-slate-800'}`}>
+                          {mastery.level >= 100 ? '✓ 신화 무기 해금 (Lv.100)' : '🔒 신화 무기 (Lv.100 필요)'}
+                      </span>
+                  </div>
               </div>
 
               {/* Keywords Section */}
@@ -232,7 +248,8 @@ const WeaponMasteryModal: React.FC<Props> = ({ character, onClose }) => {
                 </h4>
                 <ul className="text-xs text-slate-400 space-y-1.5 list-disc list-inside leading-relaxed">
                     <li>해당 계열의 무기를 장착하고 전투(일반 공격 및 스킬 사용) 시 숙련도 경험치를 획득합니다.</li>
-                    <li>숙련도 레벨 상승 시 해당 무기를 장착하는 동안 <strong>공격력 / 방어력 증가(%)</strong>, <strong>치명타 확률</strong> 및 <strong>물리 / 마법 명중률(레벨당 +1%, 최대 +100%)</strong> 패시브 효과가 자동 적용됩니다.</li>
+                    <li>숙련도 레벨 상승 시 <strong>착용 무기의 자체 능력치 증폭(최대 +50% 곱연산)</strong>, <strong>물리/마법 공격력·방어력(최대 ×1.5배 곱연산)</strong>, <strong>치명타 확률(최대 +10%)</strong> 및 <strong>물리/마법 명중률(레벨당 +1%, 최대 +100% → ×2.0배 곱연산)</strong> 효과가 적용됩니다.</li>
+                    <li><strong>무기 등급별 장착 자격:</strong> 해당 무기 종류의 숙련도가 <strong>Lv.50 이상이어야 전설(Legendary) 등급 무기</strong>를, <strong>Lv.100 달성 시 신화(Mythic) 등급 무기</strong>를 장착할 수 있습니다.</li>
                     <li>숙련도 최고 레벨은 100레벨이며, 다음 레벨업 요구 경험치는 (현재 레벨 + 4) × 10 입니다.</li>
                 </ul>
             </div>

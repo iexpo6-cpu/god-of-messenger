@@ -51,9 +51,13 @@ export interface CombatResultModalProps {
         goldBonus?: number;
         activeExpBuffs?: string[];
         activeGoldBuffs?: string[];
+        combatType?: string;
+        dungeonId?: string;
+        suddenEvent?: any;
     } | null;
     onClose: () => void;
     onContinueBattle?: () => void;
+    onTriggerSuddenEvent?: (suddenEvent: any) => void;
 }
 
 const WEAPON_TYPE_KOREAN: Record<string, string> = {
@@ -75,7 +79,7 @@ const WEAPON_TYPE_KOREAN: Record<string, string> = {
     SubSword: '단검'
 };
 
-export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onClose, onContinueBattle }) => {
+export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onClose, onContinueBattle, onTriggerSuddenEvent }) => {
     const [progressValues, setProgressValues] = useState<Record<string, number>>({});
     const [animateText, setAnimateText] = useState(false);
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
@@ -840,32 +844,68 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                             )}
                         </div>
 
+                        {/* 돌발 이벤트 발생 알림 배너 */}
+                        {data.suddenEvent && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/90 via-rose-950/80 to-indigo-950/90 border-2 border-amber-400/80 shadow-[0_0_25px_rgba(251,191,36,0.35)] space-y-2"
+                            >
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black animate-pulse">
+                                        <Zap size={12} /> 돌발 이벤트 발생!
+                                    </span>
+                                    <span className="text-[11px] font-bold text-amber-300">
+                                        {data.suddenEvent.subtitle}
+                                    </span>
+                                </div>
+                                <div className="text-sm font-black text-white">
+                                    {data.suddenEvent.title}
+                                </div>
+                                <p className="text-xs text-amber-100/90 leading-relaxed whitespace-pre-line">
+                                    {data.suddenEvent.message}
+                                </p>
+                            </motion.div>
+                        )}
+
                     </div>
 
                     {/* Footer */}
                     <div className="p-4 border-t border-slate-800/80 bg-slate-950/90 shrink-0 z-10 flex flex-col sm:flex-row gap-2">
-                        {onContinueBattle && (
+                        {data.suddenEvent && onTriggerSuddenEvent ? (
                             <button
-                                onClick={() => {
-                                    onClose();
-                                    onContinueBattle();
-                                }}
-                                className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-slate-950 font-black text-sm rounded-xl transition-all shadow-lg active:scale-98 cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
+                                onClick={() => onTriggerSuddenEvent(data.suddenEvent)}
+                                className="w-full py-3.5 px-4 bg-gradient-to-r from-rose-600 via-amber-500 to-yellow-500 hover:from-rose-500 hover:to-yellow-400 text-slate-950 font-black text-sm rounded-xl transition-all shadow-[0_0_20px_rgba(245,158,11,0.5)] active:scale-98 cursor-pointer flex items-center justify-center gap-2 animate-pulse"
                             >
-                                <Compass size={18} className="text-slate-950 shrink-0" />
-                                <span>전투 계속하기</span>
+                                <Zap size={18} className="text-slate-950 shrink-0" />
+                                <span>⚡ 돌발 이벤트 확인하기 ({data.suddenEvent.title})</span>
                             </button>
+                        ) : (
+                            <>
+                                {onContinueBattle && (
+                                    <button
+                                        onClick={() => {
+                                            onClose();
+                                            onContinueBattle();
+                                        }}
+                                        className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-slate-950 font-black text-sm rounded-xl transition-all shadow-lg active:scale-98 cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
+                                    >
+                                        <Compass size={18} className="text-slate-950 shrink-0" />
+                                        <span>전투 계속하기</span>
+                                    </button>
+                                )}
+                                <button 
+                                    onClick={onClose}
+                                    className={`flex-1 py-3 px-4 font-bold text-sm rounded-xl transition-all shadow-lg active:scale-98 cursor-pointer text-center whitespace-nowrap ${
+                                        isVictory 
+                                        ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white' 
+                                        : 'bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 text-slate-200'
+                                    }`}
+                                >
+                                    확인
+                                </button>
+                            </>
                         )}
-                        <button 
-                            onClick={onClose}
-                            className={`flex-1 py-3 px-4 font-bold text-sm rounded-xl transition-all shadow-lg active:scale-98 cursor-pointer text-center whitespace-nowrap ${
-                                isVictory 
-                                ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white' 
-                                : 'bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-700 hover:to-slate-600 text-slate-200'
-                            }`}
-                        >
-                            확인
-                        </button>
                     </div>
                 </motion.div>
             </div>

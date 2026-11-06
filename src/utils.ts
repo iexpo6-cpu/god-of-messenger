@@ -3,6 +3,7 @@ import LZString from 'lz-string';
 import { Character, Companion, Stats, Item, ItemRarity, MythicOptionType, MagyeOptionType, Skill, BondSkill, SkillType, Enemy, DerivedStats, ClassTier, ActiveStatus, WeaponType, SimpleStudent,BlacksmithRank, AlchemistRank, TrainerRank, TrainerBranch, TRAINER_RANK_CONFIG, CapturedMonster, MonsterStage, SchoolTier, TournamentMatch, MercenaryRank, JobType, MilitaryRank, RelationType, BattlePosition, CombatStyle, BattleRole, SecondaryBattleRole, CombatStyleProgressData, HousekeeperRank, HOUSEKEEPER_RANK_CONFIG, HouseType, HouseBuilding, ChefRank, CHEF_RANK_CONFIG, Location, GameLocation } from './types';
 import { SELL_PRICES, SHINRYOKU_AFFINITY, BASE_MONSTERS,MILITARY_RANK_ORDER, MONSTER_PREFIXES, SHINRYOKU_TYPES_LIST, NATION_NAMES, HUMANOID_CLASSES, ENEMY_SKILL_POOL, WEAPON_KEYWORDS, WEAPON_MASTERY_CONFIG, WEAPON_MASTERY_MAX_LEVEL, NATION_DATA, WORLD_GEOGRAPHY, MILITARY_RANK_THRESHOLD, STATUS_AILMENTS_DATA, STATUS_AILMENTS_LIST, COMBAT_STYLE_SPECIALTIES, COMBAT_STYLE_CONFIG, COMBAT_STYLE_TIER_REQUIREMENTS, CombatStyleTrainingReq, WEAPON_TYPE_KOREAN, getHumanoidClassByTier } from './constants';
 import { getCombatStyleSkillSet, COMBAT_STYLE_SKILL_DATA } from './combatStyleSkills';
+import { WEAPON_MASTERY_WEAPON_STAT_PER_LEVEL, WEAPON_MASTERY_ACCURACY_PER_LEVEL, WEAPON_MASTERY_EQUIP_REQUIREMENT } from './constants';
 import { WORLD_LOOT_TABLES, findItemDataInWorldTables, getChanceByRarity } from './monsterLootTable';
 import { getReputationRangeByRank, MERCENARY_RANK_THRESHOLD } from './mercenaryRankUp';
 import { TITLES } from './titles';
@@ -2690,6 +2691,40 @@ export const getWeaponTypeFromItem = (item: Item): WeaponType | undefined => {
     return undefined;
 };
 
+/**
+ * [NEW] 무기숙련도 기반 착용 조건 검사
+ * - 전설 무기: 해당 무기 종류 숙련도 50 이상 / 신화 무기: 100 이상
+ * - 무기·보조무기 슬롯 아이템에만 적용되며, 무기 종류를 판별할 수 없는 아이템은 제한하지 않습니다.
+ */
+export const checkWeaponMasteryEquipRequirement = (
+    item: Item | undefined,
+    entity: any
+): { allowed: boolean; required: number; current: number; weaponTypeLabel?: string } => {
+    const pass = { allowed: true, required: 0, current: 0 };
+    if (!item) return pass;
+
+    const t = (item.type || '').toLowerCase();
+    const isWeaponSlotItem = t.includes('weapon') || t.includes('무기') || t.includes('sub') || t.includes('보조') || t.includes('방패');
+    if (!isWeaponSlotItem) return pass;
+
+    const isMythic = item.rarity === ItemRarity.MYTHTIC || (item as any).isMythic || String(item.rarity || '').includes('신화');
+    const required = isMythic
+        ? (WEAPON_MASTERY_EQUIP_REQUIREMENT[ItemRarity.MYTHTIC] || 0)
+        : (item.rarity === ItemRarity.LEGENDARY ? (WEAPON_MASTERY_EQUIP_REQUIREMENT[ItemRarity.LEGENDARY] || 0) : 0);
+    if (!required) return pass;
+
+    const weaponType = getWeaponTypeFromItem(item);
+    if (!weaponType) return { allowed: true, required, current: 0 };
+
+    const current = entity?.weaponMastery?.[weaponType]?.level || 0;
+    return {
+        allowed: current >= required,
+        required,
+        current,
+        weaponTypeLabel: (WEAPON_TYPE_KOREAN as any)[weaponType] || weaponType
+    };
+};
+
 // [NEW] 전투 계열 특화 무기 확인 함수
 export const isSpecializedWeapon = (combatStyle?: CombatStyle, weaponType?: WeaponType): boolean => {
     if (!combatStyle || !weaponType) return false;
@@ -3201,15 +3236,26 @@ export const calculateTotalStats = (character: Character | Companion | Enemy): {
     const bonusStats: any = { str: 0, int: 0, wis: 0, def: 0, agi: 0, ctrl: 0, hp: 0, mp: 0, maxHp: 0, maxMp: 0 };
     
     if ('equipment' in character && character.equipment) {
-        Object.values(character.equipment).forEach((item) => {
+        const masteryTable = (character as any).weaponMastery as Record<string, { level?: number }> | undefined;
+        Object.entries(character.equipment).forEach(([equipSlot, item]) => {
             const it = item as Item | undefined;
             if (it) {
                 if (it.stats) {
                     const enhancementLevel = it.enhancement || 0;
+
+                    // [무기숙련도 확장] 무기/보조무기는 해당 종류 숙련도에 비례해 '무기 자체 능력치'가 곱연산으로 증가
+                    let weaponStatMult = 1;
+                    if (masteryTable && (equipSlot === 'weapon' || equipSlot === 'subWeapon')) {
+                        const wType = getWeaponTypeFromItem(it);
+                        const mLevel = wType ? (masteryTable[wType]?.level || 0) : 0;
+                        if (mLevel > 0) weaponStatMult = 1 + mLevel * WEAPON_MASTERY_WEAPON_STAT_PER_LEVEL;
+                    }
+
                     Object.entries(it.stats).forEach(([key, val]) => {
                         const numVal = Number(val);
                         if (!isNaN(numVal)) {
-                            const finalVal = getEnhancedStatValue(numVal, enhancementLevel, key);
+                            let finalVal = getEnhancedStatValue(numVal, enhancementLevel, key);
+                            if (weaponStatMult !== 1 && finalVal > 0) finalVal = Math.floor(finalVal * weaponStatMult);
                             const effectiveKey = (key === 'hp' ? 'maxHp' : key === 'mp' ? 'maxMp' : key) as keyof Stats;
                             bonusStats[effectiveKey] = (bonusStats[effectiveKey] || 0) + finalVal;
                             (baseStats as any)[effectiveKey] = ((baseStats as any)[effectiveKey] || 0) + finalVal;
@@ -4134,37 +4180,44 @@ export const calculateDerivedStats = (
         }
     });
 
+    let masteryPAtkMult = 1.0;
+    let masteryMAtkMult = 1.0;
+    let masteryPDefMult = 1.0;
+    let masteryMDefMult = 1.0;
+    let masteryAccMult = 1.0;
+    let masteryMAccMult = 1.0;
+
     if (weaponMastery && weaponMastery.level > 0) {
-        const atkBonus = weaponMastery.level * 0.005; 
+        const atkBonus = weaponMastery.level * 0.005; // Lv.100 시 ×1.5배 곱연산
         const criterionBonus = weaponMastery.level * 0.1;
-        const accMasteryBonus = Math.min(100, weaponMastery.level * 1); // 레벨당 1%, 최대 100%
+        const accMasteryRate = Math.min(1.0, weaponMastery.level * WEAPON_MASTERY_ACCURACY_PER_LEVEL); // 레벨당 +1%, 최대 +100% (×2.0배 곱연산)
         const magicTypes: WeaponType[] = ['Staff', 'Energy', 'Grimoire'];
         if (magicTypes.includes(weaponMastery.type)) {
-            modMAtk += atkBonus;
-            bonusMAcc += accMasteryBonus;
+            masteryMAtkMult *= (1 + atkBonus);
+            masteryMAccMult *= (1 + accMasteryRate);
         } else {
-            modPAtk += atkBonus;
-            bonusAcc += accMasteryBonus;
+            masteryPAtkMult *= (1 + atkBonus);
+            masteryAccMult *= (1 + accMasteryRate);
         }
         modCrit += criterionBonus;
     }
 
     if (subMastery && subMastery.level > 0) {
         const level = subMastery.level;
-        const subAccMasteryBonus = Math.min(100, level * 1); // 레벨당 1%, 최대 100%
+        const subAccMasteryRate = Math.min(1.0, level * WEAPON_MASTERY_ACCURACY_PER_LEVEL); // 레벨당 +1%, 최대 +100% (×2.0배 곱연산)
         if (subMastery.type === 'Shield') {
-            modPDef += (level * 0.005);
-            modMDef += (level * 0.005);
-            bonusAcc += subAccMasteryBonus;
-            bonusMAcc += subAccMasteryBonus;
+            masteryPDefMult *= (1 + level * 0.005);
+            masteryMDefMult *= (1 + level * 0.005);
+            masteryAccMult = Math.max(masteryAccMult, 1 + subAccMasteryRate);
+            masteryMAccMult = Math.max(masteryMAccMult, 1 + subAccMasteryRate);
         } else if (subMastery.type === 'Orb') {
-            modMDef += (level * 0.005);
+            masteryMDefMult *= (1 + level * 0.005);
             modCrit += (level * 0.1); 
-            bonusMAcc += subAccMasteryBonus;
+            masteryMAccMult = Math.max(masteryMAccMult, 1 + subAccMasteryRate);
         } else if (subMastery.type === 'SubSword') {
-            modPAtk += (level * 0.005);
+            masteryPAtkMult *= (1 + level * 0.005);
             modCrit += (level * 0.1); 
-            bonusAcc += subAccMasteryBonus;
+            masteryAccMult = Math.max(masteryAccMult, 1 + subAccMasteryRate);
         }
     }
 
@@ -4393,11 +4446,11 @@ export const calculateDerivedStats = (
     const wis = s('wis');
     const def = s('def');
 
-    // 최종 파생 스탯 계산 (Base + Flat) * Multiplier
-    const pAtk = ((str * 1.0) + (agi * 0.3) + flatPAtk) * modPAtk;
-    const mAtk = ((int * 1.0) + (wis * 0.3) + flatMAtk) * modMAtk;
-    const pDef = (def * 0.8 + flatPDef) * modPDef;
-    const mDef = ((def * 0.4) + (wis * 0.4) + flatMDef) * modMDef;
+    // 최종 파생 스탯 계산 (Base + Flat) * Multiplier * WeaponMasteryMultiplier(곱연산)
+    const pAtk = ((str * 1.0) + (agi * 0.3) + flatPAtk) * modPAtk * masteryPAtkMult;
+    const mAtk = ((int * 1.0) + (wis * 0.3) + flatMAtk) * modMAtk * masteryMAtkMult;
+    const pDef = (def * 0.8 + flatPDef) * modPDef * masteryPDefMult;
+    const mDef = ((def * 0.4) + (wis * 0.4) + flatMDef) * modMDef * masteryMDefMult;
     
     // [NEW] 치명타 피해량 계산 로직 구현
     // 기본: 1.4 + (CTRL / 1,000,000) * 1.1. CTRL 100만 도달 시 최대 2.5배.
@@ -4417,10 +4470,10 @@ export const calculateDerivedStats = (
     const baseMAcc = 85 + (stats.wis * 0.01) + (stats.int * 0.005) + comprehensiveBonus;
     const baseMEva = (stats.wis * 0.0075) + (stats.agi * 0.0035);
 
-    // 곱연산 배율 적용 (기초 스탯 × (1 + 명중/회피 보너스% / 100))
-    const accuracy = Math.max(1, baseAcc * (1 + (bonusAcc / 100)));
+    // 곱연산 배율 적용 (기초 스탯 × (1 + 명중/회피 보너스% / 100) × 무기숙련도 명중 배율(최대 2배))
+    const accuracy = Math.max(1, baseAcc * (1 + (bonusAcc / 100)) * masteryAccMult);
     const evasion = Math.max(0, baseEva * (1 + (bonusEva / 100)));
-    const mAccuracy = Math.max(1, baseMAcc * (1 + (bonusMAcc / 100)));
+    const mAccuracy = Math.max(1, baseMAcc * (1 + (bonusMAcc / 100)) * masteryMAccMult);
     const mEvasion = Math.max(0, baseMEva * (1 + (bonusMEva / 100)));
     const critDmgResist = Math.min(95, bonusCritDmgResist); // [NEW] 치명타 피해 감소 (장비 및 특화 등 옵션 전용)
     const critResist = Math.min(100, Math.max(0, bonusCritResist)); // [NEW] 치명타 저항
@@ -5810,10 +5863,9 @@ export const getRequiredExp = (lvl: number) => {
     if (lvl < 1000) return lvl * 7500;
     if (lvl < 1500) return lvl * 10000;
     if (lvl < 2000) return lvl * 15000;
-    if (lvl < 2500) return lvl * 20000;
-    if (lvl < 3000) return lvl * 30000;
-    if (lvl < 5000) return lvl * 50000;
-    return lvl * 100000;
+    if (lvl < 3000) return lvl * 16000;
+    if (lvl < 5000) return lvl * 18000;
+    return lvl * 20000;
 };
 
 export const migrateCompanion = (comp: any, baseLevel?: number, playerAgeStr?: string, currentYear?: number): Companion => {

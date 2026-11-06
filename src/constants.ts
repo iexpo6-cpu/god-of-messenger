@@ -2767,6 +2767,16 @@ export const ROOT_COMBAT_STYLES: CombatStyle[] = [
 export const WEAPON_MASTERY_MAX_LEVEL = 100;
 export const WEAPON_MASTERY_INITIAL_EXP = 0;
 
+// [무기숙련도 확장] 숙련 레벨당, 해당 무기 '자체 능력치'에 곱해지는 배율 증가분 (Lv100 → x1.5)
+export const WEAPON_MASTERY_WEAPON_STAT_PER_LEVEL = 0.005;
+// [무기숙련도 확장] 숙련 레벨당 명중률 곱연산 배율 증가분 (Lv100 → x2.0)
+export const WEAPON_MASTERY_ACCURACY_PER_LEVEL = 0.01;
+// [무기숙련도 확장] 무기 등급별 착용에 필요한 '해당 무기 종류' 숙련 레벨
+export const WEAPON_MASTERY_EQUIP_REQUIREMENT: Partial<Record<ItemRarity, number>> = {
+  [ItemRarity.LEGENDARY]: 50,
+  [ItemRarity.MYTHTIC]: 100,
+};
+
 export const SUMMON_PRESET_IMAGES = [
   { name: '불의 정령', url: 'https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&q=80&w=300' },
   { name: '얼음 정령', url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=300' },

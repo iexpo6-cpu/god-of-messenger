@@ -5,7 +5,7 @@ import { useElixirTimer } from './hooks/useElixirTimer';
 import { GameProvider } from './context/GameContext';
 import { Character, Companion, Skill, BondSkill, SkillType, DivineDiplomacyStatus, DiplomaticStatus, ClassTier,SimpleStudent, Item, ItemRarity, Stats, WeaponType, CapturedMonster, Location, Enemy, CombatState, MercenaryRank, Quest, JobType, MilitaryRank, RelationType, InterviewData, CombatStyle, TrainerBranch, BaseDefenseReportData } from './types';
 import { FACILITIES_INFO, ENHANCEMENT_CAPS,START_DATE, SELL_PRICES, BASE_LEVEL_CONFIG, INITIAL_BASE, ENHANCEMENT_CONFIG, MAX_STORAGE_SIZE, MAX_PARTY_SIZE, BASE_RESIDENT_LIMIT, FACILITY_UPGRADE_CONFIG, WORLD_GEOGRAPHY, MERCENARY_RANK_SCORE, TEMPLE_MESSENGER_MAP, BASE_MONSTERS, BASE_UPGRADE_COSTS, FACILITY_CONSTRUCTION_COSTS, BASE_GRID_EXPANSION_COSTS, COMBAT_STYLE_CONFIG } from './constants';
-import { calculateItemPrice, addMasteryExp, addDays, applyConsumableEffect,generateLevelByRank,generateCompanionStats, generateNameWithSurname, calculateFinalStats, getYear,generateName, getTierByLevel, generateEnemyStats, getRegionByNation, calculateInventorySize, generateDefaultVisualUrl, getRaceByNation, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalWorkshopCapacity, calculateTotalLabLevel, calculateTotalTrainingLevel, gainProfessionExp, unassignFromTraining, assignRandomCombatStyle, getFacilityTrainingLimit, getTrainerBranchMultiplier, addTrainerExpToAssignedTrainers, generateProceduralEnemy, calculateResearcherBonus, getRequiredExp, calculateItemCPDelta, findAvailableBattlePosition } from './utils';
+import { calculateItemPrice, addMasteryExp, addDays, applyConsumableEffect,generateLevelByRank,generateCompanionStats, generateNameWithSurname, calculateFinalStats, getYear,generateName, getTierByLevel, generateEnemyStats, getRegionByNation, calculateInventorySize, generateDefaultVisualUrl, getRaceByNation, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalWorkshopCapacity, calculateTotalLabLevel, calculateTotalTrainingLevel, gainProfessionExp, unassignFromTraining, assignRandomCombatStyle, getFacilityTrainingLimit, getTrainerBranchMultiplier, addTrainerExpToAssignedTrainers, generateProceduralEnemy, calculateResearcherBonus, getRequiredExp, calculateItemCPDelta, findAvailableBattlePosition, checkWeaponMasteryEquipRequirement } from './utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { chatWithCompanion, generateInterviewQuestions } from './services/geminiService';
 import CharacterSheet from './components/CharacterSheet';
@@ -35,6 +35,8 @@ import DashboardModal from './components/DashboardModal';
 import { TrainingStyleModal } from './components/TrainingStyleModal';
 import ActionResultModal, { ResultData } from './components/ActionResultModal';
 import { CombatResultModal } from './components/CombatResultModal';
+import { SuddenEventModal } from './components/SuddenEventModal';
+import { SuddenEventData } from './services/suddenEventService';
 import QuantityModal from './components/QuantityModal';
 import MonsterSkillBook from './components/MonsterSkillBook';
 import MapModal from './components/MapModal';
@@ -177,6 +179,7 @@ const App: React.FC = () => {
   const [quantityModal, setQuantityModal] = useState<{ isOpen: boolean, item?: Item, indices: number[], actionType: 'sell' | 'discard' | 'use' | 'deposit' | 'withdraw' }>({ isOpen: false, indices: [], actionType: 'sell' });
   const [isWeaponMasteryOpen, setIsWeaponMasteryOpen] = useState(false);
   const [isEternalRivalOpen, setIsEternalRivalOpen] = useState(false);
+  const [activeSuddenEvent, setActiveSuddenEvent] = useState<SuddenEventData | null>(null);
   const [isCondolenceModalOpen, setIsCondolenceModalOpen] = useState(false);
   const [isTutorialGuideOpen, setIsTutorialGuideOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -3011,6 +3014,20 @@ useEffect(() => {
           }
       }
 
+      const masteryCheck = checkWeaponMasteryEquipRequirement(item, comp);
+      if (!masteryCheck.allowed) {
+          setResultModalData({
+              type: 'warning',
+              title: '무기 숙련도 부족',
+              message: `${comp.name} 대원의 [${masteryCheck.weaponTypeLabel || '해당 무기'}] 숙련도가 부족하여 장착할 수 없습니다. (전설 무기: 숙련도 50 이상 / 신화 무기: 숙련도 100 이상 필요)`,
+              items: [
+                  { label: '무기 종류', after: masteryCheck.weaponTypeLabel || '무기' },
+                  { label: '요구 숙련도', after: `Lv.${masteryCheck.required} 이상 (현재 Lv.${masteryCheck.current})` }
+              ]
+          });
+          return;
+      }
+
       const newInventory = [...updatedChar.inventory];
       const newEquipment = { ...comp.equipment };
       
@@ -3157,6 +3174,7 @@ useEffect(() => {
       
       const targetName = item.name;
       let removedCount = 0;
+
       const newInventory = [...updatedChar.inventory];
       
       for (let i = newInventory.length - 1; i >= 0; i--) {
@@ -4345,6 +4363,20 @@ useEffect(() => {
               });
               return;
           }
+      }
+
+      const masteryCheck = checkWeaponMasteryEquipRequirement(item, character);
+      if (!masteryCheck.allowed) {
+          setResultModalData({
+              type: 'warning',
+              title: '무기 숙련도 부족',
+              message: `[${masteryCheck.weaponTypeLabel || '해당 무기'}] 숙련도가 부족하여 장착할 수 없습니다. (전설 무기: 숙련도 50 이상 / 신화 무기: 숙련도 100 이상 필요)`,
+              items: [
+                  { label: '무기 종류', after: masteryCheck.weaponTypeLabel || '무기' },
+                  { label: '요구 숙련도', after: `Lv.${masteryCheck.required} 이상 (현재 Lv.${masteryCheck.current})` }
+              ]
+          });
+          return;
       }
 
       const updatedChar = { ...character }; const newInventory = [...updatedChar.inventory]; const newEquipment = { ...updatedChar.equipment };
@@ -5929,13 +5961,26 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
         <CombatResultModal 
           data={combatResultData} 
           onClose={() => { 
+            const pendingEvent = (combatResultData as any)?.suddenEvent;
             const timeRes = advanceGameTime(character, 1, { isDungeonOrCombat: true, activityName: "전투 종료" });
             if (timeRes.systemLogs && timeRes.systemLogs.length > 0) {
               timeRes.systemLogs.forEach(l => addToLog(l));
             }
             setCharacter(timeRes.updatedCharacter); 
             setCombatResultData?.(null); 
+            if (pendingEvent) {
+              setActiveSuddenEvent(pendingEvent);
+            }
           }} 
+          onTriggerSuddenEvent={(suddenEvt) => {
+            const timeRes = advanceGameTime(character, 1, { isDungeonOrCombat: true, activityName: "전투 종료" });
+            if (timeRes.systemLogs && timeRes.systemLogs.length > 0) {
+              timeRes.systemLogs.forEach(l => addToLog(l));
+            }
+            setCharacter(timeRes.updatedCharacter);
+            setCombatResultData?.(null);
+            setActiveSuddenEvent(suddenEvt);
+          }}
           onContinueBattle={() => {
             const isInstantDungeon = combatResultData?.combatType === 'instant_dungeon' || !!character.dungeonProgress?.dungeonId;
             const instDungeonId = combatResultData?.dungeonId || character.dungeonProgress?.dungeonId || character.instantDungeons?.[0]?.id;
@@ -5952,6 +5997,50 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
               });
             }
             setIsCityOpen(true);
+          }}
+        />
+      )}
+      {sceneType === 'normal' && activeSuddenEvent && (
+        <SuddenEventModal
+          event={activeSuddenEvent}
+          character={character}
+          onClose={() => setActiveSuddenEvent(null)}
+          onUpdateCharacter={(newChar, logMsg) => {
+            handleUpdateCharacter(newChar, logMsg);
+          }}
+          setResultModalData={setResultModalData}
+          onStartSuddenCombat={(evt) => {
+            setActiveSuddenEvent(null);
+            if (!evt.enemies || evt.enemies.length === 0) return;
+            const combatType: any =
+              evt.originalCombatType === 'dungeon'
+                ? 'dungeon'
+                : evt.originalCombatType === 'instant_dungeon'
+                ? 'instant_dungeon'
+                : 'normal';
+
+            const newCombatState: CombatState = {
+              enemies: evt.enemies,
+              turn: 1,
+              log: [`[돌발 이벤트] ${evt.message}`],
+              isEnded: false,
+              type: combatType
+            };
+            (newCombatState as any).suddenEventType = evt.type;
+            if (evt.expMultiplier) (newCombatState as any).suddenExpMultiplier = evt.expMultiplier;
+            if (evt.masteryBonus) (newCombatState as any).suddenMasteryBonus = evt.masteryBonus;
+            if (evt.baseCombatExp) (newCombatState as any).baseCombatExp = evt.baseCombatExp;
+            if (evt.levelUpCount) (newCombatState as any).suddenLevelUpCount = evt.levelUpCount;
+            if (evt.rewardMultiplier) (newCombatState as any).suddenRewardMultiplier = evt.rewardMultiplier;
+            if (evt.lootRollCount) (newCombatState as any).suddenLootRolls = evt.lootRollCount;
+            if (evt.dungeonId) (newCombatState as any).dungeonId = evt.dungeonId;
+
+            setCombatState(newCombatState);
+            setSceneType('combat');
+            setIsCityOpen(false);
+            if (combatType !== 'dungeon') {
+              setIsDungeonOpen(false);
+            }
           }}
         />
       )}
