@@ -140,16 +140,11 @@ const getMonsterVisualUrl = (comp: any): string => {
   return "https://i.ibb.co/Kz56VGDS/image.png";
 };
 
+import { getItemImage as getRpgItemImage } from '../services/rpgIconService';
+
 const getItemVisualUrl = (item: Item | any): string => {
   if (!item) return '';
-  if (item.imageUrl && typeof item.imageUrl === 'string' && item.imageUrl.trim()) return item.imageUrl.trim();
-  if (item.visualUrl && typeof item.visualUrl === 'string' && item.visualUrl.trim()) return item.visualUrl.trim();
-  if (item.image && typeof item.image === 'string' && item.image.trim()) return item.image.trim();
-  if (item.icon && typeof item.icon === 'string' && item.icon.trim() && isUrlString(item.icon)) return item.icon.trim();
-  if (item.name) {
-    return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(item.name)}&backgroundColor=0f172a&shape1Color=334155`;
-  }
-  return '';
+  return getRpgItemImage(item);
 };
 
 const getMonsterShinryokuShardRequirement = (monster: any): number => {

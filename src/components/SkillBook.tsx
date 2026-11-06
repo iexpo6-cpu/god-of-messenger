@@ -35,20 +35,7 @@ import {
   getFinalPassiveCombatCap
 } from '../services/finalClassLevelScalingService';
 
-const BASE_ICONS = [
-  { name: 'Sword', icon: Sword, label: '물리' },
-  { name: 'Zap', icon: Zap, label: '마법' },
-  { name: 'Shield', icon: Shield, label: '방어' },
-  { name: 'Skull', icon: Skull, label: '상태이상' },
-  { name: 'BookOpen', icon: BookOpen, label: '패시브' },
-  { name: 'Flame', icon: Flame, label: '화염' },
-  { name: 'Sparkles', icon: Sparkles, label: '신성' },
-  { name: 'Heart', icon: Heart, label: '치유' },
-  { name: 'Waves', icon: Waves, label: '빙결' },
-  { name: 'Wind', icon: Wind, label: '바람' },
-  { name: 'Sun', icon: Sun, label: '태양' },
-  { name: 'Moon', icon: Moon, label: '달' },
-];
+import { RPG_SKILL_ICONS as BASE_ICONS, getItemImage, getSkillIconComponent } from '../services/rpgIconService';
 
 
 interface Props {
@@ -2087,8 +2074,8 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
 
                                                             <div className={`w-4 h-4 md:w-5 md:h-5 rounded border ${isItem ? 'border-emerald-400/50' : 'border-indigo-400/50'} overflow-hidden bg-slate-900 flex items-center justify-center shrink-0 mt-0.5 shadow-inner`}>
                                                                 {isItem ? (
-                                                                    matchingItem?.imageUrl ? (
-                                                                        <img src={matchingItem.imageUrl} alt={matchingItem.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                                    matchingItem ? (
+                                                                        <img src={getItemImage(matchingItem)} alt={matchingItem.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                                                     ) : (
                                                                         <Package size={10} className="text-emerald-300" />
                                                                     )
@@ -2096,8 +2083,7 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                                     <img src={matchingSkill.imageUrl} alt={matchingSkill.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                                                 ) : (
                                                                     (() => {
-                                                                        const found = BASE_ICONS.find(bi => bi.name === matchingSkill?.icon);
-                                                                        const IconComp = found ? found.icon : Sword;
+                                                                        const IconComp = getSkillIconComponent(matchingSkill);
                                                                         return <IconComp size={10} className="text-indigo-300" />;
                                                                     })()
                                                                 )}
@@ -2592,8 +2578,7 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                         ) : (
                                                             <div className={`p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 group-hover:${currentTierConfig.color} transition-colors shadow-inner flex items-center justify-center w-10 h-10`}>
                                                                 {(() => {
-                                                                    const found = BASE_ICONS.find(bi => bi.name === skill.icon);
-                                                                    const IconComp = found ? found.icon : TypeIcon;
+                                                                    const IconComp = getSkillIconComponent(skill);
                                                                     return <IconComp size={20} />;
                                                                 })()}
                                                             </div>

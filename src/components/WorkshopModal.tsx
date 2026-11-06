@@ -64,11 +64,9 @@ export const getCrystalKey = (rarity: ItemRarity): keyof BaseResources => {
     }
 };
 
-export const getItemImage = (item: Item) => {
-    if (item?.visualUrl) return item.visualUrl;
-    if (item?.imageUrl) return item.imageUrl;
-    return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(item?.name || 'Item')}&backgroundColor=0f172a&shape1Color=334155`;
-};
+import { getItemImage as getRpgItemImage } from '../services/rpgIconService';
+
+export const getItemImage = (item: Item) => getRpgItemImage(item);
 
 export const RARITY_CONFIG: Record<ItemRarity, { success: number, time: number, multiplier: number, color: string, crystalCost: number }> = {
     [ItemRarity.NORMAL]: { success: 100, time: 1, multiplier: Math.floor(Math.random() * 1) + 1, color: 'text-slate-400', crystalCost: 15 },

@@ -58,19 +58,7 @@ import { AllyTargetQuickSelector } from './combat/AllyTargetQuickSelector';
 import { requiresDualTargetSelection } from '../utils/finalClassSkillHelper';
 import { SingleSkillTargetModal } from './SingleSkillTargetModal';
 
-const BASE_ICONS = [
-  { name: 'Sword', icon: Sword },
-  { name: 'Zap', icon: Zap },
-  { name: 'Shield', icon: Shield },
-  { name: 'Skull', icon: Skull },
-  { name: 'Flame', icon: Flame },
-  { name: 'Sparkles', icon: Sparkles },
-  { name: 'Heart', icon: Heart },
-  { name: 'Waves', icon: Waves },
-  { name: 'Wind', icon: Wind },
-  { name: 'Sun', icon: Sun },
-  { name: 'Moon', icon: Moon },
-];
+import { RPG_SKILL_ICONS as BASE_ICONS, getItemImage, getSkillIconComponent } from '../services/rpgIconService';
 
 interface Props {
   combatState: CombatState;
@@ -2779,14 +2767,13 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                                                                 <img src={skill.imageUrl} alt={skill.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                                             ) : (
                                                                 (() => {
-                                                                    const found = BASE_ICONS.find(bi => bi.name === skill.icon);
-                                                                    const IconComp = found ? found.icon : Zap;
+                                                                    const IconComp = getSkillIconComponent(skill);
                                                                     return <IconComp size={8} className={isUsable ? 'text-indigo-300 group-hover:text-amber-300' : 'text-slate-600'} />;
                                                                 })()
                                                             )
                                                         ) : (
-                                                            item?.imageUrl ? (
-                                                                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                            item ? (
+                                                                <img src={getItemImage(item)} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                                             ) : (
                                                                 <Package size={8} className={isItemUsable ? 'text-emerald-300 group-hover:text-amber-300' : 'text-slate-600'} />
                                                             )

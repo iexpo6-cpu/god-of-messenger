@@ -321,11 +321,9 @@ interface DismantleGroup {
     indices: number[];
 }
 
-const getItemImage = (item: Item) => {
-    if (item.visualUrl) return item.visualUrl;
-    if (item.imageUrl) return item.imageUrl;
-    return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(item.name)}&backgroundColor=0f172a&shape1Color=334155`;
-};
+import { getItemImage as getRpgItemImage } from '../services/rpgIconService';
+
+const getItemImage = (item: Item) => getRpgItemImage(item);
 
 const AlchemyModal: React.FC<Props> = ({ character, instanceId, initialTab, onClose, onUpdateCharacter, onFacilityUpgrade }) => {
   const [activeTab, setActiveTab] = useState<'craft' | 'convert' | 'imbue' | 'produce' | 'inherit' | 'monsterShinryoku'>(initialTab as any || 'craft');
@@ -1673,7 +1671,7 @@ const AlchemyModal: React.FC<Props> = ({ character, instanceId, initialTab, onCl
                 const updatedChar = expResult.newChar;
                 newInventory[transmuteBaseIdx!] = {
                     ...baseItem,
-                    imageUrl: customTransmuteUrl || `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(baseItem.name)}&backgroundColor=0f172a&shape1Color=334155`
+                    imageUrl: customTransmuteUrl || getItemImage(baseItem)
                 };
                 setResultOverlay({ show: true, data: { type: 'success', title: '외형 변환 성공', message: `${baseItem.name}의 외형이 변경되었습니다.`, items: [{ label: '결과', after: '성공' }, ...(expResult.leveledUp ? [{ label: '숙련도 상승!', after: `Lv.${expResult.oldLevel} -> Lv.${expResult.newLevel}`, color: 'text-yellow-400' }] : [])] } });
                 updatedChar.inventory = newInventory;
@@ -1695,7 +1693,7 @@ const AlchemyModal: React.FC<Props> = ({ character, instanceId, initialTab, onCl
                 const updatedChar = expResult.newChar;
                 newInventory[transmuteBaseIdx!] = {
                     ...baseItem,
-                    imageUrl: materialItem.imageUrl || `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(materialItem.name)}&backgroundColor=0f172a&shape1Color=334155`
+                    imageUrl: materialItem.imageUrl || getItemImage(materialItem)
                 };
                 setResultOverlay({ show: true, data: { type: 'success', title: '외형 변환 성공', message: `${baseItem.name}의 외형이 ${materialItem.name}으로 변경되었습니다.`, items: [{ label: '결과', after: '성공' }, ...(expResult.leveledUp ? [{ label: '숙련도 상승!', after: `Lv.${expResult.oldLevel} -> Lv.${expResult.newLevel}`, color: 'text-yellow-400' }] : [])] } });
                 updatedChar.inventory = newInventory.filter((_, idx) => idx !== transmuteMaterialIdx);

@@ -34,11 +34,7 @@ const RARITY_COLORS: Record<string, string> = {
   [ItemRarity.MYTHTIC]: 'text-red-400 border-red-600/70 bg-red-950/30 shadow-[0_0_15px_rgba(239,68,68,0.15)]',
 };
 
-const getItemImage = (item: Item) => {
-  if (item.imageUrl) return item.imageUrl;
-  const safeName = item.name || (item as any).item || 'item';
-  return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(safeName)}&backgroundColor=0f172a&shape1Color=334155`;
-};
+import { getItemImage } from '../services/rpgIconService';
 
 interface GroupedItem {
   item: Item;

@@ -34,20 +34,7 @@ import { CombatEstimateModal } from './CombatEstimateModal';
 import { getCleanseAilments, getBuffEffectSummaries } from './combat/SkillSelector';
 import { canStartRomance } from '../services/romanceEthicsService';
 
-const BASE_ICONS = [
-  { name: 'Sword', icon: Sword },
-  { name: 'Zap', icon: Zap },
-  { name: 'Shield', icon: Shield },
-  { name: 'Skull', icon: Skull },
-  { name: 'BookOpen', icon: BookOpen },
-  { name: 'Flame', icon: Flame },
-  { name: 'Sparkles', icon: Sparkles },
-  { name: 'Heart', icon: Heart },
-  { name: 'Waves', icon: Waves },
-  { name: 'Wind', icon: Wind },
-  { name: 'Sun', icon: Sun },
-  { name: 'Moon', icon: Moon },
-];
+import { RPG_SKILL_ICONS as BASE_ICONS, getItemImage, getSkillIconComponent } from '../services/rpgIconService';
 
 // [HELPER] Format title stat bonuses into clean 1-line string
 const formatTitleStats = (title: any) => {
@@ -108,10 +95,7 @@ const BUFF_SCALING: Record<string, number> = {
     [ClassTier.FINAL]: 1.0,
 };
 
-const getItemImage = (item: Item) => {
-    if (item.imageUrl) return item.imageUrl;
-    return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(item.name)}&backgroundColor=0f172a&shape1Color=334155`;
-};
+// getItemImage is now imported from rpgIconService
 
 // Helper for stacking items in the modal
 interface GroupedItem {
@@ -3538,8 +3522,7 @@ const groupedPlayerInventory = groupItemsInModal(playerInventory);
                                                                         ) : (
                                                                             <div className={`p-1.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 shadow-inner flex items-center justify-center w-9 h-9`}>
                                                                                 {(() => {
-                                                                                    const found = BASE_ICONS.find(bi => bi.name === skill.icon);
-                                                                                    const IconComp = found ? found.icon : (isAttack ? (skill.type === SkillType.PHYSICAL ? Sword : Zap) : isBuff ? Shield : isDebuff ? Skull : BookOpen);
+                                                                                    const IconComp = getSkillIconComponent(skill);
                                                                                     return <IconComp size={16} />;
                                                                                 })()}
                                                                             </div>

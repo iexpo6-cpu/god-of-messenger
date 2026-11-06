@@ -39,26 +39,7 @@ const GRADIENT_PRESETS = [
     { name: '은하수 코스모스', colors: '#833ab4, #fd1d1d, #fcb045', value: 'linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)' },
 ];
 
-export const BASE_ICONS = [
-    { name: 'Sword', icon: Sword, label: '물리' },
-    { name: 'Zap', icon: Zap, label: '마법' },
-    { name: 'Shield', icon: Shield, label: '방어' },
-    { name: 'Skull', icon: Skull, label: '상태이상' },
-    { name: 'BookOpen', icon: BookOpen, label: '패시브' },
-    { name: 'Flame', icon: Flame, label: '화염' },
-    { name: 'Sparkles', icon: Sparkles, label: '신성' },
-    { name: 'Heart', icon: Heart, label: '치유' },
-    { name: 'Waves', icon: Waves, label: '빙결' },
-    { name: 'Wind', icon: Wind, label: '바람' },
-    { name: 'Sun', icon: Sun, label: '태양' },
-    { name: 'Moon', icon: Moon, label: '달' },
-    { name: 'Leaf', icon: Leaf, label: '자연' },
-    { name: 'Crown', icon: Crown, label: '패기' },
-    { name: 'Crosshair', icon: Crosshair, label: '사격' },
-    { name: 'Gem', icon: Gem, label: '보석' },
-    { name: 'Feather', icon: Feather, label: '신속' },
-    { name: 'Compass', icon: Compass, label: '탐색' }
-];
+import { RPG_SKILL_ICONS as BASE_ICONS } from '../services/rpgIconService';
 
 export type LabTab = 'research' | 'limit_break' | 'forget' | 'researchers';
 

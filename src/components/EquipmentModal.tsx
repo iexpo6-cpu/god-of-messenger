@@ -26,10 +26,7 @@ const RARITY_COLORS: Record<string, string> = {
   [ItemRarity.MYTHTIC]: 'text-red-500 border-red-600/50 bg-red-950/30 shadow-[0_0_10px_rgba(239,68,68,0.15)]',
 };
 
-const getItemImage = (item: Item) => {
-  if (item.imageUrl) return item.imageUrl;
-  return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(item.name)}&backgroundColor=0f172a&shape1Color=334155`;
-};
+import { getItemImage } from '../services/rpgIconService';
 
 export const EquipmentModal: React.FC<Props> = ({ 
   character, 

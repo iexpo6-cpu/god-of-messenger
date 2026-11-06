@@ -57,12 +57,10 @@ const RARITY_COLORS: Record<string, string> = {
   [ItemRarity.MYTHTIC]: 'text-red-700 border-red-700 shadow-red-700/20',
 };
 
-// [HELPER] Get Item Image with dynamic placeholder
-export const getItemImage = (item: Item) => {
-  if (item.imageUrl) return item.imageUrl;
-  const safeName = item.name || (item as any).item || 'item';
-  return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(safeName)}&backgroundColor=0f172a&shape1Color=334155`;
-};
+import { getItemImage as getRpgItemImage } from '../services/rpgIconService';
+
+// [HELPER] Get Item Image with dynamic RPG artwork placeholder
+export const getItemImage = (item: Item) => getRpgItemImage(item);
 
 // Item Tooltip Component - Improved Visibility with Portal & Comparison
 export const ItemTooltip: React.FC<{ item: Item; character?: Character }> = ({ item, character }) => {

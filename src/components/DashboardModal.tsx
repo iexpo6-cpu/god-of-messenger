@@ -26,11 +26,7 @@ interface Props {
 
 type TabType = 'stats' | 'inventory' | 'equipment' | 'companions' | 'titles';
 
-// [HELPER] Get Item Image with dynamic placeholder
-const getItemImage = (item: Item) => {
-    if (item.imageUrl) return item.imageUrl;
-    return `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(item.name)}&backgroundColor=0f172a&shape1Color=334155`;
-};
+import { getItemImage } from '../services/rpgIconService';
 
 // [HELPER] Format title stat bonuses into clean 1-line string
 const formatTitleStats = (title: any) => {

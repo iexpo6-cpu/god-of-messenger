@@ -27,19 +27,14 @@ import { GoogleDriveAuthPanel } from './GoogleDriveAuthPanel';
 import { findOrCreateAppFolder, uploadTextFileToFolder, shareFileWithAnyone, getFileWebViewLink, fetchFileContentFromUrl, uploadVfxFileToDrive, downloadVfxFileFromDrive, getVfxFileMeta, getCachedAccessToken } from '../services/googleDriveService';
 import { signInWithGoogleDrive } from '../services/googleDriveAuthService';
 import { uploadImageToWeb } from '../services/imageCacheService';
-
-const BASE_ICONS: Array<{ name: string; label: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = [
-    { name: 'Sword', label: '검', icon: Sword },
-    { name: 'Shield', label: '방패', icon: Shield },
-    { name: 'Sparkles', label: '섬광', icon: Sparkles },
-    { name: 'Flame', label: '화염', icon: Flame },
-    { name: 'Zap', label: '전격', icon: Zap },
-    { name: 'Crown', label: '왕관', icon: Crown },
-    { name: 'Wand2', label: '마법', icon: Wand2 },
-    { name: 'Film', label: '필름', icon: Film },
-    { name: 'ImageIcon', label: '그림', icon: ImageIcon },
-    { name: 'Palette', label: '팔레트', icon: Palette }
-];
+import {
+    RPG_SKILL_ICONS as BASE_ICONS,
+    getSkillIconComponent,
+    SKILL_EMBLEM_PRESETS,
+    buildSkillEmblemDataUri,
+    searchOpenSourceGameIcons,
+    fetchOpenSourceGameIconAsEmblemDataUri
+} from '../services/rpgIconService';
 
 export interface VfxShapeOptionItem {
     id: string;
@@ -560,6 +555,39 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
         showToast(`⚡ [컷인 설정 변경] ${labelMap[mode]}`, 'info');
     };
 
+    // RPG Icon Category & Open-Source Game-Icons Search State
+    const [iconCategoryFilter, setIconCategoryFilter] = useState<'all' | 'martial' | 'magic' | 'holy' | 'dark'>('all');
+    const [gameIconSearchQuery, setGameIconSearchQuery] = useState<string>('용');
+    const [gameIconResults, setGameIconResults] = useState<string[]>([]);
+    const [isSearchingGameIcons, setIsSearchingGameIcons] = useState<boolean>(false);
+    const [gameIconColor, setGameIconColor] = useState<string>('#fbbf24');
+    const [gameIconBg, setGameIconBg] = useState<string>('#0f172a');
+
+    const handleSearchGameIcons = async (qOverride?: string) => {
+        const q = (qOverride !== undefined ? qOverride : gameIconSearchQuery).trim();
+        if (!q) return;
+        setIsSearchingGameIcons(true);
+        try {
+            const icons = await searchOpenSourceGameIcons(q, 24);
+            setGameIconResults(icons);
+            if (icons.length === 0) {
+                showToast(`'${q}' 검색 결과가 없습니다. (예: 검, 용, 번개, 날개, 해골, 불, 마법)`, 'warning');
+            }
+        } finally {
+            setIsSearchingGameIcons(false);
+        }
+    };
+
+    const handleSelectOpenSourceGameIcon = async (iconFullName: string) => {
+        const dataUri = await fetchOpenSourceGameIconAsEmblemDataUri(iconFullName, gameIconColor, gameIconBg);
+        if (dataUri) {
+            setEditImageUrl(dataUri);
+            showToast('오픈소스 RPG 아이콘 엠블럼이 미리보기에 적용되었습니다! [아이콘 저장]을 눌러 확정하세요.', 'success');
+        } else {
+            showToast('아이콘 데이터를 불러오지 못했습니다.', 'warning');
+        }
+    };
+
     const showToast = (text: string, type: 'success' | 'warning' | 'info' = 'info') => {
         setToastMessage({ text, type });
         setTimeout(() => setToastMessage(null), 3200);
@@ -941,11 +969,13 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
     };
 
     const handleSaveIcon = () => {
-        const manaCost = editImageUrl.trim() ? 5 : 0;
+        const trimmedUrl = editImageUrl.trim();
+        const isFreeBuiltInEmblem = trimmedUrl.startsWith('data:image/svg+xml');
+        const manaCost = trimmedUrl && !isFreeBuiltInEmblem ? 5 : 0;
         updateTargetSkill(skill => ({
             ...skill,
             icon: editIcon,
-            imageUrl: editImageUrl.trim() ? editImageUrl.trim() : undefined
+            imageUrl: trimmedUrl ? trimmedUrl : undefined
         }), '아이콘 설정 저장', manaCost);
     };
 
@@ -2384,12 +2414,15 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
                                                     : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                                             }`}
                                         >
-                                            <div className="w-8 h-8 rounded-lg bg-slate-950 border border-slate-700 flex items-center justify-center shrink-0">
-                                                {(() => {
-                                                    const found = BASE_ICONS.find(b => b.name === skill.icon);
-                                                    const IconC = found ? found.icon : Sword;
-                                                    return <IconC size={16} className="text-amber-400" />;
-                                                })()}
+                                            <div className="w-8 h-8 rounded-lg bg-slate-950 border border-slate-700 overflow-hidden flex items-center justify-center shrink-0">
+                                                {skill.imageUrl ? (
+                                                    <img src={skill.imageUrl} alt={skill.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    (() => {
+                                                        const IconC = getSkillIconComponent(skill);
+                                                        return <IconC size={16} className="text-amber-400" />;
+                                                    })()
+                                                )}
                                             </div>
                                             <div className="min-w-0 flex-1">
                                                 <div className="text-xs font-bold truncate">{skill.name}</div>
@@ -2488,11 +2521,38 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
                                             </div>
                                         </div>
 
-                                        {/* Base Icons */}
-                                        <div className="space-y-1.5">
-                                            <span className="text-xs font-bold text-slate-400">기본 판타지 아이콘 (무료)</span>
-                                            <div className="grid grid-cols-6 sm:grid-cols-9 gap-1.5">
-                                                {BASE_ICONS.map(bi => {
+                                        {/* Base Icons (53 Fantasy RPG Vector Icons with Category Filter) */}
+                                        <div className="space-y-2 p-3 bg-slate-900/70 rounded-xl border border-slate-800">
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                                    <Sparkles size={13} className="text-amber-400" />
+                                                    1. 판타지 RPG 전용 벡터 아이콘 ({BASE_ICONS.length}종 · 무료)
+                                                </span>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {[
+                                                        { id: 'all' as const, label: '전체' },
+                                                        { id: 'martial' as const, label: '⚔️ 무투/무기' },
+                                                        { id: 'magic' as const, label: '🔥 원소/마법' },
+                                                        { id: 'holy' as const, label: '✨ 신성/수호' },
+                                                        { id: 'dark' as const, label: '🌑 암흑/신수' },
+                                                    ].map(cat => (
+                                                        <button
+                                                            key={cat.id}
+                                                            type="button"
+                                                            onClick={() => setIconCategoryFilter(cat.id)}
+                                                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                                                iconCategoryFilter === cat.id
+                                                                    ? 'bg-amber-950/80 border-amber-400 text-amber-200'
+                                                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
+                                                            }`}
+                                                        >
+                                                            {cat.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-6 sm:grid-cols-9 gap-1.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                                                {BASE_ICONS.filter(bi => iconCategoryFilter === 'all' || bi.category === iconCategoryFilter).map(bi => {
                                                     const IconC = bi.icon;
                                                     const isSelected = !editImageUrl && editIcon === bi.name;
                                                     return (
@@ -2506,23 +2566,141 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
                                                             className={`p-2 rounded-xl border flex flex-col items-center justify-center transition-all ${
                                                                 isSelected
                                                                     ? 'bg-amber-950/60 border-amber-500 text-amber-400 shadow-md scale-105'
-                                                                    : 'bg-slate-950 border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-700'
+                                                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
                                                             }`}
                                                             title={bi.label}
                                                         >
                                                             <IconC size={18} />
-                                                            <span className="text-[9px] mt-1 truncate">{bi.label}</span>
+                                                            <span className="text-[9px] mt-1 truncate max-w-full">{bi.label}</span>
                                                         </button>
                                                     );
                                                 })}
                                             </div>
                                         </div>
 
-                                        {/* Custom Image Upload */}
+                                        {/* Full-Color RPG Skill Emblem Presets */}
+                                        <div className="space-y-2 p-3 bg-slate-900/70 rounded-xl border border-slate-800">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                                                    <Palette size={13} className="text-cyan-400" />
+                                                    2. 고화질 컬러 RPG 엠블럼 스탬프 (무료 즉시 적용)
+                                                </span>
+                                                <span className="text-[10px] text-cyan-300/80 font-mono">마정석 소모 없음</span>
+                                            </div>
+                                            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                                                {SKILL_EMBLEM_PRESETS.map(preset => {
+                                                    const uri = buildSkillEmblemDataUri(preset);
+                                                    const isSelected = editImageUrl === uri;
+                                                    return (
+                                                        <button
+                                                            key={preset.id}
+                                                            type="button"
+                                                            onClick={() => setEditImageUrl(uri)}
+                                                            className={`p-1.5 rounded-xl border flex flex-col items-center gap-1 transition-all ${
+                                                                isSelected
+                                                                    ? 'bg-cyan-950/70 border-cyan-400 text-cyan-200 shadow-lg scale-105'
+                                                                    : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-600'
+                                                            }`}
+                                                        >
+                                                            <img src={uri} alt={preset.name} className="w-10 h-10 rounded-lg object-cover" />
+                                                            <span className="text-[9px] font-bold truncate max-w-full">{preset.name}</span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* Open-Source Game-Icons.net Search & Emblem Compositor */}
+                                        <div className="space-y-2.5 p-3 bg-slate-900/70 rounded-xl border border-indigo-500/30">
+                                            <div className="flex flex-wrap items-center justify-between gap-1">
+                                                <span className="text-xs font-bold text-indigo-200 flex items-center gap-1.5">
+                                                    <Wand2 size={13} className="text-indigo-400" />
+                                                    3. 오픈소스 Game-Icons 4,000종 검색 & 엠블럼 합성 (무료)
+                                                </span>
+                                                <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                                    <label className="flex items-center gap-1 cursor-pointer">
+                                                        <span>아이콘색</span>
+                                                        <input
+                                                            type="color"
+                                                            value={gameIconColor}
+                                                            onChange={e => setGameIconColor(e.target.value)}
+                                                            className="w-5 h-5 rounded bg-transparent border-0 cursor-pointer"
+                                                        />
+                                                    </label>
+                                                    <label className="flex items-center gap-1 cursor-pointer">
+                                                        <span>배경색</span>
+                                                        <input
+                                                            type="color"
+                                                            value={gameIconBg}
+                                                            onChange={e => setGameIconBg(e.target.value)}
+                                                            className="w-5 h-5 rounded bg-transparent border-0 cursor-pointer"
+                                                        />
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-1.5">
+                                                <input
+                                                    type="text"
+                                                    placeholder="한글/영문 검색 (예: 용, 검, 번개, 날개, 해골, 불, 마법진, 창, 포션)"
+                                                    value={gameIconSearchQuery}
+                                                    onChange={e => setGameIconSearchQuery(e.target.value)}
+                                                    onKeyDown={e => { if (e.key === 'Enter') handleSearchGameIcons(); }}
+                                                    className="flex-1 px-3 py-1.5 text-xs bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:border-indigo-500"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSearchGameIcons()}
+                                                    disabled={isSearchingGameIcons}
+                                                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shrink-0"
+                                                >
+                                                    {isSearchingGameIcons ? '검색 중...' : '아이콘 검색'}
+                                                </button>
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-1">
+                                                {['검', '쌍검', '카타나', '창', '활', '용', '불', '번개', '얼음', '운석', '날개', '신성', '해골', '마법진', '불사조'].map(kw => (
+                                                    <button
+                                                        key={kw}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setGameIconSearchQuery(kw);
+                                                            handleSearchGameIcons(kw);
+                                                        }}
+                                                        className="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 hover:border-indigo-500/60 text-[10px] text-slate-300"
+                                                    >
+                                                        #{kw}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {gameIconResults.length > 0 && (
+                                                <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 max-h-40 overflow-y-auto custom-scrollbar pt-1">
+                                                    {gameIconResults.map(iconName => {
+                                                        const clean = iconName.replace(/^game-icons:/, '');
+                                                        const previewUrl = `https://api.iconify.design/game-icons/${encodeURIComponent(clean)}.svg?color=${encodeURIComponent(gameIconColor)}`;
+                                                        return (
+                                                            <button
+                                                                key={iconName}
+                                                                type="button"
+                                                                onClick={() => handleSelectOpenSourceGameIcon(iconName)}
+                                                                className="p-1.5 rounded-xl border border-slate-800 hover:border-indigo-400 bg-slate-950 flex flex-col items-center justify-center gap-1 transition-all hover:scale-105"
+                                                                title={clean}
+                                                            >
+                                                                <img src={previewUrl} alt={clean} className="w-7 h-7 object-contain" />
+                                                                <span className="text-[8px] text-slate-400 truncate max-w-full">{clean}</span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Custom Image Upload (Preserved 100%) */}
                                         <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-3">
                                             <div className="flex items-center justify-between">
                                                 <h5 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                                                    <ImageIcon size={14} className="text-amber-400" /> 커스텀 이미지 등록 (마정석 5개)
+                                                    <ImageIcon size={14} className="text-amber-400" /> 4. 내 커스텀 이미지 직접 등록 (마정석 5개)
                                                 </h5>
                                                 <span className="text-[10px] text-slate-500">
                                                     보유 마정석: <strong className="text-purple-400">{character.base?.resources?.manaCrystal || 0}</strong>개

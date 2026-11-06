@@ -30,20 +30,7 @@ const STORAGE_RARITY_COLORS: Record<string, string> = {
   [ItemRarity.MYTHTIC]: 'text-red-400 border-red-600/70 bg-red-950/40 shadow-[0_0_15px_rgba(239,68,68,0.2)]',
 };
 
-const BASE_ICONS = [
-  { name: 'Sword', icon: Sword, label: '물리' },
-  { name: 'Zap', icon: Zap, label: '마법' },
-  { name: 'Shield', icon: Shield, label: '방어' },
-  { name: 'Skull', icon: Skull, label: '상태이상' },
-  { name: 'BookOpen', icon: BookOpen, label: '패시브' },
-  { name: 'Flame', icon: Flame, label: '화염' },
-  { name: 'Sparkles', icon: Sparkles, label: '신성' },
-  { name: 'Heart', icon: Heart, label: '치유' },
-  { name: 'Waves', icon: Waves, label: '빙결' },
-  { name: 'Wind', icon: Wind, label: '바람' },
-  { name: 'Sun', icon: Sun, label: '태양' },
-  { name: 'Moon', icon: Moon, label: '달' },
-];
+import { RPG_SKILL_ICONS as BASE_ICONS } from '../services/rpgIconService';
 
 const DEFENSE_STRUCTURE_TEMPLATES = [
   {
