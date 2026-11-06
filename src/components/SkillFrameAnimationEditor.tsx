@@ -1747,6 +1747,25 @@ export const SkillFrameAnimationEditor: React.FC<SkillFrameAnimationEditorProps>
                                 >
                                     전체 적용
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const optimalMs = frames.length >= 36 ? 18 : frames.length >= 16 ? 30 : 50;
+                                        setBatchDuration(optimalMs);
+                                        setFrames(prev => prev.map(f => ({
+                                            ...f,
+                                            x: 0,
+                                            y: 0,
+                                            duration: optimalMs
+                                        })));
+                                        showToast(`모든 프레임의 중심축 흔들림(X/Y 오프셋)을 0으로 정렬하고 ${optimalMs}ms(60FPS) 부드러운 속도로 보정했습니다! (아래 저장 버튼을 눌러 확정하세요)`, 'success');
+                                    }}
+                                    className="px-2.5 py-0.5 rounded bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white text-[10px] font-bold shadow flex items-center gap-1"
+                                    title="기존 8x8 등 프레임 이펙트의 중심축 흔들림과 느린 재생 속도를 원클릭으로 부드럽게 교정합니다"
+                                >
+                                    <Zap size={11} />
+                                    <span>끊김·흔들림 60FPS 자동 보정</span>
+                                </button>
                                 {/* 초고속 빠른 선택 칩 */}
                                 <div className="hidden sm:flex items-center gap-1 ml-1">
                                     {[5, 10, 16, 30, 50].map((ms) => (

@@ -22,7 +22,7 @@ export const SpriteSheetModal: React.FC<SpriteSheetModalProps> = ({
     const [cols, setCols] = useState<number>(4);
     const [rows, setRows] = useState<number>(4);
     const [totalFrames, setTotalFrames] = useState<number>(16);
-    const [frameDuration, setFrameDuration] = useState<number>(80);
+    const [frameDuration, setFrameDuration] = useState<number>(35);
     const [scale, setScale] = useState<number>(1.2);
     const [blendMode, setBlendMode] = useState<'screen' | 'lighten' | 'normal' | 'overlay'>('screen');
     
@@ -38,12 +38,12 @@ export const SpriteSheetModal: React.FC<SpriteSheetModalProps> = ({
     const [borderTolerance, setBorderTolerance] = useState<number>(20);
 
     // 스마트 이펙트 그림 감지 및 위치 정렬 모드 옵션
-    // 'center': 정중앙, 'right_head': 우측 창날 선두 기준, 'left_head': 좌측 창날 선두 기준, 'none': 원본 위치 유지
-    const [alignMode, setAlignMode] = useState<'center' | 'right_head' | 'left_head' | 'none'>('right_head');
+    // 8x8 등 고프레임 시트의 중심축 흔들림(Jitter) 방지를 위해 기본값을 'none'(원본 중심 유지)으로 설정
+    const [alignMode, setAlignMode] = useState<'center' | 'right_head' | 'left_head' | 'none'>('none');
 
     // 스마트 이동 궤적 모드 옵션
-    // 'auto_forward': 투사체 자동 전진 모션, 'sprite_head': 실제 창날/그림 픽셀 이동 추적, 'fixed': 동일 위치 고정
-    const [motionMode, setMotionMode] = useState<'auto_forward' | 'sprite_head' | 'fixed'>('auto_forward');
+    // 제자리 폭발/참격 시트가 끊기지 않도록 기본값을 'fixed'(고정)로 설정
+    const [motionMode, setMotionMode] = useState<'auto_forward' | 'sprite_head' | 'fixed'>('fixed');
 
     // 슬라이싱된 프레임 객체 미리보기 (URL 및 x, y 이동 오프셋 좌표 포함)
     interface SlicedFrameItem {
@@ -180,9 +180,17 @@ export const SpriteSheetModal: React.FC<SpriteSheetModalProps> = ({
         return { canvas: sourceCtx.canvas, maxX: width, minX: 0 };
     };
 
-    // Cols x Rows 변경 시 총 프레임 수 동기화
+    // Cols x Rows 변경 시 총 프레임 수 및 권장 60FPS 재생 속도 자동 동기화
     useEffect(() => {
-        setTotalFrames(cols * rows);
+        const count = cols * rows;
+        setTotalFrames(count);
+        if (count >= 36) {
+            setFrameDuration(20); // 6x6, 8x8(64프레임) 등 고밀도 시트는 20ms(약 50~60fps)로 부드럽게 재생
+        } else if (count >= 16) {
+            setFrameDuration(32); // 4x4(16프레임) 이상은 32ms 권장
+        } else {
+            setFrameDuration(60);
+        }
     }, [cols, rows]);
 
     // 스프라이트 시트 분할 슬라이싱
@@ -217,13 +225,19 @@ export const SpriteSheetModal: React.FC<SpriteSheetModalProps> = ({
             const countToExtract = Math.min(totalFrames, cols * rows);
             const rawFramesOut: { url: string; maxX: number; minX: number }[] = [];
 
+            // 고프레임(8x8 등) 시트 메모리 폭주 방지를 위해 개별 셀 최대 해상도를 240px로 경량화
+            const maxCellDim = countToExtract >= 32 ? 220 : 280;
+            const scaleRatio = Math.min(1, maxCellDim / Math.max(1, cellW, cellH));
+            const outW = Math.max(1, Math.floor(cellW * scaleRatio));
+            const outH = Math.max(1, Math.floor(cellH * scaleRatio));
+
             for (let i = 0; i < countToExtract; i++) {
                 const c = i % cols;
                 const r = Math.floor(i / cols);
 
                 const canvas = document.createElement('canvas');
-                canvas.width = Math.floor(cellW);
-                canvas.height = Math.floor(cellH);
+                canvas.width = outW;
+                canvas.height = outH;
                 const ctx = canvas.getContext('2d');
                 if (ctx) {
                     ctx.drawImage(

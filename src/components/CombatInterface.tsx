@@ -31,7 +31,7 @@ import { getVisualUrlByJob } from '../services/visualManager';
 import { isNinjaCloneSkill, handleNinjaCloneSpawn } from '../services/ninjaCloneService';
 import { Snowflake } from 'lucide-react';
 import { MESSENGER_VIDEOS, MESSENGER_VIDEO_DURATIONS, BOSS_ENTRANCE_VIDEOS } from '../messengerVideoData';
-import { CombatVFXOverlay, CombatVFXData } from './CombatVFX';
+import { CombatVFXOverlay, CombatVFXData, combatVfxBus, preloadSkillFrameAnimations } from './CombatVFX';
 import { CombatShortcutKeybindModal } from './CombatShortcutKeybindModal';
 import { loadCombatKeybinds, formatKeyDisplay, useCombatKeybindHandler } from '../services/combatKeybindService';
 import { combatTimerPool, trimCombatLogs, combatLogTracker } from '../services/combatPerformanceService';
@@ -1845,6 +1845,11 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         return { isSkip: false, name: '' };
     };
 
+    // 전투 시작 시 플레이어 및 파티원의 모든 프레임 애니메이션 이미지를 백그라운드에서 미리 비트맵 캐싱 (발동 딜레이 0초화)
+    useEffect(() => {
+        preloadSkillFrameAnimations(player);
+    }, [player]);
+
     const triggerCombatEffect = (
         skillOrType?: Skill | string,
         tierParam?: ClassTier | 'NORMAL' | 'BOND' | 'BUFF' | 'DEBUFF',
@@ -1859,13 +1864,13 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             return;
         }
 
-        // [NEW] 행동불가(속박, 감전, 빙결 등 CC) 상태인 경우 이펙트 발생 금지
+        // 시전자 엔티티 파악 및 행동불가(속박, 감전, 빙결 등 CC) 상태 확인
+        let attackerEntity: any = player;
         if (attackerNameParam) {
-            let attackerEntity: any = null;
             if (attackerNameParam === player.name) {
                 attackerEntity = player;
             } else {
-                attackerEntity = player.companions?.find(c => c.name === attackerNameParam) || combatState.enemies?.find(e => e.name === attackerNameParam);
+                attackerEntity = player.companions?.find(c => c.name === attackerNameParam) || combatState.enemies?.find(e => e.name === attackerNameParam) || null;
             }
             const cc = getActorCCEffect(attackerEntity);
             if (cc.isSkip) {
@@ -1915,13 +1920,30 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             isAoe = isAoeParam !== undefined ? isAoeParam : (skill.targetType === 'aoe');
             skillName = skill.name;
 
-            // 스킬 사용 발동 일러스트 설정 (라스트 클래스 이상 및 인연 스킬)
-            const isCutinTier = skill.tier === ClassTier.LAST || skill.tier === ClassTier.FINAL || skill.tier === ClassTier.BOND || !!(skill as any).isBondSkill || !!(skill as any).isBond;
-            if (isCutinTier) {
+            // 스킬 사용 발동 일러스트 설정 (라스트 클래스 이상 및 인연 스킬 + 시전자 일러스트 자동 대각선 컷인 지원)
+            const isFinalOrBondTier = skill.tier === ClassTier.FINAL || skill.tier === ClassTier.BOND || !!(skill as any).isBondSkill || !!(skill as any).isBond;
+            const isCutinTier = skill.tier === ClassTier.LAST || isFinalOrBondTier;
+            const autoCutinMode = localStorage.getItem('game_auto_caster_cutin_mode') || 'last_and_final';
+
+            if (isCutinTier && autoCutinMode !== 'off') {
                 if (skill.illustrationUrl) {
                     illustrationUrl = skill.illustrationUrl;
-                } else if (skill.imageUrl) {
+                } else if (skill.imageUrl && (skill.imageUrl.startsWith('http') || skill.imageUrl.startsWith('/') || skill.imageUrl.startsWith('data:'))) {
                     illustrationUrl = skill.imageUrl;
+                } else if (
+                    autoCutinMode === 'last_and_final' ||
+                    (autoCutinMode === 'final_only' && isFinalOrBondTier)
+                ) {
+                    // 전용 컷신이 없을 때 시전자(주인공/동료/보스)의 기본 일러스트를 자동으로 대각선 컷인에 활용
+                    if (attackerEntity === player) {
+                        illustrationUrl = playerVisualUrl;
+                    } else if (attackerEntity) {
+                        illustrationUrl =
+                            attackerEntity.visualUrl ||
+                            attackerEntity.imageUrl ||
+                            attackerEntity.monsterData?.visualUrl ||
+                            attackerEntity.defaultVisualUrl;
+                    }
                 }
             }
         } else if (typeof skillOrType === 'string') {
@@ -1929,15 +1951,20 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         }
 
         let duration = illustrationUrl 
-            ? 2200 
-            : ((tier === ClassTier.FINAL || tier === 'BOND') ? 1500 : (tier === ClassTier.LAST ? 1100 : 700));
+            ? 1650 
+            : ((tier === ClassTier.FINAL || tier === 'BOND') ? 1300 : (tier === ClassTier.LAST ? 1000 : 700));
 
         if (frameAnimation && frameAnimation.frames && frameAnimation.frames.length > 0) {
-            const frameSum = frameAnimation.frames.reduce((acc: number, f: any) => acc + (f.duration || 100), 0);
+            const fCount = frameAnimation.frames.length;
+            const frameSum = frameAnimation.frames.reduce((acc: number, f: any) => {
+                const rawDur = f.duration || 70;
+                const effDur = (fCount >= 36 && rawDur >= 50) ? 18 : (fCount >= 16 && rawDur >= 65) ? 32 : rawDur;
+                return acc + effDur;
+            }, 0);
             const loops = frameAnimation.loopCount === 0 ? 1 : Math.min(3, frameAnimation.loopCount || 1);
             const speed = frameAnimation.playbackSpeed || 1;
             const animDuration = Math.round((frameSum * loops) / speed);
-            duration = Math.max(duration, animDuration + 300);
+            duration = Math.max(duration, animDuration + 180);
         }
 
         const vfxData: CombatVFXData = {
@@ -1957,17 +1984,14 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             frameAnimation
         };
 
-        setCombatVfx(vfxData);
+        // CombatInterface 전체 리렌더링을 유발하지 않고 VFX 오버레이에만 즉시 전달
+        combatVfxBus.emit(vfxData);
 
         // Screen Shake based on tier
         if (!isShakeDisabled() && (tier === ClassTier.FINAL || tier === 'BOND' || tier === ClassTier.LAST || tier === ClassTier.SECOND)) {
             setShake(true);
-            combatTimerPool.registerTimeout(() => setShake(false), tier === ClassTier.FINAL || tier === 'BOND' ? 800 : 500);
+            combatTimerPool.registerTimeout(() => setShake(false), tier === ClassTier.FINAL || tier === 'BOND' ? 650 : 400);
         }
-
-        combatTimerPool.registerTimeout(() => {
-            setCombatVfx(prev => (prev?.id === vfxData.id ? null : prev));
-        }, duration);
     };
 
     const initiateSkillUse = (skill: Skill) => {

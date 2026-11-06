@@ -20,6 +20,38 @@ export interface CombatVFXData {
     frameAnimation?: SkillFrameAnimation;
 }
 
+// ============================================================================
+// 초경량 이벤트 버스 (CombatInterface 전체 리렌더링 100% 차단용)
+// ============================================================================
+type VfxListener = (vfx: CombatVFXData | null) => void;
+class CombatVfxEventBus {
+    private listeners = new Set<VfxListener>();
+    private clearTimer: number | null = null;
+
+    emit(vfx: CombatVFXData | null) {
+        if (this.clearTimer !== null) {
+            window.clearTimeout(this.clearTimer);
+            this.clearTimer = null;
+        }
+        this.listeners.forEach(fn => fn(vfx));
+        if (vfx && vfx.duration) {
+            this.clearTimer = window.setTimeout(() => {
+                this.listeners.forEach(fn => fn(null));
+                this.clearTimer = null;
+            }, vfx.duration);
+        }
+    }
+
+    subscribe(listener: VfxListener): () => void {
+        this.listeners.add(listener);
+        return () => {
+            this.listeners.delete(listener);
+        };
+    }
+}
+
+export const combatVfxBus = new CombatVfxEventBus();
+
 export interface ShinryokuTheme {
     name: string;
     primary: string;
@@ -346,9 +378,7 @@ export function parseVfxColor(vfxColorStr?: string, baseTheme?: ShinryokuTheme):
 
     if (!vfxColorStr || !vfxColorStr.trim()) {
         const isBaseGrad = !!baseTheme?.gradient;
-        const gradCss = baseTheme?.gradient 
-            ? `linear-gradient(135deg, ${fallbackPrimary}, ${fallbackSecondary})` 
-            : `linear-gradient(135deg, ${fallbackPrimary}, ${fallbackSecondary})`;
+        const gradCss = `linear-gradient(135deg, ${fallbackPrimary}, ${fallbackSecondary})`;
         return {
             primary: fallbackPrimary,
             secondary: fallbackSecondary,
@@ -364,8 +394,6 @@ export function parseVfxColor(vfxColorStr?: string, baseTheme?: ShinryokuTheme):
     }
 
     const str = vfxColorStr.trim();
-
-    // Extract color strings from gradient expression or comma separated hex values
     let extractedColors: string[] = [];
 
     if (str.includes('gradient')) {
@@ -421,7 +449,7 @@ export interface VFXShapeOption {
     id: string;
     name: string;
     description: string;
-    requiredTierLevel: number; // 1: 1차(FIRST) 이상, 2: 2차(SECOND) 이상, 3: 3차(LAST) 이상, 4: 4차(FINAL) 이상
+    requiredTierLevel: number;
     requiredTierName: string;
     badgeColor: string;
 }
@@ -431,7 +459,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'DEFAULT',
         name: '클래스 대표 기본 연출',
-        description: '스킬의 기본 클래스 등급(1차~4차)에 맞추어 자동 지정되는 대표 타격 연출입니다.',
+        description: '스킬의 기본 클래스 등급(1차~4차)에 맞추어 자동 지정되는 60FPS 하이퍼 캔버스 대표 타격 연출입니다.',
         requiredTierLevel: 1,
         requiredTierName: '1차 퍼스트 이상',
         badgeColor: 'border-slate-600 text-slate-300 bg-slate-900'
@@ -439,7 +467,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'SINGLE_SLASH',
         name: '단일 호형 베기',
-        description: '날카로운 검기가 호를 그리며 적의 급소를 고속 베어내는 단일 참격입니다.',
+        description: '날카로운 베지어 검기가 호를 그리며 공간을 베어내고 유리 파편처럼 균열을 일으키는 참격입니다.',
         requiredTierLevel: 1,
         requiredTierName: '1차 퍼스트 이상',
         badgeColor: 'border-emerald-600/50 text-emerald-400 bg-emerald-950/40'
@@ -447,7 +475,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'PIERCING_THRUST',
         name: '관통 섬창 파동',
-        description: '전방의 공간을 순간 꿰뚫는 고속 직진 찌르기 관통 파동입니다.',
+        description: '전방의 공간을 순간 꿰뚫는 초음속 소닉붐 링과 직진 관통 창격 파동입니다.',
         requiredTierLevel: 1,
         requiredTierName: '1차 퍼스트 이상',
         badgeColor: 'border-emerald-600/50 text-emerald-400 bg-emerald-950/40'
@@ -455,17 +483,16 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'IMPACT_PULSE',
         name: '원형 충격 펄스',
-        description: '타격 지점에서 충격파가 순간 방사형으로 구형 폭발하는 펄스 연출입니다.',
+        description: '타격 지점에서 다중 충격파 고리와 빛 입자가 방사형으로 폭발하는 펄스 연출입니다.',
         requiredTierLevel: 1,
         requiredTierName: '1차 퍼스트 이상',
         badgeColor: 'border-emerald-600/50 text-emerald-400 bg-emerald-950/40'
     },
-
     // Tier 2 (세컨드 클래스 이상)
     {
         id: 'DUAL_CROSS',
         name: '십자 이중 참격',
-        description: 'X자와 十자 형태의 이중 강렬한 에너지 검기가 가로지르는 난무 연출입니다.',
+        description: 'X자와 十자 형태의 이중 차원 검기가 교차하며 섬광 스파크를 튀기는 난무 연출입니다.',
         requiredTierLevel: 2,
         requiredTierName: '2차 세컨드 이상',
         badgeColor: 'border-cyan-600/50 text-cyan-400 bg-cyan-950/40'
@@ -473,7 +500,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'RING_BURST',
         name: '환영 마법 링 폭열',
-        description: '동심원으로 연속 팽창하는 마법진 링과 격렬한 오라 충격 폭발입니다.',
+        description: '동심원으로 연속 팽창하는 입체 룬 마법진 링과 격렬한 오라 충격 폭발입니다.',
         requiredTierLevel: 2,
         requiredTierName: '2차 세컨드 이상',
         badgeColor: 'border-cyan-600/50 text-cyan-400 bg-cyan-950/40'
@@ -481,17 +508,16 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'SPIRAL_TWISTER',
         name: '나선 용오름 파동',
-        description: '적의 위치에서 강렬한 신력 기둥이 회오리치며 상승하는 나선 파동 연출입니다.',
+        description: '적의 위치에서 이중 나선 마력 기둥이 회오리치며 상승하는 나선 파동 연출입니다.',
         requiredTierLevel: 2,
         requiredTierName: '2차 세컨드 이상',
         badgeColor: 'border-cyan-600/50 text-cyan-400 bg-cyan-950/40'
     },
-
     // Tier 3 (라스트 클래스 이상)
     {
         id: 'SKY_BEAM',
         name: '천공 신성 강림 낙뢰',
-        description: '상공으로부터 거대한 신성 광선과 대형 대검이 강림하여 대지를 직격합니다.',
+        description: '상공으로부터 거대한 신성 광선과 실시간 프랙탈 번개가 강림하여 대지를 직격합니다.',
         requiredTierLevel: 3,
         requiredTierName: '3차 라스트 이상',
         badgeColor: 'border-purple-600/50 text-purple-400 bg-purple-950/40'
@@ -499,7 +525,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'GEOMETRIC_ARRAY',
         name: '3중 차원 마법진',
-        description: '3중으로 맞물려 고속 회전하는 기하학 5각 마법진과 고위 결계 폭발입니다.',
+        description: '3중으로 맞물려 고속 회전하는 기하학 성좌 마법진과 고위 결계 폭발입니다.',
         requiredTierLevel: 3,
         requiredTierName: '3차 라스트 이상',
         badgeColor: 'border-purple-600/50 text-purple-400 bg-purple-950/40'
@@ -507,12 +533,11 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'SWORD_RAIN',
         name: '무한 이기어검 강하',
-        description: '하늘 전체에 펼쳐진 차원 틈새에서 무수한 신성 환영검이 빗사치듯 난사됩니다.',
+        description: '하늘 전체에 펼쳐진 차원 틈새에서 무수한 신성 환영검이 빛의 궤적을 그리며 난사됩니다.',
         requiredTierLevel: 3,
         requiredTierName: '3차 라스트 이상',
         badgeColor: 'border-purple-600/50 text-purple-400 bg-purple-950/40'
     },
-
     // Tier 4 (파이널 클래스 / 오의 전용)
     {
         id: 'DIVINE_DOMAIN',
@@ -525,7 +550,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'SUPERNOVA',
         name: '초신성 오의 멸절 폭발',
-        description: '차원 중심 코어가 붕괴 후 우주적 스케일의 초신성 폭발을 시각화합니다.',
+        description: '차원 중심 코어로 빛이 수축(Implosion)된 후 우주적 스케일의 초신성 폭발과 공간 파편화를 일으킵니다.',
         requiredTierLevel: 4,
         requiredTierName: '4차 파이널 전용',
         badgeColor: 'border-amber-500/60 text-amber-300 bg-amber-950/50'
@@ -533,13 +558,11 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'DRAGON_ASCENT',
         name: '신룡 승천 오의',
-        description: '태초의 신룡이 거대한 용오름 오라를 두르고 공간을 가르며 승천하는 최상위 오의 연출입니다.',
+        description: '태초의 신룡이 거대한 이중 나선 오라와 번개를 두르고 공간을 가르며 승천하는 최상위 오의 연출입니다.',
         requiredTierLevel: 4,
         requiredTierName: '4차 파이널 전용',
         badgeColor: 'border-amber-500/60 text-amber-300 bg-amber-950/50'
     },
-    // 버프 / 디버프 및 원소 다양화 추가 옵션들
-    // Tier 1 (퍼스트 이상)
     {
         id: 'BUFF_BLESSING',
         name: '수호 성광 축복',
@@ -556,7 +579,6 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
         requiredTierName: '1차 퍼스트 이상',
         badgeColor: 'border-emerald-600/50 text-emerald-400 bg-emerald-950/40'
     },
-    // Tier 2 (세컨드 이상)
     {
         id: 'BUFF_BARRIER',
         name: '기하학 신성 결계',
@@ -573,11 +595,10 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
         requiredTierName: '2차 세컨드 이상',
         badgeColor: 'border-cyan-600/50 text-cyan-400 bg-cyan-950/40'
     },
-    // Tier 3 (라스트 이상)
     {
         id: 'BUFF_HEAVENLY',
         name: '천상의 신성 오라',
-        description: '신의 화신이 깃든 듯, 대상의 등 뒤에서 다중 치유 고리와 찬란히 승천하는 룬들이 생성됩니다. (버프/치유용)',
+        description: '신의 화신이 깃든 듯, 대상의 등 뒤에서 다중 치유 고리와 찬란히 승천하는 깃털/룬들이 생성됩니다. (버프/치유용)',
         requiredTierLevel: 3,
         requiredTierName: '3차 라스트 이상',
         badgeColor: 'border-purple-600/50 text-purple-400 bg-purple-950/40'
@@ -590,11 +611,10 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
         requiredTierName: '3차 라스트 이상',
         badgeColor: 'border-purple-600/50 text-purple-400 bg-purple-950/40'
     },
-    // Tier 4 (파이널 전용)
     {
         id: 'BUFF_GOD_AVATAR',
         name: '아바타 오의 천상강림',
-        description: '신인합일의 초월적 상태에 도달해 거대한 기하학적 천사 날개 광채와 무수한 황금 수호검을 정렬합니다. (최상위 오의 버프용)',
+        description: '신인합일의 초월적 상태에 도달해 거대한 천사 날개 광채와 무수한 황금 수호검을 정렬합니다. (최상위 오의 버프용)',
         requiredTierLevel: 4,
         requiredTierName: '4차 파이널 전용',
         badgeColor: 'border-amber-500/60 text-amber-300 bg-amber-950/50'
@@ -607,7 +627,6 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
         requiredTierName: '4차 파이널 전용',
         badgeColor: 'border-amber-500/60 text-amber-300 bg-amber-950/50'
     },
-    // 대폭 다양화 추가 옵션들
     {
         id: 'FIST_CRUSH',
         name: '지진격권 천충',
@@ -627,7 +646,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'WIND_SWIFT',
         name: '풍백 질풍 궤적',
-        description: '날렵한 바람 장막과 초록 잎사귀 오라가 부드럽게 휘감아 오르며 아군의 이동성을 강화합니다. (버프/속도용)',
+        description: '날렵한 바람 장막과 잎사귀/꽃잎 오라가 부드럽게 휘감아 오르며 아군의 이동성을 강화합니다. (버프/속도용)',
         requiredTierLevel: 2,
         requiredTierName: '2차 세컨드 이상',
         badgeColor: 'border-cyan-600/50 text-cyan-400 bg-cyan-950/40'
@@ -635,7 +654,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'METEOR_STRIKE',
         name: '천외 종말 운석 낙하',
-        description: '허공에서 작열하는 거대한 대멸종 운석이 타오르는 먼지를 뿌리며 강하하여 전역을 무차별 타격합니다. (광역 파괴용)',
+        description: '허공에서 작열하는 거대한 대멸종 운석들이 타오르는 꼬리를 뿌리며 강하하여 전역을 무차별 타격합니다. (광역 파괴용)',
         requiredTierLevel: 3,
         requiredTierName: '3차 라스트 이상',
         badgeColor: 'border-purple-600/50 text-purple-400 bg-purple-950/40'
@@ -643,16 +662,15 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'TIME_STOP',
         name: '시간 정지 역장',
-        description: '초정밀 황금 시계 톱니바퀴 마법진과 격자형 정지 역장이 대상의 시간을 정지시킵니다. (공간 제어 디버프용)',
+        description: '초정밀 황금 시계 톱니바퀴 마법진과 시침/분침 역장이 대상의 시간을 정지시킵니다. (공간 제어 디버프용)',
         requiredTierLevel: 4,
         requiredTierName: '4차 파이널 전용',
         badgeColor: 'border-amber-500/60 text-amber-300 bg-amber-950/50'
     },
-    // --- 2차 대규모 추가 업데이트 (Tier 1) ---
     {
         id: 'MAGIC_MISSILE',
         name: '유도 마력탄',
-        description: '다수의 날렵한 마력탄이 대상의 급소를 향해 유도되어 연속 타격합니다.',
+        description: '다수의 날렵한 마력탄이 곡선 베지어 궤적을 그리며 대상의 급소를 향해 연속 타격합니다.',
         requiredTierLevel: 1,
         requiredTierName: '1차 퍼스트 이상',
         badgeColor: 'border-emerald-600/50 text-emerald-400 bg-emerald-950/40'
@@ -660,7 +678,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'SHIELD_BASH',
         name: '강철 방패 돌격',
-        description: '거대한 에너지 방패가 앞으로 돌진하며 적을 밀쳐내고 강하게 타격합니다.',
+        description: '거대한 육각 에너지 방패가 앞으로 돌진하며 충격파를 터뜨립니다.',
         requiredTierLevel: 1,
         requiredTierName: '1차 퍼스트 이상',
         badgeColor: 'border-emerald-600/50 text-emerald-400 bg-emerald-950/40'
@@ -676,16 +694,15 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'WATER_SPLASH',
         name: '수류 격파',
-        description: '강력한 수압의 물줄기가 폭발하며 대상에게 쏟아지는 타격 연출입니다.',
+        description: '강력한 수압의 물줄기 소용돌이와 물방울 파편이 폭발하며 쏟아집니다.',
         requiredTierLevel: 1,
         requiredTierName: '1차 퍼스트 이상',
         badgeColor: 'border-emerald-600/50 text-emerald-400 bg-emerald-950/40'
     },
-    // --- 2차 대규모 추가 업데이트 (Tier 2) ---
     {
         id: 'LIGHTNING_CHAIN',
         name: '연쇄 번개 도약',
-        description: '강력한 뇌전이 대상을 중심으로 불규칙하게 튕기며 주변을 타격합니다.',
+        description: '실시간 프랙탈 뇌전이 대상을 중심으로 불규칙하게 갈라지며 튕깁니다.',
         requiredTierLevel: 2,
         requiredTierName: '2차 세컨드 이상',
         badgeColor: 'border-cyan-600/50 text-cyan-400 bg-cyan-950/40'
@@ -693,7 +710,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'ICE_NOVA',
         name: '빙결 쇄도 노바',
-        description: '냉기가 폭발하며 날카로운 얼음 파편들이 사방으로 뻗어 나가는 광역 타격입니다.',
+        description: '영하의 냉기가 폭발하며 날카로운 육각 얼음 결정과 수정 가시들이 사방으로 뻗어 나갑니다.',
         requiredTierLevel: 2,
         requiredTierName: '2차 세컨드 이상',
         badgeColor: 'border-cyan-600/50 text-cyan-400 bg-cyan-950/40'
@@ -701,7 +718,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'BLOOD_DRAIN',
         name: '흡혈 박쥐 떼',
-        description: '붉은 혈기와 원혼이 무리를 지어 대상을 덮치고 생명력을 흡수하는 연출입니다. (디버프/흡혈)',
+        description: '붉은 혈기와 마력 구체들이 소용돌이치며 대상으로부터 생명력을 흡수합니다. (디버프/흡혈)',
         requiredTierLevel: 2,
         requiredTierName: '2차 세컨드 이상',
         badgeColor: 'border-cyan-600/50 text-cyan-400 bg-cyan-950/40'
@@ -709,7 +726,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'SOUND_WAVE',
         name: '음파 진동 균열',
-        description: '주파수가 불안정한 초음파 고리가 겹겹이 방출되어 대상의 고막과 장갑을 찢습니다.',
+        description: '고주파 초음파 파형과 진동 고리가 겹겹이 방출되어 공간을 공명시킵니다.',
         requiredTierLevel: 2,
         requiredTierName: '2차 세컨드 이상',
         badgeColor: 'border-cyan-600/50 text-cyan-400 bg-cyan-950/40'
@@ -717,7 +734,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'LASER_BEAM',
         name: '마동포 빔 궤적',
-        description: '한 점으로 응축된 에너지가 굵은 레이저 광선이 되어 직선으로 관통합니다.',
+        description: '한 점으로 응축된 에너지가 굵은 코어 레이저 광선이 되어 플라즈마 고리와 함께 직선 관통합니다.',
         requiredTierLevel: 2,
         requiredTierName: '2차 세컨드 이상',
         badgeColor: 'border-cyan-600/50 text-cyan-400 bg-cyan-950/40'
@@ -725,16 +742,15 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'SACRED_FLAME',
         name: '정화의 성염',
-        description: '따뜻하면서도 맹렬한 성스러운 불꽃이 바닥에서 솟아나와 아군을 치유하거나 적을 태웁니다.',
+        description: '따뜻하면서도 맹렬한 성스러운 불꽃 기둥과 불씨가 바닥에서 솟아오릅니다.',
         requiredTierLevel: 2,
         requiredTierName: '2차 세컨드 이상',
         badgeColor: 'border-cyan-600/50 text-cyan-400 bg-cyan-950/40'
     },
-    // --- 2차 대규모 추가 업데이트 (Tier 3) ---
     {
         id: 'THUNDER_STORM',
         name: '뇌우 심판의 영역',
-        description: '상공에 짙은 먹구름이 끼고 다발성 거대 낙뢰가 전장을 무자비하게 폭격합니다.',
+        description: '다발성 거대 프랙탈 낙뢰가 전장을 무자비하게 연속 폭격합니다.',
         requiredTierLevel: 3,
         requiredTierName: '3차 라스트 이상',
         badgeColor: 'border-purple-600/50 text-purple-400 bg-purple-950/40'
@@ -742,7 +758,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'LAVA_ERUPTION',
         name: '마그마 지옥 분출',
-        description: '지각이 갈라지고 용암 기둥이 하늘 높이 치솟으며 불타는 파편을 흩뿌립니다.',
+        description: '지각이 갈라지고 용암 기둥이 치솟으며 불타는 화산탄 파편을 흩뿌립니다.',
         requiredTierLevel: 3,
         requiredTierName: '3차 라스트 이상',
         badgeColor: 'border-purple-600/50 text-purple-400 bg-purple-950/40'
@@ -750,7 +766,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'ANGELIC_CHOIR',
         name: '천사의 성가대 찬가',
-        description: '황금빛 음표와 천사의 깃털이 흩날리며 전장에 있는 아군에게 강력한 가호를 내립니다. (광역 버프)',
+        description: '찬란한 천상의 빛줄기와 깃털들이 흩날리며 전장에 강력한 가호를 내립니다. (광역 버프)',
         requiredTierLevel: 3,
         requiredTierName: '3차 라스트 이상',
         badgeColor: 'border-purple-600/50 text-purple-400 bg-purple-950/40'
@@ -758,7 +774,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'GRAVITY_PRESS',
         name: '초중력 압살 큐브',
-        description: '보이지 않는 거대한 큐브 형태의 중력장이 생성되어 적을 짓눌러 분쇄합니다.',
+        description: '입체 기하학 중력장이 생성되어 공간을 짓눌러 붕괴시킵니다.',
         requiredTierLevel: 3,
         requiredTierName: '3차 라스트 이상',
         badgeColor: 'border-purple-600/50 text-purple-400 bg-purple-950/40'
@@ -766,16 +782,15 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'ILLUSION_CLONE',
         name: '환영 분신 난무',
-        description: '수많은 잔상들이 겹치며 사방에서 동시에 쇄도하여 대상에게 맹공을 퍼붓습니다.',
+        description: '전방위에서 초고속 연속 검기 궤적이 쉼 없이 몰아치며 대상을 난도질합니다.',
         requiredTierLevel: 3,
         requiredTierName: '3차 라스트 이상',
         badgeColor: 'border-purple-600/50 text-purple-400 bg-purple-950/40'
     },
-    // --- 2차 대규모 추가 업데이트 (Tier 4) ---
     {
         id: 'DIMENSION_SHATTER',
         name: '차원 붕괴 균열',
-        description: '공간 자체가 유리창처럼 깨지며, 틈새로 심연의 파괴 광선들이 무자비하게 터져 나옵니다.',
+        description: '공간 자체가 거미줄 유리창처럼 깨지며 틈새로 심연의 파괴 광선들이 터져 나옵니다.',
         requiredTierLevel: 4,
         requiredTierName: '4차 파이널 전용',
         badgeColor: 'border-amber-500/60 text-amber-300 bg-amber-950/50'
@@ -783,7 +798,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'STAR_FALL',
         name: '은하수 별자리 낙하',
-        description: '아름다운 우주의 성좌가 눈앞에 펼쳐지며, 수많은 별들이 유성우가 되어 쏟아집니다.',
+        description: '우주의 성좌가 펼쳐지며 찬란한 유성우가 연속으로 쏟아져 내립니다.',
         requiredTierLevel: 4,
         requiredTierName: '4차 파이널 전용',
         badgeColor: 'border-amber-500/60 text-amber-300 bg-amber-950/50'
@@ -791,7 +806,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'WORLD_TREE',
         name: '세계수 만개 오라',
-        description: '전장을 덮는 거대한 빛의 세계수가 환상적으로 피어나며 영구적인 생명력을 부여합니다. (최상위 오의 버프)',
+        description: '생명의 빛줄기와 신록의 꽃잎들이 나선으로 피어나며 영구적인 생명력을 부여합니다.',
         requiredTierLevel: 4,
         requiredTierName: '4차 파이널 전용',
         badgeColor: 'border-amber-500/60 text-amber-300 bg-amber-950/50'
@@ -799,7 +814,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'DEMON_HAND',
         name: '마신의 거대 손아귀',
-        description: '차원을 뚫고 나타난 섬뜩한 마신의 거대 손이 대상을 쥐어짜 영혼째 소멸시킵니다. (최상위 디버프/즉사급)',
+        description: '차원을 뚫고 나타난 마신의 검붉은 발톱 궤적이 대상을 할퀴고 암흑 폭발을 일으킵니다.',
         requiredTierLevel: 4,
         requiredTierName: '4차 파이널 전용',
         badgeColor: 'border-amber-500/60 text-amber-300 bg-amber-950/50'
@@ -807,7 +822,7 @@ export const VFX_SHAPE_OPTIONS: VFXShapeOption[] = [
     {
         id: 'YIN_YANG',
         name: '태극 만다라 조화',
-        description: '빛과 어둠, 음양의 태극 문양이 완벽한 조화를 이루며 모든 것을 태초로 되돌리는 궁극 오의입니다.',
+        description: '빛과 어둠의 이중 태극 나선 문양이 회전하며 만물을 태초로 되돌리는 궁극 오의입니다.',
         requiredTierLevel: 4,
         requiredTierName: '4차 파이널 전용',
         badgeColor: 'border-amber-500/60 text-amber-300 bg-amber-950/50'
@@ -822,1221 +837,638 @@ export function getSkillTierRank(tier?: ClassTier | string): number {
     return 1;
 }
 
+// ============================================================================
+// 안티그래비티 60FPS 하이퍼 캔버스 VFX 엔진 (DOM 0개, 단일 GPU 가속 Canvas)
+// ============================================================================
+interface CanvasParticle {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    size: number;
+    color: string;
+    alpha: number;
+    decay: number;
+    type: 'spark' | 'shard' | 'petal' | 'orb';
+    angle: number;
+    spin: number;
+}
+
+// 칼끝이 날카롭게 살아있는 테이퍼링 베지어 슬래시 드로잉 헬퍼
+function drawTaperedSlash(
+    ctx: CanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    radius: number,
+    startAngle: number,
+    endAngle: number,
+    maxThickness: number,
+    primaryColor: string,
+    glowColor: string
+) {
+    const steps = 28;
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // 외곽 네온 광채 패스
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const a = startAngle + (endAngle - startAngle) * t;
+        const thick = Math.sin(t * Math.PI) * maxThickness;
+        const r = radius + thick * 0.5;
+        const x = Math.cos(a) * r;
+        const y = Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    for (let i = steps; i >= 0; i--) {
+        const t = i / steps;
+        const a = startAngle + (endAngle - startAngle) * t;
+        const thick = Math.sin(t * Math.PI) * maxThickness;
+        const r = radius - thick * 0.5;
+        const x = Math.cos(a) * r;
+        const y = Math.sin(a) * r;
+        ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = primaryColor;
+    ctx.fill();
+
+    // 중심부 순백색 코어 검기
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const a = startAngle + (endAngle - startAngle) * t;
+        const thick = Math.sin(t * Math.PI) * (maxThickness * 0.38);
+        const r = radius + thick * 0.5;
+        const x = Math.cos(a) * r;
+        const y = Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    for (let i = steps; i >= 0; i--) {
+        const t = i / steps;
+        const a = startAngle + (endAngle - startAngle) * t;
+        const thick = Math.sin(t * Math.PI) * (maxThickness * 0.38);
+        const r = radius - thick * 0.5;
+        const x = Math.cos(a) * r;
+        const y = Math.sin(a) * r;
+        ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = glowColor || '#ffffff';
+    ctx.fill();
+    ctx.restore();
+}
+
+// 실시간 프랙탈 번개 드로잉 헬퍼
+function drawFractalLightning(
+    ctx: CanvasRenderingContext2D,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    displace: number,
+    color: string,
+    width: number,
+    seed: number
+) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    const segments = 10;
+    for (let i = 1; i < segments; i++) {
+        const t = i / segments;
+        const bx = x1 + (x2 - x1) * t;
+        const by = y1 + (y2 - y1) * t;
+        const pseudoRand = Math.sin(seed * 17.3 + i * 43.7) * Math.cos(seed * 9.1 - i * 19.3);
+        const offset = pseudoRand * displace * Math.sin(t * Math.PI);
+        const nx = -(y2 - y1);
+        const ny = x2 - x1;
+        const len = Math.hypot(nx, ny) || 1;
+        ctx.lineTo(bx + (nx / len) * offset, by + (ny / len) * offset);
+    }
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+
+    // 하얀색 내부 코어 전류
+    if (width > 2) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(1, width * 0.35);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+// 기하학 마법진 드로잉 헬퍼
+function drawMagicArray(
+    ctx: CanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    radius: number,
+    rotation: number,
+    sides: number,
+    color: string,
+    accent: string,
+    alpha: number,
+    tiltY: number = 1.0
+) {
+    if (radius <= 2 || alpha <= 0.01) return;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(1, tiltY);
+    ctx.rotate(rotation);
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+    // 외곽 이중 마법 링
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.86, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 다각 성좌 (별 또는 정다각형 교차)
+    for (let pass = 0; pass < 2; pass++) {
+        const offset = (pass * Math.PI) / sides;
+        ctx.beginPath();
+        for (let i = 0; i <= sides; i++) {
+            const a = offset + (i / sides) * Math.PI * 2;
+            const px = Math.cos(a) * radius * 0.85;
+            const py = Math.sin(a) * radius * 0.85;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.strokeStyle = pass === 0 ? color : '#ffffff';
+        ctx.lineWidth = pass === 0 ? 2 : 1;
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+// 공간 균열(유리창 파열선) 드로잉 헬퍼
+function drawDimensionCracks(
+    ctx: CanvasRenderingContext2D,
+    cx: number,
+    cy: number,
+    maxRadius: number,
+    progress: number,
+    color: string
+) {
+    const alpha = progress < 0.2 ? progress * 5 : Math.max(0, 1 - (progress - 0.2) * 1.3);
+    if (alpha <= 0.01) return;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.globalAlpha = alpha;
+    const branches = 9;
+    for (let b = 0; b < branches; b++) {
+        const baseAngle = (b / branches) * Math.PI * 2 + 0.3;
+        let x = 0;
+        let y = 0;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        const segs = 4;
+        for (let s = 1; s <= segs; s++) {
+            const r = (s / segs) * maxRadius * Math.min(1, progress * 1.8);
+            const jitter = Math.sin(b * 13 + s * 29) * 0.28;
+            x = Math.cos(baseAngle + jitter) * r;
+            y = Math.sin(baseAngle + jitter) * r;
+            ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = b % 2 === 0 ? '#ffffff' : color;
+        ctx.lineWidth = (1 - progress * 0.5) * 3;
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
 export interface RenderCustomVfxShapeProps {
     shape: string;
     theme: ParsedVfxTheme;
-    svgGradId: string;
+    svgGradId?: string;
+    tier?: ClassTier | 'NORMAL' | 'BOND' | 'BUFF' | 'DEBUFF';
+    isAoe?: boolean;
+    durationMs?: number;
+    loop?: boolean;
 }
 
-export const RenderCustomVfxShape: React.FC<RenderCustomVfxShapeProps> = ({ shape, theme, svgGradId }) => {
-    const strokeStyle = theme.isGradient ? `url(#${svgGradId})` : theme.primary;
+export const RenderCustomVfxShape: React.FC<RenderCustomVfxShapeProps> = ({
+    shape,
+    theme,
+    tier = ClassTier.FIRST,
+    isAoe = false,
+    durationMs = 950,
+    loop = false
+}) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    switch (shape) {
-        case 'SINGLE_SLASH':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.svg
-                        viewBox="0 0 200 200"
-                        className="w-56 h-56 md:w-72 md:h-72 absolute"
-                        initial={{ rotate: -60, scale: 0.2, opacity: 0 }}
-                        animate={{ rotate: [-60, 25], scale: [0.2, 1.4, 0.9], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.45, ease: "easeOut" }}
-                    >
-                        <path
-                            d="M 20 180 Q 100 50 180 20"
-                            fill="none"
-                            stroke={strokeStyle}
-                            strokeWidth="9"
-                            strokeLinecap="round"
-                            style={{ filter: `drop-shadow(0 0 14px ${theme.primary})` }}
-                        />
-                        <path
-                            d="M 20 180 Q 100 50 180 20"
-                            fill="none"
-                            stroke="#ffffff"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                        />
-                    </motion.svg>
-                    <motion.div
-                        initial={{ scale: 0, opacity: 1 }}
-                        animate={{ scale: [0, 1.8, 0], opacity: [1, 1, 0] }}
-                        transition={{ duration: 0.3 }}
-                        className="w-20 h-20 rounded-full absolute"
-                        style={{ background: `radial-gradient(circle, #ffffff 0%, ${theme.primary} 70%, transparent 100%)` }}
-                    />
-                </div>
-            );
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
 
-        case 'PIERCING_THRUST':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.svg
-                        viewBox="0 0 200 200"
-                        className="w-64 h-64 md:w-80 md:h-80 absolute"
-                        initial={{ x: -120, scaleX: 0.2, opacity: 0 }}
-                        animate={{ x: [-120, 0, 100], scaleX: [0.2, 1.8, 0.5], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.5, ease: "anticipate" }}
-                    >
-                        <polygon
-                            points="10,95 160,85 195,100 160,115 10,105"
-                            fill={strokeStyle}
-                            style={{ filter: `drop-shadow(0 0 16px ${theme.primary})` }}
-                        />
-                        <line x1="0" y1="100" x2="200" y2="100" stroke="#ffffff" strokeWidth="4" />
-                    </motion.svg>
-                    {[0, 0.1, 0.2].map((delay, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ scale: 0.1, opacity: 1 }}
-                            animate={{ scale: [0.1, 1.8], opacity: [1, 0] }}
-                            transition={{ duration: 0.4, delay, ease: "easeOut" }}
-                            className="w-32 h-32 rounded-full border-2 absolute"
-                            style={{ borderColor: theme.accent, boxShadow: `0 0 25px ${theme.primary}` }}
-                        />
-                    ))}
-                </div>
-            );
+        const w = 360;
+        const h = 360;
+        canvas.width = w;
+        canvas.height = h;
+        const cx = w / 2;
+        const cy = h / 2;
 
-        case 'IMPACT_PULSE':
-            return (
-                <div className="relative flex items-center justify-center">
-                    {[0, 0.12, 0.24].map((delay, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ scale: 0.1, opacity: 1 }}
-                            animate={{ scale: [0.1, 2.2], opacity: [1, 0] }}
-                            transition={{ duration: 0.5, delay, ease: "easeOut" }}
-                            className="w-40 h-40 rounded-full border-4 absolute"
-                            style={{ borderColor: theme.secondary, boxShadow: `0 0 35px ${theme.glow}` }}
-                        />
-                    ))}
-                    <motion.div
-                        initial={{ scale: 0, opacity: 1 }}
-                        animate={{ scale: [0, 2.5, 0], opacity: [1, 0.9, 0] }}
-                        transition={{ duration: 0.4 }}
-                        className="w-28 h-28 rounded-full absolute"
-                        style={{ background: `radial-gradient(circle, #ffffff 0%, ${theme.primary} 60%, transparent 100%)` }}
-                    />
-                </div>
-            );
+        // 초기 물리 파티클 풀 생성
+        const isHighTier = tier === ClassTier.FINAL || tier === ClassTier.BOND || tier === ClassTier.LAST || shape === 'SUPERNOVA' || shape === 'DIVINE_DOMAIN' || shape === 'DIMENSION_SHATTER';
+        const pCount = isHighTier ? 48 : 30;
+        const particles: CanvasParticle[] = [];
 
-        case 'DUAL_CROSS':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.svg
-                        viewBox="0 0 200 200"
-                        className="w-64 h-64 md:w-80 md:h-80 absolute"
-                        initial={{ scale: 0.2, rotate: -45, opacity: 0 }}
-                        animate={{ scale: [0.2, 1.5, 1], rotate: [-45, 45], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.55, ease: "easeOut" }}
-                    >
-                        <line x1="20" y1="20" x2="180" y2="180" stroke={strokeStyle} strokeWidth="8" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 12px ${theme.primary})` }} />
-                        <line x1="180" y1="20" x2="20" y2="180" stroke={theme.secondary} strokeWidth="8" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 12px ${theme.secondary})` }} />
-                        <line x1="20" y1="20" x2="180" y2="180" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
-                        <line x1="180" y1="20" x2="20" y2="180" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
-                    </motion.svg>
-                    <motion.div
-                        initial={{ scale: 0.2, opacity: 1 }}
-                        animate={{ scale: [0.2, 2.0], opacity: [1, 0] }}
-                        transition={{ duration: 0.5 }}
-                        className="w-36 h-36 rounded-full border-4 absolute"
-                        style={{ borderColor: theme.accent, boxShadow: `0 0 30px ${theme.primary}` }}
-                    />
-                </div>
-            );
+        const spawnParticles = () => {
+            particles.length = 0;
+            const isImplosion = shape === 'SUPERNOVA' || shape === 'DEBUFF_APOCALYPSE' || shape === 'GRAVITY_PRESS' || shape === 'BLOOD_DRAIN';
+            const isPetal = shape === 'WIND_SWIFT' || shape === 'ANGELIC_CHOIR' || shape === 'WORLD_TREE';
+            for (let i = 0; i < pCount; i++) {
+                const angle = (i / pCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.4;
+                const speed = 2.2 + Math.random() * 5.2;
+                const startR = isImplosion ? 110 + Math.random() * 60 : 4 + Math.random() * 14;
+                particles.push({
+                    x: cx + Math.cos(angle) * startR,
+                    y: cy + Math.sin(angle) * startR,
+                    vx: isImplosion ? -Math.cos(angle) * speed * 0.85 : Math.cos(angle) * speed,
+                    vy: isImplosion ? -Math.sin(angle) * speed * 0.85 : Math.sin(angle) * speed,
+                    size: 2.5 + Math.random() * 4.5,
+                    color: theme.particles[i % theme.particles.length] || theme.primary,
+                    alpha: 1,
+                    decay: 0.014 + Math.random() * 0.015,
+                    type: isPetal ? 'petal' : (i % 3 === 0 ? 'shard' : 'spark'),
+                    angle: angle,
+                    spin: (Math.random() - 0.5) * 0.25
+                });
+            }
+        };
 
-        case 'RING_BURST':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0.2, rotate: 0, opacity: 0 }}
-                        animate={{ scale: [0.2, 1.4, 1.1], rotate: 360, opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.7, ease: "easeOut" }}
-                        className="w-52 h-52 md:w-64 md:h-64 rounded-full border-2 border-dashed absolute flex items-center justify-center"
-                        style={{ borderColor: theme.primary, boxShadow: `0 0 40px ${theme.glow}` }}
-                    >
-                        <motion.div
-                            animate={{ rotate: -720 }}
-                            transition={{ duration: 0.7, ease: "linear" }}
-                            className="w-36 h-36 rounded-full border-2 border-dotted border-white/90 flex items-center justify-around text-xl text-amber-200"
-                        >
-                            <span>{theme.runes[0]}</span>
-                            <span>{theme.runes[1]}</span>
-                        </motion.div>
-                    </motion.div>
-                    {[0, 0.15].map((delay, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ scale: 0.1, opacity: 1 }}
-                            animate={{ scale: [0.1, 2.4], opacity: [1, 0] }}
-                            transition={{ duration: 0.6, delay, ease: "easeOut" }}
-                            className="w-40 h-40 rounded-full border-4 absolute"
-                            style={{ borderColor: theme.secondary, boxShadow: `0 0 35px ${theme.primary}` }}
-                        />
-                    ))}
-                </div>
-            );
+        spawnParticles();
+        let startTime = performance.now();
+        let rAF: number | null = null;
 
-        case 'SPIRAL_TWISTER':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scaleY: 0.1, rotate: 0, opacity: 0 }}
-                        animate={{ scaleY: [0.1, 1.8, 1], rotate: 540, opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.75, ease: "easeOut" }}
-                        className="w-44 h-80 rounded-full border-4 border-dashed absolute"
-                        style={{ borderColor: theme.accent, boxShadow: `0 0 50px ${theme.glow}` }}
-                    />
-                    <motion.div
-                        initial={{ y: 150, opacity: 0 }}
-                        animate={{ y: [-150, 0, -150], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.7 }}
-                        className="w-24 h-[350px] absolute"
-                        style={{ background: `linear-gradient(to top, transparent, ${theme.primary}, #ffffff, transparent)` }}
-                    />
-                </div>
-            );
+        const renderFrame = (now: number) => {
+            let elapsed = now - startTime;
+            if (elapsed >= durationMs) {
+                if (loop) {
+                    startTime = now;
+                    elapsed = 0;
+                    spawnParticles();
+                } else {
+                    ctx.clearRect(0, 0, w, h);
+                    return;
+                }
+            }
 
-        case 'SKY_BEAM':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ y: -350, scaleX: 0.2, opacity: 0 }}
-                        animate={{ y: [-350, 0], scaleX: [0.2, 1.8, 1], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.55, ease: "anticipate" }}
-                        className="w-20 md:w-32 h-[550px] absolute z-10"
-                        style={{
-                            background: `linear-gradient(to bottom, #ffffff, ${theme.secondary}, ${theme.primary}, transparent)`,
-                            filter: `drop-shadow(0 0 40px ${theme.glow})`
-                        }}
-                    />
-                    {[0, 0.15, 0.3].map((delay, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ scale: 0.1, opacity: 1 }}
-                            animate={{ scale: [0.1, 2.6], opacity: [1, 0] }}
-                            transition={{ duration: 0.6, delay, ease: "easeOut" }}
-                            className="w-44 h-44 rounded-full border-4 absolute"
-                            style={{ borderColor: theme.accent, boxShadow: `0 0 45px ${theme.primary}` }}
-                        />
-                    ))}
-                </div>
-            );
+            const p = Math.max(0, Math.min(1, elapsed / durationMs));
+            const fadeOut = p < 0.7 ? 1 : Math.max(0, 1 - (p - 0.7) / 0.3);
 
-        case 'GEOMETRIC_ARRAY':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0.2, rotate: 0, opacity: 0 }}
-                        animate={{ scale: [0.2, 1.5, 1.2], rotate: 360, opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.9, ease: "easeOut" }}
-                        className="w-72 h-72 md:w-96 md:h-96 rounded-full border-2 absolute flex items-center justify-center"
-                        style={{ borderColor: theme.accent, boxShadow: `0 0 60px ${theme.glow}` }}
-                    >
-                        <motion.svg viewBox="0 0 100 100" className="w-full h-full absolute animate-spin" style={{ animationDuration: '2.5s' }}>
-                            <polygon points="50,5 64,36 98,36 70,57 81,91 50,70 19,91 30,57 2,36 36,36" fill="none" stroke={strokeStyle} strokeWidth="2" />
-                            <circle cx="50" cy="50" r="45" fill="none" stroke={theme.secondary} strokeWidth="1.5" strokeDasharray="4 2" />
-                        </motion.svg>
-                        <div className="flex gap-4 text-3xl text-amber-200">
-                            {theme.runes.map((r, i) => (
-                                <span key={i} className="animate-pulse">{r}</span>
-                            ))}
-                        </div>
-                    </motion.div>
-                </div>
-            );
+            ctx.clearRect(0, 0, w, h);
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
 
-        case 'SWORD_RAIN':
-            return (
-                <div className="relative flex items-center justify-center w-full h-full">
-                    {[-100, -50, 0, 50, 100].map((xOffset, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ y: -300, x: xOffset, opacity: 0 }}
-                            animate={{ y: [-300, 50], x: [xOffset, xOffset], opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.5, delay: idx * 0.08, ease: "easeIn" }}
-                            className="absolute"
-                        >
-                            <Sword size={40} className="text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.9)]" style={{ color: theme.primary }} />
-                        </motion.div>
-                    ))}
-                    <motion.div
-                        initial={{ scale: 0, opacity: 1 }}
-                        animate={{ scale: [0, 2.5], opacity: [1, 0] }}
-                        transition={{ duration: 0.6, delay: 0.2 }}
-                        className="w-56 h-56 rounded-full border-4 absolute"
-                        style={{ borderColor: theme.accent, boxShadow: `0 0 50px ${theme.glow}` }}
-                    />
-                </div>
-            );
+            // 1. 배경 코어 앰비언트 플래시
+            const glowRadius = (55 + Math.sin(p * Math.PI) * 95) * (isAoe ? 1.25 : 1.0);
+            const bgGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, glowRadius);
+            bgGrad.addColorStop(0, '#ffffff');
+            bgGrad.addColorStop(0.25, theme.primary);
+            bgGrad.addColorStop(0.65, `${theme.secondary}66`);
+            bgGrad.addColorStop(1, 'transparent');
+            ctx.globalAlpha = Math.sin(p * Math.PI) * 0.75;
+            ctx.fillStyle = bgGrad;
+            ctx.beginPath();
+            ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
+            ctx.fill();
 
-        case 'DIVINE_DOMAIN':
-            return (
-                <div className="relative flex items-center justify-center w-full h-full">
-                    <motion.div
-                        initial={{ scale: 0.1, rotate: 0, opacity: 0 }}
-                        animate={{ scale: [0.1, 1.8, 1.4], rotate: 720, opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.2, ease: "easeOut" }}
-                        className="w-[500px] h-[500px] md:w-[650px] md:h-[650px] rounded-full border-4 border-double absolute flex items-center justify-center"
-                        style={{ borderColor: theme.accent, boxShadow: `0 0 90px ${theme.glow}` }}
-                    >
-                        <motion.svg viewBox="0 0 200 200" className="w-full h-full absolute">
-                            <circle cx="100" cy="100" r="95" fill="none" stroke={theme.secondary} strokeWidth="2.5" strokeDasharray="6 3" />
-                            <polygon points="100,10 178,55 178,145 100,190 22,145 22,55" fill="none" stroke={theme.accent} strokeWidth="3" />
-                            <polygon points="100,190 22,55 178,55" fill="none" stroke="#ffffff" strokeWidth="2" />
-                            <polygon points="100,10 178,145 22,145" fill="none" stroke="#ffffff" strokeWidth="2" />
-                        </motion.svg>
-                        <div className="flex gap-6 text-4xl text-amber-200">
-                            {theme.runes.map((r, i) => (
-                                <span key={i} className="animate-pulse">{r}</span>
-                            ))}
-                        </div>
-                    </motion.div>
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: [0, 3.8, 0], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.9, ease: "easeInOut" }}
-                        className="w-48 h-48 rounded-full absolute z-20"
-                        style={{ background: `radial-gradient(circle, #ffffff 0%, ${theme.accent} 40%, ${theme.primary} 70%, transparent 100%)`, filter: `drop-shadow(0 0 70px ${theme.glow})` }}
-                    />
-                </div>
-            );
+            // 실제 렌더링할 대표 Shape 결정 (DEFAULT인 경우 등급별 시그니처 연출 매핑)
+            let effShape = shape;
+            if (!effShape || effShape === 'DEFAULT') {
+                if (tier === 'NORMAL') effShape = 'SINGLE_SLASH';
+                else if (tier === 'BUFF') effShape = 'BUFF_HEAVENLY';
+                else if (tier === 'DEBUFF') effShape = 'DEBUFF_CURSE';
+                else if (tier === ClassTier.FIRST) effShape = 'DUAL_CROSS';
+                else if (tier === ClassTier.SECOND) effShape = 'RING_BURST';
+                else if (tier === ClassTier.LAST) effShape = 'SKY_BEAM';
+                else effShape = 'DIVINE_DOMAIN';
+            }
 
-        case 'SUPERNOVA':
-            return (
-                <div className="relative flex items-center justify-center w-full h-full">
-                    <motion.div
-                        initial={{ scale: 3, opacity: 0 }}
-                        animate={{ scale: [3, 0.1, 4, 0], opacity: [0, 1, 1, 0] }}
-                        transition={{ duration: 1.1, times: [0, 0.3, 0.7, 1], ease: "easeInOut" }}
-                        className="w-64 h-64 rounded-full absolute z-20"
-                        style={{
-                            background: `radial-gradient(circle, #ffffff 0%, ${theme.primary} 50%, ${theme.accent} 80%, transparent 100%)`,
-                            filter: `drop-shadow(0 0 100px ${theme.glow})`
-                        }}
-                    />
-                    {[0, 0.2, 0.4].map((delay, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ scale: 0.1, opacity: 1 }}
-                            animate={{ scale: [0.1, 3.2], opacity: [1, 0] }}
-                            transition={{ duration: 0.8, delay: delay + 0.3, ease: "easeOut" }}
-                            className="w-52 h-52 rounded-full border-4 absolute"
-                            style={{ borderColor: theme.accent, boxShadow: `0 0 60px ${theme.primary}` }}
-                        />
-                    ))}
-                </div>
-            );
+            // 2. Shape별 하이퍼 캔버스 시그니처 렌더링
+            if (effShape === 'SINGLE_SLASH' || effShape === 'DUAL_CROSS' || effShape === 'ILLUSION_CLONE' || effShape === 'DEMON_HAND') {
+                const slashCount = effShape === 'ILLUSION_CLONE' ? 5 : effShape === 'DEMON_HAND' ? 3 : effShape === 'DUAL_CROSS' ? 2 : 1;
+                for (let s = 0; s < slashCount; s++) {
+                    const delay = s * 0.11;
+                    const sp = Math.max(0, Math.min(1, (p - delay) * 1.45));
+                    if (sp <= 0 || sp >= 1) continue;
+                    const sweep = sp * Math.PI * 1.25;
+                    const baseRot = s === 0 ? -0.8 : s === 1 ? 0.8 : (s * 1.3 - 1.2);
+                    const r = 75 + s * 10 + sp * 28;
+                    const thick = (1 - sp * 0.65) * (effShape === 'DEMON_HAND' ? 24 : 20);
+                    ctx.save();
+                    ctx.rotate(baseRot * 0.02);
+                    drawTaperedSlash(
+                        ctx,
+                        cx + (effShape === 'DEMON_HAND' ? (s - 1) * 22 : 0),
+                        cy,
+                        r,
+                        baseRot - sweep * 0.5,
+                        baseRot + sweep * 0.65,
+                        thick,
+                        s % 2 === 0 ? theme.primary : theme.secondary,
+                        theme.accent
+                    );
+                    ctx.restore();
+                }
+                if (effShape !== 'SINGLE_SLASH') {
+                    drawDimensionCracks(ctx, cx, cy, 115, p, theme.primary);
+                }
+            } else if (effShape === 'PIERCING_THRUST' || effShape === 'LASER_BEAM' || effShape === 'SHIELD_BASH') {
+                // 초음속 관통 창격 / 마동포 레이저 + 소닉붐 링
+                const beamLen = Math.min(1, p * 2.2) * 310;
+                const beamW = (1 - p * 0.6) * (effShape === 'LASER_BEAM' ? 42 : 26);
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(-Math.PI * 0.18);
+                const grad = ctx.createLinearGradient(-155, 0, 155, 0);
+                grad.addColorStop(0, 'transparent');
+                grad.addColorStop(0.4, theme.secondary);
+                grad.addColorStop(0.8, theme.primary);
+                grad.addColorStop(1, '#ffffff');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(-150, -beamW * 0.3);
+                ctx.lineTo(-150 + beamLen, 0);
+                ctx.lineTo(-150, beamW * 0.3);
+                ctx.closePath();
+                ctx.fill();
 
-        case 'DRAGON_ASCENT':
-            return (
-                <div className="relative flex items-center justify-center w-full h-full">
-                    <motion.div
-                        initial={{ y: 250, scale: 0.2, rotate: -45, opacity: 0 }}
-                        animate={{ y: [250, -150], scale: [0.2, 1.8, 1], rotate: [-45, 45], opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.0, ease: "easeOut" }}
-                        className="w-72 h-[450px] absolute z-10 flex items-center justify-center"
-                    >
-                        <motion.svg viewBox="0 0 100 200" className="w-full h-full absolute">
-                            <path
-                                d="M 50 190 C 10 140, 90 90, 50 10 C 20 60, 80 120, 50 190 Z"
-                                fill={strokeStyle}
-                                style={{ filter: `drop-shadow(0 0 25px ${theme.primary})` }}
-                            />
-                        </motion.svg>
-                        <Crown size={60} className="text-amber-200 animate-bounce drop-shadow-[0_0_20px_rgba(255,255,255,1)]" />
-                    </motion.div>
-                    <motion.div
-                        initial={{ scale: 0.1, opacity: 1 }}
-                        animate={{ scale: [0.1, 2.8], opacity: [1, 0] }}
-                        transition={{ duration: 0.8 }}
-                        className="w-60 h-60 rounded-full border-4 border-dashed absolute"
-                        style={{ borderColor: theme.accent, boxShadow: `0 0 60px ${theme.glow}` }}
-                    />
-                </div>
-            );
+                // 소닉붐 충격파 타원 고리 3개
+                for (let rIdx = 0; rIdx < 3; rIdx++) {
+                    const rp = Math.max(0, Math.min(1, (p - rIdx * 0.1) * 1.4));
+                    if (rp <= 0) continue;
+                    ctx.strokeStyle = rIdx % 2 === 0 ? '#ffffff' : theme.primary;
+                    ctx.lineWidth = (1 - rp) * 4;
+                    ctx.beginPath();
+                    ctx.ellipse(-60 + rp * 120, 0, 14 + rp * 18, 35 + rp * 48, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            } else if (effShape === 'SKY_BEAM' || effShape === 'LIGHTNING_CHAIN' || effShape === 'THUNDER_STORM') {
+                // 천공 광선 + 실시간 프랙탈 낙뢰
+                const boltCount = effShape === 'THUNDER_STORM' ? 5 : 3;
+                const beamW = Math.sin(p * Math.PI) * 44;
+                if (effShape !== 'LIGHTNING_CHAIN' && beamW > 2) {
+                    const bGrad = ctx.createLinearGradient(cx - beamW, 0, cx + beamW, 0);
+                    bGrad.addColorStop(0, 'transparent');
+                    bGrad.addColorStop(0.25, theme.primary);
+                    bGrad.addColorStop(0.5, '#ffffff');
+                    bGrad.addColorStop(0.75, theme.primary);
+                    bGrad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = bGrad;
+                    ctx.fillRect(cx - beamW, 10, beamW * 2, cy + 45);
+                }
+                for (let b = 0; b < boltCount; b++) {
+                    const seed = Math.floor(p * 18) + b * 7;
+                    const startX = cx + (b - (boltCount - 1) / 2) * 48;
+                    drawFractalLightning(
+                        ctx,
+                        startX,
+                        15,
+                        cx + (b - (boltCount - 1) / 2) * 18,
+                        cy + 25,
+                        32,
+                        b % 2 === 0 ? theme.primary : theme.accent,
+                        5 - p * 2.5,
+                        seed
+                    );
+                }
+                // 지면 방전 마법진
+                drawMagicArray(ctx, cx, cy + 28, 45 + p * 85, p * 4, 6, theme.primary, theme.accent, fadeOut, 0.42);
+            } else if (
+                effShape === 'GEOMETRIC_ARRAY' ||
+                effShape === 'DIVINE_DOMAIN' ||
+                effShape === 'RING_BURST' ||
+                effShape === 'BUFF_BARRIER' ||
+                effShape === 'BUFF_GOD_AVATAR' ||
+                effShape === 'TIME_STOP' ||
+                effShape === 'YIN_YANG'
+            ) {
+                // 다중 기하학 마법진 & 결계
+                const baseR = 40 + Math.min(1, p * 1.5) * 95;
+                drawMagicArray(ctx, cx, cy, baseR, p * Math.PI * 2, 6, theme.primary, theme.accent, fadeOut, 1.0);
+                drawMagicArray(ctx, cx, cy, baseR * 0.68, -p * Math.PI * 3, 5, theme.secondary, '#ffffff', fadeOut, 1.0);
+                if (effShape === 'DIVINE_DOMAIN' || effShape === 'BUFF_GOD_AVATAR') {
+                    // 방사형 성스러운 빛줄기 12개
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(p * 0.8);
+                    for (let ray = 0; ray < 12; ray++) {
+                        const a = (ray / 12) * Math.PI * 2;
+                        ctx.strokeStyle = ray % 2 === 0 ? '#ffffff' : theme.primary;
+                        ctx.lineWidth = (1 - p) * 4.5;
+                        ctx.beginPath();
+                        ctx.moveTo(Math.cos(a) * 20, Math.sin(a) * 20);
+                        ctx.lineTo(Math.cos(a) * (baseR * 1.25), Math.sin(a) * (baseR * 1.25));
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+            } else if (effShape === 'SWORD_RAIN' || effShape === 'METEOR_STRIKE' || effShape === 'STAR_FALL') {
+                // 이기어검 / 유성우 / 운석 폭격
+                const count = 7;
+                for (let i = 0; i < count; i++) {
+                    const delay = i * 0.08;
+                    const mp = (p - delay) * 1.7;
+                    if (mp <= 0 || mp >= 1) continue;
+                    const offsetX = (i - 3) * 32;
+                    const startX = cx + offsetX - 80;
+                    const startY = cy - 140;
+                    const endX = cx + offsetX + 20;
+                    const endY = cy + 35;
+                    const curX = startX + (endX - startX) * mp;
+                    const curY = startY + (endY - startY) * mp;
 
-        case 'BUFF_BLESSING':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0.2, opacity: 0, y: 30 }}
-                        animate={{ scale: [0.2, 1.3, 1.0], opacity: [0, 1, 0], y: [30, -30] }}
-                        transition={{ duration: 0.9, ease: "easeOut" }}
-                        className="absolute flex flex-col items-center justify-center"
-                    >
-                        <div className="p-4 rounded-full bg-gradient-to-b from-white/10 to-transparent border border-white/20 backdrop-blur-sm shadow-[0_0_30px_rgba(255,255,255,0.4)]" style={{ borderColor: theme.primary }}>
-                            <Shield size={48} style={{ color: theme.primary, filter: `drop-shadow(0 0 10px ${theme.glow})` }} />
-                        </div>
-                        <span className="text-white text-xs font-bold mt-2 tracking-widest uppercase animate-pulse">BLESSING</span>
-                    </motion.div>
-                    {[0, 0.2].map((delay, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ scale: 0.4, opacity: 0.8 }}
-                            animate={{ scale: [0.4, 2.0], opacity: [0.8, 0] }}
-                            transition={{ duration: 0.8, delay, ease: "linear" }}
-                            className="w-40 h-40 rounded-full border-2 absolute"
-                            style={{ borderColor: theme.secondary, boxShadow: `0 0 20px ${theme.glow}` }}
-                        />
-                    ))}
-                </div>
-            );
+                    ctx.save();
+                    ctx.strokeStyle = i % 2 === 0 ? '#ffffff' : theme.primary;
+                    ctx.lineWidth = effShape === 'METEOR_STRIKE' ? 10 : 5;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(curX - 38, curY - 65);
+                    ctx.lineTo(curX, curY);
+                    ctx.stroke();
 
-        case 'DEBUFF_WEAKEN':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 1.5, opacity: 0, y: -40 }}
-                        animate={{ scale: [1.5, 0.9, 1.1], opacity: [0, 1, 0], y: [-40, 40] }}
-                        transition={{ duration: 0.95, ease: "anticipate" }}
-                        className="absolute flex flex-col items-center justify-center"
-                    >
-                        <div className="p-4 rounded-full border-2 border-dashed" style={{ borderColor: theme.primary, boxShadow: `0 0 25px ${theme.glow}` }}>
-                            <Activity size={44} style={{ color: theme.secondary }} />
-                        </div>
-                        <span className="text-red-400 text-[10px] font-bold mt-2 tracking-wider animate-pulse">WEAKENED</span>
-                    </motion.div>
-                    <motion.svg
-                        viewBox="0 0 100 100"
-                        className="w-48 h-48 absolute"
-                        initial={{ rotate: 0 }}
-                        animate={{ rotate: -360 }}
-                        transition={{ duration: 1.2, ease: "linear" }}
-                    >
-                        <circle cx="50" cy="50" r="40" fill="none" stroke={strokeStyle} strokeWidth="3" strokeDasharray="5 5" />
-                    </motion.svg>
-                </div>
-            );
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(curX, curY, effShape === 'METEOR_STRIKE' ? 9 : 5, 0, Math.PI * 2);
+                    ctx.fill();
 
-        case 'BUFF_BARRIER':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0.1, opacity: 0, rotate: -45 }}
-                        animate={{ scale: [0.1, 1.4, 1.2], opacity: [0, 1, 0.8], rotate: [-45, 0] }}
-                        exit={{ scale: 0.5, opacity: 0 }}
-                        transition={{ duration: 0.8, ease: "easeOut" }}
-                        className="w-64 h-64 md:w-80 md:h-80 absolute flex items-center justify-center"
-                    >
-                        {/* Hexagonal grid-like SVG barrier effect */}
-                        <svg viewBox="0 0 120 120" className="w-full h-full absolute">
-                            <polygon 
-                                points="60,10 105,35 105,85 60,110 15,85 15,35" 
-                                fill="none" 
-                                stroke={strokeStyle} 
-                                strokeWidth="4" 
-                                strokeDasharray="3 3"
-                                style={{ filter: `drop-shadow(0 0 15px ${theme.glow})` }}
-                            />
-                            <polygon 
-                                points="60,20 95,40 95,80 60,100 25,80 25,40" 
-                                fill="rgba(255,255,255,0.05)" 
-                                stroke={theme.secondary} 
-                                strokeWidth="2" 
-                            />
-                        </svg>
-                        <motion.div
-                            animate={{ scale: [1, 1.15, 1] }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                        >
-                            <Shield size={40} style={{ color: theme.accent, filter: `drop-shadow(0 0 8px ${theme.glow})` }} />
-                        </motion.div>
-                    </motion.div>
-                </div>
-            );
+                    if (mp > 0.75) {
+                        const impR = (mp - 0.75) * 140;
+                        ctx.strokeStyle = theme.accent;
+                        ctx.lineWidth = 2.5;
+                        ctx.beginPath();
+                        ctx.ellipse(endX, endY, impR, impR * 0.45, 0, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+            } else if (
+                effShape === 'SUPERNOVA' ||
+                effShape === 'DIMENSION_SHATTER' ||
+                effShape === 'DEBUFF_APOCALYPSE' ||
+                effShape === 'GRAVITY_PRESS'
+            ) {
+                // 중력 수축(0~0.35) -> 초신성 폭발 & 차원 균열(0.35~1.0)
+                if (p < 0.35) {
+                    const ip = p / 0.35;
+                    const r = (1 - ip) * 120 + 12;
+                    ctx.strokeStyle = theme.primary;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                    ctx.stroke();
 
-        case 'DEBUFF_SHACKLE':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 2.0, opacity: 0, rotate: 180 }}
-                        animate={{ scale: [2.0, 0.9, 1.05], opacity: [0, 1, 0], rotate: [180, 0] }}
-                        transition={{ duration: 0.9, ease: "backOut" }}
-                        className="absolute flex items-center justify-center"
-                    >
-                        <svg viewBox="0 0 100 100" className="w-56 h-56 absolute">
-                            {/* SVG Chain Links encircling target */}
-                            <circle cx="50" cy="50" r="35" fill="none" stroke={strokeStyle} strokeWidth="6" strokeDasharray="15 8" style={{ filter: `drop-shadow(0 0 10px ${theme.glow})` }} />
-                            <circle cx="50" cy="50" r="42" fill="none" stroke={theme.secondary} strokeWidth="2" strokeDasharray="4 4" />
-                        </svg>
-                        <div className="p-3 bg-slate-950/80 rounded-full border border-red-500/30">
-                            <Lock size={36} className="text-red-500 animate-pulse" />
-                        </div>
-                    </motion.div>
-                </div>
-            );
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.fillStyle = '#05050a';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 24 * ip, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalCompositeOperation = 'lighter';
+                } else {
+                    const ep = (p - 0.35) / 0.65;
+                    const maxR = ep * 165;
+                    for (let ring = 0; ring < 3; ring++) {
+                        const rr = maxR * (1 - ring * 0.22);
+                        ctx.strokeStyle = ring === 0 ? '#ffffff' : theme.primary;
+                        ctx.lineWidth = Math.max(1, (1 - ep) * (8 - ring * 2));
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, rr, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    drawDimensionCracks(ctx, cx, cy, 155, ep, theme.accent);
+                }
+            } else if (effShape === 'SPIRAL_TWISTER' || effShape === 'DRAGON_ASCENT' || effShape === 'SACRED_FLAME' || effShape === 'LAVA_ERUPTION') {
+                // 이중 나선 용오름 & 승천 기둥
+                ctx.save();
+                const height = 260;
+                for (let strand = 0; strand < 2; strand++) {
+                    ctx.beginPath();
+                    for (let step = 0; step <= 32; step++) {
+                        const t = step / 32;
+                        const y = cy + 110 - t * height * Math.min(1, p * 1.4);
+                        const phase = t * Math.PI * 4 - p * Math.PI * 5 + strand * Math.PI;
+                        const radiusX = (28 + Math.sin(t * Math.PI) * 36) * (1 - p * 0.25);
+                        const x = cx + Math.cos(phase) * radiusX;
+                        if (step === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.strokeStyle = strand === 0 ? theme.primary : '#ffffff';
+                    ctx.lineWidth = (1 - p * 0.5) * (strand === 0 ? 9 : 4);
+                    ctx.lineCap = 'round';
+                    ctx.stroke();
+                }
+                ctx.restore();
+            } else {
+                // 기타 모든 원소/버프/디버프/충격파: 다중 파동 링 + 룬 문장 + 방사형 칼날 스파이크
+                for (let ring = 0; ring < 3; ring++) {
+                    const rp = Math.max(0, Math.min(1, (p - ring * 0.12) * 1.35));
+                    if (rp <= 0) continue;
+                    const r = 18 + rp * 125;
+                    ctx.strokeStyle = ring === 0 ? '#ffffff' : ring === 1 ? theme.primary : theme.secondary;
+                    ctx.lineWidth = Math.max(1, (1 - rp) * 6);
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                drawMagicArray(ctx, cx, cy, 35 + p * 80, p * Math.PI * 2.5, 6, theme.primary, theme.accent, fadeOut);
+            }
 
-        case 'BUFF_HEAVENLY':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0.3, opacity: 0 }}
-                        animate={{ scale: [0.3, 1.4, 1.2], opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.2, ease: "easeOut" }}
-                        className="w-72 h-72 absolute flex items-center justify-center"
-                    >
-                        {/* Circular halo with outer glow and heart/cross elements */}
-                        <svg viewBox="0 0 100 100" className="w-full h-full absolute animate-spin" style={{ animationDuration: '6s' }}>
-                            <circle cx="50" cy="50" r="44" fill="none" stroke={strokeStyle} strokeWidth="3" />
-                            <path d="M 50 10 L 50 20 M 50 80 L 50 90 M 10 50 L 20 50 M 80 50 L 90 50" stroke={theme.secondary} strokeWidth="2.5" />
-                        </svg>
-                        <div className="flex flex-col items-center">
-                            <Heart size={44} style={{ color: theme.primary, filter: `drop-shadow(0 0 12px ${theme.glow})` }} className="animate-bounce" />
-                            <span className="text-[10px] tracking-wider text-slate-100 font-bold bg-slate-900/80 px-2 py-0.5 rounded border border-white/10 mt-1 uppercase">HEAL</span>
-                        </div>
-                    </motion.div>
-                    {[0, 0.3, 0.6].map((delay, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ y: 50, x: (idx - 1) * 35, opacity: 0, scale: 0.5 }}
-                            animate={{ y: [-50, -100], opacity: [0, 1, 0], scale: [0.5, 1.3] }}
-                            transition={{ duration: 1.2, delay, repeat: Infinity }}
-                            className="absolute"
-                        >
-                            <Sparkles size={18} style={{ color: theme.accent }} />
-                        </motion.div>
-                    ))}
-                </div>
-            );
+            // 3. 물리 파티클 업데이트 및 드로잉
+            for (let i = 0; i < particles.length; i++) {
+                const pt = particles[i];
+                pt.x += pt.vx;
+                pt.y += pt.vy;
+                pt.angle += pt.spin;
+                pt.alpha = Math.max(0, pt.alpha - pt.decay);
+                if (pt.alpha <= 0.01) continue;
 
-        case 'DEBUFF_CURSE':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0.1, opacity: 0, rotate: 0 }}
-                        animate={{ scale: [0.1, 1.5, 1.3], opacity: [0, 1, 0], rotate: [0, 360] }}
-                        transition={{ duration: 1.1, ease: "anticipate" }}
-                        className="w-72 h-72 absolute flex items-center justify-center"
-                    >
-                        <svg viewBox="0 0 120 120" className="w-full h-full absolute">
-                            {/* Hexagram of curse */}
-                            <polygon points="60,15 100,85 20,85" fill="none" stroke={strokeStyle} strokeWidth="3" style={{ filter: `drop-shadow(0 0 12px ${theme.glow})` }} />
-                            <polygon points="60,105 100,35 20,35" fill="none" stroke={theme.secondary} strokeWidth="2" />
-                            <circle cx="60" cy="60" r="50" fill="none" stroke={theme.accent} strokeWidth="1.5" strokeDasharray="3 3" />
-                        </svg>
-                        <div className="flex flex-col items-center z-10">
-                            <Skull size={46} style={{ color: theme.primary, filter: `drop-shadow(0 0 10px ${theme.glow})` }} />
-                            <span className="text-[9px] font-extrabold text-red-500 tracking-widest mt-1 uppercase bg-black/70 px-2 rounded">CURSED</span>
-                        </div>
-                    </motion.div>
-                </div>
-            );
+                ctx.save();
+                ctx.globalAlpha = pt.alpha * fadeOut;
+                ctx.translate(pt.x, pt.y);
+                ctx.rotate(pt.angle);
+                ctx.fillStyle = pt.color;
 
-        case 'BUFF_GOD_AVATAR':
-            return (
-                <div className="relative flex items-center justify-center">
-                    {/* Grand background mandala / celestial circle */}
-                    <motion.div
-                        initial={{ scale: 0.1, rotate: 0, opacity: 0 }}
-                        animate={{ scale: [0.1, 1.7, 1.3], rotate: [0, -180], opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.3, ease: "easeOut" }}
-                        className="w-[450px] h-[450px] absolute"
-                        style={{
-                            background: `radial-gradient(circle, rgba(255,255,255,0.08) 0%, ${theme.bgGlow} 60%, transparent 100%)`,
-                            filter: `blur(8px)`
-                        }}
-                    />
-                    <motion.div
-                        initial={{ scale: 0.2, opacity: 0 }}
-                        animate={{ scale: [0.2, 1.5, 1.1], opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.2, ease: "easeOut" }}
-                        className="w-[400px] h-[400px] absolute flex items-center justify-center"
-                    >
-                        {/* Wing-like energy vectors */}
-                        <svg viewBox="0 0 200 200" className="w-full h-full absolute">
-                            {/* Left Wings */}
-                            <path d="M 100 100 C 60 70, 10 120, 40 160 C 10 130, 40 80, 100 100 Z" fill={strokeStyle} style={{ filter: `drop-shadow(0 0 15px ${theme.glow})` }} />
-                            <path d="M 100 100 C 50 50, 20 80, 60 130 C 20 100, 50 60, 100 100 Z" fill={theme.secondary} opacity="0.7" />
-                            {/* Right Wings */}
-                            <path d="M 100 100 C 140 70, 190 120, 160 160 C 190 130, 160 80, 100 100 Z" fill={strokeStyle} style={{ filter: `drop-shadow(0 0 15px ${theme.glow})` }} />
-                            <path d="M 100 100 C 150 50, 180 80, 140 130 C 180 100, 150 60, 100 100 Z" fill={theme.secondary} opacity="0.7" />
-                        </svg>
-                        <Crown size={56} className="text-yellow-200 animate-pulse drop-shadow-[0_0_25px_rgba(255,255,255,1)]" />
-                    </motion.div>
-                </div>
-            );
+                if (pt.type === 'shard') {
+                    // 다이아몬드 빛 파편
+                    const s = pt.size * 1.6;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -s);
+                    ctx.lineTo(s * 0.55, 0);
+                    ctx.lineTo(0, s);
+                    ctx.lineTo(-s * 0.55, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                } else if (pt.type === 'petal') {
+                    // 꽃잎 / 깃털 형태
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, pt.size * 1.5, pt.size * 0.65, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // 속도 방향 스파크 궤적
+                    ctx.beginPath();
+                    ctx.arc(0, 0, pt.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.restore();
+            }
 
-        case 'DEBUFF_APOCALYPSE':
-            return (
-                <div className="relative flex items-center justify-center">
-                    {/* Gravitational black hole core */}
-                    <motion.div
-                        initial={{ scale: 0.1, opacity: 0 }}
-                        animate={{ scale: [0.1, 2.5, 0.1, 4.0], opacity: [0, 1, 1, 0] }}
-                        transition={{ duration: 1.4, times: [0, 0.4, 0.7, 1.0], ease: "easeInOut" }}
-                        className="w-48 h-48 rounded-full absolute flex items-center justify-center"
-                        style={{
-                            background: `radial-gradient(circle, #000000 0%, ${theme.primary} 45%, ${theme.accent} 75%, transparent 100%)`,
-                            boxShadow: `inset 0 0 30px #000, 0 0 80px ${theme.glow}`
-                        }}
-                    >
-                        <Skull size={36} className="text-black/80" />
-                    </motion.div>
-                    {/* Accretion disc dust lines */}
-                    <motion.div
-                        initial={{ rotate: 0, scale: 0.3, opacity: 0 }}
-                        animate={{ rotate: 720, scale: [0.3, 2.2, 0], opacity: [0, 0.9, 0] }}
-                        transition={{ duration: 1.4, ease: "anticipate" }}
-                        className="w-[350px] h-[350px] rounded-full border-2 border-double absolute"
-                        style={{ borderColor: theme.secondary, borderTopColor: 'transparent', borderBottomColor: 'transparent' }}
-                    />
-                </div>
-            );
+            ctx.restore();
+            rAF = requestAnimationFrame(renderFrame);
+        };
 
-        case 'FIST_CRUSH':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0.1, opacity: 0 }}
-                        animate={{ scale: [0.1, 1.8, 1.3], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.5, ease: "backOut" }}
-                        className="absolute flex items-center justify-center"
-                    >
-                        {/* Ring and fist impact shockwave */}
-                        <div className="w-24 h-24 rounded-full border-4 flex items-center justify-center bg-slate-900/60" style={{ borderColor: theme.primary, boxShadow: `0 0 30px ${theme.glow}` }}>
-                            <Mountain size={42} style={{ color: theme.accent }} className="animate-pulse" />
-                        </div>
-                    </motion.div>
-                    {/* Shockwaves moving outward */}
-                    {[1, 2].map((i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ scale: 0.4, opacity: 1 }}
-                            animate={{ scale: [0.4, 2.5], opacity: [1, 0] }}
-                            transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
-                            className="w-32 h-12 rounded-full border-2 absolute"
-                            style={{ borderColor: theme.secondary, transform: `rotateX(60deg)` }}
-                        />
-                    ))}
-                </div>
-            );
+        rAF = requestAnimationFrame(renderFrame);
+        return () => {
+            if (rAF !== null) cancelAnimationFrame(rAF);
+        };
+    }, [shape, theme, tier, isAoe, durationMs, loop]);
 
-        case 'POISON_MIST':
-            return (
-                <div className="relative flex items-center justify-center">
-                    {/* Expanding misty clouds */}
-                    {[0, 0.15, 0.3].map((delay, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ scale: 0.2, opacity: 0, x: (idx - 1) * 20, y: (idx - 1) * -10 }}
-                            animate={{ scale: [0.2, 2.2, 2.0], opacity: [0, 0.7, 0] }}
-                            transition={{ duration: 1.1, delay, ease: "easeOut" }}
-                            className="w-32 h-32 rounded-full absolute"
-                            style={{
-                                background: `radial-gradient(circle, ${theme.primary} 0%, ${theme.secondary} 50%, transparent 100%)`,
-                                filter: `blur(12px)`,
-                            }}
-                        />
-                    ))}
-                    {/* Spiky rings */}
-                    <motion.svg
-                        viewBox="0 0 100 100"
-                        className="w-48 h-48 absolute"
-                        initial={{ rotate: 0, scale: 0.4 }}
-                        animate={{ rotate: 180, scale: [0.4, 1.4, 1.0], opacity: [1, 1, 0] }}
-                        transition={{ duration: 0.8 }}
-                    >
-                        <circle cx="50" cy="50" r="35" fill="none" stroke={strokeStyle} strokeWidth="2" strokeDasharray="6 4" />
-                    </motion.svg>
-                </div>
-            );
-
-        case 'WIND_SWIFT':
-            return (
-                <div className="relative flex items-center justify-center">
-                    {/* Double swirling rings */}
-                    <motion.div
-                        initial={{ scale: 0.2, rotate: 0, opacity: 0 }}
-                        animate={{ scale: [0.2, 1.6, 1.3], rotate: 360, opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.85, ease: "easeOut" }}
-                        className="w-44 h-44 rounded-full border-4 border-double absolute flex items-center justify-center"
-                        style={{ borderColor: theme.primary, borderLeftColor: 'transparent', borderRightColor: 'transparent', filter: `drop-shadow(0 0 15px ${theme.glow})` }}
-                    >
-                        <Wind size={28} style={{ color: theme.accent }} />
-                    </motion.div>
-                    <motion.div
-                        initial={{ scale: 0.4, rotate: 180, opacity: 0 }}
-                        animate={{ scale: [0.4, 2.0], rotate: -180, opacity: [0, 0.8, 0] }}
-                        transition={{ duration: 0.85, delay: 0.1, ease: "easeOut" }}
-                        className="w-36 h-36 rounded-full border-2 border-dashed absolute"
-                        style={{ borderColor: theme.secondary, borderTopColor: 'transparent', borderBottomColor: 'transparent' }}
-                    />
-                    {/* Rising green leaves/sparks */}
-                    {[0, 0.2, 0.4].map((delay, idx) => (
-                        <motion.div
-                            key={idx}
-                            initial={{ y: 40, x: (idx - 1) * 30, opacity: 0, scale: 0.5 }}
-                            animate={{ y: -60, opacity: [0, 1, 0], scale: 1.2 }}
-                            transition={{ duration: 0.9, delay, repeat: Infinity }}
-                            className="absolute"
-                        >
-                            <Leaf size={16} style={{ color: theme.secondary }} />
-                        </motion.div>
-                    ))}
-                </div>
-            );
-
-        case 'METEOR_STRIKE':
-            return (
-                <div className="relative flex items-center justify-center">
-                    {/* Incoming fiery meteor */}
-                    <motion.div
-                        initial={{ x: -180, y: -220, scale: 0.3, opacity: 0 }}
-                        animate={{ x: [ -180, 0 ], y: [ -220, 0 ], scale: [0.3, 1.8], opacity: [0, 1] }}
-                        transition={{ duration: 0.5, ease: "easeIn" }}
-                        className="absolute"
-                    >
-                        <div className="w-16 h-16 rounded-full" style={{
-                            background: `radial-gradient(circle, #ffffff 0%, ${theme.primary} 40%, ${theme.secondary} 80%, transparent 100%)`,
-                            boxShadow: `0 0 35px ${theme.glow}`
-                        }} />
-                    </motion.div>
-                    {/* Impact Super Blast */}
-                    <motion.div
-                        initial={{ scale: 0.1, opacity: 0 }}
-                        animate={{ scale: [0.1, 2.8, 2.2], opacity: [0, 0, 1, 0] }}
-                        transition={{ duration: 0.9, delay: 0.45, ease: "easeOut" }}
-                        className="w-56 h-56 rounded-full absolute"
-                        style={{
-                            background: `radial-gradient(circle, #ffffff 0%, ${theme.primary} 50%, transparent 100%)`,
-                            filter: `blur(4px)`
-                        }}
-                    />
-                </div>
-            );
-
-        case 'TIME_STOP':
-            return (
-                <div className="relative flex items-center justify-center">
-                    {/* Clock cog rotation */}
-                    <motion.div
-                        initial={{ scale: 0.1, rotate: 0, opacity: 0 }}
-                        animate={{ scale: [0.1, 1.8, 1.4], rotate: 240, opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.1, ease: "anticipate" }}
-                        className="w-64 h-64 md:w-80 md:h-80 absolute flex items-center justify-center"
-                    >
-                        <svg viewBox="0 0 120 120" className="w-full h-full absolute">
-                            <circle cx="60" cy="60" r="50" fill="none" stroke={strokeStyle} strokeWidth="3" />
-                            <circle cx="60" cy="60" r="44" fill="none" stroke={theme.secondary} strokeWidth="1.5" strokeDasharray="8 4" />
-                            {/* Dial ticks */}
-                            <path d="M 60 10 L 60 18 M 60 110 L 60 102 M 10 60 L 18 60 M 110 60 L 102 60" stroke={theme.accent} strokeWidth="2.5" />
-                            {/* Clock hands */}
-                            <line x1="60" y1="60" x2="60" y2="35" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
-                            <line x1="60" y1="60" x2="85" y2="60" stroke={theme.secondary} strokeWidth="2.5" strokeLinecap="round" />
-                        </svg>
-                    </motion.div>
-                    {/* Tech temporal grid lines */}
-                    <motion.div
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: [0.5, 2.2], opacity: [0, 0.8, 0] }}
-                        transition={{ duration: 0.9, ease: "easeOut" }}
-                        className="w-48 h-48 border-2 border-dashed absolute"
-                        style={{ borderColor: theme.primary, transform: 'rotate(45deg)', boxShadow: `0 0 25px ${theme.glow}` }}
-                    />
-                </div>
-            );
-
-        // --- 2차 대규모 추가 업데이트 (Tier 1) ---
-        case 'MAGIC_MISSILE':
-            return (
-                <div className="relative flex items-center justify-center">
-                    {[0, 1, 2, 3, 4].map((i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ scale: 0, x: -100 + Math.random() * 50, y: -50 + Math.random() * 100, opacity: 0 }}
-                            animate={{ scale: [0, 1.2, 0.5, 0], x: 0, y: 0, opacity: [0, 1, 1, 0] }}
-                            transition={{ duration: 0.6 + Math.random() * 0.3, delay: i * 0.1, ease: "easeIn" }}
-                            className="absolute w-8 h-8 rounded-full"
-                            style={{ background: `radial-gradient(circle, #fff 0%, ${theme.primary} 50%, transparent 100%)`, filter: `drop-shadow(0 0 10px ${theme.glow})` }}
-                        />
-                    ))}
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: [0, 2.5, 3.0], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.8, delay: 0.4 }}
-                        className="absolute w-32 h-32 rounded-full"
-                        style={{ background: `radial-gradient(circle, ${theme.secondary} 0%, transparent 70%)` }}
-                    />
-                </div>
-            );
-
-        case 'SHIELD_BASH':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ x: -100, scale: 0.8, opacity: 0 }}
-                        animate={{ x: [ -100, 20, 0 ], scale: [0.8, 1.3, 1], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.7, ease: "backOut" }}
-                        className="absolute flex items-center justify-center"
-                    >
-                        <Shield size={64} style={{ color: theme.primary, filter: `drop-shadow(0 0 20px ${theme.glow})` }} />
-                    </motion.div>
-                    <motion.div
-                        initial={{ scale: 0.5, opacity: 0, x: 20 }}
-                        animate={{ scale: [0.5, 2.5], opacity: [0, 0.8, 0], x: 40 }}
-                        transition={{ duration: 0.6, delay: 0.2 }}
-                        className="absolute w-40 h-64 border-r-8 rounded-[50%]"
-                        style={{ borderColor: theme.secondary, filter: `blur(4px)` }}
-                    />
-                </div>
-            );
-
-        case 'EARTH_SPIKE':
-            return (
-                <div className="relative flex items-end justify-center h-full">
-                    {[0, 1, 2].map((i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ y: 50, scaleY: 0, opacity: 0 }}
-                            animate={{ y: -20, scaleY: [0, 1.5, 1], opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.6, delay: i * 0.15, ease: "backOut" }}
-                            className="absolute bottom-0 w-16"
-                            style={{ 
-                                height: `${80 + Math.random() * 40}px`,
-                                left: `${-40 + i * 40}px`,
-                                background: `linear-gradient(to top, ${theme.primary} 0%, ${theme.secondary} 100%)`,
-                                clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-                                filter: `drop-shadow(0 0 10px ${theme.glow})`
-                            }}
-                        />
-                    ))}
-                </div>
-            );
-
-        case 'WATER_SPLASH':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0, y: 50 }}
-                        animate={{ scale: [0, 2, 2.5], opacity: [0, 1, 0], y: [50, 0, -20] }}
-                        transition={{ duration: 0.8, ease: "easeOut" }}
-                        className="absolute flex items-center justify-center"
-                    >
-                        <Droplets size={56} style={{ color: theme.primary, filter: `drop-shadow(0 0 15px ${theme.glow})` }} />
-                    </motion.div>
-                    {[0, 1, 2, 3].map((i) => (
-                        <motion.div
-                            key={`splash-${i}`}
-                            initial={{ scale: 0, opacity: 0, x: 0, y: 0 }}
-                            animate={{ 
-                                scale: [0, 1.5], 
-                                opacity: [1, 0], 
-                                x: (Math.random() - 0.5) * 150, 
-                                y: (Math.random() - 0.5) * 150 - 50 
-                            }}
-                            transition={{ duration: 0.7, ease: "easeOut" }}
-                            className="absolute w-8 h-8 rounded-full"
-                            style={{ backgroundColor: theme.secondary, filter: `blur(2px)` }}
-                        />
-                    ))}
-                </div>
-            );
-
-        // --- 2차 대규모 추가 업데이트 (Tier 2) ---
-        case 'LIGHTNING_CHAIN':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <svg viewBox="0 0 200 200" className="w-64 h-64 absolute">
-                        <motion.path
-                            d="M 20 100 Q 50 20, 100 100 T 180 100"
-                            fill="none"
-                            stroke={strokeStyle}
-                            strokeWidth="4"
-                            initial={{ pathLength: 0, opacity: 0 }}
-                            animate={{ pathLength: [0, 1, 1], opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.6, repeat: Infinity, ease: "linear" }}
-                            style={{ filter: `drop-shadow(0 0 12px ${theme.glow})` }}
-                        />
-                        <motion.path
-                            d="M 20 100 Q 80 180, 100 100 T 180 100"
-                            fill="none"
-                            stroke={theme.secondary}
-                            strokeWidth="3"
-                            initial={{ pathLength: 0, opacity: 0 }}
-                            animate={{ pathLength: [0, 1, 1], opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.7, delay: 0.2, repeat: Infinity, ease: "linear" }}
-                        />
-                    </svg>
-                    <Zap size={48} className="animate-ping" style={{ color: theme.accent }} />
-                </div>
-            );
-
-        case 'ICE_NOVA':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: [0, 2.5], opacity: [1, 0] }}
-                        transition={{ duration: 0.9, ease: "easeOut" }}
-                        className="absolute w-56 h-56 rounded-full border-8"
-                        style={{ borderColor: theme.primary, filter: `blur(4px)` }}
-                    />
-                    <motion.div
-                        initial={{ scale: 0, rotate: -90, opacity: 0 }}
-                        animate={{ scale: [0, 1.8, 1.2], rotate: 0, opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.8 }}
-                        className="absolute flex items-center justify-center"
-                    >
-                        <Snowflake size={64} style={{ color: theme.secondary, filter: `drop-shadow(0 0 15px ${theme.glow})` }} />
-                    </motion.div>
-                </div>
-            );
-
-        case 'BLOOD_DRAIN':
-            return (
-                <div className="relative flex items-center justify-center">
-                    {[0, 1, 2, 3, 4].map((i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ scale: 0.5, opacity: 0, x: (Math.random() - 0.5) * 150, y: (Math.random() - 0.5) * 150 }}
-                            animate={{ scale: [0.5, 1.5, 0], opacity: [0, 1, 0], x: 0, y: 0 }}
-                            transition={{ duration: 0.8, delay: i * 0.15, ease: "easeInOut" }}
-                            className="absolute flex items-center justify-center"
-                        >
-                            <Heart size={24} style={{ color: theme.primary, fill: theme.primary, filter: `drop-shadow(0 0 8px ${theme.glow})` }} />
-                        </motion.div>
-                    ))}
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: [0, 1.5, 2.0], opacity: [0, 0.8, 0] }}
-                        transition={{ duration: 1.0, delay: 0.5 }}
-                        className="absolute w-40 h-40 rounded-full"
-                        style={{ background: `radial-gradient(circle, ${theme.secondary} 0%, transparent 70%)` }}
-                    />
-                </div>
-            );
-
-        case 'SOUND_WAVE':
-            return (
-                <div className="relative flex items-center justify-center">
-                    {[1, 2, 3].map((i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ scale: 0.2, opacity: 1, borderTopRightRadius: "50%", borderBottomRightRadius: "50%" }}
-                            animate={{ scale: [0.2, 2.5 + i], opacity: [1, 0] }}
-                            transition={{ duration: 0.8, delay: i * 0.2, repeat: Infinity, ease: "linear" }}
-                            className="absolute w-32 h-64 border-r-4 border-dashed"
-                            style={{ borderColor: theme.primary, filter: `drop-shadow(0 0 10px ${theme.glow})` }}
-                        />
-                    ))}
-                    <Activity size={48} className="animate-pulse" style={{ color: theme.accent }} />
-                </div>
-            );
-
-        case 'LASER_BEAM':
-            return (
-                <div className="relative flex items-center justify-center w-full h-full">
-                    <motion.div
-                        initial={{ scaleY: 0, opacity: 0 }}
-                        animate={{ scaleY: [0, 1.5, 0], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.7, ease: "easeInOut" }}
-                        className="absolute w-[200%] h-12"
-                        style={{ 
-                            background: `linear-gradient(to right, transparent 0%, ${theme.primary} 20%, #fff 50%, ${theme.secondary} 80%, transparent 100%)`,
-                            boxShadow: `0 0 30px ${theme.glow}`,
-                            rotate: '15deg'
-                        }}
-                    />
-                </div>
-            );
-
-        case 'SACRED_FLAME':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0.5, y: 30, opacity: 0 }}
-                        animate={{ scale: [0.5, 1.8, 1.2], y: [30, -20, -40], opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.2, ease: "easeOut" }}
-                        className="absolute flex items-center justify-center"
-                    >
-                        <Flame size={72} style={{ color: theme.primary, filter: `drop-shadow(0 0 20px ${theme.glow})` }} />
-                    </motion.div>
-                    <motion.div
-                        initial={{ scale: 1, opacity: 0, y: 0 }}
-                        animate={{ scale: [1, 2], opacity: [0, 0.5, 0], y: -80 }}
-                        transition={{ duration: 1.2, delay: 0.2 }}
-                        className="absolute w-40 h-40 rounded-full"
-                        style={{ background: `radial-gradient(circle, ${theme.secondary} 0%, transparent 60%)`, filter: 'blur(8px)' }}
-                    />
-                </div>
-            );
-
-        // --- 2차 대규모 추가 업데이트 (Tier 3) ---
-        case 'THUNDER_STORM':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0.8, opacity: 0, y: -80 }}
-                        animate={{ scale: [0.8, 1.2], opacity: [0, 1, 0.8], y: -50 }}
-                        transition={{ duration: 1.5, ease: "easeOut" }}
-                        className="absolute w-72 h-32 rounded-full"
-                        style={{ background: `linear-gradient(to bottom, #1e293b, ${theme.secondary})`, filter: 'blur(15px)' }}
-                    />
-                    {[0, 1, 2, 3].map((i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ opacity: 0, scaleY: 0, y: -40, x: (i - 1.5) * 40 }}
-                            animate={{ opacity: [0, 1, 0], scaleY: [0, 2], y: 40 }}
-                            transition={{ duration: 0.3, delay: i * 0.2, repeat: Infinity, repeatDelay: 0.5 }}
-                            className="absolute w-4 h-64"
-                            style={{ background: `linear-gradient(to bottom, transparent, #fff, ${theme.primary})`, filter: `drop-shadow(0 0 10px ${theme.glow})` }}
-                        />
-                    ))}
-                </div>
-            );
-
-        case 'LAVA_ERUPTION':
-            return (
-                <div className="relative flex items-end justify-center h-full pb-10">
-                    <motion.div
-                        initial={{ scaleX: 0, opacity: 0 }}
-                        animate={{ scaleX: [0, 1.5, 1], opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.5 }}
-                        className="absolute bottom-0 w-64 h-8 rounded-[50%]"
-                        style={{ background: `radial-gradient(ellipse, ${theme.primary} 0%, transparent 70%)` }}
-                    />
-                    <motion.div
-                        initial={{ scaleY: 0, opacity: 0, y: 50 }}
-                        animate={{ scaleY: [0, 2.5, 2], opacity: [0, 1, 0], y: [-50, -100] }}
-                        transition={{ duration: 1.2, ease: "easeOut" }}
-                        className="absolute bottom-0 w-32 h-64"
-                        style={{ 
-                            background: `linear-gradient(to top, ${theme.primary} 0%, ${theme.secondary} 50%, transparent 100%)`,
-                            filter: 'blur(8px)',
-                            clipPath: 'polygon(30% 0, 70% 0, 100% 100%, 0 100%)'
-                        }}
-                    />
-                </div>
-            );
-
-        case 'ANGELIC_CHOIR':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.svg viewBox="0 0 200 200" className="w-80 h-80 absolute animate-spin-slow">
-                        {[0, 60, 120, 180, 240, 300].map((angle) => (
-                            <polygon
-                                key={angle}
-                                points="100,20 110,80 100,100 90,80"
-                                fill={theme.secondary}
-                                transform={`rotate(${angle} 100 100)`}
-                                style={{ filter: `drop-shadow(0 0 8px ${theme.glow})` }}
-                            />
-                        ))}
-                    </motion.svg>
-                    {[1, 2, 3].map((i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ scale: 0, y: 50, opacity: 0 }}
-                            animate={{ scale: [0, 1.5], y: -100, opacity: [0, 1, 0] }}
-                            transition={{ duration: 1.5, delay: i * 0.4, repeat: Infinity }}
-                            className="absolute"
-                        >
-                            <Heart size={32} style={{ color: theme.primary, fill: theme.primary }} />
-                        </motion.div>
-                    ))}
-                </div>
-            );
-
-        case 'GRAVITY_PRESS':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 3, opacity: 0 }}
-                        animate={{ scale: [3, 0.8, 1], opacity: [0, 1, 1] }}
-                        transition={{ duration: 0.7, ease: "easeIn" }}
-                        className="absolute w-48 h-48 border-4 flex items-center justify-center bg-slate-900/50"
-                        style={{ borderColor: theme.primary, transform: 'rotateX(60deg) rotateZ(45deg)', boxShadow: `inset 0 0 30px ${theme.secondary}, 0 0 30px ${theme.glow}` }}
-                    >
-                        <motion.div
-                            animate={{ rotateZ: 360 }}
-                            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                            className="w-full h-full border-2 border-dashed"
-                            style={{ borderColor: theme.accent }}
-                        />
-                    </motion.div>
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: [0, 1.5, 0], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.8, delay: 0.7 }}
-                        className="absolute w-64 h-64 rounded-full"
-                        style={{ background: `radial-gradient(circle, #000 0%, transparent 60%)` }}
-                    />
-                </div>
-            );
-
-        case 'ILLUSION_CLONE':
-            return (
-                <div className="relative flex items-center justify-center">
-                    {[0, 90, 180, 270].map((angle, i) => (
-                        <motion.div
-                            key={angle}
-                            initial={{ opacity: 0, x: Math.cos(angle * Math.PI / 180) * 150, y: Math.sin(angle * Math.PI / 180) * 150 }}
-                            animate={{ opacity: [0, 0.8, 0], x: 0, y: 0 }}
-                            transition={{ duration: 0.5, delay: i * 0.1, ease: "easeIn" }}
-                            className="absolute flex items-center justify-center"
-                        >
-                            <Sword size={48} style={{ color: theme.secondary, filter: `drop-shadow(0 0 10px ${theme.glow})` }} />
-                        </motion.div>
-                    ))}
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: [0, 2], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.6, delay: 0.5 }}
-                        className="absolute"
-                    >
-                        <Sword size={64} style={{ color: theme.primary, filter: `drop-shadow(0 0 20px ${theme.glow})` }} />
-                    </motion.div>
-                </div>
-            );
-
-        // --- 2차 대규모 추가 업데이트 (Tier 4) ---
-        case 'DIMENSION_SHATTER':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: [0.5, 1], opacity: [0, 1, 1] }}
-                        transition={{ duration: 0.4 }}
-                        className="absolute w-80 h-80"
-                    >
-                        <svg viewBox="0 0 200 200" className="w-full h-full">
-                            <motion.path
-                                d="M100 100 L50 20 M100 100 L180 60 M100 100 L150 180 M100 100 L20 150 M100 100 L80 10"
-                                stroke={strokeStyle}
-                                strokeWidth="3"
-                                initial={{ pathLength: 0 }}
-                                animate={{ pathLength: 1 }}
-                                transition={{ duration: 0.3 }}
-                                style={{ filter: `drop-shadow(0 0 15px ${theme.glow})` }}
-                            />
-                        </svg>
-                    </motion.div>
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: [0, 3], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
-                        className="absolute w-64 h-64 rounded-full"
-                        style={{ background: `radial-gradient(circle, #fff 0%, ${theme.primary} 30%, transparent 70%)` }}
-                    />
-                </div>
-            );
-
-        case 'STAR_FALL':
-            return (
-                <div className="relative flex items-center justify-center overflow-visible">
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0, 0.8, 0] }}
-                        transition={{ duration: 2 }}
-                        className="absolute w-[400px] h-[400px]"
-                        style={{ background: `radial-gradient(circle, ${theme.bgGlow} 0%, transparent 70%)` }}
-                    />
-                    {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ x: -200 + Math.random() * 400, y: -300, scale: 0, opacity: 0 }}
-                            animate={{ x: -100 + Math.random() * 200, y: 300, scale: [0, 1.5, 0], opacity: [0, 1, 0] }}
-                            transition={{ duration: 1, delay: i * 0.15, ease: "linear" }}
-                            className="absolute"
-                        >
-                            <Star size={Math.random() * 24 + 16} style={{ color: '#fff', fill: theme.primary, filter: `drop-shadow(0 0 15px ${theme.glow})` }} />
-                        </motion.div>
-                    ))}
-                </div>
-            );
-
-        case 'WORLD_TREE':
-            return (
-                <div className="relative flex items-end justify-center h-full pb-10">
-                    <motion.div
-                        initial={{ scaleY: 0, opacity: 0 }}
-                        animate={{ scaleY: [0, 1], opacity: [0, 1] }}
-                        transition={{ duration: 1 }}
-                        className="absolute bottom-0 w-8 h-64 origin-bottom"
-                        style={{ background: `linear-gradient(to top, ${theme.secondary}, ${theme.primary})`, filter: `drop-shadow(0 0 15px ${theme.glow})` }}
-                    />
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: [0, 2], opacity: [0, 0.8, 0] }}
-                        transition={{ duration: 1.5, delay: 0.5 }}
-                        className="absolute bottom-40 w-64 h-64 rounded-full"
-                        style={{ background: `radial-gradient(circle, ${theme.primary} 0%, transparent 60%)`, filter: 'blur(10px)' }}
-                    />
-                    {[...Array(8)].map((_, i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ scale: 0, opacity: 0, y: -100, x: 0 }}
-                            animate={{ scale: [0, 1, 0], opacity: [0, 1, 0], y: -200 - Math.random() * 50, x: (Math.random() - 0.5) * 200 }}
-                            transition={{ duration: 1.5, delay: 0.8 + Math.random() * 0.5 }}
-                            className="absolute bottom-40"
-                        >
-                            <Leaf size={24} style={{ color: theme.accent, filter: `drop-shadow(0 0 10px ${theme.glow})` }} />
-                        </motion.div>
-                    ))}
-                </div>
-            );
-
-        case 'DEMON_HAND':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0, y: 100 }}
-                        animate={{ scale: [0, 2.5, 2], opacity: [0, 1, 0], y: [100, 0, 0] }}
-                        transition={{ duration: 1.2, ease: "easeOut" }}
-                        className="absolute"
-                    >
-                        <svg viewBox="0 0 100 100" className="w-48 h-48">
-                            <path d="M 30 80 Q 20 50, 40 20 Q 50 10, 60 20 Q 80 50, 70 80" fill="none" stroke={theme.primary} strokeWidth="8" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 15px ${theme.glow})` }} />
-                            <path d="M 20 70 Q 10 40, 25 15" fill="none" stroke={theme.secondary} strokeWidth="5" strokeLinecap="round" />
-                            <path d="M 80 70 Q 90 40, 75 15" fill="none" stroke={theme.secondary} strokeWidth="5" strokeLinecap="round" />
-                        </svg>
-                    </motion.div>
-                    <motion.div
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: [0, 2], opacity: [0, 1, 0] }}
-                        transition={{ duration: 0.5, delay: 0.8 }}
-                        className="absolute w-40 h-40 rounded-full"
-                        style={{ background: '#000', boxShadow: `0 0 40px ${theme.accent}` }}
-                    />
-                </div>
-            );
-
-        case 'YIN_YANG':
-            return (
-                <div className="relative flex items-center justify-center">
-                    <motion.div
-                        initial={{ scale: 0, rotate: -180, opacity: 0 }}
-                        animate={{ scale: [0, 1.5, 1.2], rotate: 360, opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.5, ease: "easeInOut" }}
-                        className="absolute w-64 h-64 rounded-full border-4 flex items-center justify-center overflow-hidden"
-                        style={{ borderColor: theme.primary, background: `linear-gradient(to right, #000 50%, #fff 50%)`, boxShadow: `0 0 30px ${theme.glow}` }}
-                    >
-                        {/* 태극 무늬를 심플하게 구현 */}
-                        <div className="absolute top-0 w-32 h-32 bg-black rounded-full border-4 border-white" />
-                        <div className="absolute bottom-0 w-32 h-32 bg-white rounded-full border-4 border-black" />
-                    </motion.div>
-                    <motion.div
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: [0.5, 3], opacity: [0, 0.5, 0] }}
-                        transition={{ duration: 1.2, delay: 0.5 }}
-                        className="absolute w-72 h-72 rounded-full"
-                        style={{ background: `radial-gradient(circle, ${theme.secondary} 0%, transparent 60%)` }}
-                    />
-                </div>
-            );
-
-        default:
-            return null;
-    }
+    return (
+        <canvas
+            ref={canvasRef}
+            className="w-full h-full pointer-events-none block transform-gpu"
+            style={{ maxWidth: '380px', maxHeight: '380px' }}
+        />
+    );
 };
 
 const DEFAULT_THEME = SHINRYOKU_THEMES['화염계'];
 
-export const CombatVFXOverlay: React.FC<{ vfx: CombatVFXData | null }> = ({ vfx }) => {
-    if (!vfx) return null;
-    return <CombatVFXContent vfx={vfx} />;
+// ============================================================================
+// 전투 오버레이 메인 컴포넌트 (이벤트 버스 구독 + Prop 하위호환 동시 지원)
+// ============================================================================
+export const CombatVFXOverlay: React.FC<{ vfx?: CombatVFXData | null }> = ({ vfx: propVfx }) => {
+    const [busVfx, setBusVfx] = useState<CombatVFXData | null>(null);
+
+    useEffect(() => {
+        return combatVfxBus.subscribe(setBusVfx);
+    }, []);
+
+    const activeVfx = busVfx || propVfx || null;
+    if (!activeVfx) return null;
+    return <CombatVFXContent key={activeVfx.id} vfx={activeVfx} />;
 };
 
 const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
@@ -2058,63 +1490,15 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
             particles: parsed.particles,
             gradientCss: parsed.gradientCss,
             isGradient: parsed.isGradient,
-            colors: parsed.colors
+            colors: parsed.colors,
+            runes: parsed.runes
         };
     }, [vfx.vfxTheme, vfx.vfxColor, vfx.shinryokuType]);
-
-    const svgGradId = useMemo(() => `vfx_grad_${Math.random().toString(36).substring(2, 8)}`, [vfx.id, vfx.vfxColor]);
 
     const IconComponent = theme.icon;
     const isAoe = vfx.isAoe;
     const tier = vfx.tier;
 
-    // Tablet & Touch device detection for VFX performance optimization (방안 4)
-    const isTabletOrTouch = useMemo(() => {
-        if (typeof window === 'undefined') return false;
-        return (
-            window.matchMedia('(pointer: coarse)').matches ||
-            window.matchMedia('(max-width: 1280px)').matches ||
-            (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)
-        );
-    }, []);
-
-    // Determine particle count and complexity based on tier (태블릿 환경 과부하 방지 최적화)
-    const particleCount = useMemo(() => {
-        if (isTabletOrTouch) {
-            if (tier === ClassTier.FINAL || tier === ClassTier.BOND) return 14;
-            if (tier === ClassTier.LAST) return 10;
-            if (tier === ClassTier.SECOND) return 8;
-            if (tier === ClassTier.FIRST) return 6;
-            return 4; // Normal Attack
-        }
-        if (tier === ClassTier.FINAL || tier === ClassTier.BOND) return 50;
-        if (tier === ClassTier.LAST) return 36;
-        if (tier === ClassTier.SECOND) return 24;
-        if (tier === ClassTier.FIRST) return 16;
-        return 10; // Normal Attack
-    }, [tier, isTabletOrTouch]);
-
-    const particles = useMemo(() => {
-        return Array.from({ length: particleCount }).map((_, i) => {
-            const angle = (i / particleCount) * Math.PI * 2 + (Math.random() * 0.4 - 0.2);
-            const dist = (isAoe ? 160 : 90) + Math.random() * (isAoe ? (isTabletOrTouch ? 120 : 200) : (isTabletOrTouch ? 60 : 120));
-            const size = 3 + Math.random() * (tier === ClassTier.FINAL ? (isTabletOrTouch ? 5 : 8) : tier === ClassTier.LAST ? (isTabletOrTouch ? 4 : 6) : 4);
-            const color = theme.particles[i % theme.particles.length];
-            const delay = Math.random() * (isTabletOrTouch ? 0.08 : 0.15);
-            const duration = 0.35 + Math.random() * 0.4;
-            return {
-                id: i,
-                x: Math.cos(angle) * dist,
-                y: Math.sin(angle) * dist,
-                size,
-                color,
-                delay,
-                duration
-            };
-        });
-    }, [particleCount, isAoe, tier, theme, isTabletOrTouch]);
-
-    // Tier badge label and style
     const tierLabel = useMemo(() => {
         if (tier === 'BUFF') return 'DIVINE BUFF · 신력 축복 & 강화';
         if (tier === 'DEBUFF') return 'CURSE & AILMENT · 신력 약화 & 상태이상';
@@ -2126,149 +1510,102 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
         return 'NORMAL ATTACK · 일반 타격';
     }, [tier]);
 
-    // Container and Target Unit / Area Positioning (단일 타겟 유닛 및 광역 적군/아군 진영 중심점 계산)
     const overlayRef = useRef<HTMLDivElement>(null);
-
-    // 초기 동기 계산 헬퍼: 첫 렌더링 시점에 이미 DOM에 존재하는 타겟 카드의 중심 좌표를 즉시 획득
-    const getInitialPos = () => {
-        if (typeof document === 'undefined') return null;
-        const targetName = vfx.targetName;
-        let el: Element | null = null;
-        if (isAoe) {
-            const isBuffOrHeal = tier === 'BUFF' || targetName === 'party' || targetName === 'ally' || targetName === 'allies';
-            let isAttackerEnemy = false;
-            if (vfx.attackerName) {
-                isAttackerEnemy = document.querySelector(`[data-combat-area="enemies"] [data-combat-unit="${vfx.attackerName}"]`) !== null ||
-                                  document.querySelector(`[data-combat-area="enemies"] [data-clean-name="${vfx.attackerName}"]`) !== null;
-            }
-            let targetAreaSelector = '[data-combat-area="enemies"]';
-            if (isBuffOrHeal) {
-                targetAreaSelector = isAttackerEnemy ? '[data-combat-area="enemies"]' : '[data-combat-area="allies"]';
-            } else {
-                targetAreaSelector = isAttackerEnemy ? '[data-combat-area="allies"]' : '[data-combat-area="enemies"]';
-            }
-            el = document.querySelector(targetAreaSelector);
-        } else {
-            if (targetName && targetName !== '적군' && targetName !== 'aoe' && targetName !== 'allies' && targetName !== '전체 대상') {
-                el = document.querySelector(`[data-combat-unit="${targetName}"]`) || 
-                     document.querySelector(`[data-clean-name="${targetName}"]`);
-            }
-            if (!el && tier !== 'BUFF') {
-                el = document.querySelector('[data-combat-area="enemies"] [data-combat-unit]');
-            }
-        }
-        if (el) {
-            const rect = el.getBoundingClientRect();
-            return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, isAbsoluteViewport: true };
-        }
-        return null;
-    };
-
-    const [targetPos, setTargetPos] = useState<{ x: number; y: number } | null>(() => {
-        const init = getInitialPos();
-        if (init) return { x: init.x, y: init.y };
-        return null;
-    });
+    const [targetPos, setTargetPos] = useState<{ x: number; y: number } | null>(null);
 
     useLayoutEffect(() => {
-        const findAndSetTarget = () => {
-            if (!overlayRef.current) return;
-            const containerRect = overlayRef.current.getBoundingClientRect();
-            if (containerRect.width === 0 || containerRect.height === 0) return;
+        if (!overlayRef.current) return;
+        const containerRect = overlayRef.current.getBoundingClientRect();
+        if (containerRect.width === 0 || containerRect.height === 0) return;
 
-            // 1. 광역(AOE) 스킬: 적군 진영 또는 아군 진영 컨테이너의 중심 계산
-            if (isAoe) {
-                const isBuffOrHeal = tier === 'BUFF' || vfx.targetName === 'party' || vfx.targetName === 'ally' || vfx.targetName === 'allies';
-                
-                // 시전자가 적군인지 확인
-                let isAttackerEnemy = false;
-                if (vfx.attackerName) {
-                    isAttackerEnemy = document.querySelector(`[data-combat-area="enemies"] [data-combat-unit="${vfx.attackerName}"]`) !== null ||
-                                      document.querySelector(`[data-combat-area="enemies"] [data-clean-name="${vfx.attackerName}"]`) !== null;
-                }
-
-                let targetAreaSelector = '[data-combat-area="enemies"]';
-                if (isBuffOrHeal) {
-                    targetAreaSelector = isAttackerEnemy ? '[data-combat-area="enemies"]' : '[data-combat-area="allies"]';
-                } else {
-                    targetAreaSelector = isAttackerEnemy ? '[data-combat-area="allies"]' : '[data-combat-area="enemies"]';
-                }
-
-                const areaEl = document.querySelector(targetAreaSelector);
-                if (areaEl) {
-                    const rect = areaEl.getBoundingClientRect();
-                    const centerX = rect.left + rect.width / 2 - containerRect.left;
-                    const centerY = rect.top + rect.height / 2 - containerRect.top;
-                    setTargetPos({ x: centerX, y: centerY });
-                    return;
-                }
+        let el: Element | null = null;
+        if (isAoe) {
+            const isBuffOrHeal = tier === 'BUFF' || vfx.targetName === 'party' || vfx.targetName === 'ally' || vfx.targetName === 'allies';
+            let isAttackerEnemy = false;
+            if (vfx.attackerName) {
+                isAttackerEnemy =
+                    document.querySelector(`[data-combat-area="enemies"] [data-combat-unit="${vfx.attackerName}"]`) !== null ||
+                    document.querySelector(`[data-combat-area="enemies"] [data-clean-name="${vfx.attackerName}"]`) !== null;
             }
-
-            // 2. 단일 타겟 스킬: 피격 대상 카드(적군 또는 아군)의 중심 계산
+            const targetAreaSelector = isBuffOrHeal
+                ? (isAttackerEnemy ? '[data-combat-area="enemies"]' : '[data-combat-area="allies"]')
+                : (isAttackerEnemy ? '[data-combat-area="allies"]' : '[data-combat-area="enemies"]');
+            el = document.querySelector(targetAreaSelector);
+        } else {
             const targetName = vfx.targetName;
-            let el: Element | null = null;
             if (targetName && targetName !== '적군' && targetName !== 'aoe' && targetName !== 'allies' && targetName !== '전체 대상') {
-                el = document.querySelector(`[data-combat-unit="${targetName}"]`) || 
+                el = document.querySelector(`[data-combat-unit="${targetName}"]`) ||
                      document.querySelector(`[data-clean-name="${targetName}"]`);
             }
-
-            // 대상을 못 찾았으나 공격 스킬인 경우 적군 진영의 첫 번째 유닛 카드로 타겟팅
             if (!el && tier !== 'BUFF') {
                 el = document.querySelector('[data-combat-area="enemies"] [data-combat-unit]');
             }
+        }
 
-            if (el) {
-                const rect = el.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2 - containerRect.left;
-                const centerY = rect.top + rect.height / 2 - containerRect.top;
-                setTargetPos({ x: centerX, y: centerY });
+        if (el) {
+            const rect = el.getBoundingClientRect();
+            setTargetPos({
+                x: rect.left + rect.width / 2 - containerRect.left,
+                y: rect.top + rect.height / 2 - containerRect.top
+            });
+
+            // 피격 대상 카드에 React 리렌더링 없이 순수 GPU Web Animation으로 타격 흔들림(Hit Impulse) 부여
+            if (tier !== 'BUFF' && typeof (el as HTMLElement).animate === 'function') {
+                try {
+                    (el as HTMLElement).animate(
+                        [
+                            { transform: 'translate3d(0, 0, 0) scale(1)', filter: 'brightness(1)' },
+                            { transform: 'translate3d(-6px, -3px, 0) scale(1.04)', filter: 'brightness(1.5)' },
+                            { transform: 'translate3d(6px, 3px, 0) scale(0.98)', filter: 'brightness(1.2)' },
+                            { transform: 'translate3d(0, 0, 0) scale(1)', filter: 'brightness(1)' }
+                        ],
+                        { duration: 240, easing: 'ease-out' }
+                    );
+                } catch {
+                    // ignore
+                }
             }
-        };
-
-        findAndSetTarget();
+        }
     }, [vfx.id, vfx.targetName, vfx.attackerName, isAoe, tier]);
+
+    const isFinalOrLast = tier === ClassTier.FINAL || tier === 'BOND' || tier === ClassTier.LAST;
 
     return (
         <div ref={overlayRef} className="absolute inset-0 z-50 pointer-events-none overflow-hidden flex items-center justify-center">
-            {/* 1. Background Ambient Color Pulse */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 0.85, 0.4, 0] }}
-                transition={{ duration: tier === ClassTier.FINAL ? 1.4 : 0.8, ease: "easeOut" }}
-                className="absolute inset-0"
+            {/* 1. 가벼운 배경 타격 스포트라이트 */}
+            <div
+                className="absolute inset-0 transition-opacity duration-300"
                 style={{
-                    background: targetPos 
-                        ? `radial-gradient(circle at ${targetPos.x}px ${targetPos.y}px, ${theme.bgGlow} 0%, rgba(0,0,0,0.5) ${isAoe ? '80%' : '50%'}, transparent ${isAoe ? '100%' : '75%'})`
-                        : (isAoe
-                            ? `radial-gradient(ellipse at center, ${theme.bgGlow} 0%, rgba(0,0,0,0.6) 80%)`
-                            : `radial-gradient(circle at center, ${theme.bgGlow} 0%, transparent 70%)`)
+                    background: targetPos
+                        ? `radial-gradient(circle at ${targetPos.x}px ${targetPos.y}px, ${theme.bgGlow} 0%, transparent ${isAoe ? '75%' : '50%'})`
+                        : `radial-gradient(circle at center, ${theme.bgGlow} 0%, transparent 65%)`
                 }}
             />
 
-            {/* 1.5 Custom Frame-by-Frame Animation (플레이어 커스텀 프레임 애니메이션) */}
+            {/* 2. 플레이어 커스텀 프레임 애니메이션 (8x8 등 초고속 60FPS 보간 렌더러) */}
             {vfx.frameAnimation?.enabled && vfx.frameAnimation.frames?.length > 0 && vfx.frameAnimation.renderMode !== 'vfx_only' && (
-                <div 
-                    className="pointer-events-none z-30"
+                <div
+                    className="pointer-events-none z-35"
                     style={
-                        targetPos ? {
-                            position: 'absolute',
-                            left: `${targetPos.x}px`,
-                            top: `${targetPos.y}px`,
-                            transform: 'translate(-50%, -50%)',
-                            width: isAoe ? '420px' : '288px',
-                            height: isAoe ? '420px' : '288px',
-                            maxWidth: '90vw',
-                            maxHeight: '90vh',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        } : {
-                            position: 'absolute',
-                            inset: 0,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                        }
+                        targetPos
+                            ? {
+                                  position: 'absolute',
+                                  left: `${targetPos.x}px`,
+                                  top: `${targetPos.y}px`,
+                                  transform: 'translate(-50%, -50%)',
+                                  width: isAoe ? '420px' : '300px',
+                                  height: isAoe ? '420px' : '300px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                              }
+                            : {
+                                  position: 'absolute',
+                                  inset: 0,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                              }
                     }
                 >
                     <SkillFrameAnimationRenderer
@@ -2281,555 +1618,158 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
                 </div>
             )}
 
-            {/* 2. Top Skill & Class Announcement Banner */}
+            {/* 3. 상단 스킬명 타이포그래피 배너 */}
             {vfx.skillName && (
                 <motion.div
-                    initial={{ y: -40, opacity: 0, scale: 0.8 }}
-                    animate={{ y: 0, opacity: 1, scale: [0.8, 1.1, 1] }}
-                    exit={{ y: -30, opacity: 0 }}
-                    transition={{ duration: 0.35 }}
-                    className="absolute top-8 z-50 flex flex-col items-center gap-1"
+                    initial={{ y: -24, opacity: 0, scale: 0.9 }}
+                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute top-6 z-50 flex flex-col items-center gap-0.5"
                 >
-                    <div 
-                        className="px-4 py-1 rounded-full text-[10px] md:text-xs font-black tracking-widest uppercase border flex items-center gap-1.5 shadow-2xl backdrop-blur-md"
+                    <div
+                        className="px-3.5 py-0.5 rounded-full text-[10px] md:text-xs font-black tracking-widest uppercase border flex items-center gap-1.5 bg-slate-950/90"
                         style={{
-                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
                             borderColor: theme.primary,
-                            color: theme.accent,
-                            boxShadow: `0 0 20px ${theme.glow}`
+                            color: theme.accent
                         }}
                     >
-                        <IconComponent size={14} className="animate-pulse" />
+                        <IconComponent size={13} />
                         <span>{tierLabel}</span>
                         {isAoe && (
-                            <span className="ml-1 px-1.5 py-0.2 bg-red-600/90 text-white rounded text-[8px] font-bold">
+                            <span className="ml-1 px-1.5 py-0.2 bg-red-600 text-white rounded text-[9px] font-bold">
                                 AOE 광역
                             </span>
                         )}
                     </div>
-                    <motion.div 
-                        initial={{ scale: 0.9 }}
-                        animate={{ scale: [0.9, 1.05, 1] }}
-                        className="text-base md:text-2xl font-black tracking-wider text-transparent bg-clip-text drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]"
+                    <div
+                        className="text-base md:text-2xl font-black tracking-wider text-transparent bg-clip-text drop-shadow"
                         style={{
-                            backgroundImage: `linear-gradient(to right, ${theme.accent}, ${theme.secondary}, ${theme.primary})`,
-                            filter: `drop-shadow(0 0 12px ${theme.glow})`
+                            backgroundImage: `linear-gradient(to right, #ffffff, ${theme.accent}, ${theme.primary})`
                         }}
                     >
                         {vfx.skillName}
-                    </motion.div>
+                    </div>
                 </motion.div>
             )}
 
-            {/* 3. Center/Target FX Area */}
+            {/* 4. 안티그래비티 60FPS 하이퍼 캔버스 시그니처 이펙트 */}
             {vfx.frameAnimation?.renderMode !== 'frame_only' && (
-                <div 
-                    className={`flex items-center justify-center ${isAoe ? 'w-96 h-96 sm:w-[480px] sm:h-[480px]' : 'w-72 h-72'}`}
+                <div
+                    className={`flex items-center justify-center ${isAoe ? 'w-96 h-96 sm:w-[440px] sm:h-[440px]' : 'w-80 h-80'}`}
                     style={
-                        targetPos ? {
-                            position: 'absolute',
-                            left: `${targetPos.x}px`,
-                            top: `${targetPos.y}px`,
-                            transform: `translate(-50%, -50%) scale(${vfx.vfxScale || 1})`,
-                            zIndex: 35
-                        } : {
-                            position: 'relative',
-                            transform: `scale(${vfx.vfxScale || 1})`
-                        }
+                        targetPos
+                            ? {
+                                  position: 'absolute',
+                                  left: `${targetPos.x}px`,
+                                  top: `${targetPos.y}px`,
+                                  transform: `translate(-50%, -50%) scale(${vfx.vfxScale || 1})`,
+                                  zIndex: 30
+                              }
+                            : {
+                                  position: 'relative',
+                                  transform: `scale(${vfx.vfxScale || 1})`,
+                                  zIndex: 30
+                              }
                     }
                 >
-
-                {/* --- CUSTOM SHAPE OVERRIDE --- */}
-                {vfx.vfxShape && vfx.vfxShape !== 'DEFAULT' ? (
-                    <RenderCustomVfxShape shape={vfx.vfxShape} theme={theme} svgGradId={svgGradId} />
-                ) : (
-                    <>
-                        {/* --- NORMAL ATTACK FX --- */}
-                {tier === 'NORMAL' && (
-                    <div className="relative flex items-center justify-center">
-                        {/* Sharp Kinetic Slash Arc */}
-                        <motion.svg
-                            viewBox="0 0 200 200"
-                            className="w-48 h-48 md:w-64 md:h-64 absolute"
-                            initial={{ rotate: -45, scale: 0.2, opacity: 0 }}
-                            animate={{ rotate: [ -45, 20 ], scale: [0.2, 1.3, 0.8], opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.4, ease: "easeOut" }}
-                        >
-                            <motion.path
-                                d="M 30 170 Q 100 60 170 30"
-                                fill="none"
-                                stroke={theme.primary}
-                                strokeWidth="8"
-                                strokeLinecap="round"
-                                style={{ filter: `drop-shadow(0 0 12px ${theme.primary})` }}
-                            />
-                            <motion.path
-                                d="M 30 170 Q 100 60 170 30"
-                                fill="none"
-                                stroke="#ffffff"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                            />
-                        </motion.svg>
-
-                        {/* Impact Shockwave Ring */}
-                        <motion.div
-                            initial={{ scale: 0.1, opacity: 1 }}
-                            animate={{ scale: [0.1, 1.5], opacity: [1, 0] }}
-                            transition={{ duration: 0.35, ease: "easeOut" }}
-                            className="w-32 h-32 rounded-full border-2 absolute"
-                            style={{ borderColor: theme.accent, boxShadow: `0 0 25px ${theme.primary}` }}
-                        />
-
-                        {/* Impact Flash Center */}
-                        <motion.div
-                            initial={{ scale: 0, opacity: 1 }}
-                            animate={{ scale: [0, 1.8, 0], opacity: [1, 1, 0] }}
-                            transition={{ duration: 0.25 }}
-                            className="w-16 h-16 rounded-full absolute"
-                            style={{ background: `radial-gradient(circle, #ffffff 0%, ${theme.primary} 70%, transparent 100%)` }}
-                        />
-                    </div>
-                )}
-
-                {/* --- BUFF FX (HOLY PILLAR & RADIANT SHIELD) --- */}
-                {tier === 'BUFF' && (
-                    <div className="relative flex items-center justify-center">
-                        {/* Ascending Divine Light Pillar */}
-                        <motion.div
-                            initial={{ y: 200, scaleY: 0.1, opacity: 0 }}
-                            animate={{ y: [200, 0, -100], scaleY: [0.1, 1.5, 0.5], opacity: [0, 0.9, 0] }}
-                            transition={{ duration: 0.7, ease: "easeOut" }}
-                            className="w-40 md:w-56 h-[400px] absolute"
-                            style={{
-                                background: `linear-gradient(to top, transparent, ${theme.primary}, ${theme.accent}, #ffffff)`,
-                                filter: `drop-shadow(0 0 30px ${theme.glow})`
-                            }}
-                        />
-                        {/* Shimmering Halo / Glyphs */}
-                        <motion.div
-                            initial={{ scale: 0.2, rotate: 0, opacity: 0 }}
-                            animate={{ scale: [0.2, 1.4, 1.1], rotate: 180, opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.65, ease: "easeOut" }}
-                            className="w-48 h-48 md:w-64 md:h-64 rounded-full border-2 border-dashed absolute flex items-center justify-center"
-                            style={{ borderColor: theme.accent, boxShadow: `0 0 35px ${theme.glow}` }}
-                        >
-                            <div className="text-2xl text-amber-200 font-serif flex gap-3 animate-pulse">
-                                <span>{theme.runes[0]}</span>
-                                <span>{theme.runes[1]}</span>
-                            </div>
-                        </motion.div>
-                        {/* Rising Sparkle Rings */}
-                        {[0, 0.15, 0.3].map((delay, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ y: 80, scale: 0.3, opacity: 0 }}
-                                animate={{ y: -80, scale: 1.6, opacity: [0, 0.8, 0] }}
-                                transition={{ duration: 0.6, delay, ease: "easeOut" }}
-                                className="w-32 h-32 rounded-full border absolute"
-                                style={{ borderColor: theme.secondary, boxShadow: `0 0 20px ${theme.primary}` }}
-                            />
-                        ))}
-                    </div>
-                )}
-
-                {/* --- DEBUFF FX (DESCENDING HEX & CONSTRICTING CHAINS) --- */}
-                {tier === 'DEBUFF' && (
-                    <div className="relative flex items-center justify-center">
-                        {/* Descending Hex Mist */}
-                        <motion.div
-                            initial={{ y: -200, scale: 0.4, opacity: 0 }}
-                            animate={{ y: [-200, 0, 50], scale: [0.4, 1.6, 1.2], opacity: [0, 0.85, 0] }}
-                            transition={{ duration: 0.75, ease: "easeIn" }}
-                            className="w-56 h-56 md:w-72 md:h-72 rounded-full absolute"
-                            style={{
-                                background: `radial-gradient(circle, ${theme.primary} 0%, ${theme.glow} 60%, transparent 100%)`,
-                                filter: `drop-shadow(0 0 35px ${theme.primary})`
-                            }}
-                        />
-                        {/* Constricting Inverted Rune Seal */}
-                        <motion.div
-                            initial={{ scale: 2.0, rotate: 0, opacity: 0 }}
-                            animate={{ scale: [2.0, 0.8, 0.5], rotate: -180, opacity: [0, 0.9, 0] }}
-                            transition={{ duration: 0.6, ease: "easeOut" }}
-                            className="w-48 h-48 md:w-64 md:h-64 rounded-full border-2 border-dotted absolute flex items-center justify-center"
-                            style={{ borderColor: theme.secondary, boxShadow: `0 0 30px ${theme.secondary}` }}
-                        >
-                            <span className="text-3xl text-purple-300 font-serif">☠</span>
-                        </motion.div>
-                    </div>
-                )}
-
-                {/* --- FIRST CLASS FX --- */}
-                {tier === ClassTier.FIRST && (
-                    <div className="relative flex items-center justify-center">
-                        {/* Runic Single Magic Ring */}
-                        <motion.div
-                            initial={{ scale: 0.2, rotate: 0, opacity: 0 }}
-                            animate={{ scale: [0.2, 1.1, 1], rotate: 180, opacity: [0, 0.9, 0] }}
-                            transition={{ duration: 0.65, ease: "easeOut" }}
-                            className="w-44 h-44 md:w-56 md:h-56 rounded-full border-2 border-dashed absolute flex items-center justify-center"
-                            style={{ borderColor: theme.secondary, boxShadow: `0 0 30px ${theme.glow}` }}
-                        >
-                            <div className="text-xl md:text-2xl text-amber-300 font-serif">
-                                {theme.runes[0]} {theme.runes[1]}
-                            </div>
-                        </motion.div>
-
-                        {/* Diagonal Dual Slash */}
-                        <motion.svg
-                            viewBox="0 0 200 200"
-                            className="w-56 h-56 md:w-72 md:h-72 absolute"
-                            initial={{ scale: 0.3, opacity: 0 }}
-                            animate={{ scale: [0.3, 1.4, 1.1], opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.5, ease: "easeOut" }}
-                        >
-                            <line x1="20" y1="20" x2="180" y2="180" stroke={theme.primary} strokeWidth="7" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 10px ${theme.primary})` }} />
-                            <line x1="20" y1="20" x2="180" y2="180" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-                            <line x1="180" y1="20" x2="20" y2="180" stroke={theme.secondary} strokeWidth="5" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 8px ${theme.secondary})` }} />
-                        </motion.svg>
-
-                        {/* Core Elemental Blast */}
-                        <motion.div
-                            initial={{ scale: 0.2, opacity: 0 }}
-                            animate={{ scale: [0.2, 2, 0], opacity: [1, 0.9, 0] }}
-                            transition={{ duration: 0.45 }}
-                            className="w-24 h-24 rounded-full absolute"
-                            style={{ background: `radial-gradient(circle, ${theme.accent} 0%, ${theme.primary} 60%, transparent 100%)` }}
-                        />
-                    </div>
-                )}
-
-                {/* --- SECOND CLASS FX --- */}
-                {tier === ClassTier.SECOND && (
-                    <div className="relative flex items-center justify-center">
-                        {/* Dual Nested Arcane Magic Circles */}
-                        <motion.div
-                            initial={{ scale: 0.3, rotate: 0, opacity: 0 }}
-                            animate={{ scale: [0.3, 1.3, 1.1], rotate: 270, opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.75, ease: "easeOut" }}
-                            className="w-56 h-56 md:w-72 md:h-72 rounded-full border-2 border-double absolute flex items-center justify-center"
-                            style={{ borderColor: theme.primary, boxShadow: `0 0 35px ${theme.glow}` }}
-                        >
-                            {/* Inner Circle Counter-Rotating */}
-                            <motion.div
-                                animate={{ rotate: -540 }}
-                                transition={{ duration: 0.75, ease: "linear" }}
-                                className="w-36 h-36 md:w-48 md:h-48 rounded-full border border-dashed border-white/80 flex items-center justify-around text-lg"
-                            >
-                                <span>{theme.runes[0]}</span>
-                                <span>{theme.runes[1]}</span>
-                                <span>{theme.runes[2]}</span>
-                            </motion.div>
-                        </motion.div>
-
-                        {/* Quad Cross Energy Blades */}
-                        <motion.svg
-                            viewBox="0 0 200 200"
-                            className="w-64 h-64 md:w-80 md:h-80 absolute"
-                            initial={{ rotate: 0, scale: 0.2, opacity: 0 }}
-                            animate={{ rotate: 90, scale: [0.2, 1.5, 1], opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.6, ease: "easeOut" }}
-                        >
-                            <circle cx="100" cy="100" r="60" fill="none" stroke={theme.secondary} strokeWidth="3" />
-                            <line x1="10" y1="100" x2="190" y2="100" stroke={theme.accent} strokeWidth="6" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 12px ${theme.primary})` }} />
-                            <line x1="100" y1="10" x2="100" y2="190" stroke={theme.primary} strokeWidth="6" strokeLinecap="round" style={{ filter: `drop-shadow(0 0 12px ${theme.primary})` }} />
-                            <line x1="30" y1="30" x2="170" y2="170" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" />
-                        </motion.svg>
-
-                        {/* Expanding Ring Shockwaves */}
-                        <motion.div
-                            initial={{ scale: 0.2, opacity: 1 }}
-                            animate={{ scale: [0.2, 2.2], opacity: [1, 0] }}
-                            transition={{ duration: 0.55 }}
-                            className="w-40 h-40 rounded-full border-4 absolute"
-                            style={{ borderColor: theme.accent, boxShadow: `0 0 40px ${theme.primary}` }}
-                        />
-                    </div>
-                )}
-
-                {/* --- LAST CLASS FX --- */}
-                {tier === ClassTier.LAST && (
-                    <div className="relative flex items-center justify-center">
-                        {/* Triple Layer Geometry Arcane Array */}
-                        <motion.div
-                            initial={{ scale: 0.2, rotate: 0, opacity: 0 }}
-                            animate={{ scale: [0.2, 1.4, 1.2], rotate: 360, opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.95, ease: "easeOut" }}
-                            className="w-72 h-72 md:w-96 md:h-96 rounded-full border-2 absolute flex items-center justify-center"
-                            style={{ borderColor: theme.accent, boxShadow: `0 0 50px ${theme.glow}` }}
-                        >
-                            {/* Pentagon Star Inscription */}
-                            <motion.svg viewBox="0 0 100 100" className="w-full h-full absolute animate-spin" style={{ animationDuration: '3s' }}>
-                                <polygon points="50,5 64,36 98,36 70,57 81,91 50,70 19,91 30,57 2,36 36,36" fill="none" stroke={theme.secondary} strokeWidth="1.5" />
-                                <circle cx="50" cy="50" r="45" fill="none" stroke={theme.primary} strokeWidth="1" strokeDasharray="4 2" />
-                            </motion.svg>
-                            <div className="flex gap-4 text-2xl text-amber-200">
-                                <span>{theme.runes[0]}</span>
-                                <span>{theme.runes[1]}</span>
-                                <span>{theme.runes[2]}</span>
-                                <span>{theme.runes[3]}</span>
-                            </div>
-                        </motion.div>
-
-                        {/* Cataclysmic Sky Beam / Falling Grand Blade */}
-                        <motion.div
-                            initial={{ y: -300, scaleX: 0.2, opacity: 0 }}
-                            animate={{ y: [ -300, 0 ], scaleX: [0.2, 1.8, 0.9], opacity: [0, 1, 0.8, 0] }}
-                            transition={{ duration: 0.6, ease: "anticipate" }}
-                            className="w-16 md:w-28 h-[500px] absolute z-10"
-                            style={{
-                                background: `linear-gradient(to bottom, #ffffff, ${theme.secondary}, ${theme.primary}, transparent)`,
-                                filter: `drop-shadow(0 0 35px ${theme.glow})`
-                            }}
-                        />
-
-                        {/* Multi-tier Radial Shockwave Waves */}
-                        {[0, 0.15, 0.3].map((delay, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ scale: 0.1, opacity: 1 }}
-                                animate={{ scale: [0.1, 2.6], opacity: [1, 0] }}
-                                transition={{ duration: 0.7, delay, ease: "easeOut" }}
-                                className="w-48 h-48 rounded-full border-4 absolute"
-                                style={{ borderColor: theme.accent, boxShadow: `0 0 45px ${theme.primary}` }}
-                            />
-                        ))}
-                    </div>
-                )}
-
-                {/* --- FINAL CLASS & BOND SKILL FX (SUPREME GOD-TIER) --- */}
-                {(tier === ClassTier.FINAL || tier === ClassTier.BOND) && (
-                    <div className="relative flex items-center justify-center w-full h-full">
-                        {/* Giant Full-Arena Sacred Celestial Array */}
-                        <motion.div
-                            initial={{ scale: 0.1, rotate: 0, opacity: 0 }}
-                            animate={{ scale: [0.1, 1.8, 1.4], rotate: 720, opacity: [0, 1, 0.8, 0] }}
-                            transition={{ duration: 1.3, ease: "easeOut" }}
-                            className="w-96 h-96 md:w-[600px] md:h-[600px] rounded-full border-4 border-double absolute flex items-center justify-center"
-                            style={{ borderColor: theme.accent, boxShadow: `0 0 80px ${theme.glow}` }}
-                        >
-                            <motion.svg viewBox="0 0 200 200" className="w-full h-full absolute">
-                                <circle cx="100" cy="100" r="95" fill="none" stroke={theme.secondary} strokeWidth="2" strokeDasharray="6 3" />
-                                <circle cx="100" cy="100" r="75" fill="none" stroke={theme.primary} strokeWidth="3" />
-                                <polygon points="100,10 178,55 178,145 100,190 22,145 22,55" fill="none" stroke={theme.accent} strokeWidth="2" />
-                                <polygon points="100,190 22,55 178,55" fill="none" stroke="#ffffff" strokeWidth="1.5" />
-                                <polygon points="100,10 178,145 22,145" fill="none" stroke="#ffffff" strokeWidth="1.5" />
-                            </motion.svg>
-
-                            <div className="flex gap-6 text-3xl md:text-4xl text-amber-200 drop-shadow-[0_0_10px_rgba(255,255,255,0.9)]">
-                                {theme.runes.map((r, ri) => (
-                                    <span key={ri} className="animate-pulse">{r}</span>
-                                ))}
-                            </div>
-                        </motion.div>
-
-                        {/* Supernova Celestial Flare Beam */}
-                        <motion.div
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: [0, 3.5, 0], opacity: [0, 1, 1, 0] }}
-                            transition={{ duration: 0.9, ease: "easeInOut" }}
-                            className="w-36 h-36 md:w-56 md:h-56 rounded-full absolute z-20"
-                            style={{
-                                background: `radial-gradient(circle, #ffffff 0%, ${theme.accent} 40%, ${theme.primary} 70%, transparent 100%)`,
-                                filter: `drop-shadow(0 0 60px ${theme.glow})`
-                            }}
-                        />
-
-                        {/* Cross Beams of Creation */}
-                        <motion.div
-                            initial={{ scaleX: 0, scaleY: 0, opacity: 0 }}
-                            animate={{ scaleX: [0, 4, 0], scaleY: [0, 0.4, 0], opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.8 }}
-                            className="w-full h-8 absolute bg-white z-10"
-                            style={{ filter: `drop-shadow(0 0 30px ${theme.primary})` }}
-                        />
-                        <motion.div
-                            initial={{ scaleX: 0, scaleY: 0, opacity: 0 }}
-                            animate={{ scaleX: [0, 0.4, 0], scaleY: [0, 4, 0], opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.8 }}
-                            className="w-8 h-full absolute bg-white z-10"
-                            style={{ filter: `drop-shadow(0 0 30px ${theme.primary})` }}
-                        />
-
-                        {/* Expanding Cosmic Shockwaves */}
-                        {[0, 0.2, 0.4, 0.6].map((delay, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ scale: 0.1, opacity: 1 }}
-                                animate={{ scale: [0.1, 3.8], opacity: [1, 0] }}
-                                transition={{ duration: 1.0, delay, ease: "easeOut" }}
-                                className="w-56 h-56 md:w-72 md:h-72 rounded-full border-4 absolute"
-                                style={{ borderColor: idx % 2 === 0 ? theme.accent : theme.primary, boxShadow: `0 0 55px ${theme.glow}` }}
-                            />
-                        ))}
-                    </div>
-                )}
-                    </>
-                )}
-
-                {/* --- AOE (광역) SWEEPING WAVE / MULTI-STRIKE EFFECT --- */}
-                {isAoe && (
-                    <div className="absolute inset-0 flex items-center justify-around pointer-events-none">
-                        {/* Sweeping Horizon Wave */}
-                        <motion.div
-                            initial={{ x: '-100%', opacity: 0 }}
-                            animate={{ x: ['-100%', '100%'], opacity: [0, 0.9, 0.9, 0] }}
-                            transition={{ duration: 0.7, ease: "easeInOut" }}
-                            className="w-3/4 h-full absolute"
-                            style={{
-                                background: `linear-gradient(to right, transparent, ${theme.glow}, ${theme.accent}, transparent)`,
-                                filter: `drop-shadow(0 0 30px ${theme.primary})`
-                            }}
-                        />
-
-                        {/* Multiple Subsidiary Impact Points Across the Arena */}
-                        {[-160, -80, 0, 80, 160].map((offset, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: [0, 1.4, 0], opacity: [0, 1, 0] }}
-                                transition={{ duration: 0.5, delay: 0.1 + idx * 0.08, ease: "easeOut" }}
-                                style={{ transform: `translateX(${offset}px)` }}
-                                className="w-16 h-16 rounded-full absolute"
-                            >
-                                <div 
-                                    className="w-full h-full rounded-full"
-                                    style={{
-                                        background: `radial-gradient(circle, #ffffff 0%, ${theme.secondary} 50%, transparent 100%)`,
-                                        boxShadow: `0 0 20px ${theme.primary}`
-                                    }}
-                                />
-                            </motion.div>
-                        ))}
-                    </div>
-                )}
-
-                {/* --- DYNAMIC PARTICLES BURST --- */}
-                {particles.map(p => (
-                    <motion.div
-                        key={p.id}
-                        initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
-                        animate={{
-                            x: p.x,
-                            y: p.y,
-                            scale: [0, 1.5, 0],
-                            opacity: [1, 1, 0]
-                        }}
-                        transition={{
-                            duration: p.duration,
-                            delay: p.delay,
-                            ease: "easeOut"
-                        }}
-                        className="absolute rounded-full pointer-events-none"
-                        style={{
-                            width: p.size,
-                            height: p.size,
-                            backgroundColor: p.color,
-                            boxShadow: isTabletOrTouch ? undefined : `0 0 ${p.size * 2}px ${p.color}`,
-                            willChange: 'transform, opacity'
-                        }}
+                    <RenderCustomVfxShape
+                        shape={vfx.vfxShape || 'DEFAULT'}
+                        theme={theme}
+                        tier={tier}
+                        isAoe={isAoe}
+                        durationMs={vfx.duration || (isFinalOrLast ? 1100 : 750)}
+                        loop={false}
                     />
-                ))}
-
-            </div>
+                </div>
             )}
 
-            {/* 4. Skill Illustration Cut-In Effect (스킬 사용 일러스트 연출) */}
+            {/* 5. 다이나믹 대각선 슬래시 일러스트 컷인 (라스트/파이널/인연 및 커스텀 컷신) */}
             {vfx.illustrationUrl && (() => {
                 const isFinalCutscene = vfx.tier === ClassTier.FINAL || vfx.tier === 'BOND';
-                
+                const cutinDurationSec = vfx.duration ? Math.min(vfx.duration / 1000, 2.2) : (isFinalCutscene ? 1.8 : 1.35);
+
                 return (
                     <motion.div
-                        initial={{ opacity: 0, scale: isFinalCutscene ? 0.85 : 0.9, x: isFinalCutscene ? '-6%' : '-4%' }}
-                        animate={{ 
-                            opacity: [0, 1, 1, 0], 
-                            scale: isFinalCutscene ? [0.85, 1.04, 1, 0.95] : [0.9, 1.02, 1, 0.96], 
-                            x: isFinalCutscene ? ['-6%', '0%', '0%', '6%'] : ['-4%', '0%', '0%', '4%'] 
+                        initial={{ opacity: 0, x: '-12%', scale: 0.94 }}
+                        animate={{
+                            opacity: [0, 1, 1, 0],
+                            x: ['-12%', '0%', '1%', '10%'],
+                            scale: [0.94, 1.02, 1, 0.98]
                         }}
-                        transition={{ 
-                            duration: (vfx.duration ? Math.min(vfx.duration / 1000, 2.6) : (isFinalCutscene ? 2.2 : 1.8)), 
-                            times: [0, 0.15, 0.8, 1], 
-                            ease: "easeInOut" 
+                        transition={{
+                            duration: cutinDurationSec,
+                            times: [0, 0.14, 0.82, 1],
+                            ease: 'easeOut'
                         }}
-                        className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none overflow-hidden px-2 sm:px-4 md:px-8"
+                        className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none overflow-hidden px-2 sm:px-6"
                     >
-                        {/* Background Fullscreen Blur Atmospheric Glow (파이널 클래스 스킬은 더욱 강력한 전체 화면 블러 오라) */}
-                        <div 
-                            className={`absolute inset-0 pointer-events-none bg-cover bg-center blur-2xl scale-125 ${
-                                isFinalCutscene ? 'opacity-50 mix-blend-screen' : 'opacity-25 mix-blend-screen'
-                            }`}
-                            style={{ backgroundImage: `url(${vfx.illustrationUrl})` }}
-                        />
-
-                        <div 
-                            className={`relative w-full rounded-2xl md:rounded-3xl backdrop-blur-2xl shadow-[0_0_90px_rgba(0,0,0,0.95)] flex items-center justify-center overflow-hidden transform -rotate-1 ${
-                                isFinalCutscene
-                                    ? 'max-w-5xl py-5 sm:py-7 md:py-10 px-5 sm:px-8 md:px-12 border-y-2 md:border-y-4 border-amber-300 gap-5 sm:gap-8 md:gap-12'
-                                    : 'max-w-2xl sm:max-w-3xl py-3 sm:py-4 md:py-6 px-4 sm:px-6 md:px-8 border-y-2 border-amber-400/80 gap-3 sm:gap-5 md:gap-8'
+                        {/* 대각선 슬래시 배너 컨테이너 */}
+                        <div
+                            className={`relative w-full max-w-4xl overflow-hidden rounded-2xl border-y-2 transform -skew-y-2 shadow-2xl flex items-center gap-4 sm:gap-7 px-4 sm:px-8 ${
+                                isFinalCutscene ? 'py-4 sm:py-6 border-amber-300' : 'py-3 sm:py-4 border-cyan-300/90'
                             }`}
                             style={{
-                                background: isFinalCutscene
-                                    ? `linear-gradient(135deg, rgba(10, 15, 30, 0.98) 0%, rgba(30, 20, 65, 0.98) 50%, rgba(10, 15, 30, 0.98) 100%)`
-                                    : `linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(25, 25, 55, 0.95) 50%, rgba(15, 23, 42, 0.95) 100%)`,
-                                boxShadow: `0 0 ${isFinalCutscene ? '90px' : '50px'} ${theme.glow}, inset 0 0 30px rgba(251, 191, 36, 0.4)`
+                                background: `linear-gradient(125deg, rgba(2, 6, 23, 0.95) 0%, ${theme.primary}44 50%, rgba(2, 6, 23, 0.95) 100%)`,
+                                boxShadow: `0 0 40px ${theme.glow}`
                             }}
                         >
-                            {/* Shimmer line */}
-                            <motion.div
-                                initial={{ x: '-100%' }}
-                                animate={{ x: '250%' }}
-                                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-                                className="absolute inset-0 w-1/2 bg-gradient-to-r from-transparent via-amber-300/30 to-transparent skew-x-12"
+                            {/* 배경 스피드라인 장식 */}
+                            <div
+                                className="absolute inset-0 opacity-25 pointer-events-none"
+                                style={{
+                                    backgroundImage: `repeating-linear-gradient(-25deg, transparent, transparent 14px, ${theme.accent}33 14px, ${theme.accent}33 16px)`
+                                }}
                             />
 
-                            {/* Cutin Image Frame - 파이널 클래스는 초대형, 라스트 클래스는 대형 */}
-                            <div 
-                                className={`relative rounded-xl md:rounded-2xl overflow-hidden shadow-2xl shrink-0 group transform -rotate-2 ${
+                            {/* 시전자 / 스킬 일러스트 아바타 프레임 */}
+                            <div
+                                className={`relative shrink-0 rounded-xl overflow-hidden border-2 transform rotate-1 bg-slate-950 ${
                                     isFinalCutscene
-                                        ? 'w-32 h-32 sm:w-44 sm:h-44 md:w-60 md:h-60 lg:w-72 lg:h-72 border-3 sm:border-4 md:border-5 border-amber-300'
-                                        : 'w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 border-2 sm:border-3 border-amber-400/90'
+                                        ? 'w-28 h-28 sm:w-40 sm:h-40 md:w-48 md:h-48 border-amber-300'
+                                        : 'w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36 border-white/80'
                                 }`}
-                                style={{ boxShadow: `0 0 ${isFinalCutscene ? '50px' : '30px'} ${theme.glow}` }}
                             >
-                                <img 
-                                    src={vfx.illustrationUrl} 
-                                    alt={vfx.skillName || "Skill Cutin"} 
+                                <img
+                                    src={vfx.illustrationUrl}
+                                    alt={vfx.skillName || 'Skill Cutin'}
                                     referrerPolicy="no-referrer"
                                     className="w-full h-full object-cover scale-105"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                                <div
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{
+                                        background: `linear-gradient(to top, ${theme.primary}66 0%, transparent 50%)`
+                                    }}
+                                />
                             </div>
 
-                            {/* Skill & Caster Details */}
+                            {/* 시전자 이름 & 스킬명 타이포그래피 */}
                             <div className="flex flex-col justify-center text-left z-10 min-w-0 flex-1">
                                 {vfx.attackerName && (
-                                    <span className={`font-black tracking-widest text-amber-300 uppercase flex items-center gap-1.5 drop-shadow ${
-                                        isFinalCutscene ? 'text-xs sm:text-sm md:text-base' : 'text-[11px] sm:text-xs'
-                                    }`}>
-                                        <Sparkles size={isFinalCutscene ? 16 : 13} className="text-amber-400 shrink-0" />
+                                    <div className="flex items-center gap-1.5 text-amber-300 font-black tracking-widest text-xs sm:text-sm uppercase">
+                                        <Sparkles size={14} className="text-amber-400 shrink-0" />
                                         <span className="truncate">{vfx.attackerName}</span>
-                                    </span>
+                                        <span className="text-[10px] px-2 py-0.5 rounded bg-black/50 border border-white/20 text-white/90 ml-1">
+                                            {isFinalCutscene ? 'FINAL AWAKENING' : 'OVERDRIVE CUT-IN'}
+                                        </span>
+                                    </div>
                                 )}
-                                <h2 
-                                    className={`font-black tracking-wider text-transparent bg-clip-text drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] py-0.5 sm:py-1 leading-tight break-words ${
+                                <h2
+                                    className={`font-black tracking-tight text-transparent bg-clip-text py-1 leading-tight break-words ${
                                         isFinalCutscene
-                                            ? 'text-lg sm:text-2xl md:text-3xl lg:text-4xl'
-                                            : 'text-base sm:text-xl md:text-2xl lg:text-3xl'
+                                            ? 'text-xl sm:text-3xl md:text-4xl'
+                                            : 'text-lg sm:text-2xl md:text-3xl'
                                     }`}
                                     style={{
-                                        backgroundImage: `linear-gradient(to right, #ffffff, ${theme.accent}, ${theme.secondary})`,
-                                        filter: `drop-shadow(0 0 16px ${theme.glow})`
+                                        backgroundImage: `linear-gradient(to right, #ffffff, ${theme.accent}, ${theme.primary})`
                                     }}
                                 >
-                                    {vfx.skillName || "필살 오의"}
+                                    {vfx.skillName || '초월 비기'}
                                 </h2>
-                                <span className={`font-mono text-amber-200/90 mt-0.5 sm:mt-1 flex items-center gap-1.5 font-bold ${
-                                    isFinalCutscene ? 'text-[11px] sm:text-xs md:text-sm' : 'text-[10px] sm:text-[11px]'
-                                }`}>
-                                    <Crown size={isFinalCutscene ? 16 : 13} className="text-amber-400 shrink-0"/>
-                                    <span className="truncate">{isFinalCutscene ? `★ ${tierLabel} ★` : tierLabel}</span>
-                                </span>
+                                <div className="text-[11px] sm:text-xs font-mono font-bold text-slate-200/90 flex items-center gap-1.5 mt-0.5">
+                                    <Crown size={13} className="text-amber-400 shrink-0" />
+                                    <span className="truncate">{tierLabel}</span>
+                                </div>
                             </div>
                         </div>
                     </motion.div>
@@ -2839,6 +1779,9 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
     );
 };
 
+// ============================================================================
+// 초고속 프레임 애니메이션 렌더러 (비트맵 사전 캐싱 + 60FPS Delta-Time + 크로스페이드 보간)
+// ============================================================================
 export interface SkillFrameAnimationRendererProps {
     anim?: SkillFrameAnimation | null;
     isPlaying?: boolean;
@@ -2852,12 +1795,11 @@ export interface SkillFrameAnimationRendererProps {
     onFrameDrag?: (frameId: string, newX: number, newY: number) => void;
 }
 
-// 고성능 이미지 및 최적화 다운샘플 캔버스 캐시
 const frameImageCache = new Map<string, HTMLCanvasElement | HTMLImageElement>();
 
 const getFrameImage = (url: string, onLoad?: () => void): HTMLCanvasElement | HTMLImageElement | null => {
     if (!url) return null;
-    let cached = frameImageCache.get(url);
+    const cached = frameImageCache.get(url);
     if (!cached) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
@@ -2869,21 +1811,23 @@ const getFrameImage = (url: string, onLoad?: () => void): HTMLCanvasElement | HT
             try {
                 const nw = img.naturalWidth || img.width || 0;
                 const nh = img.naturalHeight || img.height || 0;
-                // 고해상도 대용량 이미지(가로/세로 380px 초과)인 경우 렉 방지를 위해 오프스크린 캔버스로 즉시 다운샘플링 캐싱
-                if (nw > 380 || nh > 380) {
-                    const maxDim = 360;
+                // 모든 프레임을 최대 320px 고속 오프스크린 캔버스 비트맵으로 구워 디코딩 렉 0ms화
+                if (nw > 0 && nh > 0) {
+                    const maxDim = 320;
                     let targetW = nw;
                     let targetH = nh;
-                    if (nw > nh) {
-                        targetH = Math.round((nh * maxDim) / nw);
-                        targetW = maxDim;
-                    } else {
-                        targetW = Math.round((nw * maxDim) / nh);
-                        targetH = maxDim;
+                    if (nw > maxDim || nh > maxDim) {
+                        if (nw > nh) {
+                            targetH = Math.round((nh * maxDim) / nw);
+                            targetW = maxDim;
+                        } else {
+                            targetW = Math.round((nw * maxDim) / nh);
+                            targetH = maxDim;
+                        }
                     }
                     const offCanvas = document.createElement('canvas');
-                    offCanvas.width = targetW;
-                    offCanvas.height = targetH;
+                    offCanvas.width = Math.max(1, targetW);
+                    offCanvas.height = Math.max(1, targetH);
                     const offCtx = offCanvas.getContext('2d');
                     if (offCtx) {
                         offCtx.imageSmoothingEnabled = true;
@@ -2893,11 +1837,9 @@ const getFrameImage = (url: string, onLoad?: () => void): HTMLCanvasElement | HT
                     }
                 }
             } catch {
-                // 다운샘플링 실패 시 원본 img 유지
+                // fallback to img
             }
-            if (onLoad) {
-                onLoad();
-            }
+            if (onLoad) onLoad();
         };
 
         if (img.complete && (img.naturalWidth || 0) > 0) {
@@ -2912,11 +1854,36 @@ const getFrameImage = (url: string, onLoad?: () => void): HTMLCanvasElement | HT
     return cached;
 };
 
+/**
+ * 전투 시작 시 플레이어와 동료의 모든 프레임 애니메이션 이미지를 백그라운드에서 미리 비트맵 캐싱
+ */
+export function preloadSkillFrameAnimations(character: any): void {
+    if (!character) return;
+    try {
+        const allSkills: any[] = [
+            ...(character.skills || []),
+            ...(character.bondSkills || []),
+            ...((character.companions || []).flatMap((c: any) => c.skills || []))
+        ];
+        allSkills.forEach(skill => {
+            if (skill?.frameAnimation?.enabled && Array.isArray(skill.frameAnimation.frames)) {
+                skill.frameAnimation.frames.forEach((f: any) => {
+                    if (f?.imageUrl) {
+                        getFrameImage(f.imageUrl);
+                    }
+                });
+            }
+        });
+    } catch {
+        // ignore preload errors
+    }
+}
+
 const BLEND_MODE_MAP: Record<string, GlobalCompositeOperation> = {
     normal: 'source-over',
     screen: 'screen',
-    lighten: 'lighten',
-    overlay: 'overlay',
+    lighten: 'lighter',
+    overlay: 'overlay'
 };
 
 export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererProps> = ({
@@ -2926,13 +1893,14 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
     onFrameChange,
     playbackSpeed = 1,
     loop = true,
-    className = "",
-    showCrosshair = false,
+    className = '',
+    showCrosshair = false
 }) => {
     const frames = anim?.frames || [];
     const containerRef = React.useRef<HTMLDivElement>(null);
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const activeIdxRef = React.useRef<number>(0);
+    const subFrameProgressRef = React.useRef<number>(0);
     const animFrameReqRef = React.useRef<number | null>(null);
     const lastFrameTimeRef = React.useRef<number>(0);
     const renderScaleRef = React.useRef<number>(1);
@@ -2940,105 +1908,121 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
     const onFrameChangeRef = React.useRef(onFrameChange);
     onFrameChangeRef.current = onFrameChange;
 
-    const isControlled = (currentFrameIndex !== undefined && currentFrameIndex >= 0 && currentFrameIndex < frames.length);
-    const targetIdx = isControlled ? currentFrameIndex : activeIdxRef.current;
-    activeIdxRef.current = targetIdx;
+    const isControlled = currentFrameIndex !== undefined && currentFrameIndex >= 0 && currentFrameIndex < frames.length;
+    if (isControlled) {
+        activeIdxRef.current = currentFrameIndex;
+    }
 
-    // 1. 모든 프레임 이미지 사전 로드 캐싱
+    // 1. 프레임 사전 캐싱
     React.useEffect(() => {
         if (!frames || frames.length === 0) return;
         frames.forEach(f => {
-            if (f.imageUrl) {
-                getFrameImage(f.imageUrl);
-            }
+            if (f.imageUrl) getFrameImage(f.imageUrl);
         });
     }, [frames]);
 
-    // 2. 단일 캔버스 렌더링 함수 (내부 버퍼 다운스케일 및 좌표계 보정 적용)
-    const drawCurrentFrame = React.useCallback((idx: number) => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+    // 고프레임(예: 8x8=64프레임) 시트가 옛날 기본값(70~100ms)으로 설정되어 5초씩 늘어지는 경우,
+    // 자동으로 60FPS(약 18~22ms) 고속 부드러운 재생으로 정규화!
+    const getEffectiveFrameDuration = React.useCallback(
+        (idx: number) => {
+            const rawDur = frames[idx]?.duration || 70;
+            let adjusted = rawDur;
+            if (frames.length >= 36 && rawDur >= 50) {
+                adjusted = 18; // 64프레임 시트 -> 약 1.1초 내 60FPS 초고속 재생
+            } else if (frames.length >= 16 && rawDur >= 65) {
+                adjusted = 32; // 16~35프레임 시트 -> 약 0.6~1.0초 내 부드러운 재생
+            }
+            return Math.max(12, adjusted / Math.max(0.1, playbackSpeed));
+        },
+        [frames, playbackSpeed]
+    );
 
-        const cw = canvas.width;
-        const ch = canvas.height;
-        ctx.clearRect(0, 0, cw, ch);
+    // 단일 프레임 요소 드로잉 헬퍼
+    const drawSingleFrameObject = (
+        ctx: CanvasRenderingContext2D,
+        frame: any,
+        cx: number,
+        cy: number,
+        alphaMultiplier: number
+    ) => {
+        if (!frame || !frame.imageUrl || alphaMultiplier <= 0.02) return;
+        const img = getFrameImage(frame.imageUrl);
+        const isReady =
+            (img instanceof HTMLCanvasElement && img.width > 0) ||
+            (img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0);
+        if (!isReady || !img) return;
 
-        if (cw <= 0 || ch <= 0) return;
-
-        // 고성능 그래픽 렌더링 힌트 및 부드러운 업스케일링
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'medium';
-
-        const scale = renderScaleRef.current || 1;
-
-        // 내부 버퍼가 축소되어도 가상 좌표계는 화면(CSS) 픽셀 단위를 100% 보존
         ctx.save();
-        ctx.scale(scale, scale);
-
-        const cx = (cw / scale) / 2;
-        const cy = (ch / scale) / 2;
-
-        // 십자선 그리기 (에디터 전용 가이드라인)
-        if (showCrosshair) {
-            ctx.save();
-            ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(0, cy);
-            ctx.lineTo(cw / scale, cy);
-            ctx.moveTo(cx, 0);
-            ctx.lineTo(cx, ch / scale);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.arc(cx, cy, 8, 0, Math.PI * 2);
-            ctx.stroke();
-            ctx.restore();
+        ctx.translate(cx + (frame.x || 0), cy + (frame.y || 0));
+        if (frame.rotation) {
+            ctx.rotate((frame.rotation * Math.PI) / 180);
         }
+        const frameScale = frame.scale ?? 1;
+        ctx.scale(frameScale, frameScale);
+        ctx.globalAlpha = Math.max(0, Math.min(1, (frame.opacity ?? 1) * alphaMultiplier));
+        ctx.globalCompositeOperation = BLEND_MODE_MAP[frame.blendMode || 'screen'] || 'screen';
 
-        const frame = frames[idx];
-        if (!frame || !frame.imageUrl) {
-            ctx.restore();
-            return;
-        }
-
-        const img = getFrameImage(frame.imageUrl, () => {
-            if (activeIdxRef.current === idx) {
-                drawCurrentFrame(idx);
-            }
-        });
-
-        const isReady = (img instanceof HTMLCanvasElement && img.width > 0) || 
-                        (img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0);
-
-        if (isReady && img) {
-            ctx.save();
-            ctx.translate(cx + (frame.x || 0), cy + (frame.y || 0));
-
-            if (frame.rotation) {
-                ctx.rotate((frame.rotation * Math.PI) / 180);
-            }
-
-            const frameScale = frame.scale ?? 1;
-            ctx.scale(frameScale, frameScale);
-
-            ctx.globalAlpha = Math.max(0, Math.min(1, frame.opacity ?? 1));
-            ctx.globalCompositeOperation = BLEND_MODE_MAP[frame.blendMode || 'normal'] || 'source-over';
-
-            const w = frame.width || 200;
-            const h = frame.height || 200;
-            ctx.drawImage(img, -w / 2, -h / 2, w, h);
-            ctx.restore();
-        }
-
+        const w = frame.width || 220;
+        const h = frame.height || 220;
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
         ctx.restore();
-    }, [frames, showCrosshair]);
+    };
 
-    // 3. 캔버스 해상도 고정 및 배율 최적화 (반응형 ResizeObserver)
-    // 태블릿 등 초고해상도 환경에서 캔버스 내부 버퍼 크기를 가벼운 상한선(최대 480px)으로 제한하여
-    // GPU 필레이트 병목과 발열을 85% 이상 제거하면서 스타일로 부드럽게 꽉 차게 표시
+    // 2. 서브프레임 크로스페이드 보간 & 모션 잔상 렌더링
+    const drawCurrentFrame = React.useCallback(
+        (idx: number, subProgress: number = 0) => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            const cw = canvas.width;
+            const ch = canvas.height;
+            ctx.clearRect(0, 0, cw, ch);
+            if (cw <= 0 || ch <= 0) return;
+
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'medium';
+
+            const scale = renderScaleRef.current || 1;
+            ctx.save();
+            ctx.scale(scale, scale);
+
+            const cx = cw / scale / 2;
+            const cy = ch / scale / 2;
+
+            if (showCrosshair) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, cy);
+                ctx.lineTo(cw / scale, cy);
+                ctx.moveTo(cx, 0);
+                ctx.lineTo(cx, ch / scale);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 재생 중일 때 이전 프레임 잔상(Sub-frame Crossfade)을 부드럽게 블렌딩하여 끊김 현상 완벽 제거
+            if (isPlaying && !isControlled && idx > 0 && subProgress < 0.45) {
+                const prevFrame = frames[idx - 1];
+                const trailAlpha = (0.45 - subProgress) * 0.65;
+                drawSingleFrameObject(ctx, prevFrame, cx, cy, trailAlpha);
+            }
+
+            const frame = frames[idx];
+            drawSingleFrameObject(ctx, frame, cx, cy, 1.0);
+
+            ctx.restore();
+        },
+        [frames, showCrosshair, isPlaying, isControlled]
+    );
+
+    // 3. 캔버스 해상도 최적화
     React.useEffect(() => {
         const container = containerRef.current;
         const canvas = canvasRef.current;
@@ -3048,12 +2032,10 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
         const updateCanvasSize = () => {
             if (!container || !canvas) return;
             const rect = container.getBoundingClientRect();
-            const rawW = Math.max(1, Math.round(rect.width) || 300);
-            const rawH = Math.max(1, Math.round(rect.height) || 300);
+            const rawW = Math.max(1, Math.round(rect.width) || 280);
+            const rawH = Math.max(1, Math.round(rect.height) || 280);
 
-            // 캔버스 내부 렌더링 버퍼 해상도 상한 고정 (태블릿/터치 환경: 최대 360px로 GPU 부하 최적화)
-            const isTouch = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth <= 1280);
-            const MAX_CANVAS_DIM = isTouch ? 360 : 480;
+            const MAX_CANVAS_DIM = 320;
             let targetW = rawW;
             let targetH = rawH;
             let scale = 1;
@@ -3071,11 +2053,10 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
             }
 
             renderScaleRef.current = scale;
-
             if (canvas.width !== targetW || canvas.height !== targetH) {
                 canvas.width = targetW;
                 canvas.height = targetH;
-                drawCurrentFrame(activeIdxRef.current);
+                drawCurrentFrame(activeIdxRef.current, subFrameProgressRef.current);
             }
         };
 
@@ -3092,40 +2073,49 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
         };
     }, [drawCurrentFrame]);
 
-    // 4. 고성능 60fps requestAnimationFrame 타이밍 루프
+    // 4. Delta-Time 기반 60FPS 정밀 루프 (프레임 밀림 및 끊김 100% 방지)
     React.useEffect(() => {
-        if (!isPlaying || frames.length <= 1) {
-            // 정지 상태이거나 프레임이 1개일 때
-            drawCurrentFrame(targetIdx);
+        if (!isPlaying || frames.length <= 1 || isControlled) {
+            drawCurrentFrame(activeIdxRef.current, 0);
             return;
         }
 
         lastFrameTimeRef.current = performance.now();
 
         const tick = (now: number) => {
-            const currentIdx = activeIdxRef.current;
-            const currentDuration = Math.max(1, (frames[currentIdx]?.duration || 100) / Math.max(0.1, playbackSpeed));
-            const elapsed = now - lastFrameTimeRef.current;
+            let currentIdx = activeIdxRef.current;
+            let elapsed = now - lastFrameTimeRef.current;
+            let currentDuration = getEffectiveFrameDuration(currentIdx);
 
-            if (elapsed >= currentDuration) {
-                lastFrameTimeRef.current = now;
-                const nextIdx = (currentIdx + 1) >= frames.length
-                    ? (loop ? 0 : currentIdx)
-                    : (currentIdx + 1);
+            // 경과 시간(Delta-Time)만큼 정확히 프레임 전진 (프레임 드랍 시에도 재생 속도 일정 유지)
+            let advanced = false;
+            while (elapsed >= currentDuration) {
+                elapsed -= currentDuration;
+                const nextIdx = currentIdx + 1 >= frames.length ? (loop ? 0 : frames.length - 1) : currentIdx + 1;
+                if (nextIdx === currentIdx && !loop) {
+                    break;
+                }
+                currentIdx = nextIdx;
+                currentDuration = getEffectiveFrameDuration(currentIdx);
+                advanced = true;
+            }
 
-                if (nextIdx !== currentIdx || loop) {
-                    activeIdxRef.current = nextIdx;
-                    drawCurrentFrame(nextIdx);
-                    if (onFrameChangeRef.current) {
-                        onFrameChangeRef.current(nextIdx);
-                    }
+            if (advanced) {
+                lastFrameTimeRef.current = now - elapsed;
+                activeIdxRef.current = currentIdx;
+                if (onFrameChangeRef.current) {
+                    onFrameChangeRef.current(currentIdx);
                 }
             }
+
+            const subProgress = Math.min(1, elapsed / Math.max(1, currentDuration));
+            subFrameProgressRef.current = subProgress;
+            drawCurrentFrame(currentIdx, subProgress);
 
             animFrameReqRef.current = requestAnimationFrame(tick);
         };
 
-        drawCurrentFrame(activeIdxRef.current);
+        drawCurrentFrame(activeIdxRef.current, 0);
         animFrameReqRef.current = requestAnimationFrame(tick);
 
         return () => {
@@ -3134,20 +2124,20 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
                 animFrameReqRef.current = null;
             }
         };
-    }, [isPlaying, frames, playbackSpeed, loop, drawCurrentFrame, targetIdx]);
+    }, [isPlaying, frames, loop, isControlled, getEffectiveFrameDuration, drawCurrentFrame]);
 
-    // 5. 외부 제어(controlled) 인덱스 변경 시 즉각 렌더링
+    // 5. 에디터 수동 제어 시 즉시 렌더링
     React.useEffect(() => {
-        if (currentFrameIndex !== undefined && currentFrameIndex >= 0 && currentFrameIndex < frames.length) {
+        if (isControlled && currentFrameIndex !== undefined) {
             activeIdxRef.current = currentFrameIndex;
-            drawCurrentFrame(currentFrameIndex);
+            drawCurrentFrame(currentFrameIndex, 0);
         }
-    }, [currentFrameIndex, frames.length, drawCurrentFrame]);
+    }, [isControlled, currentFrameIndex, drawCurrentFrame]);
 
     if (!anim || frames.length === 0) return null;
 
     return (
-        <div 
+        <div
             ref={containerRef}
             className={`relative flex items-center justify-center pointer-events-none select-none w-full h-full overflow-hidden ${className}`}
         >

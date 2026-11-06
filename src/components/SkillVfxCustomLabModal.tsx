@@ -535,14 +535,30 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
         }
     }, [isOpen, initialTab, isCutinUnlocked, isFrameVfxUnlocked, isVideoUnlocked]);
 
-    // Live VFX Simulation Auto-Repeat Interval
-    useEffect(() => {
-        if (!isOpen || activeTab !== 'vfx') return;
-        const timer = setInterval(() => {
-            setVfxLoopKey(prev => prev + 1);
-        }, 1500);
-        return () => clearInterval(timer);
-    }, [isOpen, activeTab]);
+    // Auto Caster Illustration Cut-in Mode ('last_and_final' | 'final_only' | 'custom_only' | 'off')
+    const [autoCasterCutinMode, setAutoCasterCutinMode] = useState<'last_and_final' | 'final_only' | 'custom_only' | 'off'>(() => {
+        try {
+            const saved = localStorage.getItem('game_auto_caster_cutin_mode');
+            if (saved === 'last_and_final' || saved === 'final_only' || saved === 'custom_only' || saved === 'off') {
+                return saved;
+            }
+        } catch {}
+        return 'last_and_final';
+    });
+
+    const handleChangeAutoCutinMode = (mode: 'last_and_final' | 'final_only' | 'custom_only' | 'off') => {
+        setAutoCasterCutinMode(mode);
+        try {
+            localStorage.setItem('game_auto_caster_cutin_mode', mode);
+        } catch {}
+        const labelMap = {
+            last_and_final: '3차(라스트) & 4차(파이널/인연) 시전자 일러스트 자동 컷인 활성화',
+            final_only: '4차(파이널/인연) 등급만 시전자 일러스트 자동 컷인 활성화',
+            custom_only: '직접 등록한 전용 컷신이 있을 때만 컷인 표시',
+            off: '전투 중 모든 스킬 일러스트 컷인 끄기',
+        };
+        showToast(`⚡ [컷인 설정 변경] ${labelMap[mode]}`, 'info');
+    };
 
     const showToast = (text: string, type: 'success' | 'warning' | 'info' = 'info') => {
         setToastMessage({ text, type });
@@ -1786,6 +1802,39 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
 
                             {/* Right: VFX Theme Selector & Live Preview Arena */}
                             <div className="lg:col-span-8 flex flex-col space-y-4 overflow-y-auto custom-scrollbar">
+                                {/* Auto Caster Illustration Cut-in Global Setting */}
+                                <div className="space-y-2 bg-gradient-to-r from-rose-950/50 via-slate-900/90 to-indigo-950/50 p-3.5 rounded-2xl border border-rose-500/40">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <Crown size={14} className="text-rose-400" />
+                                            <span className="text-xs font-bold text-rose-200">⚡ 시전자 일러스트 자동 대각선 컷인 설정 (라스트 이상 기본 적용)</span>
+                                        </div>
+                                        <span className="text-[10px] text-rose-300/80 font-mono">전용 컷신 미등록 시 시전자 일러스트 자동 활용</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                                        {[
+                                            { id: 'last_and_final' as const, label: '3차(라스트) 이상 자동', desc: '추천 · 3차/4차/인연' },
+                                            { id: 'final_only' as const, label: '4차(파이널)만 자동', desc: '파이널/인연 스킬만' },
+                                            { id: 'custom_only' as const, label: '전용 컷신만 표시', desc: '직접 등록한 컷신만' },
+                                            { id: 'off' as const, label: '컷인 모두 끄기', desc: '전투 속도 최우선' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => handleChangeAutoCutinMode(opt.id)}
+                                                className={`p-2 rounded-xl border text-left transition-all ${
+                                                    autoCasterCutinMode === opt.id
+                                                        ? 'bg-rose-950/80 border-rose-400 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
+                                                        : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                                                }`}
+                                            >
+                                                <div className="text-[11px] font-bold truncate">{opt.label}</div>
+                                                <div className="text-[9px] text-slate-400 truncate mt-0.5">{opt.desc}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 {currentSelectedSkill ? (
                                     <>
                                         {/* Skill Target Info Header */}
@@ -1819,7 +1868,7 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
                                         <div className="relative rounded-2xl bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border border-cyan-500/40 p-4 sm:p-6 overflow-hidden flex flex-col items-center justify-between min-h-[240px] shadow-2xl">
                                             <div className="absolute top-2 left-3 text-[10px] sm:text-xs text-slate-400 font-mono flex items-center gap-1 z-10">
                                                 <Eye size={13} className="text-cyan-400 animate-pulse" /> 
-                                                <span>실시간 이펙트 시뮬레이션</span>
+                                                <span>안티그래비티 60FPS 하이퍼 캔버스 시뮬레이션</span>
                                             </div>
 
                                             <div className="relative w-full h-44 flex items-center justify-center my-auto overflow-hidden">
@@ -1832,26 +1881,13 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
                                                     className="relative z-20 flex items-center justify-center transition-transform duration-300"
                                                     style={{ transform: `scale(${editVfxScale})` }}
                                                  >
-                                                    {editVfxShape && editVfxShape !== 'DEFAULT' ? (
-                                                        <RenderCustomVfxShape 
-                                                            shape={editVfxShape} 
-                                                            theme={parsedVfx} 
-                                                            svgGradId="vfx-modal-preview-grad" 
-                                                        />
-                                                    ) : (
-                                                        <motion.div
-                                                            initial={{ scale: 0.2, opacity: 0, rotate: -20 }}
-                                                            animate={{ scale: [0.2, 1.25, 1], opacity: [0, 1, 0], rotate: 10 }}
-                                                            transition={{ duration: 1.3, ease: "easeOut" }}
-                                                            className="w-24 h-24 rounded-full flex items-center justify-center"
-                                                            style={{
-                                                                background: parsedVfx.isGradient ? editVfxColor : `radial-gradient(circle, ${previewPrimaryColor} 0%, rgba(0,0,0,0) 70%)`,
-                                                                boxShadow: `0 0 35px ${previewPrimaryColor}`
-                                                            }}
-                                                        >
-                                                            <Sparkles size={36} className="text-white drop-shadow-[0_0_10px_#fff]" />
-                                                        </motion.div>
-                                                    )}
+                                                    <RenderCustomVfxShape 
+                                                        shape={editVfxShape || 'DEFAULT'} 
+                                                        theme={parsedVfx} 
+                                                        svgGradId="vfx-modal-preview-grad"
+                                                        tier={currentSelectedSkill.tier}
+                                                        loop={true}
+                                                    />
                                                 </div>
                                             </div>
 
@@ -2367,6 +2403,39 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
                             </div>
 
                             <div className="lg:col-span-8 flex flex-col space-y-4 overflow-y-auto custom-scrollbar">
+                                {/* Auto Caster Illustration Cut-in Global Setting */}
+                                <div className="space-y-2 bg-gradient-to-r from-rose-950/50 via-slate-900/90 to-indigo-950/50 p-3.5 rounded-2xl border border-rose-500/40">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <Crown size={14} className="text-rose-400" />
+                                            <span className="text-xs font-bold text-rose-200">⚡ 시전자 일러스트 자동 대각선 컷인 설정 (라스트 이상 기본 적용)</span>
+                                        </div>
+                                        <span className="text-[10px] text-rose-300/80 font-mono">전용 컷신 미등록 시 시전자 일러스트 자동 활용</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                                        {[
+                                            { id: 'last_and_final' as const, label: '3차(라스트) 이상 자동', desc: '추천 · 3차/4차/인연' },
+                                            { id: 'final_only' as const, label: '4차(파이널)만 자동', desc: '파이널/인연 스킬만' },
+                                            { id: 'custom_only' as const, label: '전용 컷신만 표시', desc: '직접 등록한 컷신만' },
+                                            { id: 'off' as const, label: '컷인 모두 끄기', desc: '전투 속도 최우선' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => handleChangeAutoCutinMode(opt.id)}
+                                                className={`p-2 rounded-xl border text-left transition-all ${
+                                                    autoCasterCutinMode === opt.id
+                                                        ? 'bg-rose-950/80 border-rose-400 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
+                                                        : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                                                }`}
+                                            >
+                                                <div className="text-[11px] font-bold truncate">{opt.label}</div>
+                                                <div className="text-[9px] text-slate-400 truncate mt-0.5">{opt.desc}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 {currentSelectedSkill ? (
                                     <>
                                         <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
@@ -2538,6 +2607,39 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
                             </div>
 
                             <div className="lg:col-span-8 flex flex-col space-y-4 overflow-y-auto custom-scrollbar">
+                                {/* Auto Caster Illustration Cut-in Global Setting */}
+                                <div className="space-y-2 bg-gradient-to-r from-rose-950/50 via-slate-900/90 to-indigo-950/50 p-3.5 rounded-2xl border border-rose-500/40">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <Crown size={14} className="text-rose-400" />
+                                            <span className="text-xs font-bold text-rose-200">⚡ 시전자 일러스트 자동 대각선 컷인 설정 (라스트 이상 기본 적용)</span>
+                                        </div>
+                                        <span className="text-[10px] text-rose-300/80 font-mono">전용 컷신 미등록 시 시전자 일러스트 자동 활용</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                                        {[
+                                            { id: 'last_and_final' as const, label: '3차(라스트) 이상 자동', desc: '추천 · 3차/4차/인연' },
+                                            { id: 'final_only' as const, label: '4차(파이널)만 자동', desc: '파이널/인연 스킬만' },
+                                            { id: 'custom_only' as const, label: '전용 컷신만 표시', desc: '직접 등록한 컷신만' },
+                                            { id: 'off' as const, label: '컷인 모두 끄기', desc: '전투 속도 최우선' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => handleChangeAutoCutinMode(opt.id)}
+                                                className={`p-2 rounded-xl border text-left transition-all ${
+                                                    autoCasterCutinMode === opt.id
+                                                        ? 'bg-rose-950/80 border-rose-400 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
+                                                        : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                                                }`}
+                                            >
+                                                <div className="text-[11px] font-bold truncate">{opt.label}</div>
+                                                <div className="text-[9px] text-slate-400 truncate mt-0.5">{opt.desc}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 {currentSelectedSkill ? (
                                     <>
                                         {!isCutinEligible && (
@@ -2785,6 +2887,39 @@ export const SkillVfxCustomLabModal: React.FC<SkillVfxCustomLabModalProps> = ({
                             </div>
 
                             <div className="lg:col-span-8 flex flex-col space-y-4 overflow-y-auto custom-scrollbar">
+                                {/* Auto Caster Illustration Cut-in Global Setting */}
+                                <div className="space-y-2 bg-gradient-to-r from-rose-950/50 via-slate-900/90 to-indigo-950/50 p-3.5 rounded-2xl border border-rose-500/40">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-1.5">
+                                            <Crown size={14} className="text-rose-400" />
+                                            <span className="text-xs font-bold text-rose-200">⚡ 시전자 일러스트 자동 대각선 컷인 설정 (라스트 이상 기본 적용)</span>
+                                        </div>
+                                        <span className="text-[10px] text-rose-300/80 font-mono">전용 컷신 미등록 시 시전자 일러스트 자동 활용</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                                        {[
+                                            { id: 'last_and_final' as const, label: '3차(라스트) 이상 자동', desc: '추천 · 3차/4차/인연' },
+                                            { id: 'final_only' as const, label: '4차(파이널)만 자동', desc: '파이널/인연 스킬만' },
+                                            { id: 'custom_only' as const, label: '전용 컷신만 표시', desc: '직접 등록한 컷신만' },
+                                            { id: 'off' as const, label: '컷인 모두 끄기', desc: '전투 속도 최우선' },
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => handleChangeAutoCutinMode(opt.id)}
+                                                className={`p-2 rounded-xl border text-left transition-all ${
+                                                    autoCasterCutinMode === opt.id
+                                                        ? 'bg-rose-950/80 border-rose-400 text-rose-100 shadow-[0_0_12px_rgba(244,63,94,0.3)]'
+                                                        : 'bg-slate-950/70 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                                                }`}
+                                            >
+                                                <div className="text-[11px] font-bold truncate">{opt.label}</div>
+                                                <div className="text-[9px] text-slate-400 truncate mt-0.5">{opt.desc}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 {currentSelectedSkill ? (
                                     <>
                                         <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
