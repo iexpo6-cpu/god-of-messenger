@@ -279,6 +279,17 @@ export const SuddenEventModal: React.FC<SuddenEventModalProps> = ({
                         {/* 1. 차원의 균열 (폭주하는 신력 결정체) */}
                         {event.type === 'rift_crystal' && (
                             <div className="space-y-3">
+                                {event.enemies?.[0]?.visualUrl && (
+                                    <div className="flex justify-center">
+                                        <div className="relative w-28 h-28 rounded-2xl overflow-hidden border-2 border-cyan-400/50 shadow-lg shadow-cyan-500/20 bg-slate-900">
+                                            <img
+                                                src={event.enemies[0].visualUrl}
+                                                alt={event.enemies[0].name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="grid grid-cols-2 gap-2.5">
                                     <div className="p-3.5 rounded-xl bg-cyan-950/30 border border-cyan-500/30 flex flex-col items-center text-center">
                                         <Award size={20} className="text-cyan-400 mb-1" />

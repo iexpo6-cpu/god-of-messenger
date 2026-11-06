@@ -34,11 +34,11 @@ export interface SuddenEventData {
 }
 
 /**
- * 일반 필드/던전 전투 승리 후 확률적으로 돌발 이벤트 4종 중 하나를 발생시킵니다. (총합 10%)
- * - 차원의 균열 (폭주하는 신력 결정체 난입): 3%
- * - 라이벌 / 수배범 / 타락한 사자 기습 난입: 2%
- * - 떠돌이 고대 대장장이 조우: 2%
- * - 몬스터 군락의 광폭화 (연쇄 토벌 보너스): 3%
+ * 일반 필드/던전 전투 승리 후 확률적으로 돌발 이벤트 4종 중 하나를 발생시킵니다. (총합 5%)
+ * - 차원의 균열 (폭주하는 신력 결정체 난입): 1.5%
+ * - 라이벌 / 수배범 / 타락한 사자 기습 난입: 1.0%
+ * - 떠돌이 고대 대장장이 조우: 1.0%
+ * - 몬스터 군락의 광폭화 (연쇄 토벌 보너스): 1.5%
  */
 export const rollSuddenPostCombatEvent = (
     character: Character,
@@ -57,8 +57,8 @@ export const rollSuddenPostCombatEvent = (
         ? Math.max(1, Math.round(defeatedEnemies.reduce((sum, e) => sum + (e.level || character.level || 1), 0) / defeatedEnemies.length))
         : Math.max(1, character.level || 1);
 
-    // 1. 「차원의 균열 / 폭주하는 신력 결정체 난입」 (3% 확률: 0 ~ 3)
-    if (roll < 3) {
+    // 1. 「차원의 균열 / 폭주하는 신력 결정체 난입」 (1.5% 확률: 0 ~ 1.5)
+    if (roll < 1.5) {
         const expMult = Math.floor(Math.random() * 11) + 10; // 10 ~ 20배
         const masteryBonus = Math.floor(Math.random() * 41) + 40; // +40 ~ +80 숙련도 EXP
         const crystalLevel = Math.max(avgEnemyLevel, character.level || 1);
@@ -75,6 +75,7 @@ export const rollSuddenPostCombatEvent = (
             agi: Math.max(10, Math.floor(rawStats.agi * 0.85))
         };
 
+        const crystalImageUrl = 'https://i.ibb.co/KjKD9VW1/Gemini-Generated-Image-rvlx3prvlx3prvlx.png';
         const crystalEnemy: Enemy = {
             id: `rift_crystal_${Date.now()}`,
             name: '[폭주하는 신력 결정체]',
@@ -84,7 +85,7 @@ export const rollSuddenPostCombatEvent = (
             stats: crystalStats,
             statusEffects: [],
             shinryokuType: '신성계',
-            visualUrl: 'https://i.ibb.co/vxqKL0G/crystal-monster.png',
+            visualUrl: crystalImageUrl,
             description: '차원의 균열에서 뿜어져 나온 고밀도의 순수 신력 덩어리입니다. 공격성은 낮으나 불안정하여 언제 차원 너머로 소멸할지 모릅니다.',
             skills: [
                 {
@@ -101,6 +102,7 @@ export const rollSuddenPostCombatEvent = (
                 }
             ]
         };
+        (crystalEnemy as any).imageUrl = crystalImageUrl;
         (crystalEnemy as any).isRiftCrystal = true;
 
         return {
@@ -119,8 +121,8 @@ export const rollSuddenPostCombatEvent = (
         };
     }
 
-    // 2. ⚔️ 「라이벌 / 수배범 / 타락한 사자의 기습 난입」 (2% 확률: 3 ~ 5)
-    if (roll < 5) {
+    // 2. ⚔️ 「라이벌 / 수배범 / 타락한 사자의 기습 난입」 (1.0% 확률: 1.5 ~ 2.5)
+    if (roll < 2.5) {
         const levelUpCount = Math.floor(Math.random() * 3) + 1; // 1 ~ 3회분 레벨업 경험치
         const playerLevel = Math.max(1, character.level || 1);
 
@@ -198,8 +200,8 @@ export const rollSuddenPostCombatEvent = (
         };
     }
 
-    // 3. 🔨 「떠돌이 고대 대장장이 조우」 (2% 확률: 5 ~ 7)
-    if (roll < 7) {
+    // 3. 🔨 「떠돌이 고대 대장장이 조우」 (1.0% 확률: 2.5 ~ 3.5)
+    if (roll < 3.5) {
         return {
             id: `sudden_blacksmith_${Date.now()}`,
             type: 'ancient_blacksmith',
@@ -211,8 +213,8 @@ export const rollSuddenPostCombatEvent = (
         };
     }
 
-    // 4. 🔥 「몬스터 군락의 광폭화 (연쇄 토벌 보너스)」 (3% 확률: 7 ~ 10)
-    if (roll < 10 && defeatedEnemies.length > 0) {
+    // 4. 🔥 「몬스터 군락의 광폭화 (연쇄 토벌 보너스)」 (1.5% 확률: 3.5 ~ 5.0)
+    if (roll < 5.0 && defeatedEnemies.length > 0) {
         const statMult = 2.5;
         const rewardMult = 5;
 
