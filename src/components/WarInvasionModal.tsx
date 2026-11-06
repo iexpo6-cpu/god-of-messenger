@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Character, Enemy } from '../types';
 import { generateProceduralEnemy } from '../utils';
-import { ShieldAlert, Sword, Flame, X, Shield, AlertTriangle } from 'lucide-react';
+import { ShieldAlert, Sword, Flame, X, Shield, AlertTriangle, Users } from 'lucide-react';
 import { ResultData } from './ActionResultModal';
+import WarTacticsModal from './WarTacticsModal';
 
 interface WarInvasionModalProps {
   character: Character;
@@ -22,6 +23,7 @@ export const WarInvasionModal: React.FC<WarInvasionModalProps> = ({
   onBattle,
 }) => {
   const [selectedNation, setSelectedNation] = useState<string>(pendingInvasions[0] || '');
+  const [isWarTacticsOpen, setIsWarTacticsOpen] = useState(false);
 
   if (!pendingInvasions || pendingInvasions.length === 0) {
     return null;
@@ -100,6 +102,32 @@ export const WarInvasionModal: React.FC<WarInvasionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
+      {isWarTacticsOpen && (
+        <WarTacticsModal
+          isOpen={isWarTacticsOpen}
+          mode="defense"
+          targetNation={activeNation}
+          character={character}
+          onClose={() => setIsWarTacticsOpen(false)}
+          onUpdateCharacter={(newChar, msg) => {
+            onUpdateCharacter(newChar, msg);
+          }}
+          onVictory={(occGain, _isVassal, prevOcc, newOcc, rankName) => {
+            if (onSetResultModalData) {
+              onSetResultModalData({
+                type: 'success',
+                title: '🛡️ 전술 방어전 대승리!',
+                message: `${activeNation} 침공 부대와 적장을 완벽히 격퇴하고 전선 점유율을 확보했습니다!`,
+                items: [
+                  { label: '적용 계급 규정', after: rankName },
+                  { label: '전선 점유율 상승', after: `+${occGain}% 상승!` },
+                  { label: '현재 전선 점유율', before: `${prevOcc}%`, after: `${newOcc}%` }
+                ]
+              });
+            }
+          }}
+        />
+      )}
       <div className="relative w-full max-w-md bg-slate-900 border-2 border-red-600/80 rounded-2xl shadow-2xl shadow-red-950/80 overflow-hidden flex flex-col max-h-[90vh]">
         {/* 상단 붉은 헤더 */}
         <div className="p-4 bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-b border-red-800/50 flex items-center justify-between shrink-0">
@@ -173,13 +201,22 @@ export const WarInvasionModal: React.FC<WarInvasionModalProps> = ({
           <div className="space-y-2 pt-1">
             <p className="text-xs font-bold text-slate-300">⚔️ 방어전 작전 명령 선택</p>
 
-            {/* 직접 참전 버튼 (44px 이상 터치 영역) */}
+            {/* 전술판 총력 방어전 버튼 (신규) */}
+            <button
+              onClick={() => setIsWarTacticsOpen(true)}
+              className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-black text-sm shadow-lg shadow-red-950/80 transition-all flex items-center justify-center gap-2 active:scale-95 border border-red-400/40 animate-pulse"
+            >
+              <Users size={18} />
+              <span>전술판 총력 방어전 (다수 동료 소집 & 결합 전술)</span>
+            </button>
+
+            {/* 직접 참전 버튼 (일반 턴제) */}
             <button
               onClick={() => handleDirectBattle(activeNation)}
-              className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 text-white font-bold text-sm shadow-lg shadow-red-950/80 transition-all flex items-center justify-center gap-2 active:scale-95 border border-red-400/30"
+              className="w-full min-h-[40px] py-2 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold text-xs transition-all flex items-center justify-center gap-2"
             >
-              <Sword size={18} />
-              <span>직접 출전 (방어 전투 개시)</span>
+              <Sword size={15} />
+              <span>일반 턴제 출전</span>
             </button>
 
             {/* 방어 포기 / 후퇴 버튼 */}

@@ -29,6 +29,7 @@ import DemonCityModal from './DemonCityModal';
 import GrandArenaModal from './GrandArenaModal'; 
 import FrontlineModal from './FrontlineModal';
 import BackAlleyModal from './BackAlleyModal';
+import WarTacticsModal from './WarTacticsModal';
 import { ProphetModal } from './ProphetModal';
 import MagyeAwakeningModal from './MagyeAwakeningModal';
 import MagyePromoteModal from './MagyePromoteModal';
@@ -132,6 +133,7 @@ const CityInterface: React.FC<Props> = ({
     const [isDemonCityOpen, setIsDemonCityOpen] = useState(false);
     const [isGrandArenaOpen, setIsGrandArenaOpen] = useState(false); 
     const [isFrontlineOpen, setIsFrontlineOpen] = useState(false);
+    const [isWarTacticsOpen, setIsWarTacticsOpen] = useState(false);
     const [isBackAlleyOpen, setIsBackAlleyOpen] = useState(false);
     const [isProphetOpen, setIsProphetOpen] = useState(false);
     const [isMagyeAwakeningOpen, setIsMagyeAwakeningOpen] = useState(false);
@@ -440,8 +442,8 @@ const CityInterface: React.FC<Props> = ({
             onUpdateCharacter(newChar, `[거점 습격] ${currentNation} 거점 습격으로 목표 점유율을 충족했습니다! (전선 공세 퀘스트 완수 가능)`);
         }
 
-        onAction('[전쟁 습격] 거점 기습');
-        onClose();
+        // 바로 전투로 진입하지 않고, 전술판 총력전 모달(WarTacticsModal) 오픈!
+        setIsWarTacticsOpen(true);
     };
 
     const handleDistrictAction = (action: string) => {
@@ -922,6 +924,31 @@ const CityInterface: React.FC<Props> = ({
                         onUpdateCharacter(character, `[군사 작전] ${loc.nation} 전선 돌파 작전을 개시합니다.`);
                     }}
                     onUpdateCharacter={onUpdateCharacter}
+                />
+            )}
+            {isWarTacticsOpen && loc.nation && (
+                <WarTacticsModal
+                    key="war-tactics-modal"
+                    isOpen={isWarTacticsOpen}
+                    mode="invasion"
+                    targetNation={loc.nation}
+                    character={character}
+                    onClose={() => setIsWarTacticsOpen(false)}
+                    onUpdateCharacter={onUpdateCharacter}
+                    onVictory={(occGain, isVassalized, prevOcc, newOcc, rankName) => {
+                        setResultData({
+                            type: 'success',
+                            title: isVassalized ? '🏛️ 국가 정벌 완수 (속국 복속)' : '🚩 거점 전술 습격 대승리!',
+                            message: isVassalized
+                                ? `${loc.nation}의 총사령관을 완전히 굴복시켜 속국으로 복속시켰습니다!`
+                                : `${loc.nation}의 거점 방어선과 적장을 격파하여 전선 점유율을 획득했습니다!`,
+                            items: [
+                                { label: '적용 계급 규정', after: rankName },
+                                { label: '전선 점유율 상승', after: `+${occGain}% 상승!` },
+                                { label: '현재 전선 점유율', before: `${prevOcc}%`, after: `${newOcc}%` }
+                            ]
+                        });
+                    }}
                 />
             )}
             {isBackAlleyOpen && (

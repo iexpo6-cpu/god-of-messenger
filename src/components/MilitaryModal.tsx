@@ -17,6 +17,7 @@ import ActionResultResultModal, { ResultData } from './ActionResultModal';
 import MilitaryFacilityModal from './MilitaryFacilityModal';
 import MilitaryTrainingModal from './MilitaryTrainingModal'; 
 import NationalDiplomacyModal from './NationalDiplomacyModal'; 
+import WarTacticsModal from './WarTacticsModal'; 
 import { getShinryokuThematicClassName, checkAndInitializeLiberationEligibility, getCompanionCP } from '../services/companionGrowthService';
 import { determineRecruitClassTier } from '../services/classLiberationHelper';
 
@@ -40,6 +41,7 @@ const MilitaryModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter,
     const [isFacilityOpen, setIsFacilityOpen] = useState(false);
     const [isTrainingOpen, setIsTrainingOpen] = useState(false);
     const [isDiplomacyOpen, setIsDiplomacyOpen] = useState(false); 
+    const [warTacticsTargetNation, setWarTacticsTargetNation] = useState<string | null>(null); 
     const [selectedEnlisteeId, setSelectedEnlisteeId] = useState<string | null>('player');
     const [enlistSort, setEnlistSort] = useState<'eligibleFirst' | 'playerFirst' | 'partyFirst' | 'levelDesc' | 'levelAsc' | 'cpDesc' | 'cpAsc' | 'nameAsc'>('eligibleFirst');
     const [enlistFilter, setEnlistFilter] = useState<'all' | 'eligible' | 'party' | 'companion' | 'ineligible'>('all');
@@ -771,6 +773,28 @@ const MilitaryModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter,
             {isFacilityOpen && <MilitaryFacilityModal character={character} onClose={() => setIsFacilityOpen(false)} onUpdateCharacter={onUpdateCharacter} effectiveCommander={commander!} />}
             {isTrainingOpen && <MilitaryTrainingModal character={character} onClose={() => setIsTrainingOpen(false)} onUpdateCharacter={onUpdateCharacter} effectiveCommander={commander!} />}
             {isDiplomacyOpen && <NationalDiplomacyModal character={character} onClose={() => setIsDiplomacyOpen(false)} onUpdateCharacter={onUpdateCharacter} />}
+            {warTacticsTargetNation && (
+                <WarTacticsModal
+                    isOpen={Boolean(warTacticsTargetNation)}
+                    mode="defense"
+                    targetNation={warTacticsTargetNation}
+                    character={character}
+                    onClose={() => setWarTacticsTargetNation(null)}
+                    onUpdateCharacter={onUpdateCharacter}
+                    onVictory={(occGain, _isVassal, prevOcc, newOcc, rankName) => {
+                        setResultData({
+                            type: 'success',
+                            title: '🛡️ 전술 거점 방어 대승리!',
+                            message: `${warTacticsTargetNation} 침공 부대를 완벽히 격퇴하고 전선 지배율을 확보했습니다!`,
+                            items: [
+                                { label: '적용 계급 규정', after: rankName },
+                                { label: '전선 점유율 상승', after: `+${occGain}% 상승!` },
+                                { label: '현재 전선 점유율', before: `${prevOcc}%`, after: `${newOcc}%` }
+                            ]
+                        });
+                    }}
+                />
+            )}
 
             {/* 작전 브리핑 팝업 */}
             {selectedMission && (
@@ -1417,18 +1441,24 @@ const MilitaryModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter,
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="flex gap-2 w-full md:w-auto">
+                                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                                             <button 
                                                 onClick={() => handleIgnoreInvasion(nationName)}
-                                                className="flex-1 md:flex-none px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors"
+                                                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-xs transition-colors"
                                             >
                                                 방치
                                             </button>
                                             <button 
                                                 onClick={() => handleDefendInvasion(nationName)}
-                                                className="flex-1 md:flex-none px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-rose-900/30 transition-colors flex items-center justify-center gap-1.5"
+                                                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
                                             >
-                                                <Sword size={15}/> 방어전 출격
+                                                <Sword size={13}/> 일반 출격
+                                            </button>
+                                            <button 
+                                                onClick={() => setWarTacticsTargetNation(nationName)}
+                                                className="px-4 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-rose-900/40 transition-colors flex items-center justify-center gap-1.5 animate-pulse"
+                                            >
+                                                <Users size={14}/> 전술판 총력 방어전
                                             </button>
                                         </div>
                                     </div>
