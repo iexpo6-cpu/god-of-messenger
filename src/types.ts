@@ -1952,6 +1952,7 @@ export interface Character {
         dungeonId?: string; // [NEW]
         obtainedBossLoots?: any[];
         bossBattlePreInventory?: string[];
+        gridDungeon?: any;
     };
     systemSettings?: SystemSettings; // [NEW] 게임 시스템 및 시뮬레이션 설정
 }

@@ -1718,17 +1718,14 @@ const App: React.FC = () => {
         if (sceneType === 'normal' && combatState.isEnded && (combatState.type === 'dungeon' || combatState.type === 'instant_dungeon')) {
             const isVictory = combatState.enemies.every(e => e.hp <= 0);
             if (isVictory) {
-                if (combatState.type === 'dungeon') {
-                    setIsDungeonOpen(true);
-                }
                 const newChar = { ...character };
                 if (newChar.dungeonProgress) {
                     const dp = newChar.dungeonProgress;
                     let currentNode = null;
-                    if (dp.currentNodeId) {
+                    if (dp.currentNodeId && dp.nodes && dp.nodes.length > 0) {
                         currentNode = dp.nodes.find((n: any) => n.id === dp.currentNodeId);
                     }
-                    if (!currentNode && dp.currentIndex !== undefined && dp.nodes[dp.currentIndex]) {
+                    if (!currentNode && dp.currentIndex !== undefined && dp.nodes && dp.nodes[dp.currentIndex]) {
                         currentNode = dp.nodes[dp.currentIndex];
                     }
                     
@@ -1741,12 +1738,24 @@ const App: React.FC = () => {
                         }
                     }
 
-                    const isBossNode = currentNode?.type === 'Boss' || (dp.nodes.every((n: any) => n.isCompleted));
+                    const isGridBoss = dp.gridDungeon
+                        ? (Boolean(dp.gridDungeon.bossDefeated) || (typeof dp.currentNodeId === 'string' && dp.currentNodeId.startsWith('boss_')))
+                        : false;
+                    const isBossNode = dp.gridDungeon
+                        ? isGridBoss
+                        : (currentNode?.type === 'Boss' || (dp.nodes && dp.nodes.length > 0 && dp.nodes.every((n: any) => n.isCompleted)));
                     
                     if (!isBossNode) {
+                        if (combatState.type === 'dungeon') {
+                            setIsDungeonOpen(true);
+                        }
                         addToLog(`[던전] 구역 소탕 완료! 다음 탐색 루트를 선택할 수 있습니다.`);
                         setCharacter(newChar);
                     } else {
+                        // 보스 처치 시 던전 모달을 닫고 자동 퇴장
+                        if (combatState.type === 'dungeon') {
+                            setIsDungeonOpen(false);
+                        }
                         addToLog(`[던전 정복] 던전의 모든 위협을 제거하고 보스를 격퇴했습니다!`);
 
                         // [MODIFIED] 보스 처치 시 해당 도시 던전 클리어 기록 (오늘 다시 입장 불가)
@@ -1793,14 +1802,12 @@ const App: React.FC = () => {
                                 
                                 // 던전 목록에서 제거
                                 finalChar.instantDungeons.splice(dungeonIndex, 1);
-                                // [MODIFIED] 던전 진행도 초기화는 던전 모달에서 선택 후 처리
-                                // finalChar.dungeonProgress = undefined; 
+                                finalChar.dungeonProgress = undefined;
                                 addToLog(`[던전 소멸] ${dungeon.name}이(가) 붕괴되어 사라졌습니다.`);
                             }
                         } else {
-                            // 일반 던전 보스 클리어 시
-                            // [MODIFIED] 던전 진행도 초기화는 던전 모달에서 선택 후 처리
-                            // finalChar.dungeonProgress = undefined; 
+                            // 일반 던전 보스 클리어 시 던전 진행도 초기화 및 자동 나가기
+                            finalChar.dungeonProgress = undefined;
                             setTimeout(() => {
                                 setResultModalData({
                                     type: 'levelup',

@@ -18,9 +18,8 @@ export const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 // 구글 드라이브 권한 스코프 추가
 provider.addScope('https://www.googleapis.com/auth/drive');
-provider.setCustomParameters({
-  prompt: 'select_account'
-});
+provider.addScope('https://www.googleapis.com/auth/drive.file');
+provider.addScope('https://www.googleapis.com/auth/drive.appdata');
 
 // 스토리지 캐시 키
 const GDRIVE_AUTH_CACHE_KEY = 'shinryoku_gdrive_auth_session_v3';
@@ -404,10 +403,12 @@ export const refreshDriveAccessTokenSilently = async (): Promise<string | null> 
         }, 8000);
 
         try {
+          const currentUserEmail = currentUser?.email || loadAuthFromCache()?.email || '';
           const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
             client_id: clientId,
             scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/drive.file',
-            prompt: '', // 무음 처리 (팝업 없이 백그라운드 자동 갱신)
+            prompt: '',
+            hint: currentUserEmail || undefined,
             callback: (response: any) => {
               if (hasResolved) return;
               hasResolved = true;
@@ -448,7 +449,7 @@ export const refreshDriveAccessTokenSilently = async (): Promise<string | null> 
             }
           });
 
-          tokenClient.requestAccessToken({ prompt: '' });
+          tokenClient.requestAccessToken({ prompt: '', hint: currentUserEmail || undefined });
         } catch (err) {
           if (!hasResolved) {
             hasResolved = true;
