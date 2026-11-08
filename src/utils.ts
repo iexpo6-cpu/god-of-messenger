@@ -20,7 +20,7 @@ import { isMythicSeasonalBoss } from './mythicbossmonsters';
 import { elixirRealtimeService } from './services/elixirRealtimeService';
 import { isAttackSkillWithBuff } from './utils/finalClassSkillHelper';
 import { calculateDotDamage } from './services/dotDamageService';
-import { getCachedFinalStats } from './services/combatPerformanceService';
+import { getCachedFinalStats, buildEntityStatsSignature } from './services/combatPerformanceService';
 import { processBossDetailedLoot, ensureBossLootProcessed } from './services/bossLootBoostService';
 import { calculateBossSetEffects } from './services/bossSetEffectService';
 import { calculateControlPenetration, calculateControlResistance, getEffectiveDefenseWithControl, adjustDebuffRateWithControl } from './services/controlCombatService';
@@ -80,12 +80,26 @@ export const gainProfessionExp = (character: Character, profession: keyof NonNul
     return { newChar, leveledUp, oldLevel, newLevel: mastery.level };
 };
 
+const combatPowerWeakCache = new WeakMap<object, { sig: string; cp: number }>();
+
 /**
  * [NEW] 종합 전투력(Combat Power) 계산기
  * 기본 스탯 외에 물리/마법 공격력, 물리/마법 방어력, 치명타율, 치명타 피해량, 상태이상 저항, 명중/회피 등 파생 전투 스탯을 종합 반영합니다.
  */
 export const calculateCombatPower = (target: Character | Companion): number => {
     if (!target) return 0;
+
+    let targetSig: string | undefined = undefined;
+    if (typeof target === 'object' && target !== null) {
+        try {
+            targetSig = buildEntityStatsSignature(target, true);
+            const cached = combatPowerWeakCache.get(target);
+            if (cached && cached.sig === targetSig) {
+                return cached.cp;
+            }
+        } catch (_) {}
+    }
+
     try {
         const { finalStats: fs } = calculateFinalStats(target, { excludeTemporaryBuffs: true });
         const equipment = (target as any).equipment;
@@ -274,7 +288,7 @@ export const calculateCombatPower = (target: Character | Companion): number => {
         });
 
         // 3. 전투력 밸런싱 엔진 위임 호출 (3번 공방 점감곡선 + 4번 기존 파생스탯 프리미엄 상향)
-        return computeRefinedCombatPower({
+        const computedCP = computeRefinedCombatPower({
             hp,
             mp,
             str,
@@ -306,6 +320,11 @@ export const calculateCombatPower = (target: Character | Companion): number => {
             target,
             skills
         });
+
+        if (typeof target === 'object' && target !== null && targetSig) {
+            combatPowerWeakCache.set(target, { sig: targetSig, cp: computedCP });
+        }
+        return computedCP;
     } catch (e) {
         const stats = (target as any).stats || {};
         const hp = stats.hp || 100;
@@ -322,7 +341,11 @@ export const calculateCombatPower = (target: Character | Companion): number => {
         else if (tier === ClassTier.SECOND) classTierBonus = 8000;
         else if (tier === ClassTier.LAST) classTierBonus = 25000;
         else if (tier === ClassTier.FINAL) classTierBonus = 80000;
-        return Math.floor(hp * 0.25 + mp * 0.25 + (str + agi + int + wis + def) * 2 + ctrl * 1) + classTierBonus;
+        const fallbackCP = Math.floor(hp * 0.25 + mp * 0.25 + (str + agi + int + wis + def) * 2 + ctrl * 1) + classTierBonus;
+        if (typeof target === 'object' && target !== null && targetSig) {
+            combatPowerWeakCache.set(target, { sig: targetSig, cp: fallbackCP });
+        }
+        return fallbackCP;
     }
 };
 
@@ -352,6 +375,20 @@ export interface ItemCombatPowerInfo {
     equippedItem?: Item | null; // 현재 해당 슬롯에 장착되어 있는 기존 장비
 }
 
+const itemStandaloneCpCache = new WeakMap<object, number>();
+let cachedBaseDummyCP: number | null = null;
+const getBaseDummyCP = (): number => {
+    if (cachedBaseDummyCP === null) {
+        const baseDummy: any = {
+            stats: { hp: 500, mp: 200, str: 20, agi: 20, int: 20, wis: 20, def: 20, ctrl: 20 },
+            equipment: {},
+            skills: []
+        };
+        cachedBaseDummyCP = calculateCombatPower(baseDummy);
+    }
+    return cachedBaseDummyCP;
+};
+
 /**
  * [NEW] 아이템의 전투력 및 캐릭터 장착 시 전투력 변동 계산
  */
@@ -360,18 +397,24 @@ export const calculateItemCombatPowerContribution = (item: Item, character?: Cha
 
     const slot = getEquipmentSlotType(item.type);
 
-    // 1. 단독 아이템 전투력 (Baseline Dummy Character를 통한 실제 엔진 기반 계산)
-    const baseDummy: any = {
-        stats: { hp: 500, mp: 200, str: 20, agi: 20, int: 20, wis: 20, def: 20, ctrl: 20 },
-        equipment: {},
-        skills: []
-    };
-    const baseCP = calculateCombatPower(baseDummy);
-    const dummyWithItem: any = {
-        ...baseDummy,
-        equipment: { [slot || 'weapon']: item }
-    };
-    const itemCP = Math.max(1, calculateCombatPower(dummyWithItem) - baseCP);
+    // 1. 단독 아이템 전투력 (Baseline Dummy Character를 통한 실제 엔진 기반 계산 및 캐싱)
+    let itemCP: number;
+    const itemObj = item as object;
+    const cachedItemCp = (typeof itemObj === 'object' && itemObj !== null) ? itemStandaloneCpCache.get(itemObj) : undefined;
+    if (cachedItemCp !== undefined) {
+        itemCP = cachedItemCp;
+    } else {
+        const baseCP = getBaseDummyCP();
+        const dummyWithItem: any = {
+            stats: { hp: 500, mp: 200, str: 20, agi: 20, int: 20, wis: 20, def: 20, ctrl: 20 },
+            equipment: { [slot || 'weapon']: item },
+            skills: []
+        };
+        itemCP = Math.max(1, calculateCombatPower(dummyWithItem) - baseCP);
+        if (typeof itemObj === 'object' && itemObj !== null) {
+            itemStandaloneCpCache.set(itemObj, itemCP);
+        }
+    }
 
     // 2. 캐릭터가 주어지지 않았거나 장착 불가능한 아이템(소비품/재료 등)인 경우
     if (!character || !slot) {

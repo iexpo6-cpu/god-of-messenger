@@ -182,7 +182,7 @@ export const generateWarEnemies = (
                         name: isNamedCommander ? "결사 사수의 일격" : "전선 정밀 제압",
                         description: "전선 점유율이 높아짐에 따라 더욱 강력해진 사수 일격입니다.",
                         type: SkillType.PHYSICAL,
-                        tier: isNamedCommander ? ClassTier.THIRD : ClassTier.SECOND,
+                        tier: isNamedCommander ? ClassTier.LAST : ClassTier.SECOND,
                         mpCost: 20,
                         level: 8,
                         maxLevel: 10,

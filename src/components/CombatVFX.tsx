@@ -2089,10 +2089,12 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
 
             // 경과 시간(Delta-Time)만큼 정확히 프레임 전진 (프레임 드랍 시에도 재생 속도 일정 유지)
             let advanced = false;
+            let reachedEnd = false;
             while (elapsed >= currentDuration) {
                 elapsed -= currentDuration;
                 const nextIdx = currentIdx + 1 >= frames.length ? (loop ? 0 : frames.length - 1) : currentIdx + 1;
                 if (nextIdx === currentIdx && !loop) {
+                    reachedEnd = true;
                     break;
                 }
                 currentIdx = nextIdx;
@@ -2106,6 +2108,13 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
                 if (onFrameChangeRef.current) {
                     onFrameChangeRef.current(currentIdx);
                 }
+            }
+
+            if (reachedEnd) {
+                subFrameProgressRef.current = 1;
+                drawCurrentFrame(currentIdx, 1);
+                animFrameReqRef.current = null;
+                return;
             }
 
             const subProgress = Math.min(1, elapsed / Math.max(1, currentDuration));

@@ -1,4 +1,14 @@
 {
+  "name": "shinryoku-rpg",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --project src/tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --project src/tsconfig.json --noEmit"
+  },
   "devDependencies": {
     "@vitejs/plugin-legacy": "^7.2.1"
   }

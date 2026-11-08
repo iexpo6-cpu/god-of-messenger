@@ -14,7 +14,7 @@ import { buildRelationContextForDialogue, RELATION_DIALOGUE_GUIDELINES } from '.
  */
 const getAi = () => {
   const manualKey = localStorage.getItem('shinryoku_manual_api_key');
-  const apiKey = manualKey || process.env.API_KEY;
+  const apiKey = manualKey || ((typeof process !== 'undefined' && process?.env?.API_KEY) ? process.env.API_KEY : (typeof import.meta !== 'undefined' && (import.meta as any)?.env?.VITE_API_KEY) ? (import.meta as any).env.VITE_API_KEY : undefined);
   
   if (!apiKey) {
     throw new Error("API_KEY_MISSING");

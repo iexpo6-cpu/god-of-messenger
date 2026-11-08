@@ -2091,24 +2091,31 @@ useEffect(() => {
       }
   }, [sceneType, combatState.isEnded, combatState.type, character.hasClearedFinalTrial, character.hasClearedFirstTrial, character.hasClearedSecondTrial, character.hasClearedLastTrial]);
   const handleCompleteQuest = (questId: string) => {
-      const newChar = { ...character };
       let foundQuest: Quest | null = null;
       let isMilitary = false;
       let isOracle = false;
 
-      if (newChar.mercenaryData?.activeQuests) {
-          const idx = newChar.mercenaryData.activeQuests.findIndex(q => q.id === questId);
+      let nextMercenaryData = character.mercenaryData;
+      if (nextMercenaryData?.activeQuests) {
+          const idx = nextMercenaryData.activeQuests.findIndex(q => q.id === questId);
           if (idx !== -1) {
-              foundQuest = newChar.mercenaryData.activeQuests[idx];
-              newChar.mercenaryData.activeQuests.splice(idx, 1);
+              foundQuest = nextMercenaryData.activeQuests[idx];
+              nextMercenaryData = {
+                  ...nextMercenaryData,
+                  activeQuests: nextMercenaryData.activeQuests.filter((_, i) => i !== idx)
+              };
           }
       }
 
-      if (!foundQuest && newChar.militaryData?.activeMissions) {
-          const idx = newChar.militaryData.activeMissions.findIndex(q => q.id === questId);
+      let nextMilitaryData = character.militaryData;
+      if (!foundQuest && nextMilitaryData?.activeMissions) {
+          const idx = nextMilitaryData.activeMissions.findIndex(q => q.id === questId);
           if (idx !== -1) {
-              foundQuest = newChar.militaryData.activeMissions[idx];
-              newChar.militaryData.activeMissions.splice(idx, 1);
+              foundQuest = nextMilitaryData.activeMissions[idx];
+              nextMilitaryData = {
+                  ...nextMilitaryData,
+                  activeMissions: nextMilitaryData.activeMissions.filter((_, i) => i !== idx)
+              };
               isMilitary = true;
               if (foundQuest.type === 'DivineOracle') isOracle = true;
           }
@@ -2118,10 +2125,14 @@ useEffect(() => {
       
       const quest = foundQuest;
 
-      // 추적 목록에서도 제거
-      if (Array.isArray(newChar.trackedQuestIds)) {
-          newChar.trackedQuestIds = newChar.trackedQuestIds.filter(id => id !== questId);
-      }
+      const newChar: Character = {
+          ...character,
+          mercenaryData: nextMercenaryData,
+          militaryData: nextMilitaryData,
+          trackedQuestIds: Array.isArray(character.trackedQuestIds)
+              ? character.trackedQuestIds.filter(id => id !== questId)
+              : character.trackedQuestIds
+      };
       
       if (isOracle) {
           newChar.money += quest.rewardGold;
@@ -2133,25 +2144,23 @@ useEffect(() => {
               const personnelIds = [tp.priestId, tp.subPriestId, ...(tp.knightIds || []), ...(tp.butlerIds || []), ...(tp.maidIds || [])].filter(Boolean) as string[];
               
               const expPerPerson = Math.floor(quest.rewardExp / (personnelIds.length || 1));
-              
-              personnelIds.forEach(id => {
-                  const activeIdx = newChar.companions.findIndex(c => c.id === id);
-                  if (activeIdx !== -1) newChar.companions[activeIdx].currentExp += expPerPerson;
-                  else if (newChar.inactiveCompanions) {
-                      const inactiveIdx = newChar.inactiveCompanions.findIndex(c => c.id === id);
-                      if (inactiveIdx !== -1) newChar.inactiveCompanions[inactiveIdx].currentExp += expPerPerson;
-                  }
-              });
-
               const cityKey = quest.templeKey.split('_')[1];
               const requiredJob = TEMPLE_MESSENGER_MAP[cityKey];
-              if (requiredJob && newChar.job !== requiredJob) {
-                  const mIdx = newChar.companions.findIndex(c => c.job === requiredJob);
-                  if (mIdx !== -1) newChar.companions[mIdx].currentExp += quest.rewardExp;
-                  else if (newChar.inactiveCompanions) {
-                      const miIdx = newChar.inactiveCompanions.findIndex(c => c.job === requiredJob);
-                      if (miIdx !== -1) newChar.inactiveCompanions[miIdx].currentExp += quest.rewardExp;
-                  }
+
+              newChar.companions = newChar.companions.map(c => {
+                  let added = 0;
+                  if (personnelIds.includes(c.id)) added += expPerPerson;
+                  if (requiredJob && newChar.job !== requiredJob && c.job === requiredJob) added += quest.rewardExp;
+                  return added > 0 ? { ...c, currentExp: c.currentExp + added } : c;
+              });
+
+              if (newChar.inactiveCompanions) {
+                  newChar.inactiveCompanions = newChar.inactiveCompanions.map(c => {
+                      let added = 0;
+                      if (personnelIds.includes(c.id)) added += expPerPerson;
+                      if (requiredJob && newChar.job !== requiredJob && c.job === requiredJob) added += quest.rewardExp;
+                      return added > 0 ? { ...c, currentExp: c.currentExp + added } : c;
+                  });
               }
           }
 
@@ -2179,50 +2188,59 @@ useEffect(() => {
               meritGain = quest.rewardMerit || Math.floor(quest.rewardExp / 200);
               if (newChar.militaryData) {
                   newChar.militaryRank = newChar.militaryRank || MilitaryRank.PVT;
-                  newChar.militaryData.merit = (newChar.militaryData.merit || 0) + meritGain;
-                  newChar.militaryData.completedMissions = (newChar.militaryData.completedMissions || 0) + 1;
+                  newChar.militaryData = {
+                      ...newChar.militaryData,
+                      merit: (newChar.militaryData.merit || 0) + meritGain,
+                      completedMissions: (newChar.militaryData.completedMissions || 0) + 1
+                  };
               }
           } else {
               const dangerMult = DANGER_REPUTATION_MULT[quest.danger] || 1;
               const rankScore = MERCENARY_RANK_SCORE[quest.rank as MercenaryRank] || 1;
               repGain = Math.floor(rankScore * 2.4 * dangerMult);
                             
-        if (quest.rewardElfRep) {
-            newChar.elfReputation = Math.min(100, (newChar.elfReputation || 0) + quest.rewardElfRep);
-        }
-        if (quest.rewardBeastRep) {
-            newChar.beastReputation = Math.min(100, (newChar.beastReputation || 0) + quest.rewardBeastRep);
-        }
-        if (quest.rewardDemonRep) {
-            newChar.demonReputation = Math.min(100, (newChar.demonReputation || 0) + quest.rewardDemonRep);
-        }
+              if (quest.rewardElfRep) {
+                  newChar.elfReputation = Math.min(100, (newChar.elfReputation || 0) + quest.rewardElfRep);
+              }
+              if (quest.rewardBeastRep) {
+                  newChar.beastReputation = Math.min(100, (newChar.beastReputation || 0) + quest.rewardBeastRep);
+              }
+              if (quest.rewardDemonRep) {
+                  newChar.demonReputation = Math.min(100, (newChar.demonReputation || 0) + quest.rewardDemonRep);
+              }
 
-        // 일반 용병 명성치 및 완료한 퀘스트 수 항상 상승
-        if (!newChar.mercenaryData) {
-            newChar.mercenaryData = {
-                rank: MercenaryRank.F,
-                registeredDate: character.currentDate || START_DATE,
-                completedQuests: 0,
-                reputation: 0,
-                guildId: 'None',
-                isGroupLeader: false,
-                activeQuests: [],
-                availableQuests: []
-            };
-        }
-        newChar.mercenaryData.reputation = (newChar.mercenaryData.reputation || 0) + repGain;
-        newChar.mercenaryData.completedQuests = (newChar.mercenaryData.completedQuests || 0) + 1;
+              // 일반 용병 명성치 및 완료한 퀘스트 수 항상 상승
+              const currentMerc = newChar.mercenaryData || {
+                  rank: MercenaryRank.F,
+                  registeredDate: character.currentDate || START_DATE,
+                  completedQuests: 0,
+                  reputation: 0,
+                  guildId: 'None',
+                  isGroupLeader: false,
+                  activeQuests: [],
+                  availableQuests: []
+              };
+              newChar.mercenaryData = {
+                  ...currentMerc,
+                  reputation: (currentMerc.reputation || 0) + repGain,
+                  completedQuests: (currentMerc.completedQuests || 0) + 1
+              };
 
-        // [NEW] 마인 계약 시 마정석 추가 획득 (마인 평판 반영)
-        if (quest.type === 'DemonContract') {
-            const currentRep = newChar.demonReputation || 0;
-            const bonusCrystals = Math.floor(currentRep / 10) * 5; // 평판 10당 5개
-            const crystalGain = 10 + Math.max(0, bonusCrystals);
-            if (newChar.base) {
-                newChar.base.resources.manaCrystal += crystalGain;
-            }
-        }
-
+              // [NEW] 마인 계약 시 마정석 추가 획득 (마인 평판 반영)
+              if (quest.type === 'DemonContract') {
+                  const currentRep = newChar.demonReputation || 0;
+                  const bonusCrystals = Math.floor(currentRep / 10) * 5; // 평판 10당 5개
+                  const crystalGain = 10 + Math.max(0, bonusCrystals);
+                  if (newChar.base) {
+                      newChar.base = {
+                          ...newChar.base,
+                          resources: {
+                              ...newChar.base.resources,
+                              manaCrystal: newChar.base.resources.manaCrystal + crystalGain
+                          }
+                      };
+                  }
+              }
           }
        // [ADDED] 동료들에게도 보상 분배 (공훈 및 명성)
           const updateCompanionReward = (c: Companion) => {
@@ -2236,7 +2254,6 @@ useEffect(() => {
               }
               return c;
           };
-
 
           newChar.companions = newChar.companions.map(updateCompanionReward);
           

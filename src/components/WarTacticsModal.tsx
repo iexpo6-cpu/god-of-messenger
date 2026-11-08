@@ -96,7 +96,7 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
     const calculateOccupationGain = (char: Character, isBoss: boolean): number => {
         if (isRaid) return 100; // 최종 수도 결전 승리 시 100%
         if (char.job === JobType.DEMON_GOD) return 15; // 마신: 15%
-        if (char.job.toString().includes('제너럴')) return 10; // 제너럴: 10%
+        if (char.job?.toString().includes('제너럴')) return 10; // 제너럴: 10%
 
         const rank = char.militaryRank || MilitaryRank.PVT;
         const rIdx = MILITARY_RANK_ORDER.indexOf(rank);

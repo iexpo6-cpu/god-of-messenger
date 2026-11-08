@@ -212,7 +212,7 @@ const finalStatsWeakCache = new WeakMap<object, CachedFinalStatsEntry>();
  * 엔티티의 스탯에 영향을 주는 속성들로만 초경량 서명을 생성합니다 (0.01ms 미만).
  * 인벤토리(수백 개 아이템)나 기억, 대화 내역은 서명에서 완전히 제외하여 속도를 극대화합니다.
  */
-const buildEntityStatsSignature = (entity: any, excludeBuffs: boolean): string => {
+export const buildEntityStatsSignature = (entity: any, excludeBuffs: boolean): string => {
     const s = entity.stats || {};
     let sig = `${entity.level || 1}|${entity.job || ''}|${entity.classTier || ''}|${entity.equippedTitleId || ''}|${entity.combatStyle || ''}|${entity.fatigue || 0}|${entity.pregnancy?.isPregnant ? 1 : 0}|${s.str || 0},${s.int || 0},${s.wis || 0},${s.def || 0},${s.agi || 0},${s.ctrl || 0},${s.maxHp || 0},${s.maxMp || 0}`;
 

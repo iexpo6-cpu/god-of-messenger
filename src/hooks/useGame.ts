@@ -170,7 +170,7 @@ export const useGame = () => {
       setPendingTournamentReward(null);
 
       setCharacter(prev => {
-        const updatedChar = { ...prev };
+        const updatedChar = { ...prev, stats: { ...prev.stats } };
         const initialLevel = updatedChar.level;
 
         updatedChar.currentExp += reward.exp;
@@ -371,21 +371,28 @@ export const useGame = () => {
                               (character.inactiveCompanions?.some(c => c.id === rival.id) || false);
            if (!isRecruited && Math.random() < 0.3) {
                 const growthLevel = Math.floor(Math.random()*2+1);
-                const newChar = { ...character };
-                const updatedRival = { ...rival };
-                
-                updatedRival.level += growthLevel;
-                const statBoost = growthLevel * 2;
-                updatedRival.stats = {
-                    ...updatedRival.stats,
-                    str: (updatedRival.stats.str || 10) + statBoost,
-                    int: (updatedRival.stats.int || 10) + statBoost,
-                    def: (updatedRival.stats.def || 10) + statBoost,
-                    agi: (updatedRival.stats.agi || 10) + statBoost,
-                    hp: (updatedRival.stats.hp || 100) + (growthLevel * 20)
+                const updatedRival = {
+                    ...rival,
+                    level: rival.level + growthLevel,
+                    stats: {
+                        ...rival.stats,
+                        str: (rival.stats.str || 10) + statBoost,
+                        int: (rival.stats.int || 10) + statBoost,
+                        def: (rival.stats.def || 10) + statBoost,
+                        agi: (rival.stats.agi || 10) + statBoost,
+                        hp: (rival.stats.hp || 100) + (growthLevel * 20)
+                    }
                 };
 
-                newChar.schoolData!.classmates[rivalIdx] = updatedRival;
+                const updatedClassmates = [...character.schoolData.classmates];
+                updatedClassmates[rivalIdx] = updatedRival;
+                const newChar = {
+                    ...character,
+                    schoolData: {
+                        ...character.schoolData,
+                        classmates: updatedClassmates
+                    }
+                };
                 setCharacter(newChar);
                 
                 setTimeout(() => {
@@ -5906,7 +5913,7 @@ dom.corruption += 10000;
                             let occGain = 1; 
                             if (finalChar.job === JobType.DEMON_GOD) {
                                 occGain = 15; // 마신: 15%
-                            } else if (finalChar.job.toString().includes('제너럴')) {
+                            } else if (finalChar.job?.toString().includes('제너럴')) {
                                 occGain = 10; // 제너럴: 10%
                             } else {
                                 if (commanderInfo) {

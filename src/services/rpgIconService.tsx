@@ -1440,14 +1440,23 @@ export function translateKoreanIconQuery(raw: string): string {
   return trimmed;
 }
 
+const iconSearchCache = new Map<string, string[]>();
+const iconEmblemCache = new Map<string, string>();
+
 export async function searchOpenSourceGameIcons(query: string, limit = 24): Promise<string[]> {
   const translated = translateKoreanIconQuery(query);
+  const cacheKey = `${translated}::${limit}`;
+  if (iconSearchCache.has(cacheKey)) {
+    return iconSearchCache.get(cacheKey)!;
+  }
   try {
     const url = `https://api.iconify.design/search?query=${encodeURIComponent(translated)}&prefix=game-icons&limit=${limit}`;
     const res = await fetch(url);
     if (!res.ok) return [];
     const data = await res.json();
-    return Array.isArray(data?.icons) ? data.icons : [];
+    const icons = Array.isArray(data?.icons) ? data.icons : [];
+    iconSearchCache.set(cacheKey, icons);
+    return icons;
   } catch {
     return [];
   }
@@ -1458,6 +1467,10 @@ export async function fetchOpenSourceGameIconAsEmblemDataUri(
   colorHex = '#fbbf24',
   bgHex = '#0f172a'
 ): Promise<string | null> {
+  const cacheKey = `${iconFullName}::${colorHex}::${bgHex}`;
+  if (iconEmblemCache.has(cacheKey)) {
+    return iconEmblemCache.get(cacheKey)!;
+  }
   try {
     const cleanName = iconFullName.replace(/^game-icons:/, '');
     const svgUrl = `https://api.iconify.design/game-icons/${encodeURIComponent(cleanName)}.svg?color=${encodeURIComponent(colorHex)}`;
@@ -1483,7 +1496,9 @@ export async function fetchOpenSourceGameIconAsEmblemDataUri(
         ${innerPaths}
       </g>
     </svg>`;
-    return `data:image/svg+xml;utf8,${encodeURIComponent(composedSvg)}`;
+    const dataUri = `data:image/svg+xml;utf8,${encodeURIComponent(composedSvg)}`;
+    iconEmblemCache.set(cacheKey, dataUri);
+    return dataUri;
   } catch {
     return null;
   }

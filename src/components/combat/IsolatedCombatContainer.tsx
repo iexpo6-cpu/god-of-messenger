@@ -63,35 +63,38 @@ export const IsolatedCombatContainer: React.FC<IsolatedCombatContainerProps> = m
     // 2. 전투 종료 여부 변경 시 리렌더링
     if (prev.combatState.isEnded !== next.combatState.isEnded) return false;
 
-    // 3. 턴 번호 변경 시 리렌더링
+    // 3. 턴 번호 / 라운드 / 활성 유닛 변경 시 리렌더링
     if (prev.combatState.turn !== next.combatState.turn) return false;
+    if (prev.combatState.round !== next.combatState.round) return false;
+    if (prev.combatState.activeUnitIndex !== next.combatState.activeUnitIndex) return false;
+    if ((prev.combatState.turnQueue || []).length !== (next.combatState.turnQueue || []).length) return false;
 
     // 4. 서사 텍스트 변경 시 리렌더링
     if (prev.narrative !== next.narrative) return false;
 
     // 5. 플레이어 체력 / 마나 / 상태이상 변경 시 리렌더링
-    if (prev.player.stats.hp !== next.player.stats.hp) return false;
-    if (prev.player.stats.mp !== next.player.stats.mp) return false;
-    if (!areStatusEffectsEqual(prev.player.statusEffects, next.player.statusEffects)) return false;
+    if (prev.player?.stats?.hp !== next.player?.stats?.hp) return false;
+    if (prev.player?.stats?.mp !== next.player?.stats?.mp) return false;
+    if (!areStatusEffectsEqual(prev.player?.statusEffects, next.player?.statusEffects)) return false;
 
     // 6. 적 유닛들의 체력 상태 검사
     const prevEnemies = prev.combatState.enemies || [];
     const nextEnemies = next.combatState.enemies || [];
     if (prevEnemies.length !== nextEnemies.length) return false;
     for (let i = 0; i < prevEnemies.length; i++) {
-      if (prevEnemies[i].hp !== nextEnemies[i].hp) return false;
-      if ((prevEnemies[i] as any).mp !== (nextEnemies[i] as any).mp) return false;
-      if (!areStatusEffectsEqual(prevEnemies[i].statusEffects, nextEnemies[i].statusEffects)) return false;
+      if (prevEnemies[i]?.hp !== nextEnemies[i]?.hp) return false;
+      if ((prevEnemies[i] as any)?.mp !== (nextEnemies[i] as any)?.mp) return false;
+      if (!areStatusEffectsEqual(prevEnemies[i]?.statusEffects, nextEnemies[i]?.statusEffects)) return false;
     }
 
     // 7. 동료 유닛들의 체력 상태 검사
-    const prevComps = prev.player.companions || [];
-    const nextComps = next.player.companions || [];
+    const prevComps = prev.player?.companions || [];
+    const nextComps = next.player?.companions || [];
     if (prevComps.length !== nextComps.length) return false;
     for (let i = 0; i < prevComps.length; i++) {
-      if (prevComps[i].stats.hp !== nextComps[i].stats.hp) return false;
-      if (prevComps[i].stats.mp !== nextComps[i].stats.mp) return false;
-      if (!areStatusEffectsEqual(prevComps[i].statusEffects, nextComps[i].statusEffects)) return false;
+      if (prevComps[i]?.stats?.hp !== nextComps[i]?.stats?.hp) return false;
+      if (prevComps[i]?.stats?.mp !== nextComps[i]?.stats?.mp) return false;
+      if (!areStatusEffectsEqual(prevComps[i]?.statusEffects, nextComps[i]?.statusEffects)) return false;
     }
 
     // 8. 전투 로그 길이 변경 시 리렌더링
