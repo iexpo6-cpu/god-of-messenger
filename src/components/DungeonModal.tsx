@@ -17,7 +17,9 @@ import {
     GridDungeonState, 
     GridTile, 
     generateGridDungeonFloor, 
-    revealFogOfWar 
+    revealFogOfWar,
+    updateTileIdentifications,
+    FloorCacheData 
 } from '../services/gridDungeonEngine';
 
 interface Props {
@@ -81,30 +83,89 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         }
 
         // 신규 격자 던전 1층 생성
-        startNewDungeonFloor(0, 0);
+        changeDungeonFloor(0, true);
     };
 
-    const startNewDungeonFloor = (floor: number, accumulatedRunes: number) => {
-        const newDungeon = generateGridDungeonFloor(nation, currentCity, floor, isSeasonalBoss, bossInfo?.name);
-        newDungeon.activeRunesCount = accumulatedRunes;
-
-        const newChar = { ...character };
-        newChar.dungeonProgress = {
-            currentIndex: 0,
-            currentNodeId: `floor_${floor}`,
-            nodes: [],
-            nation,
-            gridDungeon: newDungeon,
-            obtainedBossLoots: []
+    const changeDungeonFloor = (targetFloor: number, isInitial: boolean = false) => {
+        if (!isInitial && !gridState) return;
+        const currentFloor = gridState?.currentFloor ?? 0;
+        const currentCache: Record<number, FloorCacheData> = {
+            ...(gridState?.floorCache || {})
         };
 
-        const logMsg = floor === 0
-            ? `[미궁 탐험] ${currentCity}의 ${isSeasonalBoss ? '시즌 신화 광활 미궁(5층 심연)' : '지하 미궁(3층)'}에 진입했습니다.`
-            : `[미궁 심층 진입] 지하 ${floor + 1}층으로 계단을 내려왔습니다.`;
+        // 1. 현재 층 상태를 cache에 저장 (초기 진입이 아닐 때)
+        if (!isInitial && gridState) {
+            currentCache[currentFloor] = {
+                tiles: gridState.tiles.map(row => row.map(tile => ({ ...tile }))),
+                playerPos: { ...gridState.playerPos },
+                width: gridState.width,
+                height: gridState.height
+            };
+        }
 
-        onUpdateCharacter(newChar, logMsg);
-        setGridState(newDungeon);
-        setSelectedTile(newDungeon.tiles[newDungeon.playerPos.y][newDungeon.playerPos.x]);
+        // 2. 목표 층이 이미 캐시에 있는지 확인
+        if (!isInitial && currentCache[targetFloor]) {
+            const cached = currentCache[targetFloor];
+            const restoredTiles = cached.tiles.map(row => row.map(tile => ({ ...tile })));
+
+            let newPlayerPos = { ...cached.playerPos };
+            if (targetFloor > currentFloor) {
+                // 아래층으로 내려감 -> 대상 층의 stairs_up 또는 entrance 위치로 배치
+                for (let y = 0; y < cached.height; y++) {
+                    for (let x = 0; x < cached.width; x++) {
+                        if (restoredTiles[y][x].type === 'stairs_up' || restoredTiles[y][x].type === 'entrance') {
+                            newPlayerPos = { x, y };
+                            break;
+                        }
+                    }
+                }
+            } else {
+                // 위층으로 올라감 -> 대상 층의 stairs 위치로 배치
+                for (let y = 0; y < cached.height; y++) {
+                    for (let x = 0; x < cached.width; x++) {
+                        if (restoredTiles[y][x].type === 'stairs') {
+                            newPlayerPos = { x, y };
+                            break;
+                        }
+                    }
+                }
+            }
+
+            revealFogOfWar(restoredTiles, newPlayerPos.x, newPlayerPos.y, gridState!.torchRadius);
+            updateTileIdentifications(restoredTiles, newPlayerPos.x, newPlayerPos.y);
+
+            const updatedGrid: GridDungeonState = {
+                ...gridState!,
+                currentFloor: targetFloor,
+                width: cached.width,
+                height: cached.height,
+                playerPos: newPlayerPos,
+                tiles: restoredTiles,
+                floorCache: currentCache
+            };
+
+            const logMsg = targetFloor < currentFloor
+                ? `[미궁 귀환] 계단을 통해 지하 ${targetFloor + 1}층으로 다시 올라왔습니다.`
+                : `[미궁 복귀] 계단을 통해 지하 ${targetFloor + 1}층으로 내려왔습니다.`;
+
+            setGridState(updatedGrid);
+            setSelectedTile(restoredTiles[newPlayerPos.y][newPlayerPos.x]);
+            syncGridToCharacter(updatedGrid, character, logMsg);
+        } else {
+            // 신규 층 생성
+            const newDungeon = generateGridDungeonFloor(nation, currentCity, targetFloor, isSeasonalBoss, bossInfo?.name);
+            newDungeon.activeRunesCount = gridState?.activeRunesCount || 0;
+            newDungeon.totalRunesRequired = isSeasonalBoss ? 3 : 0;
+            newDungeon.floorCache = currentCache;
+
+            const logMsg = targetFloor === 0
+                ? `[미궁 탐험] ${currentCity}의 ${isSeasonalBoss ? '시즌 신화 광활 미궁(5층 심연)' : '지하 미궁(3층)'}에 진입했습니다.`
+                : `[미궁 심층 진입] 지하 ${targetFloor + 1}층으로 계단을 내려왔습니다.`;
+
+            setGridState(newDungeon);
+            setSelectedTile(newDungeon.tiles[newDungeon.playerPos.y][newDungeon.playerPos.x]);
+            syncGridToCharacter(newDungeon, character, logMsg);
+        }
     };
 
     /**
@@ -144,6 +205,8 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         
         // 시야 확장 (Fog of War)
         revealFogOfWar(newTiles, targetX, targetY, gridState.torchRadius);
+        // 근접(1칸) 타일 이벤트 식별
+        updateTileIdentifications(newTiles, targetX, targetY);
 
         const newPos = { x: targetX, y: targetY };
         const updatedGrid: GridDungeonState = {
@@ -294,7 +357,13 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
 
         // 7. 하층 계단 도달 (Stairs)
         if (targetTile.type === 'stairs') {
-            startNewDungeonFloor(currentFloor + 1, currentGrid.activeRunesCount);
+            changeDungeonFloor(currentFloor + 1);
+            return;
+        }
+
+        // 8. 상층 계단 도달 (Stairs Up)
+        if (targetTile.type === 'stairs_up') {
+            changeDungeonFloor(currentFloor - 1);
             return;
         }
 
@@ -463,6 +532,15 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                 <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${isSeasonalBoss ? 'bg-amber-950/80 text-amber-300 border border-amber-700/60' : 'bg-slate-800 text-slate-300'}`}>
                                     {gridState ? `지하 ${gridState.currentFloor + 1}F / ${gridState.maxFloors}F` : '지하 미궁'}
                                 </span>
+                                {gridState && gridState.currentFloor > 0 && (
+                                    <button
+                                        onClick={() => changeDungeonFloor(gridState.currentFloor - 1)}
+                                        className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-700/60 flex items-center gap-1 transition-colors cursor-pointer"
+                                        title="이전 층으로 이동"
+                                    >
+                                        <span>⬆️ 지하 {gridState.currentFloor}F로 복귀</span>
+                                    </button>
+                                )}
                             </div>
                             <p className="text-xs text-slate-400 mt-0.5">
                                 {isSeasonalBoss ? `[신화 보스: ${bossInfo?.name || '신화적 존재'}] 광활한 5층 심연 미궁` : `[던전 보스: ${bossInfo?.name || '미궁 군주'}] 격자 타일 탐색`}
@@ -565,9 +643,13 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                                 {isPlayer ? (
                                                     <span className="text-base sm:text-lg animate-bounce select-none">🧙</span>
                                                 ) : tile.type === 'stairs' ? (
-                                                    <span className="text-cyan-400 text-xs sm:text-sm font-black" title="하층 계단"> лест</span>
+                                                    <span className="text-cyan-300 text-xs sm:text-sm font-black select-none" title="하층 계단">🪜⬇️</span>
+                                                ) : tile.type === 'stairs_up' ? (
+                                                    <span className="text-amber-300 text-xs sm:text-sm font-black select-none" title="상층 계단">🪜⬆️</span>
                                                 ) : tile.type === 'entrance' ? (
-                                                    <span className="text-emerald-400 text-xs sm:text-sm font-bold" title="입구">🚪</span>
+                                                    <span className="text-emerald-400 text-xs sm:text-sm font-bold select-none" title="1층 출구">🚪</span>
+                                                ) : tile.content && !tile.isCleared && !tile.isIdentified ? (
+                                                    <HelpCircle size={16} className="text-amber-400 animate-pulse drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]" title="미지의 반응" />
                                                 ) : tile.content === 'boss' && !tile.isCleared ? (
                                                     <Crown size={18} className="text-amber-400 animate-pulse" />
                                                 ) : tile.content === 'miniboss' && !tile.isCleared ? (
@@ -591,7 +673,7 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
 
                             {/* 가이드 안내 문구 */}
                             <p className="text-[11px] text-slate-500 mt-3 text-center">
-                                * 인접한 밝혀진 타일을 탭하거나 하단 방향키를 눌러 1칸씩 미궁을 개척하세요.
+                                * 인접한 밝혀진 타일을 탭하거나 하단 방향키를 눌러 1칸씩 미궁을 개척하세요. (미지의 ? 기척은 1칸 이내로 접근 시 식별됩니다)
                             </p>
                         </div>
 
@@ -603,23 +685,82 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                                         CURRENT TILE FOCUS
                                     </span>
-                                    <h4 className="text-base font-bold text-white flex items-center gap-2">
-                                        {selectedTile?.name || (selectedTile?.type === 'wall' ? '단단한 석벽' : '미궁 복도')}
-                                    </h4>
-                                    <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                                        {selectedTile?.description || '미궁의 어두운 바닥입니다. 발걸음을 옮겨 시야를 넓힐 수 있습니다.'}
-                                    </p>
-
-                                    {/* 타일 상태 태그 */}
-                                    {selectedTile && (
-                                        <div className="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-slate-900">
-                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                                                좌표: ({selectedTile.x}, {selectedTile.y})
-                                            </span>
-                                            {selectedTile.isCleared && (
-                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-900">
-                                                    소탕/해제 완료
+                                    {selectedTile?.content && !selectedTile.isCleared && !selectedTile.isIdentified ? (
+                                        <>
+                                            <h4 className="text-base font-bold text-amber-300 flex items-center gap-2">
+                                                <HelpCircle size={18} className="animate-pulse text-amber-400" /> 미지의 기척 (식별 필요)
+                                            </h4>
+                                            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                                                어둠 속에서 정체를 알 수 없는 기척이 느껴집니다. 1칸 더 가까이 다가가면 무엇인지 식별할 수 있습니다.
+                                            </p>
+                                            <div className="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-slate-900">
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800">
+                                                    미식별 이벤트 (?)
                                                 </span>
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                                                    좌표: ({selectedTile.x}, {selectedTile.y})
+                                                </span>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <h4 className="text-base font-bold text-white flex items-center gap-2">
+                                                {selectedTile?.name || (selectedTile?.type === 'wall' ? '단단한 석벽' : '미궁 복도')}
+                                            </h4>
+                                            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                                                {selectedTile?.description || '미궁의 어두운 바닥입니다. 발걸음을 옮겨 시야를 넓힐 수 있습니다.'}
+                                            </p>
+
+                                            {/* 타일 상태 태그 */}
+                                            {selectedTile && (
+                                                <div className="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-slate-900">
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                                                        좌표: ({selectedTile.x}, {selectedTile.y})
+                                                    </span>
+                                                    {selectedTile.isCleared && (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-900">
+                                                            소탕/해제 완료
+                                                        </span>
+                                                    )}
+                                                    {selectedTile.content && !selectedTile.isCleared && selectedTile.isIdentified && (
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800">
+                                                            식별 완료
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* 계단 및 입구 인터랙션 액션 버튼 */}
+                                    {selectedTile && gridState && (
+                                        <div className="mt-3 pt-2.5 border-t border-slate-900/80">
+                                            {selectedTile.type === 'stairs' && (
+                                                <button
+                                                    onClick={() => changeDungeonFloor(gridState.currentFloor + 1)}
+                                                    className="w-full py-2 px-3 bg-cyan-900/60 hover:bg-cyan-800 border border-cyan-600/80 rounded-xl text-cyan-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-lg cursor-pointer"
+                                                >
+                                                    <span>🪜 지하 {gridState.currentFloor + 2}층으로 내려가기</span>
+                                                    <ChevronRight size={14} />
+                                                </button>
+                                            )}
+                                            {selectedTile.type === 'stairs_up' && (
+                                                <button
+                                                    onClick={() => changeDungeonFloor(gridState.currentFloor - 1)}
+                                                    className="w-full py-2 px-3 bg-amber-900/60 hover:bg-amber-800 border border-amber-600/80 rounded-xl text-amber-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-lg cursor-pointer"
+                                                >
+                                                    <ChevronLeft size={14} />
+                                                    <span>🪜 이전 층 (지하 {gridState.currentFloor}층)으로 올라가기</span>
+                                                </button>
+                                            )}
+                                            {selectedTile.type === 'entrance' && (
+                                                <button
+                                                    onClick={handleExitDungeon}
+                                                    className="w-full py-2 px-3 bg-emerald-900/60 hover:bg-emerald-800 border border-emerald-600/80 rounded-xl text-emerald-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-lg cursor-pointer"
+                                                >
+                                                    <LogOut size={14} />
+                                                    <span>🚪 지상으로 던전 퇴각</span>
+                                                </button>
                                             )}
                                         </div>
                                     )}

@@ -1,4 +1,4 @@
-export type GridTileType = 'wall' | 'floor' | 'entrance' | 'stairs' | 'boss_door';
+export type GridTileType = 'wall' | 'floor' | 'entrance' | 'stairs' | 'stairs_up' | 'boss_door';
 export type GridContentType = 'enemy' | 'miniboss' | 'boss' | 'chest' | 'shrine' | 'rune_stone';
 
 export interface GridTile {
@@ -10,6 +10,7 @@ export interface GridTile {
     description?: string;
     isRevealed: boolean;
     isCleared?: boolean;
+    isIdentified?: boolean; // 플레이어가 근접(1칸 이내)하여 정체가 식별되었는지 여부
     // 보물 / 이벤트 데이터
     treasureData?: {
         gold: number;
@@ -20,6 +21,13 @@ export interface GridTile {
         buffType: 'heal' | 'manaStone' | 'exp';
         valueDesc: string;
     };
+}
+
+export interface FloorCacheData {
+    tiles: GridTile[][];
+    playerPos: { x: number; y: number };
+    width: number;
+    height: number;
 }
 
 export interface GridDungeonState {
@@ -36,6 +44,7 @@ export interface GridDungeonState {
     totalRunesRequired: number;
     torchRadius: number;
     bossDefeated?: boolean;
+    floorCache?: Record<number, FloorCacheData>;
 }
 
 /**
@@ -167,9 +176,17 @@ export const generateGridDungeonFloor = (
     const endRoom = rooms[rooms.length - 1];
 
     const playerPos = { x: startRoom.cx, y: startRoom.cy };
-    tiles[startRoom.cy][startRoom.cx].type = 'entrance';
-    tiles[startRoom.cy][startRoom.cx].name = `${floor + 1}층 입구`;
-    tiles[startRoom.cy][startRoom.cx].description = '던전 밖으로 안전하게 철수할 수 있는 출발 지점입니다.';
+    if (floor === 0) {
+        tiles[startRoom.cy][startRoom.cx].type = 'entrance';
+        tiles[startRoom.cy][startRoom.cx].name = '1층 미궁 입구 (지상 출구)';
+        tiles[startRoom.cy][startRoom.cx].description = '던전 밖 지상으로 안전하게 퇴각할 수 있는 관문입니다.';
+        tiles[startRoom.cy][startRoom.cx].isIdentified = true;
+    } else {
+        tiles[startRoom.cy][startRoom.cx].type = 'stairs_up';
+        tiles[startRoom.cy][startRoom.cx].name = `지하 ${floor}층으로 올라가는 계단`;
+        tiles[startRoom.cy][startRoom.cx].description = `이전 층(지하 ${floor}층)으로 다시 돌아갈 수 있는 오르막 석조 계단입니다.`;
+        tiles[startRoom.cy][startRoom.cx].isIdentified = true;
+    }
 
     if (isFinalFloor) {
         // 최종 보스 룸
@@ -177,11 +194,13 @@ export const generateGridDungeonFloor = (
         tiles[endRoom.cy][endRoom.cx].content = 'boss';
         tiles[endRoom.cy][endRoom.cx].name = bossName ? `[심연의 제단] ${bossName}` : '심연의 보스 제단';
         tiles[endRoom.cy][endRoom.cx].description = '던전을 지배하는 최강의 존재가 기다리는 심연의 결전 구역입니다.';
+        tiles[endRoom.cy][endRoom.cx].isIdentified = false;
     } else {
         // 다음 층 계단
         tiles[endRoom.cy][endRoom.cx].type = 'stairs';
         tiles[endRoom.cy][endRoom.cx].name = `지하 ${floor + 2}층으로 향하는 계단`;
         tiles[endRoom.cy][endRoom.cx].description = '더 깊은 지하 미궁으로 이어지는 차가운 석조 계단입니다.';
+        tiles[endRoom.cy][endRoom.cx].isIdentified = true;
     }
 
     // 4. 오브젝트 및 몬스터 심볼 분배
@@ -212,6 +231,7 @@ export const generateGridDungeonFloor = (
         tiles[p.y][p.x].content = 'rune_stone';
         tiles[p.y][p.x].name = `고대 신화 봉인석 [제${floor} 각인]`;
         tiles[p.y][p.x].description = '최종 보스 제단의 결계를 해제하기 위해 파괴해야 할 신성한 룬석입니다.';
+        tiles[p.y][p.x].isIdentified = false;
         runeCount = 1;
     }
 
@@ -222,6 +242,7 @@ export const generateGridDungeonFloor = (
         tiles[p.y][p.x].content = 'miniboss';
         tiles[p.y][p.x].name = '미궁 정예 수호수';
         tiles[p.y][p.x].description = '하층으로 통하는 관문을 수호하는 강력한 정예 마물입니다.';
+        tiles[p.y][p.x].isIdentified = false;
     }
 
     // 보물 상자 배치 (일반 1~2개, 신화 2~4개)
@@ -231,6 +252,7 @@ export const generateGridDungeonFloor = (
         tiles[p.y][p.x].content = 'chest';
         tiles[p.y][p.x].name = '잊혀진 보물 상자';
         tiles[p.y][p.x].description = '고대의 황금과 마정석이 보관되어 있는 보물 궤짝입니다.';
+        tiles[p.y][p.x].isIdentified = false;
         tiles[p.y][p.x].treasureData = {
             gold: (floor + 1) * 8000 + Math.floor(Math.random() * 5000),
             manaStone: 3 + floor * 2
@@ -243,6 +265,7 @@ export const generateGridDungeonFloor = (
         tiles[p.y][p.x].content = 'shrine';
         tiles[p.y][p.x].name = '치유의 신성한 샘';
         tiles[p.y][p.x].description = '마시면 파티 전체의 생명력과 마력이 회복되는 영험한 샘물입니다.';
+        tiles[p.y][p.x].isIdentified = false;
         tiles[p.y][p.x].shrineData = {
             title: '신성한 샘의 가호',
             buffType: 'heal',
@@ -257,10 +280,12 @@ export const generateGridDungeonFloor = (
         tiles[p.y][p.x].content = 'enemy';
         tiles[p.y][p.x].name = '배회하는 던전 마물';
         tiles[p.y][p.x].description = '미궁의 어둠 속을 서성이며 침입자를 감시하는 마수입니다.';
+        tiles[p.y][p.x].isIdentified = false;
     }
 
     // 5. 플레이어 초기 시야 밝히기 (반경 1.5)
     revealFogOfWar(tiles, playerPos.x, playerPos.y, 1.5);
+    updateTileIdentifications(tiles, playerPos.x, playerPos.y);
 
     return {
         dungeonType: isMythic ? 'mythic' : 'normal',
@@ -300,6 +325,32 @@ export const revealFogOfWar = (
                 const ny = py + dy;
                 if (ny >= 0 && ny < h && nx >= 0 && nx < w) {
                     tiles[ny][nx].isRevealed = true;
+                }
+            }
+        }
+    }
+};
+
+/**
+ * 플레이어 위치 인접(1칸 이내 8방향 및 제자리) 타일 식별 갱신
+ * 플레이어에게 1칸 이내로 접근한 타일은 무엇인지 식별됨
+ */
+export const updateTileIdentifications = (
+    tiles: GridTile[][],
+    px: number,
+    py: number
+): void => {
+    const h = tiles.length;
+    const w = tiles[0].length;
+
+    for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+            const nx = px + dx;
+            const ny = py + dy;
+            if (ny >= 0 && ny < h && nx >= 0 && nx < w) {
+                const tile = tiles[ny][nx];
+                if (tile.isRevealed) {
+                    tile.isIdentified = true;
                 }
             }
         }
