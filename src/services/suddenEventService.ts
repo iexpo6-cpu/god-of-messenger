@@ -2,6 +2,7 @@ import { Character, Companion, Enemy, Item, Skill, SkillType, ClassTier, WeaponT
 import { generateEnemyStats, getRequiredExp } from '../utils';
 import { WEAPON_TYPE_KOREAN } from '../constants';
 import { createRivalEnemies } from './npcLifeEngine';
+import { generateNpcEscortParty } from './npcCombatScaling';
 
 export type SuddenEventType =
     | 'rift_crystal'       // 🌌 차원의 균열 / 폭주하는 신력 결정체 난입
@@ -152,37 +153,36 @@ export const rollSuddenPostCombatEvent = (
             rivalName = isFallenMessenger ? '[타락한 사자] 카르마' : '[특급 수배범] 블러드 팬텀';
             const enemyStats = generateEnemyStats(playerLevel, 'elite');
             const hp = Math.max(1000, Math.floor(enemyStats.maxHp * 1.8));
-            ambushEnemies = [
-                {
-                    id: `rival_ambush_${Date.now()}`,
-                    name: rivalName,
-                    level: playerLevel,
-                    hp,
-                    maxHp: hp,
-                    stats: { ...enemyStats, hp, maxHp: hp },
-                    statusEffects: [],
-                    isBoss: true,
-                    shinryokuType: isFallenMessenger ? '암흑계' : '무기강화계',
-                    description: isFallenMessenger
-                        ? '신성을 버리고 타락하여 강자들의 영혼을 사냥하는 타락한 사자입니다.'
-                        : '대륙 전역에 막대한 현상금이 걸린 악명 높은 특급 수배범입니다.',
-                    skills: [
-                        {
-                            name: isFallenMessenger ? '타락한 신벌의 일격' : '암살자의 급소 베기',
-                            type: isFallenMessenger ? SkillType.MAGIC : SkillType.PHYSICAL,
-                            tier: ClassTier.SECOND,
-                            mpCost: 30,
-                            level: 5,
-                            maxLevel: 10,
-                            currentMastery: 0,
-                            effectFormula: isFallenMessenger ? 'M.Atk 220%' : 'P.Atk 220%',
-                            powerRatio: 220,
-                            description: '치명적인 기습 일격을 가합니다.'
-                        }
-                    ]
-                }
-            ];
-            message = `피 냄새를 맡고 당신과 비슷한 경지에 오른 강적 ${rivalName}(Lv.${playerLevel})이(가) 기습을 감행했습니다!`;
+            const leaderEnemy: Enemy = {
+                id: `rival_ambush_${Date.now()}`,
+                name: rivalName,
+                level: playerLevel,
+                hp,
+                maxHp: hp,
+                stats: { ...enemyStats, hp, maxHp: hp },
+                statusEffects: [],
+                isBoss: true,
+                shinryokuType: isFallenMessenger ? '암흑계' : '무기강화계',
+                description: isFallenMessenger
+                    ? '신성을 버리고 타락하여 강자들의 영혼을 사냥하는 타락한 사자입니다.'
+                    : '대륙 전역에 막대한 현상금이 걸린 악명 높은 특급 수배범입니다.',
+                skills: [
+                    {
+                        name: isFallenMessenger ? '타락한 신벌의 일격' : '암살자의 급소 베기',
+                        type: isFallenMessenger ? SkillType.MAGIC : SkillType.PHYSICAL,
+                        tier: ClassTier.SECOND,
+                        mpCost: 30,
+                        level: 5,
+                        maxLevel: 10,
+                        currentMastery: 0,
+                        effectFormula: isFallenMessenger ? 'M.Atk 220%' : 'P.Atk 220%',
+                        powerRatio: 220,
+                        description: '치명적인 기습 일격을 가합니다.'
+                    }
+                ]
+            };
+            ambushEnemies = generateNpcEscortParty(leaderEnemy as any, true, false);
+            message = `피 냄새를 맡고 당신과 비슷한 경지에 오른 강적 ${rivalName}(Lv.${playerLevel})이(가) 정예 결사대를 이끌고 기습을 감행했습니다!`;
         }
 
         return {

@@ -2012,6 +2012,12 @@ export interface Enemy {
   dropTable?: Item[]; // [NEW]
   production?: string; // [NEW]
   slaughterProduct?: string; // [NEW]
+  imageUrl?: string;
+  isRiftCrystal?: boolean;
+  isRivalEscort?: boolean;
+  isRivalCombat?: boolean;
+  isRivalLeader?: boolean;
+  isSparringPartner?: boolean;
   detailedLoot?: Item | Item[]; // [NEW] 보스전용 전리품 세부 정보
   critResist?: number; // 치명타 저항률 (%)
   critDmgResist?: number; // 치명타 피해 감소율 (%)
@@ -2045,6 +2051,17 @@ export interface CombatState {
   accumulatedExp?: number;
   accumulatedGold?: number;
   accumulatedLoot?: Item[];
+  hasUsedItem?: boolean;
+  suddenEventType?: 'rift_crystal' | 'rival_ambush' | 'ancient_blacksmith' | 'monster_frenzy' | string;
+  suddenExpMultiplier?: number;
+  suddenMasteryBonus?: number;
+  suddenRewardMultiplier?: number;
+  suddenLootRolls?: number;
+  suddenLevelUpCount?: number;
+  baseCombatExp?: number;
+  dungeonId?: string;
+  sourceId?: string;
+  _rivalBonusGranted?: boolean;
   turnQueue?: CombatTurnUnit[];
   activeUnitIndex?: number;
   round?: number;

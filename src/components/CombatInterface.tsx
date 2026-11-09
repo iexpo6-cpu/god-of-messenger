@@ -602,9 +602,17 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
     (combatState.log && combatState.log.some(l => l.includes('대련') || l.includes('결투') || l.includes('토너먼트') || l.includes('1:1')));
 
     const isRivalCombat = combatState.type === 'eternal_rival_duel' || 
-        combatState.enemies?.some(e => e.name?.includes('영원의 라이벌') || e.name?.includes('[영원의 라이벌]') || (e as any).isRivalEscort);
+        (combatState as any).suddenEventType === 'rival_ambush' ||
+        combatState.enemies?.some(e => 
+            e.name?.includes('영원의 라이벌') || 
+            e.name?.includes('영원의 숙적') || 
+            e.name?.includes('[영원의 라이벌]') || 
+            e.name?.includes('[영원의 숙적]') || 
+            e.name?.includes('숙적') ||
+            (e as any).isRivalEscort
+        );
 
-    // [MODIFIED] 영원의 라이벌전은 동료를 동반한 다대다 전투이므로 1:1 제약에서 전면 제외
+    // [MODIFIED] 영원의 라이벌전 및 숙적 기습전은 동료를 동반한 다대다 전투이므로 1:1 제약에서 전면 제외
     const isOneOnOne = !isRivalCombat && isOneOnOneRaw;
 
     const challengerCompanion = useMemo(() => {

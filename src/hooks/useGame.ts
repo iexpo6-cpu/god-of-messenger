@@ -1913,7 +1913,9 @@ if (!timeAdvancedChar.divineRelations) {
                               nextCharState.currentLocation?.region === '마계' || 
                               nextCharState.currentLocation?.nation === '임페리얼 제국';
 
-        const isRivalCombat = currentCombat?.type === 'eternal_rival_duel' || !!currentCombat?.enemies?.some(e => e.name?.includes('영원의 라이벌') || e.name?.includes('[영원의 라이벌]') || (e as any).isRivalEscort);
+        const isRivalCombat = currentCombat?.type === 'eternal_rival_duel' || 
+            (currentCombat as any)?.suddenEventType === 'rival_ambush' || 
+            !!currentCombat?.enemies?.some(e => e.name?.includes('영원의 라이벌') || e.name?.includes('영원의 숙적') || e.name?.includes('[영원의 라이벌]') || e.name?.includes('[영원의 숙적]') || e.name?.includes('숙적') || (e as any).isRivalEscort);
         const isOneOnOne = !isRivalCombat && (['tournament', 'arena', 'exam_mid', 'exam_final', 'final_trial_battle', 'sparring_arena', 'sparring'].includes(currentCombat?.type || '') || !!currentCombat?.isOneOnOne || !!currentCombat?.enemies?.some(e => e.name?.includes('[모의 대련]')));
         const challengerCompanionId = currentCombat?.challengerCompanionId;
 
@@ -3898,9 +3900,14 @@ if (!timeAdvancedChar.divineRelations) {
                             if (enemyIdx !== -1) {
                                 const enemy = simulationEnemies[enemyIdx];
                                 const result = calculateDamage(nextCharState, enemy, usedSkill, nextCharState);
-                                const newHp = Math.max(0, enemy.hp - result.damage);
+                                
+                                const shieldRes = CombatShieldService.processShieldAbsorption(enemy, result.damage);
+                                const remainingDamage = shieldRes.remainingDamage;
+                                totalLog += shieldRes.totalLog;
+
+                                const newHp = Math.max(0, enemy.hp - remainingDamage);
                                 simulationEnemies[enemyIdx] = { ...enemy, hp: newHp };
-                                totalLog += `\n[시스템: ${enemy.name} HP -${result.damage}]`;
+                                if (remainingDamage > 0) totalLog += `\n[시스템: ${enemy.name} HP -${remainingDamage}]`;
                                 
                                 applyPostAttackMythicOptions(nextCharState, enemy, enemyIdx, result, true);
                                 if (result.isCrit) totalLog += " (치명타!)";
@@ -3917,9 +3924,14 @@ if (!timeAdvancedChar.divineRelations) {
                             simulationEnemies.forEach((enemy, idx) => {
                                 if (enemy.hp <= 0) return;
                                 const result = calculateDamage(nextCharState, enemy, usedSkill, nextCharState);
-                                const newHp = Math.max(0, enemy.hp - result.damage);
+
+                                const shieldRes = CombatShieldService.processShieldAbsorption(enemy, result.damage);
+                                const remainingDamage = shieldRes.remainingDamage;
+                                totalLog += shieldRes.totalLog;
+
+                                const newHp = Math.max(0, enemy.hp - remainingDamage);
                                 simulationEnemies[idx] = { ...enemy, hp: newHp };
-                                totalLog += `\n[시스템: ${enemy.name} HP -${result.damage}]`;
+                                if (remainingDamage > 0) totalLog += `\n[시스템: ${enemy.name} HP -${remainingDamage}]`;
                                 
                                 applyPostAttackMythicOptions(nextCharState, enemy, idx, result, true);
                                 if (result.isCrit) totalLog += " (치명타!)";
@@ -4324,7 +4336,8 @@ if (!timeAdvancedChar.divineRelations) {
         }
 
 
-        if (false && !isOneOnOne && (playerActionDone || isCompanionCommand) && (nextCharState.companions.length > 0 || nextCharState.mountedMonster || nextCharState.companions.some(c => c.mountedMonster))) {
+        // 턴제 전투 엔진 및 IsolatedCombatContainer 도입으로 이전 시뮬레이션 루프는 안전하게 비활성화됨
+        if (false) {
             CombatUtils.getAllCombatantCompanions(nextCharState).forEach(comp => {
                 if (actedCompanions.has(comp.id)) return; 
                 if (comp.stats.hp > 0 && !comp.isDead) {
@@ -4685,7 +4698,8 @@ let targetIdx = -1;
 
         try {
             const livingEnemies = simulationEnemies.filter((e: Enemy) => e.hp > 0);
-            if (false && livingEnemies.length > 0) {
+            // 턴제 전투 엔진으로 이관되어 이전 적 턴 시뮬레이션 루프는 안전하게 비활성화됨
+            if (false) {
                  livingEnemies.forEach((enemy: Enemy) => {
                      let skipTurn = false; let ccName = ""; enemy.statusEffects?.forEach(eff => { if (eff.name === "빙결") { skipTurn = true; ccName = "빙결"; } if (eff.name === "감전" && Math.random() < 0.5) { skipTurn = true; ccName = "감전"; } if (eff.name === "속박" && Math.random() < 0.25) { skipTurn = true; ccName = "속박"; } });
                      if (skipTurn) { totalLog += `\n[시스템] ${enemy.name} 행동불가 (${ccName})`; return; }

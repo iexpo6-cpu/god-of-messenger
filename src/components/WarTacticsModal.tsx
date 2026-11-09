@@ -766,14 +766,21 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                                 : [aliveEnemies.find(e => e.name === targetName || e.name.includes(targetName)) || aliveEnemies[0]].filter(Boolean);
 
                             enemyTargets.forEach(tEnemy => {
-                                const dmgRes = calculateDamage(comp, tEnemy, usedSkill, nextPlayer);
+                                const dmgRes = calculateDamage(comp, tEnemy.enemy || tEnemy, usedSkill, nextPlayer);
                                 if (dmgRes.isMiss) {
                                     newLogs.push(`[시스템] ${tEnemy.name}이(가) ${comp.name}의 공격을 회피했습니다! (MISS)`);
                                 } else {
-                                    const dmg = Math.max(1, dmgRes.damage);
+                                    let dmg = Math.max(1, dmgRes.damage);
+                                    const targetShieldEntity = tEnemy.enemy || tEnemy;
+                                    const shieldRes = CombatShieldService.processShieldAbsorption(targetShieldEntity, dmg);
+                                    dmg = shieldRes.remainingDamage;
+                                    if (shieldRes.totalLog) {
+                                        shieldRes.totalLog.split('\n').filter(Boolean).forEach(l => newLogs.push(l));
+                                    }
                                     tEnemy.hp = Math.max(0, tEnemy.hp - dmg);
+                                    if (tEnemy.enemy) tEnemy.enemy.hp = tEnemy.hp;
                                     const critTag = dmgRes.isCrit ? ' (치명타!)' : '';
-                                    newLogs.push(`[시스템: ${tEnemy.name} HP -${dmg}] (by ${comp.name})${critTag}`);
+                                    if (dmg > 0) newLogs.push(`[시스템: ${tEnemy.name} HP -${dmg}] (by ${comp.name})${critTag}`);
                                     if (tEnemy.hp <= 0) {
                                         newLogs.push(`[시스템] ${tEnemy.name} 처치!`);
                                     }
@@ -785,14 +792,21 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                     // 동료 일반 공격
                     const tEnemy = aliveEnemies.find(e => e.name === targetName || e.name.includes(targetName)) || aliveEnemies[0];
                     if (tEnemy) {
-                        const dmgRes = calculateDamage(comp, tEnemy, undefined, nextPlayer);
+                        const dmgRes = calculateDamage(comp, tEnemy.enemy || tEnemy, undefined, nextPlayer);
                         if (dmgRes.isMiss) {
                             newLogs.push(`[시스템] ${tEnemy.name}이(가) ${comp.name}의 공격을 회피했습니다! (MISS)`);
                         } else {
-                            const dmg = Math.max(1, dmgRes.damage);
+                            let dmg = Math.max(1, dmgRes.damage);
+                            const targetShieldEntity = tEnemy.enemy || tEnemy;
+                            const shieldRes = CombatShieldService.processShieldAbsorption(targetShieldEntity, dmg);
+                            dmg = shieldRes.remainingDamage;
+                            if (shieldRes.totalLog) {
+                                shieldRes.totalLog.split('\n').filter(Boolean).forEach(l => newLogs.push(l));
+                            }
                             tEnemy.hp = Math.max(0, tEnemy.hp - dmg);
+                            if (tEnemy.enemy) tEnemy.enemy.hp = tEnemy.hp;
                             const critTag = dmgRes.isCrit ? ' (치명타!)' : '';
-                            newLogs.push(`[시스템: ${tEnemy.name} HP -${dmg}] (by ${comp.name})${critTag}`);
+                            if (dmg > 0) newLogs.push(`[시스템: ${tEnemy.name} HP -${dmg}] (by ${comp.name})${critTag}`);
                             if (tEnemy.hp <= 0) {
                                 newLogs.push(`[시스템] ${tEnemy.name} 처치!`);
                             }
@@ -841,14 +855,21 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                         : [aliveEnemies.find(e => e.name === targetName || e.name.includes(targetName) || targetName.includes(e.name)) || aliveEnemies[0]].filter(Boolean);
 
                     enemyTargets.forEach(tEnemy => {
-                        const dmgRes = calculateDamage(nextPlayer, tEnemy, usedSkill, nextPlayer);
+                        const dmgRes = calculateDamage(nextPlayer, tEnemy.enemy || tEnemy, usedSkill, nextPlayer);
                         if (dmgRes.isMiss) {
                             newLogs.push(`[시스템] ${usedSkill!.name}이(가) 빗나갔습니다! (${tEnemy.name} 회피) (by ${nextPlayer.name})`);
                         } else {
-                            const dmg = Math.max(1, dmgRes.damage);
+                            let dmg = Math.max(1, dmgRes.damage);
+                            const targetShieldEntity = tEnemy.enemy || tEnemy;
+                            const shieldRes = CombatShieldService.processShieldAbsorption(targetShieldEntity, dmg);
+                            dmg = shieldRes.remainingDamage;
+                            if (shieldRes.totalLog) {
+                                shieldRes.totalLog.split('\n').filter(Boolean).forEach(l => newLogs.push(l));
+                            }
                             tEnemy.hp = Math.max(0, tEnemy.hp - dmg);
+                            if (tEnemy.enemy) tEnemy.enemy.hp = tEnemy.hp;
                             const critTag = dmgRes.isCrit ? ' (치명타!)' : '';
-                            newLogs.push(`[시스템: ${tEnemy.name} HP -${dmg}] (by ${nextPlayer.name})${critTag}`);
+                            if (dmg > 0) newLogs.push(`[시스템: ${tEnemy.name} HP -${dmg}] (by ${nextPlayer.name})${critTag}`);
                             if (tEnemy.hp <= 0) {
                                 newLogs.push(`[시스템] ${tEnemy.name} 처치!`);
                             }
@@ -859,14 +880,21 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                 // 일반 공격
                 const tEnemy = aliveEnemies.find(e => e.name === targetName || e.name.includes(targetName) || targetName.includes(e.name)) || aliveEnemies[0];
                 if (tEnemy) {
-                    const dmgRes = calculateDamage(nextPlayer, tEnemy, undefined, nextPlayer);
+                    const dmgRes = calculateDamage(nextPlayer, tEnemy.enemy || tEnemy, undefined, nextPlayer);
                     if (dmgRes.isMiss) {
                         newLogs.push(`[시스템] ${tEnemy.name}이(가) ${nextPlayer.name}의 공격을 회피했습니다! (MISS)`);
                     } else {
-                        const dmg = Math.max(1, dmgRes.damage);
+                        let dmg = Math.max(1, dmgRes.damage);
+                        const targetShieldEntity = tEnemy.enemy || tEnemy;
+                        const shieldRes = CombatShieldService.processShieldAbsorption(targetShieldEntity, dmg);
+                        dmg = shieldRes.remainingDamage;
+                        if (shieldRes.totalLog) {
+                            shieldRes.totalLog.split('\n').filter(Boolean).forEach(l => newLogs.push(l));
+                        }
                         tEnemy.hp = Math.max(0, tEnemy.hp - dmg);
+                        if (tEnemy.enemy) tEnemy.enemy.hp = tEnemy.hp;
                         const critTag = dmgRes.isCrit ? ' (치명타!)' : '';
-                        newLogs.push(`[시스템: ${tEnemy.name} HP -${dmg}] (by ${nextPlayer.name})${critTag}`);
+                        if (dmg > 0) newLogs.push(`[시스템: ${tEnemy.name} HP -${dmg}] (by ${nextPlayer.name})${critTag}`);
                         if (tEnemy.hp <= 0) {
                             newLogs.push(`[시스템] ${tEnemy.name} 처치!`);
                         }

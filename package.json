@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --project src/tsconfig.json && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --project src/tsconfig.json --noEmit"
+    "typecheck": "tsc --project src/tsconfig.json --noEmit",
+    "lint": "tsc --project src/tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@vitejs/plugin-legacy": "^7.2.1"
