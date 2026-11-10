@@ -1090,44 +1090,44 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
     const currentRankLabel = character.militaryRank || (character.job === JobType.DEMON_GOD ? '마신' : character.job.toString().includes('제너럴') ? '제너럴' : '이등병');
 
     return (
-        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/95 backdrop-blur-xl p-2 sm:p-4 animate-in fade-in duration-300">
-            {/* 전체 화면을 채우는 대형 전술 모달 */}
-            <div className="bg-slate-900 border-2 border-rose-600/70 w-[98vw] max-w-[1700px] h-[96vh] rounded-3xl shadow-[0_0_100px_rgba(225,29,72,0.4)] flex flex-col relative overflow-hidden">
+        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-black/95 backdrop-blur-xl p-1.5 sm:p-3 animate-in fade-in duration-300">
+            {/* 반응형 최적화 대형 전술 모달 */}
+            <div className="bg-slate-900 border-2 border-rose-600/70 w-[99vw] max-w-[1360px] h-[95vh] max-h-[920px] rounded-2xl sm:rounded-3xl shadow-[0_0_100px_rgba(225,29,72,0.4)] flex flex-col relative overflow-hidden">
                 
-                {/* 상단 헤더 바 */}
-                <div className="p-4 sm:p-5 border-b border-rose-900/40 bg-gradient-to-r from-rose-950/90 via-slate-900 to-slate-950 flex justify-between items-center shrink-0">
-                    <div className="flex items-center gap-3 sm:gap-4">
-                        <div className="p-3 bg-rose-900/40 border border-rose-500/60 rounded-2xl text-rose-400 shadow-md">
-                            <Flag size={28} className="animate-pulse" />
+                {/* 상단 헤더 바 (컴팩트 반응형) */}
+                <div className="p-2.5 sm:p-4 border-b border-rose-900/40 bg-gradient-to-r from-rose-950/90 via-slate-900 to-slate-950 flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                        <div className="p-2 sm:p-2.5 bg-rose-900/40 border border-rose-500/60 rounded-xl text-rose-400 shadow-md shrink-0">
+                            <Flag size={20} className="sm:w-6 sm:h-6 animate-pulse" />
                         </div>
-                        <div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <h2 className="text-xl sm:text-2xl font-black text-white tracking-wider uppercase font-cinzel">
-                                    {mode === 'invasion' ? '대규모 거점 전술 습격 작전' : '전술 거점 방어전'}
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                <h2 className="text-sm sm:text-lg lg:text-xl font-black text-white tracking-wider uppercase font-cinzel truncate">
+                                    {mode === 'invasion' ? '거점 전술 습격' : '전술 거점 방어전'}
                                 </h2>
-                                <span className="text-xs bg-rose-600 text-white font-bold px-2.5 py-0.5 rounded-full border border-rose-400">
-                                    대 {targetNation} 전선
+                                <span className="text-[10px] sm:text-xs bg-rose-600 text-white font-bold px-2 py-0.5 rounded-full border border-rose-400">
+                                    대 {targetNation}
                                 </span>
-                                <span className="text-xs bg-slate-800 text-slate-300 font-mono px-2 py-0.5 rounded-full border border-slate-700">
-                                    전장 규격: {numRows}×{numCols}
+                                <span className="text-[10px] sm:text-xs bg-slate-800 text-slate-300 font-mono px-1.5 py-0.5 rounded-full border border-slate-700">
+                                    {numRows}×{numCols}
                                 </span>
-                                <span className="text-xs bg-emerald-950 text-emerald-300 font-bold px-2.5 py-0.5 rounded-full border border-emerald-600/60">
-                                    승리 시 점유율 +{expectedGain}% ({currentRankLabel} 규정)
+                                <span className="text-[10px] sm:text-xs bg-emerald-950 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-600/60 hidden sm:inline-block">
+                                    점유율 +{expectedGain}% ({currentRankLabel})
                                 </span>
                             </div>
-                            <p className="text-xs text-rose-300/80 mt-1">
-                                현재 전선 점유율: <span className="font-bold text-amber-400 font-mono text-sm">{currentOccupation}%</span> 
-                                {isRaid ? ' (최종 수도 결전)' : ` → 적장 격파 시 ${Math.min(100, currentOccupation + expectedGain)}% 달성!`}
+                            <p className="text-[10px] sm:text-xs text-rose-300/80 mt-0.5 truncate">
+                                현재 점유율: <span className="font-bold text-amber-400 font-mono">{currentOccupation}%</span> 
+                                {isRaid ? ' (최종 수도 결전)' : ` → 승리 시 ${Math.min(100, currentOccupation + expectedGain)}%`}
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2.5 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors">
-                        <X size={24} />
+                    <button onClick={onClose} className="p-1.5 sm:p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors shrink-0">
+                        <X size={20} className="sm:w-6 sm:h-6" />
                     </button>
                 </div>
 
                 {/* 본문 콘텐츠: 단계별 렌더링 */}
-                <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-950 custom-scrollbar flex flex-col relative">
+                <div className="flex-1 overflow-y-auto p-2 sm:p-4 bg-slate-950 custom-scrollbar flex flex-col relative">
                     
                     {/* [PHASE 1] 출진 부대 편성 화면 */}
                     {phase === 'setup' && (
@@ -1224,38 +1224,39 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
 
                     {/* [PHASE 2] 전술판 (대형 그리드 맵) 화면 */}
                     {phase === 'tactics' && (
-                        <div className="flex-1 flex flex-col lg:flex-row gap-6 h-full items-stretch">
+                        <div className="flex-1 flex flex-col lg:flex-row gap-3 sm:gap-4 h-full items-stretch min-h-0">
                             
-                            {/* 좌측: 전술판 그리드 */}
-                            <div className="flex-1 flex flex-col items-center justify-center bg-slate-950/90 rounded-3xl border-2 border-slate-800/80 p-4 sm:p-6 relative">
+                            {/* 좌측: 전술판 그리드 (모바일 세로 스크롤 완벽 지원) */}
+                            <div className="flex-1 flex flex-col items-center bg-slate-950/90 rounded-2xl border-2 border-slate-800/80 p-2 sm:p-3 relative overflow-y-auto custom-scrollbar max-h-[62vh] lg:max-h-none">
                                 {tacticalBanner && (
-                                    <div className="w-full mb-3 p-3 bg-emerald-950/80 border border-emerald-500/60 rounded-2xl text-emerald-300 text-xs font-bold text-center animate-in fade-in">
+                                    <div className="w-full mb-2 p-2 bg-emerald-950/80 border border-emerald-500/60 rounded-xl text-emerald-300 text-xs font-bold text-center animate-in fade-in shrink-0">
                                         {tacticalBanner}
                                     </div>
                                 )}
 
-                                <div className="w-full flex justify-between items-center mb-4 px-3">
-                                    <div className="flex items-center gap-3">
-                                        <span className={`px-4 py-1.5 rounded-full border text-xs font-black ${turnOwner === 'player' ? 'bg-sky-950 text-sky-400 border-sky-500 animate-pulse' : 'bg-rose-950 text-rose-400 border-rose-500'}`}>
-                                            {turnOwner === 'player' ? `턴 ${turnCount} : 아군 작전 페이즈` : `턴 ${turnCount} : 적군 진격 페이즈...`}
+                                {/* 전술판 턴 표시 바 및 턴 종료 버튼 (모바일 1줄 가로 정렬) */}
+                                <div className="w-full flex items-center justify-between gap-1.5 mb-2 px-1 shrink-0">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                        <span className={`px-2.5 py-1 rounded-full border text-[11px] sm:text-xs font-black shrink-0 ${turnOwner === 'player' ? 'bg-sky-950 text-sky-400 border-sky-500 animate-pulse' : 'bg-rose-950 text-rose-400 border-rose-500'}`}>
+                                            {turnOwner === 'player' ? `턴 ${turnCount} (아군 작전)` : `턴 ${turnCount} (적군 진격)`}
                                         </span>
-                                        <span className="text-xs text-slate-400 hidden sm:inline">
-                                            (적과 조우 시 <strong className="text-sky-300">정규 CombatInterface 분대 전투</strong>에 돌입합니다)
+                                        <span className="text-[10px] text-slate-400 hidden sm:inline truncate">
+                                            (적 조우 시 정규 전투)
                                         </span>
                                     </div>
                                     {turnOwner === 'player' && (
                                         <button
                                             onClick={handleEndPlayerTurn}
-                                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow"
+                                            className="px-3 py-1 sm:px-4 sm:py-1.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-rose-900/50 active:scale-95 border border-rose-400/40 shrink-0"
                                         >
-                                            <RefreshCw size={14} /> 턴 종료 (적 턴으로)
+                                            <RefreshCw size={12} className="shrink-0" /> 턴 종료 (적 턴)
                                         </button>
                                     )}
                                 </div>
 
-                                {/* 동적 그리드 보드 */}
+                                {/* 동적 그리드 보드 (모바일 스크롤 가능 및 아군 영역 보장) */}
                                 <div 
-                                    className="grid gap-2 sm:gap-3 w-full max-w-[740px] aspect-[5/6]"
+                                    className="grid gap-1 sm:gap-2 w-full max-w-[540px] aspect-[5/6] min-h-[380px] sm:min-h-[460px] mx-auto p-1.5 bg-slate-900/50 rounded-2xl border border-slate-800/80 my-auto shrink-0"
                                     style={{
                                         gridTemplateRows: `repeat(${numRows}, minmax(0, 1fr))`,
                                         gridTemplateColumns: `repeat(${numCols}, minmax(0, 1fr))`
@@ -1310,14 +1311,14 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                                                             handleMoveOrEngage(r, c);
                                                         }
                                                     }}
-                                                    className={`rounded-2xl border-2 relative flex flex-col items-center justify-center p-2 cursor-pointer transition-all ${
+                                                    className={`rounded-xl border relative flex flex-col items-center justify-center p-0.5 sm:p-1 cursor-pointer transition-all ${
                                                         isSelected
-                                                            ? 'bg-sky-950/80 border-sky-400 shadow-[0_0_25px_rgba(56,189,248,0.6)] scale-105 z-10'
+                                                            ? 'bg-sky-950/80 border-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.6)] scale-105 z-10'
                                                             : isPairableTarget
-                                                            ? 'bg-purple-950/80 border-purple-400 ring-2 ring-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.5)] animate-pulse z-10'
+                                                            ? 'bg-purple-950/80 border-purple-400 ring-2 ring-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.5)] animate-pulse z-10'
                                                             : isMovableTarget
                                                             ? enemyUnit
-                                                                ? 'bg-rose-950/70 border-rose-500 animate-pulse shadow-[0_0_20px_rgba(244,63,94,0.5)]'
+                                                                ? 'bg-rose-950/70 border-rose-500 animate-pulse shadow-[0_0_15px_rgba(244,63,94,0.5)]'
                                                                 : 'bg-emerald-950/50 border-emerald-500/80 hover:bg-emerald-900/60'
                                                             : r === 0
                                                             ? 'bg-rose-950/20 border-rose-900/30'
@@ -1326,29 +1327,29 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                                                             : 'bg-slate-900/50 border-slate-800/80 hover:border-slate-700'
                                                     }`}
                                                 >
-                                                    <span className="absolute top-1.5 left-2 text-[9px] font-mono text-slate-500 font-bold">
-                                                        {isPairableTarget ? '🤝 결합' : r === 0 ? '적 본진' : r === numRows - 1 ? '아군 진영' : ''}
+                                                    <span className="absolute top-0.5 left-1 text-[8px] sm:text-[9px] font-mono text-slate-500 font-bold pointer-events-none">
+                                                        {isPairableTarget ? '🤝결합' : r === 0 ? '적본진' : r === numRows - 1 ? '아군' : ''}
                                                     </span>
 
                                                     {/* 아군 유닛 표시 */}
                                                     {allyUnit && (
                                                         <div className="flex flex-col items-center text-center w-full">
-                                                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center border-2 font-black text-xs relative overflow-hidden shadow-md ${allyUnit.isPlayer ? 'bg-amber-600 text-white border-amber-300' : 'bg-sky-600 text-white border-sky-300'}`}>
+                                                            <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center border font-black text-[10px] sm:text-xs relative overflow-hidden shadow-md ${allyUnit.isPlayer ? 'bg-amber-600 text-white border-amber-300' : 'bg-sky-600 text-white border-sky-300'}`}>
                                                                 {allyUnit.visualUrl ? (
                                                                     <img src={allyUnit.visualUrl} alt={allyUnit.name} className="w-full h-full object-cover" />
                                                                 ) : (
                                                                     <span>{allyUnit.name.slice(0, 2)}</span>
                                                                 )}
                                                                 {allyUnit.pairUnit && (
-                                                                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-purple-600 border border-purple-200 rounded-full flex items-center justify-center text-[10px] font-black text-white shadow">
+                                                                    <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-purple-600 border border-purple-200 rounded-full flex items-center justify-center text-[9px] font-black text-white shadow">
                                                                         2
                                                                     </div>
                                                                 )}
                                                             </div>
-                                                            <span className="text-[11px] font-black text-white truncate max-w-[65px] mt-1">
+                                                            <span className="text-[9px] sm:text-[11px] font-black text-white truncate max-w-[48px] sm:max-w-[65px] mt-0.5">
                                                                 {allyUnit.name.split(' ')[0]}
                                                             </span>
-                                                            <div className="w-4/5 bg-slate-800 h-1.5 rounded-full mt-1 overflow-hidden">
+                                                            <div className="w-4/5 bg-slate-800 h-1 sm:h-1.5 rounded-full mt-0.5 overflow-hidden">
                                                                 <div className="bg-emerald-400 h-full transition-all duration-300" style={{ width: `${Math.min(100, (allyUnit.hp / allyUnit.maxHp) * 100)}%` }} />
                                                             </div>
                                                         </div>
@@ -1357,13 +1358,13 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                                                     {/* 적 유닛 표시 */}
                                                     {enemyUnit && (
                                                         <div className="flex flex-col items-center text-center w-full">
-                                                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center border-2 font-black text-xs relative overflow-hidden shadow-md ${enemyUnit.isBoss ? 'bg-rose-700 text-white border-rose-300 animate-pulse' : 'bg-red-950 text-rose-300 border-red-700'}`}>
-                                                                {enemyUnit.isBoss ? <Skull size={24} /> : <Crosshair size={20} />}
+                                                            <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center border font-black text-[10px] sm:text-xs relative overflow-hidden shadow-md ${enemyUnit.isBoss ? 'bg-rose-700 text-white border-rose-300 animate-pulse' : 'bg-red-950 text-rose-300 border-red-700'}`}>
+                                                                {enemyUnit.isBoss ? <Skull size={18} className="sm:w-5 sm:h-5" /> : <Crosshair size={16} className="sm:w-5 sm:h-5" />}
                                                             </div>
-                                                            <span className="text-[11px] font-black text-rose-400 truncate max-w-[65px] mt-1">
+                                                            <span className="text-[9px] sm:text-[11px] font-black text-rose-400 truncate max-w-[48px] sm:max-w-[65px] mt-0.5">
                                                                 {enemyUnit.isBoss ? '👑적장' : enemyUnit.name.slice(0, 4)}
                                                             </span>
-                                                            <div className="w-4/5 bg-slate-800 h-1.5 rounded-full mt-1 overflow-hidden">
+                                                            <div className="w-4/5 bg-slate-800 h-1 sm:h-1.5 rounded-full mt-0.5 overflow-hidden">
                                                                 <div className="bg-rose-500 h-full transition-all duration-300" style={{ width: `${Math.min(100, (enemyUnit.hp / enemyUnit.maxHp) * 100)}%` }} />
                                                             </div>
                                                         </div>
@@ -1373,13 +1374,28 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                                         })
                                     ))}
                                 </div>
+
+                                {/* 모바일 전용 하단 고정 턴 종료 바 */}
+                                {turnOwner === 'player' && (
+                                    <div className="w-full mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2 sm:hidden shrink-0">
+                                        <span className="text-[11px] font-bold text-sky-400">
+                                            턴 {turnCount}
+                                        </span>
+                                        <button
+                                            onClick={handleEndPlayerTurn}
+                                            className="flex-1 py-1.5 px-3 bg-gradient-to-r from-rose-600 to-red-600 text-white rounded-xl text-xs font-black shadow-md flex items-center justify-center gap-1.5 active:scale-95"
+                                        >
+                                            <RefreshCw size={13} /> 턴 종료 (적 턴)
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* 우측: 유닛 정보 및 결합 전술 패널 */}
-                            <div className="w-full lg:w-80 bg-slate-950/90 rounded-3xl border-2 border-slate-800 p-5 flex flex-col justify-between shrink-0">
+                            {/* 우측/하단: 유닛 정보 및 결합 전술 패널 */}
+                            <div className="w-full lg:w-72 bg-slate-950/90 rounded-2xl border-2 border-slate-800 p-2.5 sm:p-4 flex flex-col justify-between shrink-0">
                                 <div>
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                        <Crosshair size={16} className="text-rose-400" /> 선택 부대 전술 상태
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
+                                        <Crosshair size={15} className="text-rose-400" /> 선택 부대 전술 상태
                                     </h4>
 
                                     {selectedUnitId ? (() => {
@@ -1387,29 +1403,29 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                                         if (!unit) return null;
 
                                         return (
-                                            <div className="space-y-4 animate-in fade-in">
-                                                <div className="p-4 bg-slate-900 rounded-2xl border border-slate-800 space-y-3">
+                                            <div className="space-y-2.5 sm:space-y-3 animate-in fade-in">
+                                                <div className="p-2.5 sm:p-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2">
                                                     <div className="flex items-center justify-between">
-                                                        <span className="font-black text-white text-base">{unit.name}</span>
+                                                        <span className="font-black text-white text-sm sm:text-base">{unit.name}</span>
                                                         <span className="text-[10px] px-2 py-0.5 rounded font-bold bg-sky-950 text-sky-400 border border-sky-700">
                                                             {unit.isPlayer ? '사령관' : '부대원'}
                                                         </span>
                                                     </div>
 
-                                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                                    <div className="grid grid-cols-2 gap-1.5 text-xs">
                                                         <div className="text-slate-400">HP: <span className="text-emerald-400 font-mono font-bold">{unit.hp.toLocaleString()}/{unit.maxHp.toLocaleString()}</span></div>
-                                                        <div className="text-slate-400">공격력: <span className="text-rose-400 font-mono font-bold">{unit.atk.toLocaleString()}</span></div>
-                                                        <div className="text-slate-400">방어력: <span className="text-sky-400 font-mono font-bold">{unit.def.toLocaleString()}</span></div>
+                                                        <div className="text-slate-400">공격: <span className="text-rose-400 font-mono font-bold">{unit.atk.toLocaleString()}</span></div>
+                                                        <div className="text-slate-400">방어: <span className="text-sky-400 font-mono font-bold">{unit.def.toLocaleString()}</span></div>
                                                         <div className="text-slate-400">상태: <span className={unit.hasActed ? 'text-slate-500' : 'text-emerald-400 font-bold'}>{unit.hasActed ? '행동 완료' : '진격 가능'}</span></div>
                                                     </div>
 
                                                     {unit.pairUnit && (
                                                         <div className="pt-2 border-t border-slate-800 text-xs">
                                                             <div className="text-purple-400 font-bold flex items-center gap-1.5">
-                                                                <Sparkles size={14}/> 결합 동료: {unit.pairUnit.name}
+                                                                <Sparkles size={13}/> 결합 동료: {unit.pairUnit.name}
                                                             </div>
-                                                            <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                                                                동료와 함께 정규 분대 전투에 출전하여 2인 협공을 펼칩니다!
+                                                            <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+                                                                정규 분대 전투 시 2인 협공 발동!
                                                             </p>
                                                         </div>
                                                     )}
@@ -1419,31 +1435,41 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                                                     {unit.pairUnit ? (
                                                         <button
                                                             onClick={() => handleSplit(unit.id)}
-                                                            className="w-full py-3 bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-500/50 rounded-xl text-xs font-bold transition-all shadow"
+                                                            className="w-full py-2 bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-500/50 rounded-xl text-xs font-bold transition-all shadow"
                                                         >
-                                                            부대 분리 (단독 유닛으로 전환)
+                                                            부대 분리 (단독 유닛 전환)
                                                         </button>
                                                     ) : (
-                                                        <p className="text-[11px] text-slate-500 text-center leading-relaxed">
-                                                            인접한 다른 아군을 클릭하면 <span className="text-purple-400 font-bold">결합(Pair-Up)</span>하여 정규 전투에 함께 참전합니다.
+                                                        <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+                                                            인접 아군 클릭 시 <span className="text-purple-400 font-bold">결합(Pair-Up)</span>
                                                         </p>
                                                     )}
                                                 </div>
                                             </div>
                                         );
                                     })() : (
-                                        <div className="py-16 text-center text-slate-500 border border-dashed border-slate-800 rounded-2xl">
-                                            <Move size={32} className="mx-auto mb-2 text-slate-600" />
-                                            <p className="text-xs">아군 유닛을 클릭하여<br/>이동하거나 적을 공격하십시오.</p>
+                                        <div className="py-2.5 sm:py-6 text-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                                            <p className="text-[11px] sm:text-xs">👆 아군 유닛을 클릭하여 이동하거나 적을 공격하십시오.</p>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="p-4 bg-slate-900/80 rounded-2xl border border-slate-800 text-xs text-slate-400 space-y-1.5">
-                                    <div className="font-bold text-slate-300">💡 전술판 운용 가이드</div>
-                                    <div>• 적과 마주치면 다수의 적 분대와 <span className="text-sky-400 font-bold">정규 CombatInterface</span>로 돌입합니다.</div>
-                                    <div>• 동료 단독 전투 시에는 플레이어 없이 동료 혼자 당당히 싸웁니다.</div>
-                                    <div>• 최상단의 <span className="text-rose-400 font-bold">적장(보스)</span>을 처단하면 <span className="text-emerald-400 font-bold">{currentRankLabel} 계급 규정(+{expectedGain}%)</span>에 따라 점유율이 상승합니다!</div>
+                                <div className="space-y-1.5 sm:space-y-2 mt-2 sm:mt-3">
+                                    {/* 우측 패널 하단 턴 종료 보조 버튼 */}
+                                    {turnOwner === 'player' && (
+                                        <button
+                                            onClick={handleEndPlayerTurn}
+                                            className="w-full py-2 sm:py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl text-xs font-black shadow-lg shadow-rose-900/40 flex items-center justify-center gap-2 active:scale-95 border border-rose-400/40"
+                                        >
+                                            <RefreshCw size={13} /> 턴 종료 (적 턴)
+                                        </button>
+                                    )}
+
+                                    <div className="p-2 sm:p-2.5 bg-slate-900/80 rounded-xl border border-slate-800 text-[10px] text-slate-400 space-y-0.5 hidden sm:block">
+                                        <div className="font-bold text-slate-300">💡 전술 운용 팁</div>
+                                        <div>• 적 접촉 시 <span className="text-sky-400 font-bold">정규 전투</span> 돌입</div>
+                                        <div>• 최상단 <span className="text-rose-400 font-bold">적장 처단</span> 시 점유율 획득!</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

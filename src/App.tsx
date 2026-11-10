@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useGame } from './hooks/useGame';
 import { useElixirTimer } from './hooks/useElixirTimer';
 import { GameProvider } from './context/GameContext';
@@ -11,111 +11,66 @@ import { chatWithCompanion, generateInterviewQuestions } from './services/gemini
 import CharacterSheet from './components/CharacterSheet';
 import GameLog from './components/GameLog';
 import { ProcessingLoadingModal } from './components/ProcessingLoadingModal';
-import CharacterCreationForm from './components/CharacterCreationForm';
-import SkillBook from './components/SkillBook';
-import WeaponMasteryModal from './components/WeaponMasteryModal';
-import { ProfessionMasteryModal } from './components/ProfessionMasteryModal';
-import ChefMasteryModal from './components/ChefMasteryModal';
-import BreederMasteryModal from './components/BreederMasteryModal';
 import StartScreen from './components/StartScreen';
-import DevTools from './components/DevTools';
-import ClassEvolutionModal from './components/ClassEvolutionModal';
-import { CompanionStatusModal } from './components/CompanionStatusModal';
+import QuestTracker from './components/QuestTracker';
+import HeaderShortcuts, { ShortcutId } from './components/HeaderShortcuts';
+import type { ResultData } from './components/ActionResultModal';
+import type { TrainingReportData } from './components/TrainingReportModal';
+import { SuddenEventData } from './services/suddenEventService';
+import { BestiaryEntry, DailyReportData } from './types';
+
+// Lazy Loaded Modals for Bundle Code-Splitting & Memory Optimization
+import {
+  CharacterCreationForm, SkillBook, WeaponMasteryModal, ProfessionMasteryModal, ChefMasteryModal,
+  BreederMasteryModal, DevTools, ClassEvolutionModal, CompanionStatusModal, SaveLoadModal,
+  BaseModal, CombatInterface, IsolatedCombatContainer, DashboardModal, TrainingStyleModal,
+  ActionResultModal, CombatResultModal, SuddenEventModal, QuantityModal, MonsterSkillBook,
+  MapModal, CityInterface, CityMapBoard, DungeonModal, QuestLogModal, AppointmentListModal,
+  TempleManagementModal, ElfCityModal, BeastCityModal, DemonCityModal, SocialNetworkModal,
+  CriminalResolutionModal, TempleDefenseEventModal, BaseAttackModal, GodAppearanceManager,
+  BaseDamageReportModal, RelationResolutionModal, TempleConquestResultModal, TournamentPostMatchModal,
+  CommunicationModal, CommunicationBattleModal, CommunicationSummonModal, CommunicationItemModal,
+  ReactionBoardModal, TrainingModal, TrainingReportModal, TacticalTrainingModal, DailySummaryPopup,
+  ConfessionModal, WorldNewsModal, BlacksmithModal, TutorialGuideModal, AlchemyModal,
+  ExitGameModal, RestModal, FamilyChroniclesModal, GameSettingsModal,
+  ChoiceEventModal, TacticsModal,
+  SuccessionModal, BestiaryModal, AuthModal, EternalRivalModal, DevPasswordModal, CondolenceModal,
+  MailboxModal
+} from './components/modals/lazyModals';
+import { WarAndMagyeModalsLayer } from './components/modals/WarAndMagyeModalsLayer';
+import { CombatAndTrainingModalsLayer } from './components/modals/CombatAndTrainingModalsLayer';
+import { CityAndBaseModalsLayer } from './components/modals/CityAndBaseModalsLayer';
+
 import { resetEntityStats } from './services/statResetService';
 import { isNightMarketConsumable, processNightMarketConsumable } from './services/nightMarketItemService';
-import SaveLoadModal from './components/SaveLoadModal';
 import { isRealTimeElixir } from './services/elixirService';
 import { elixirRealtimeService } from './services/elixirRealtimeService';
 import { filterDebuffsForCleanse } from './services/statusCleanseService';
-import BaseModal from './components/BaseModal';
-import CombatInterface from './components/CombatInterface';
-import IsolatedCombatContainer from './components/combat/IsolatedCombatContainer';
 import { combatStateBridge } from './services/combatStateBridge';
-import DashboardModal from './components/DashboardModal';
-import { TrainingStyleModal } from './components/TrainingStyleModal';
-import ActionResultModal, { ResultData } from './components/ActionResultModal';
-import { CombatResultModal } from './components/CombatResultModal';
-import { SuddenEventModal } from './components/SuddenEventModal';
-import { SuddenEventData } from './services/suddenEventService';
-import QuantityModal from './components/QuantityModal';
-import MonsterSkillBook from './components/MonsterSkillBook';
-import MapModal from './components/MapModal';
-import CityInterface from './components/CityInterface'; 
-import CityMapBoard from './components/CityMapBoard'; 
-import DungeonModal from './components/DungeonModal';
-import QuestLogModal from './components/QuestLogModal';
-import { AppointmentListModal } from './components/AppointmentListModal';
-import QuestTracker from './components/QuestTracker';
 import { Send, Menu, X,MessageSquare, Save, User as UserIcon,LogOut, Calendar, Home,ShieldAlert, Library,FastForward, Clock,Flag, Sword, Grid, Map as MapIcon, Building2, ScrollText, Users2, Trash2, Radio, Skull, Users, MapPin, Eye, Sparkles, Settings, Flame, Mail, Target, Newspaper, Sun } from 'lucide-react';
 import { DANGER_REPUTATION_MULT,MERCENARY_RANK_THRESHOLD } from './mercenaryRankUp';
-import TempleManagementModal from './components/TempleManagementModal';
-import ElfCityModal from './components/ElfCityModal';
-import BeastCityModal from './components/BeastCityModal';
-import DemonCityModal from './components/DemonCityModal';
-import SocialNetworkModal from './components/SocialNetworkModal';
-import CriminalResolutionModal from './components/CriminalResolutionModal'; 
-import TempleDefenseEventModal from './components/TempleDefenseEventModal'; 
-import { BaseAttackModal } from './components/BaseAttackModal';
-import { GodAppearanceManager } from './components/GodAppearanceManager';
-import { BaseDamageReportModal } from './components/BaseDamageReportModal';
 import { applyBaseDefenseFailure } from './services/baseDefenseService';
 import { generateEscortAmbushEnemies } from './services/escortAmbushService';
 import { promoteNextIncident } from './services/incidentQueue';
-import RelationResolutionModal from './components/RelationResolutionModal'; 
-import TempleConquestResultModal from './components/TempleConquestResultModal'
-import TournamentPostMatchModal from './components/TournamentPostMatchModal';
-import CommunicationModal from './components/CommunicationModal';
-import CommunicationBattleModal from './components/CommunicationBattleModal';
-import CommunicationSummonModal from './components/CommunicationSummonModal';
-import CommunicationItemModal from './components/CommunicationItemModal';
-import ReactionBoardModal from './components/ReactionBoardModal'; // [NEW]
-import TrainingModal from './components/TrainingModal'; // [NEW]
-import { TrainingReportModal, TrainingReportData } from './components/TrainingReportModal'; // [NEW]
-import { TacticalTrainingModal } from './components/TacticalTrainingModal';
 import { getTrainingRates, executeBatchTrainingRolls, buildTrainingResultSummary } from './services/trainingService';
 import { generateArenaParticipant } from './grandArena';
 import { checkAndTriggerDateEvent } from './services/relationshipEventService';
-import { BestiaryEntry, DailyReportData } from './types';
 import { processImmediateLevelUp } from './services/levelUpHelper';
 import { processTimeSkip } from './services/timeEngine';
-import { DailySummaryPopup } from './components/DailySummaryPopup';
-import { ConfessionModal } from './components/ConfessionModal';
-import { WorldNewsModal } from './components/WorldNewsModal';
 import { useMonthlyWorldNews } from './hooks/useMonthlyWorldNews';
-import BlacksmithModal from './components/BlacksmithModal';
-import TutorialGuideModal from './components/TutorialGuideModal';
-import AlchemyModal from './components/AlchemyModal';
-import ExitGameModal from './components/ExitGameModal';
-import RestModal from './components/RestModal';
 import { handleMagyeDemotion } from './magyeInternalWarSystem';
 import { returnMonsterToFarm, recruitMonster } from './services/monsterManager';
-import MagyeRevoltModal from './components/MagyeRevoltModal'; // [NEW]
 import { AFRICA_BOSSES, AMERICA_BOSSES, ASIA_BOSSES, DETAILED_BOSSES, DIVINE_REALM_BOSSES, EUROPE_BOSSES, FANTASY_BOSSES, SEASONAL_BOSSES, generateBossMonster } from './bossMonsters';
-import FamilyChroniclesModal from './components/FamilyChroniclesModal'; // [NEW]
-import { GameSettingsModal } from './components/GameSettingsModal';
 import { performGeneralPromotion } from './magyepromote';
-import MagyeDivineWarModal from './components/MagyeDivineWarModal'; // [N
-import MagyeHeavenWarModal from './components/MagyeHeavenWarModal';
-import ChoiceEventModal from './components/ChoiceEventModal'; // [NEW]
-import { WarInvasionModal } from './components/WarInvasionModal';
-import TacticsModal from './components/TacticsModal';
 import { REGIONAL_MERCENARY_GROUPS } from './worldguild';
 import { generateWarEnemies } from './warbattlesystem';
 import { NATION_RELICS } from './nationLoreData'; 
 import { generateDivineWarEnemies, generateLootedStaff, DIVINE_WAR_CONSTANTS } from './divineWarSystem';
 import { updateQuestProgress } from './services/questService';
-import SuccessionModal from './components/SuccessionModal'; // [NEW]
-import { performSuccession } from './services/deathTimeEngine'; // [NEW]
-import BestiaryModal from './components/BestiaryModal';
+import { performSuccession } from './services/deathTimeEngine';
 import { NATION_THEMES, HUNT_LEVEL_BANDS, getMonsterPoolForBand, getMonsterInfo } from './monsterfield';
 import { generateTravelMonsterAmbush } from './services/travelAmbushService';
-import AuthModal from './components/AuthModal'; // [NEW]
-import EternalRivalModal from './components/EternalRivalModal'; // [NEW]
-import DevPasswordModal from './components/DevPasswordModal';
-import CondolenceModal from './components/CondolenceModal';
-import MailboxModal from './components/MailboxModal';
 import { getUnreadMailCount } from './services/mailboxService';
-import HeaderShortcuts, { ShortcutId } from './components/HeaderShortcuts';
 import { calculateTravelCostAndDays } from './services/travelCalculationService';
 import { calculateBaseRelocationPlan, executeBaseRelocation } from './services/baseRelocationService';
 import { getBaseGridExpansionDuration, calculateCompletionDateTime, getConstructionRemainingTime } from './services/baseConstructionService';
@@ -5971,6 +5926,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
           </motion.div>
         )}
       </AnimatePresence>
+      <Suspense fallback={null}>
       <SaveLoadModal 
         isOpen={isSaveLoadOpen} 
         mode={saveLoadMode} 
@@ -5981,93 +5937,44 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
         activeCharacter={character}
       />
       <ActionResultModal data={resultModalData} onClose={() => { setResultModalData(null); setResultActionContext(null); }} onContinue={resultActionContext ? handleResultContinue : undefined} />
-      {sceneType === 'normal' && combatResultData && (
-        <CombatResultModal 
-          data={combatResultData} 
-          onClose={() => { 
-            const pendingEvent = (combatResultData as any)?.suddenEvent;
-            const timeRes = advanceGameTime(character, 1, { isDungeonOrCombat: true, activityName: "전투 종료" });
-            if (timeRes.systemLogs && timeRes.systemLogs.length > 0) {
-              timeRes.systemLogs.forEach(l => addToLog(l));
-            }
-            setCharacter(timeRes.updatedCharacter); 
-            setCombatResultData?.(null); 
-            if (pendingEvent) {
-              setActiveSuddenEvent(pendingEvent);
-            }
-          }} 
-          onTriggerSuddenEvent={(suddenEvt) => {
-            const timeRes = advanceGameTime(character, 1, { isDungeonOrCombat: true, activityName: "전투 종료" });
-            if (timeRes.systemLogs && timeRes.systemLogs.length > 0) {
-              timeRes.systemLogs.forEach(l => addToLog(l));
-            }
-            setCharacter(timeRes.updatedCharacter);
-            setCombatResultData?.(null);
-            setActiveSuddenEvent(suddenEvt);
-          }}
-          onContinueBattle={() => {
-            const isInstantDungeon = combatResultData?.combatType === 'instant_dungeon' || !!character.dungeonProgress?.dungeonId;
-            const instDungeonId = combatResultData?.dungeonId || character.dungeonProgress?.dungeonId || character.instantDungeons?.[0]?.id;
-            setCombatResultData?.(null);
-            if (isInstantDungeon && instDungeonId) {
-              setCityInitialConfig({
-                openInstantDungeonId: instDungeonId
-              });
-            } else {
-              setCityInitialConfig({ 
-                district: 'Outskirts', 
-                openHuntMap: true,
-                initialBandId: character.lastHuntingBandId 
-              });
-            }
-            setIsCityOpen(true);
-          }}
-        />
-      )}
-      {sceneType === 'normal' && activeSuddenEvent && (
-        <SuddenEventModal
-          event={activeSuddenEvent}
-          character={character}
-          onClose={() => setActiveSuddenEvent(null)}
-          onUpdateCharacter={(newChar, logMsg) => {
-            handleUpdateCharacter(newChar, logMsg);
-          }}
-          setResultModalData={setResultModalData}
-          onStartSuddenCombat={(evt) => {
-            setActiveSuddenEvent(null);
-            if (!evt.enemies || evt.enemies.length === 0) return;
-            const combatType: any =
-              evt.originalCombatType === 'dungeon'
-                ? 'dungeon'
-                : evt.originalCombatType === 'instant_dungeon'
-                ? 'instant_dungeon'
-                : 'normal';
-
-            const newCombatState: CombatState = {
-              enemies: evt.enemies,
-              turn: 1,
-              log: [`[돌발 이벤트] ${evt.message}`],
-              isEnded: false,
-              type: combatType
-            };
-            (newCombatState as any).suddenEventType = evt.type;
-            if (evt.expMultiplier) (newCombatState as any).suddenExpMultiplier = evt.expMultiplier;
-            if (evt.masteryBonus) (newCombatState as any).suddenMasteryBonus = evt.masteryBonus;
-            if (evt.baseCombatExp) (newCombatState as any).baseCombatExp = evt.baseCombatExp;
-            if (evt.levelUpCount) (newCombatState as any).suddenLevelUpCount = evt.levelUpCount;
-            if (evt.rewardMultiplier) (newCombatState as any).suddenRewardMultiplier = evt.rewardMultiplier;
-            if (evt.lootRollCount) (newCombatState as any).suddenLootRolls = evt.lootRollCount;
-            if (evt.dungeonId) (newCombatState as any).dungeonId = evt.dungeonId;
-
-            setCombatState(newCombatState);
-            setSceneType('combat');
-            setIsCityOpen(false);
-            if (combatType !== 'dungeon') {
-              setIsDungeonOpen(false);
-            }
-          }}
-        />
-      )}
+      <CombatAndTrainingModalsLayer
+        character={character}
+        setCharacter={setCharacter}
+        sceneType={sceneType}
+        combatResultData={combatResultData}
+        setCombatResultData={setCombatResultData}
+        activeSuddenEvent={activeSuddenEvent}
+        setActiveSuddenEvent={setActiveSuddenEvent}
+        advanceGameTime={advanceGameTime}
+        addToLog={addToLog}
+        setCityInitialConfig={setCityInitialConfig}
+        setIsCityOpen={setIsCityOpen}
+        isDungeonOpen={isDungeonOpen}
+        setIsDungeonOpen={setIsDungeonOpen}
+        handleUpdateCharacter={handleUpdateCharacter}
+        setResultModalData={setResultModalData}
+        setCombatState={setCombatState}
+        setSceneType={setSceneType}
+        handleBattleTrigger={handleBattleTrigger}
+        isTacticsOpen={isTacticsOpen}
+        setIsTacticsOpen={setIsTacticsOpen}
+        isTrainingModalOpen={isTrainingModalOpen}
+        setIsTrainingModalOpen={setIsTrainingModalOpen}
+        handleExpTraining={handleExpTraining}
+        handleStatTraining={handleStatTraining}
+        handleWeaponTraining={handleWeaponTraining}
+        trainingInitialTab={trainingInitialTab}
+        trainingReportData={trainingReportData}
+        setTrainingReportData={setTrainingReportData}
+        isTrainingStyleOpen={isTrainingStyleOpen}
+        setIsTrainingStyleOpen={setIsTrainingStyleOpen}
+        handleUpdateCombatStyle={handleUpdateCombatStyle}
+        handlePromoteCombatStyle={handlePromoteCombatStyle}
+        isTacticalTrainingOpen={isTacticalTrainingOpen}
+        setIsTacticalTrainingOpen={setIsTacticalTrainingOpen}
+        isBestiaryOpen={isBestiaryOpen}
+        setIsBestiaryOpen={setIsBestiaryOpen}
+      />
       <AuthModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
@@ -6176,25 +6083,72 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
           onUpdateCompanion={(updated) => { setSkillBookTarget(updated); }}
         />
       )}
-      {isMapOpen && <MapModal isOpen={isMapOpen} onClose={() => { setIsMapOpen(false); setMapMode('travel'); setMapInitialTargetLocationName(undefined); }} character={character} onTravel={handleTravel} mode={mapMode} residentCount={1 + character.companions.length + (character.inactiveCompanions?.length || 0)} initialTargetLocationName={mapInitialTargetLocationName} />}
-      {isCityOpen && sceneType !== 'combat' && (
-        <CityInterface 
-          character={character} 
-          onClose={() => {
-            setIsCityOpen(false);
-            setCityInitialConfig(null);
-          }} 
-          onAction={handleAction} 
-          onUpdateCharacter={handleUpdateCharacter} 
-          onBattle={handleBattleTrigger} 
-          onOpenDungeon={() => setIsDungeonOpen(true)}
-          initialDistrict={cityInitialConfig?.district}
-          initialOpenHuntMap={cityInitialConfig?.openHuntMap}
-          initialBandId={cityInitialConfig?.initialBandId || character.lastHuntingBandId}
-          initialOpenInstantDungeonId={cityInitialConfig?.openInstantDungeonId}
-        />
-      )} 
-      {isDungeonOpen && sceneType !== 'combat' && <div><DungeonModal isOpen={isDungeonOpen} character={character} onClose={() => setIsDungeonOpen(false)} onBattle={(enemy) => handleBattleTrigger(enemy, 'dungeon')} onUpdateCharacter={handleUpdateCharacter} /></div>}
+      <CityAndBaseModalsLayer
+        character={character}
+        setCharacter={setCharacter}
+        sceneType={sceneType}
+        isMapOpen={isMapOpen}
+        setIsMapOpen={setIsMapOpen}
+        mapMode={mapMode}
+        setMapMode={setMapMode}
+        mapInitialTargetLocationName={mapInitialTargetLocationName}
+        setMapInitialTargetLocationName={setMapInitialTargetLocationName}
+        handleTravel={handleTravel}
+        isCityOpen={isCityOpen}
+        setIsCityOpen={setIsCityOpen}
+        cityInitialConfig={cityInitialConfig}
+        setCityInitialConfig={setCityInitialConfig}
+        handleAction={handleAction}
+        handleUpdateCharacter={handleUpdateCharacter}
+        handleBattleTrigger={handleBattleTrigger}
+        setIsDungeonOpen={setIsDungeonOpen}
+        isBaseModalOpen={isBaseModalOpen}
+        setIsBaseModalOpen={setIsBaseModalOpen}
+        baseInitialSubModal={baseInitialSubModal}
+        setBaseInitialSubModal={setBaseInitialSubModal}
+        handleBaseUpgrade={handleBaseUpgrade}
+        handleBasePurchase={handleBasePurchase}
+        handleCompanionMove={handleCompanionMove}
+        handleAssignment={handleAssignment}
+        handleItemAction={handleItemAction}
+        setTrainingInitialTab={setTrainingInitialTab}
+        setIsTrainingModalOpen={setIsTrainingModalOpen}
+        setIsTacticalTrainingOpen={setIsTacticalTrainingOpen}
+        setIsTrainingStyleOpen={setIsTrainingStyleOpen}
+        handleExpTraining={handleExpTraining}
+        handleSkillResearch={handleSkillResearch}
+        handleSkillLimitBreak={handleSkillLimitBreak}
+        handleItemEnhancement={handleItemEnhancement}
+        handleHostParty={handleHostParty}
+        handleInteraction={handleInteraction}
+        handleFacilityUpgrade={handleFacilityUpgrade}
+        handleExpandGrid={handleExpandGrid}
+        handleRecallMonsterFromFarm={handleRecallMonsterFromFarm}
+        handleReturnMonsterToFarm={handleReturnMonsterToFarm}
+        setIsProfessionMasteryOpen={setIsProfessionMasteryOpen}
+        setIsChefMasteryOpen={setIsChefMasteryOpen}
+        setIsBreederMasteryOpen={setIsBreederMasteryOpen}
+        setActiveBaseDamageReport={setActiveBaseDamageReport}
+        isTempleManagementOpen={isTempleManagementOpen}
+        setIsTempleManagementOpen={setIsTempleManagementOpen}
+        isElfCityOpen={isElfCityOpen}
+        setIsElfCityOpen={setIsElfCityOpen}
+        isBeastCityOpen={isBeastCityOpen}
+        setIsBeastCityOpen={setIsBeastCityOpen}
+        isDemonCityOpen={isDemonCityOpen}
+        setIsDemonCityOpen={setIsDemonCityOpen}
+        activeBaseDamageReport={activeBaseDamageReport}
+        addToLog={addToLog}
+        isBlacksmithModalOpen={isBlacksmithModalOpen}
+        setIsBlacksmithModalOpen={setIsBlacksmithModalOpen}
+        isAlchemyModalOpen={isAlchemyModalOpen}
+        setIsAlchemyModalOpen={setIsAlchemyModalOpen}
+        isRestModalOpen={isRestModalOpen}
+        setIsRestModalOpen={setIsRestModalOpen}
+        handleExecuteRest={handleExecuteRest}
+        restModalInitialDays={restModalInitialDays}
+      /> 
+
       {selectedCompanionId && findCompanionRef(character, selectedCompanionId) && (
         <CompanionStatusModal 
           character={character} 
@@ -6272,24 +6226,11 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
           onEquipTitle={(cid, tid) => handleEquipTitle(cid, tid)} 
         />
       )}
-       {isBaseModalOpen && <BaseModal character={character} onClose={() => { setIsBaseModalOpen(false); setBaseInitialSubModal(undefined); }} initialSubModal={baseInitialSubModal} onUpgrade={handleBaseUpgrade} onPurchaseBase={handleBasePurchase} onMoveCompanionToBase={(idx) => handleCompanionMove(idx, true)} onRecallCompanion={(idx) => handleCompanionMove(idx, false)} onAssignCompanion={handleAssignment} onUseFacility={(fid) => handleAction(`[기지 시설 이용] 시설: ${fid}`)} onStorageAction={handleItemAction as any} onHousingRest={() => handleAction('[기지 활동] (Housing) 휴식')} onFacilitySpecificAction={(fid, action, target, amount) => { 
-          if (fid === 'training_exp') { setTrainingInitialTab('exp'); setIsTrainingModalOpen(true); }
-          else if (fid === 'training_stat') { setTrainingInitialTab('stat'); setIsTrainingModalOpen(true); }
-          else if (fid === 'training_mastery') { setTrainingInitialTab('mastery'); setIsTrainingModalOpen(true); }
-          else if (fid === 'tactical_training') { setIsTacticalTrainingOpen(true); }
-          else if (fid === 'training_style') { setIsTrainingStyleOpen(true); }
-          else if (action === '경험치 훈련') { handleExpTraining(amount, target); }
-          else handleAction(`[기지 활동] (${fid}) ${action} ${target ? `대상: ${target}` : ''}`); 
-      }} onStatTraining={() => { setTrainingInitialTab('stat'); setIsTrainingModalOpen(true); }} onSkillResearch={handleSkillResearch} onSkillLimitBreak={handleSkillLimitBreak} onItemEnhancement={handleItemEnhancement} onWeaponTraining={() => { setTrainingInitialTab('mastery'); setIsTrainingModalOpen(true); }} onParty={handleHostParty} onInteraction={handleInteraction} onUpdateCharacter={handleUpdateCharacter} onRelocate={() => { setMapMode('relocate'); setIsMapOpen(true); }} onFacilityUpgrade={handleFacilityUpgrade} onExpandGrid={handleExpandGrid} onRecallMonsterFromFarm={handleRecallMonsterFromFarm} onReturnMonsterToFarm={handleReturnMonsterToFarm} onOpenProfessionMastery={() => setIsProfessionMasteryOpen(true)} onOpenChefMastery={() => setIsChefMasteryOpen(true)} onOpenBreederMastery={() => setIsBreederMasteryOpen(true)} onOpenTacticalTraining={() => setIsTacticalTrainingOpen(true)} onBattle={(enemy, type, source, targetCity, targetNation) => handleBattleTrigger(enemy, type as any, source, targetCity, targetNation)} onShowDamageReport={(rep) => setActiveBaseDamageReport(rep)} />}
-      {isTrainingModalOpen && <TrainingModal character={character} onClose={() => setIsTrainingModalOpen(false)} onExpTraining={handleExpTraining} onStatTraining={handleStatTraining} onWeaponTraining={handleWeaponTraining} onUpdateCharacter={handleUpdateCharacter} initialTab={trainingInitialTab} />}
-      {trainingReportData && <TrainingReportModal data={trainingReportData} onClose={() => setTrainingReportData(null)} />}
-      {isTrainingStyleOpen && <TrainingStyleModal character={character} onClose={() => setIsTrainingStyleOpen(false)} onUpdateTargetStyle={handleUpdateCombatStyle} onPromoteStyle={handlePromoteCombatStyle} />}
       {isDashboardOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-in fade-in duration-300"><DashboardModal character={character} onClose={() => setIsDashboardOpen(false)} onUseItem={(item, idx) => handleItemAction('use', item, idx)} onEquipItem={handleEquipItem} onUnequipItem={handleUnequipItem} onSellItem={(item, idx) => handleItemAction('sell', item, idx)} onDiscardItem={(item, idx) => handleItemAction('discard', item, idx)} onSelectCompanion={handleSelectCompanion} onSelectMountedMonster={handleSelectMountedMonster} onIncreaseStat={handleIncreaseStat} onEquipTitle={(tid) => handleEquipTitle('player', tid)} /></div>}
       {isWeaponMasteryOpen && <WeaponMasteryModal character={weaponMasteryTarget || character} onClose={() => { setIsWeaponMasteryOpen(false); setWeaponMasteryTarget(null); }} />}
       {isProfessionMasteryOpen && <ProfessionMasteryModal isOpen={isProfessionMasteryOpen} onClose={() => setIsProfessionMasteryOpen(false)} character={character} />}
       {isChefMasteryOpen && <ChefMasteryModal isOpen={isChefMasteryOpen} onClose={() => setIsChefMasteryOpen(false)} character={character} onUpdateCharacter={handleUpdateCharacter} />}
       {isBreederMasteryOpen && <BreederMasteryModal isOpen={isBreederMasteryOpen} onClose={() => setIsBreederMasteryOpen(false)} character={character} onUpdateCharacter={handleUpdateCharacter} />}
-      {isTacticalTrainingOpen && <TacticalTrainingModal character={character} onClose={() => setIsTacticalTrainingOpen(false)} onUpdateCharacter={handleUpdateCharacter} />}
       {isSettingsOpen && (
         <GameSettingsModal 
           isOpen={isSettingsOpen} 
@@ -6312,13 +6253,6 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
           onChangeDisableScreenShake={handleDisableScreenShakeChange}
           disableCommonCompanionInteraction={disableCommonCompanionInteraction}
           onChangeDisableCommonCompanionInteraction={handleDisableCommonCompanionInteractionChange}
-        />
-      )}
-      {isTacticsOpen && (
-        <TacticsModal 
-          character={character} 
-          onUpdateCharacter={handleUpdateCharacter} 
-          onClose={() => setIsTacticsOpen(false)} 
         />
       )}
       <DevTools isOpen={isDevModeOpen} onClose={() => setIsDevModeOpen(false)} character={character} onUpdate={(newChar) => setCharacter(newChar)} />
@@ -6451,11 +6385,6 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
           }} 
         />
       )}
-      {isTempleManagementOpen && <TempleManagementModal character={character} onClose={() => setIsTempleManagementOpen(false)} onUpdateCharacter={handleUpdateCharacter} onAction={handleAction} onBattle={(enemy, type, source, targetCity, targetNation) => {
-                handleBattleTrigger(enemy, type as any, source, targetCity, targetNation);}} />}
-      {isElfCityOpen && <ElfCityModal character={character} onClose={() => setIsElfCityOpen(false)} onUpdateCharacter={handleUpdateCharacter} />}
-      {isBeastCityOpen && <BeastCityModal character={character} onClose={() => setIsBeastCityOpen(false)} onUpdateCharacter={handleUpdateCharacter} />}
-      {isDemonCityOpen && <DemonCityModal character={character} onClose={() => setIsDemonCityOpen(false)} onUpdateCharacter={handleUpdateCharacter} />}
       {isSocialOpen && (
         <SocialNetworkModal 
           character={character} 
@@ -6521,12 +6450,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
               onUpdateCharacter={handleUpdateCharacter} 
           />
       )}
-      {isBestiaryOpen && (
-          <BestiaryModal 
-            character={character} 
-            onClose={() => setIsBestiaryOpen?.(false)} 
-          />
-      )}
+
 
       {/* [NEW] 클래스명 변경 모달 */}
       {isClassNameModalOpen && (
@@ -6692,85 +6616,17 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
           />
       )}
       
-      {character.pendingBaseAttackEvent && (
-          <BaseAttackModal
-            character={character}
-            event={character.pendingBaseAttackEvent}
-            onClose={() => {
-                setCharacter(prev => {
-                    const next = { ...prev, pendingBaseAttackEvent: undefined };
-                    return promoteNextIncident(next);
-                });
-            }}
-            onUpdateCharacter={handleUpdateCharacter}
-            onBattle={(enemies, type) => {
-                handleBattleTrigger(enemies, type as any);
-                setCharacter(prev => ({ ...prev, pendingBaseAttackEvent: undefined }));
-            }}
-            addToLog={addToLog}
-            onShowDamageReport={(report) => setActiveBaseDamageReport(report)}
-          />
-      )}
 
-      {/* 기지 방어 실패 피해 통계 리포트 모달 */}
-      {activeBaseDamageReport && (
-          <BaseDamageReportModal
-              report={activeBaseDamageReport}
-              character={character}
-              onClose={() => setActiveBaseDamageReport(null)}
-              onUpdateCharacter={handleUpdateCharacter}
-              onOpenBaseManagement={() => setIsBaseModalOpen(true)}
-              addToLog={addToLog}
-          />
-      )}
 
-      {character.pendingMagyeRevolt && (
-          <MagyeRevoltModal 
-            character={character}
-            revolt={character.pendingMagyeRevolt}
-            onClose={() => {
-                const newChar = { ...character, pendingMagyeRevolt: undefined };
-                setCharacter(newChar);
-            }}
-            onBattle={(enemy, type, source, city) => {
-                 handleBattleTrigger(enemy, type as any, source, city, "임페리얼 제국", (character.pendingMagyeRevolt as any).rebelRankIdx);
-                const newChar = { ...character, pendingMagyeRevolt: undefined };
-                setCharacter(newChar);
-            }}
-            onUpdateCharacter={handleUpdateCharacter}
-          />
-      )}
-{character.pendingMagyeDivineWar && (
-          <MagyeDivineWarModal 
-            character={character} 
-            event={character.pendingMagyeDivineWar} 
-            onClose={() => setCharacter({ ...character, pendingMagyeDivineWar: undefined })} 
-                   onBattle={(enemy, type, source, city) => {
-                handleBattleTrigger(enemy, type as any, source, city, "임페리얼 제국");
-                setCharacter(prev => ({ ...prev, pendingMagyeDivineWar: undefined }));
-            }}
-          />
-      )}
-
-      {/* 전쟁 침공 팝업 모달 */}
-      {character.militaryData?.pendingInvasions && character.militaryData.pendingInvasions.length > 0 && (
-          <WarInvasionModal
-            character={character}
-            pendingInvasions={character.militaryData.pendingInvasions}
-            onClose={() => {
-                const newChar = { ...character };
-                if (newChar.militaryData) {
-                    newChar.militaryData = { ...newChar.militaryData, pendingInvasions: [] };
-                }
-                handleUpdateCharacter(newChar);
-            }}
-            onUpdateCharacter={handleUpdateCharacter}
-            onSetResultModalData={setResultModalData}
-            onBattle={(enemies, type, source, city, nation) => {
-                handleBattleTrigger(enemies, type as any, source, city, nation);
-            }}
-          />
-      )}
+      <WarAndMagyeModalsLayer
+        character={character}
+        setCharacter={setCharacter}
+        handleUpdateCharacter={handleUpdateCharacter}
+        handleBattleTrigger={handleBattleTrigger}
+        setResultModalData={setResultModalData}
+        isMagyeHeavenWarOpen={isMagyeHeavenWarOpen}
+        setIsMagyeHeavenWarOpen={setIsMagyeHeavenWarOpen}
+      />
 
       {/* [NEW] Choice Event Modal */}
       {character.pendingChoiceEvent && (
@@ -6803,14 +6659,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
               />
           </motion.div>
       )}
-      {isMagyeHeavenWarOpen && (
-          <MagyeHeavenWarModal 
-            character={character}
-            onClose={() => setIsMagyeHeavenWarOpen(false)}
-            onUpdateCharacter={handleUpdateCharacter}
-            onBattle={handleBattleTrigger}
-          />
-      )}
+
       {isEternalRivalOpen && (
           <EternalRivalModal
             character={character}
@@ -7362,22 +7211,6 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                         onOpenMap={() => setIsMapOpen(true)} 
                     />
                 )}
-                {isBlacksmithModalOpen && (
-                    <BlacksmithModal
-                        key="blacksmith-modal"
-                        character={character}
-                        onClose={() => setIsBlacksmithModalOpen(false)}
-                        onUpdateCharacter={handleUpdateCharacter}
-                    />
-                )}
-                {isAlchemyModalOpen && (
-                    <AlchemyModal
-                        key="alchemy-modal"
-                        character={character}
-                        onClose={() => setIsAlchemyModalOpen(false)}
-                        onUpdateCharacter={handleUpdateCharacter}
-                    />
-                )}
                 {isCondolenceModalOpen && (
                     <CondolenceModal
                         key="condolence-modal"
@@ -7386,15 +7219,6 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                         onUpdateCharacter={handleUpdateCharacter}
                     />
                 )}
-                <RestModal
-                    isOpen={isRestModalOpen}
-                    onClose={() => setIsRestModalOpen(false)}
-                    onConfirmRest={handleExecuteRest}
-                    currentDate={character.currentDate || START_DATE}
-                    currentTime={character.currentTime || '08:00'}
-                    initialDays={restModalInitialDays}
-                    character={character}
-                />
                 <MailboxModal
                     isOpen={isMailboxOpen}
                     onClose={() => setIsMailboxOpen(false)}
@@ -7432,6 +7256,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
       />
       <ProcessingLoadingModal isOpen={isLoading} message={loadingMessage} />
       <GodAppearanceManager character={character} onUpdateCharacter={handleUpdateCharacter} />
+      </Suspense>
     </div>
     </GameProvider>
   );
