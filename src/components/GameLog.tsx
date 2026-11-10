@@ -12,6 +12,49 @@ interface Props {
   isLoading: boolean;
 }
 
+const markdownComponents = {
+  strong: ({ node, ...props }: any) => <span className="text-amber-400 font-bold" {...props} />,
+  em: ({ node, ...props }: any) => <span className="text-cyan-300 not-italic" {...props} />,
+  blockquote: ({ node, ...props }: any) => (
+    <div className="border-l-4 border-amber-600 pl-4 my-2 italic bg-slate-900/50 p-2 rounded text-slate-300">
+      {props.children}
+    </div>
+  ),
+  code: ({ node, ...props }: any) => (
+    <span className="bg-slate-800 text-amber-200 px-1 rounded text-sm font-mono border border-slate-700" {...props} />
+  )
+};
+
+// 개별 메시지 마크다운 렌더링 메모이제이션 (부모 리렌더링 시 100개 로그 재파싱 100% 방지)
+const MessageItem = React.memo<{ msg: Message }>(({ msg }) => {
+  return (
+    <div
+      className={`flex flex-col ${
+        msg.role === 'user' ? 'items-end' : 'items-start'
+      }`}
+    >
+      <div
+        className={`max-w-[90%] md:max-w-[75%] rounded-lg p-4 shadow-lg text-lg leading-relaxed border ${
+          msg.role === 'user'
+            ? 'bg-slate-800 border-slate-600 text-slate-200'
+            : 'bg-black/40 border-slate-700 text-amber-100/90 font-serif'
+        }`}
+      >
+        {msg.role === 'user' ? (
+          <p>{msg.text}</p>
+        ) : (
+          <ReactMarkdown components={markdownComponents}>
+            {msg.text}
+          </ReactMarkdown>
+        )}
+      </div>
+      <span className="text-xs text-slate-500 mt-1 px-1 uppercase tracking-wider">
+        {msg.role === 'user' ? '플레이어' : '게임 마스터'}
+      </span>
+    </div>
+  );
+});
+
 const GameLog: React.FC<Props> = ({ messages, isLoading }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -25,44 +68,7 @@ const GameLog: React.FC<Props> = ({ messages, isLoading }) => {
       <div className="absolute inset-0 pointer-events-none opacity-5 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-amber-900 via-slate-900 to-slate-900"></div>
       
       {messages.map((msg, idx) => (
-        <div
-          key={idx}
-          className={`flex flex-col ${
-            msg.role === 'user' ? 'items-end' : 'items-start'
-          }`}
-        >
-          <div
-            className={`max-w-[90%] md:max-w-[75%] rounded-lg p-4 shadow-lg text-lg leading-relaxed border ${
-              msg.role === 'user'
-                ? 'bg-slate-800 border-slate-600 text-slate-200'
-                : 'bg-black/40 border-slate-700 text-amber-100/90 font-serif'
-            }`}
-          >
-            {msg.role === 'user' ? (
-              <p>{msg.text}</p>
-            ) : (
-              <ReactMarkdown 
-                components={{
-                    strong: ({node, ...props}) => <span className="text-amber-400 font-bold" {...props} />,
-                    em: ({node, ...props}) => <span className="text-cyan-300 not-italic" {...props} />,
-                    blockquote: ({node, ...props}) => (
-                        <div className="border-l-4 border-amber-600 pl-4 my-2 italic bg-slate-900/50 p-2 rounded text-slate-300">
-                            {props.children}
-                        </div>
-                    ),
-                    code: ({node, ...props}) => (
-                         <span className="bg-slate-800 text-amber-200 px-1 rounded text-sm font-mono border border-slate-700" {...props} />
-                    )
-                }}
-              >
-                {msg.text}
-              </ReactMarkdown>
-            )}
-          </div>
-          <span className="text-xs text-slate-500 mt-1 px-1 uppercase tracking-wider">
-            {msg.role === 'user' ? '플레이어' : '게임 마스터'}
-          </span>
-        </div>
+        <MessageItem key={idx} msg={msg} />
       ))}
 
       {isLoading && (
@@ -78,4 +84,4 @@ const GameLog: React.FC<Props> = ({ messages, isLoading }) => {
   );
 };
 
-export default GameLog;
+export default React.memo(GameLog);

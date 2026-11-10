@@ -44,40 +44,48 @@ export const generateLocalItemName = (category: string, subType: string, rarity:
 };
 
 /**
- * [NEW] 전문기술 숙련도 획득 처리
+ * [NEW] 전문기술 숙련도 획득 처리 (최적화: 대용량 JSON 직렬화 복제 제거 및 불변 갱신 적용)
  */
 export const gainProfessionExp = (character: Character, profession: keyof NonNullable<Character['professions']>, amount: number): { newChar: Character, leveledUp: boolean, oldLevel: number, newLevel: number } => {
-    const newChar = JSON.parse(JSON.stringify(character)) as Character;
-    if (!newChar.professions) {
-        newChar.professions = {
-            cooking: { level: 1, exp: 0, maxExp: 100 },
-            mining: { level: 1, exp: 0, maxExp: 100 },
-            farming: { level: 1, exp: 0, maxExp: 100 },
-            research: { level: 1, exp: 0, maxExp: 100 },
-            alchemy: { level: 1, exp: 0, maxExp: 100 },
-            crafting: { level: 1, exp: 0, maxExp: 100 },
-            taming: { level: 1, exp: 0, maxExp: 100 },
-            breeding: { level: 1, exp: 0, maxExp: 100 },
-        };
-    }
-    if (!newChar.professions[profession]) {
-        newChar.professions[profession] = { level: 1, exp: 0, maxExp: 100 };
-    }
+    const defaultProfessions = {
+        cooking: { level: 1, exp: 0, maxExp: 100 },
+        mining: { level: 1, exp: 0, maxExp: 100 },
+        farming: { level: 1, exp: 0, maxExp: 100 },
+        research: { level: 1, exp: 0, maxExp: 100 },
+        alchemy: { level: 1, exp: 0, maxExp: 100 },
+        crafting: { level: 1, exp: 0, maxExp: 100 },
+        taming: { level: 1, exp: 0, maxExp: 100 },
+        breeding: { level: 1, exp: 0, maxExp: 100 },
+    };
 
-    const mastery = newChar.professions[profession];
-    const oldLevel = mastery.level || 1;
-    if (!mastery.maxExp || mastery.maxExp <= 0) mastery.maxExp = 100;
-    mastery.exp = (mastery.exp || 0) + amount;
+    const existingProfessions = character.professions || defaultProfessions;
+    const targetProf = existingProfessions[profession] || { level: 1, exp: 0, maxExp: 100 };
+    const oldLevel = targetProf.level || 1;
+    let maxExp = (!targetProf.maxExp || targetProf.maxExp <= 0) ? 100 : targetProf.maxExp;
+    let exp = (targetProf.exp || 0) + amount;
+    let newLevel = oldLevel;
     let leveledUp = false;
 
-    while (mastery.exp >= mastery.maxExp) {
-        mastery.exp -= mastery.maxExp;
-        mastery.level = (mastery.level || 1) + 1;
-        mastery.maxExp = Math.floor(mastery.maxExp * 1.2);
+    while (exp >= maxExp) {
+        exp -= maxExp;
+        newLevel += 1;
+        maxExp = Math.floor(maxExp * 1.2);
         leveledUp = true;
     }
 
-    return { newChar, leveledUp, oldLevel, newLevel: mastery.level };
+    const newChar: Character = {
+        ...character,
+        professions: {
+            ...existingProfessions,
+            [profession]: {
+                level: newLevel,
+                exp,
+                maxExp
+            }
+        }
+    };
+
+    return { newChar, leveledUp, oldLevel, newLevel };
 };
 
 const combatPowerWeakCache = new WeakMap<object, { sig: string; cp: number }>();
@@ -7111,14 +7119,24 @@ export const decompressData = async (code: string): Promise<any> => {
 export const optimizeSaveData = (rawData: any, options: { preserveMedia?: boolean } = { preserveMedia: true }): any => {
     if (!rawData) return null;
     
-    let data: any;
-    try {
-        data = JSON.parse(JSON.stringify(rawData));
-    } catch (e) {
-        return rawData;
-    }
-
     const preserveMedia = options?.preserveMedia !== false;
+
+    // [최적화] 기본 자동저장(preserveMedia: true) 시 대용량 JSON 직렬화/역직렬화(JSON.parse)를 건너뛰고 얕은 복사로 초고속 처리
+    // 미디어 제외 모드(preserveMedia: false)일 때만 하위 미디어 필터링을 위해 structuredClone/깊은 복사 수행
+    let data: any;
+    if (!preserveMedia) {
+        try {
+            data = typeof structuredClone === 'function' ? structuredClone(rawData) : JSON.parse(JSON.stringify(rawData));
+        } catch (e) {
+            data = { ...rawData };
+        }
+    } else {
+        data = {
+            ...rawData,
+            character: rawData.character ? { ...rawData.character } : undefined,
+            messages: Array.isArray(rawData.messages) ? [...rawData.messages] : rawData.messages,
+        };
+    }
 
     // 1. 중첩된 saveCode 제거 (최상위, 캐릭터, 동료)
     if (data.saveCode) delete data.saveCode;
@@ -7141,7 +7159,10 @@ export const optimizeSaveData = (rawData: any, options: { preserveMedia?: boolea
             data.character.worldHistory = data.character.worldHistory.slice(-100);
         }
         if (data.character.schoolData?.history && Array.isArray(data.character.schoolData.history) && data.character.schoolData.history.length > 50) {
-            data.character.schoolData.history = data.character.schoolData.history.slice(-50);
+            data.character.schoolData = {
+                ...data.character.schoolData,
+                history: data.character.schoolData.history.slice(-50)
+            };
         }
 
         // 4. 미디어 처리: preserveMedia가 false일 때만 미디어를 제외 (초경량 텍스트 모드)

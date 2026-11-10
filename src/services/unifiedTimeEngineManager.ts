@@ -1,4 +1,4 @@
-import { Character, CriticalAlert } from '../types';
+import { Character, CriticalAlert, RelationType } from '../types';
 import { START_DATE } from '../constants';
 import { updateSocialNetworkGrowth } from '../utils';
 import { processMercenaryDailyEvents } from './MercenaryTimeEngine';
@@ -98,6 +98,111 @@ const getDaysDiff = (d1?: string, d2?: string): number => {
 /**
  * 인연 유대 수치 장기 미교류 감쇄 처리
  */
+/**
+ * [NEW] 오랫동안 교류가 끊기거나 소원해진 먼 인맥을 자연스럽게 자동 정리합니다.
+ * 
+ * [철저한 보호 대상 (정리 절대 금지)]:
+ * 1. 플레이어 본인 및 직계 가족: 배우자(isSpouse), 연인(isLover, partnerId === 'player'), 자녀(classType 자녀/Child)
+ * 2. 동료들의 가족/배우자 (동료의 소중한 인연 보존)
+ * 3. 라이벌 및 영원의 라이벌 (isRival, isEternalRival)
+ * 4. 영생자 및 신의 사자/마신 등 특수 인물 (isImmortal)
+ * 5. 강한 유대(친구/절친: affection >= 30) 또는 숙적/원한(affection <= -30, 복수자 이벤트 대상)
+ * 6. 플레이어와 직접 대화/소통한 기록(chatHistory)이나 AI 기억(memories), 조문(condolenceCount)이 있는 인물
+ * 7. 약속(socialAppointments)이 대기 중인 인물
+ * 
+ * [자동 정리 대상]:
+ * 1. 사망자 중 특별한 유대(가족/연인/라이벌/호감도 10 이상)가 없고 사망/교류 후 3년(1,095일) 이상 지난 인물
+ * 2. 생존 인물 중 호감도가 5 이하(서로 거의 모르는 사이)이면서 10년(3,650일) 이상 연락이나 만남이 완전히 끊긴 먼 지인
+ */
+const pruneFadedSocialNetwork = (currentRef: Character, currentDate: string, allLogs: string[]) => {
+    if (!currentRef.socialNetwork || currentRef.socialNetwork.length === 0) return;
+
+    const activeCompanionIds = new Set([
+        ...(currentRef.companions || []).map(c => c.id),
+        ...(currentRef.inactiveCompanions || []).map(c => c.id)
+    ]);
+
+    // 동료들의 가족/배우자 ID 수집 (동료의 소중한 인연 보호)
+    const protectedFamilyIds = new Set<string>();
+    [...(currentRef.companions || []), ...(currentRef.inactiveCompanions || [])].forEach(c => {
+        if (c.partnerId) protectedFamilyIds.add(c.partnerId);
+        if (c.relations) {
+            Object.entries(c.relations).forEach(([targetId, rel]) => {
+                if (rel.type === RelationType.SPOUSE || rel.type === RelationType.LOVER || rel.type === RelationType.SIBLING) {
+                    protectedFamilyIds.add(targetId);
+                }
+            });
+        }
+    });
+
+    // 약속(socialAppointments)이 대기 중인 NPC 보호
+    const appointmentIds = new Set(
+        (currentRef.socialAppointments || [])
+            .filter(a => a.status === 'pending')
+            .map(a => a.targetNpcId)
+    );
+
+    let prunedCount = 0;
+
+    currentRef.socialNetwork = currentRef.socialNetwork.filter(entity => {
+        if (!entity || !entity.id) return false;
+
+        // 1. 현재 파티/기지 대기 동료는 절대 제외
+        if (activeCompanionIds.has(entity.id)) return true;
+
+        // 2. 플레이어의 직계 가족 / 배우자 / 연인 보호
+        if (entity.isSpouse || entity.isLover || entity.partnerId === 'player') return true;
+        if (entity.classType?.includes('자녀') || entity.classType?.includes('Child')) return true;
+
+        // 3. 동료들의 가족/배우자 보호
+        if (protectedFamilyIds.has(entity.id)) return true;
+
+        // 4. 라이벌 및 영원의 라이벌 보호
+        if (entity.isRival || entity.isEternalRival) return true;
+
+        // 5. 영생자 또는 특수 초월자 보호
+        if (entity.isImmortal) return true;
+
+        // 6. 강한 호감도 (친구/절친: >= 30) 또는 강한 적대감/숙적 (<= -30) 보호
+        const aff = entity.affection ?? 0;
+        if (aff >= 30 || aff <= -30) return true;
+
+        // 7. 플레이어와 직접 대화한 이력이나 조문/기억 이력이 있는 인물 보호
+        if (Array.isArray(entity.chatHistory) && entity.chatHistory.length > 0) return true;
+        if (Array.isArray(entity.memories) && entity.memories.length > 0) return true;
+        if (entity.condolenceCount && entity.condolenceCount > 0) return true;
+
+        // 8. 현재 약속이 잡혀있는 인물 보호
+        if (appointmentIds.has(entity.id)) return true;
+
+        const lastDate = entity.lastInteractionDate || entity.lastMentoringDate || START_DATE;
+        const diffDays = getDaysDiff(lastDate, currentDate);
+
+        // 9. 사망자 정리: 사망한 상태(isDead/isPurged)이며 특별한 유대(호감도 10 이상)가 없고 사망/교류 후 3년(1,095일) 이상 지난 경우
+        if (entity.isDead || entity.isPurged) {
+            if (aff < 10 && diffDays >= 1095) {
+                prunedCount++;
+                return false;
+            }
+            return true;
+        }
+
+        // 10. 생존 인물 중 "오랫동안 연이 없는 인물" 정리 (10년 기준):
+        // - 호감도가 5 이하(서로 거의 모르는 사이)로 소원해짐
+        // - 마지막 교류/만남으로부터 10년(3,650일) 이상 아무런 연락이 없었던 먼 인맥
+        if (aff <= 5 && diffDays >= 3650) {
+            prunedCount++;
+            return false;
+        }
+
+        return true;
+    });
+
+    if (prunedCount > 0 && Math.random() < 0.1) {
+        allLogs.push(`[인맥 정리] 세월이 흘러 교류가 완전히 끊긴 먼 인연 ${prunedCount}명과의 소식이 기억 속에서 자연스럽게 희미해졌습니다.`);
+    }
+};
+
 const processAffectionDecay = (currentRef: Character, currentDate: string, allLogs: string[]) => {
     const DECAY_THRESHOLD_DAYS = 365;
     const DECAY_CHECK_INTERVAL = 30;
@@ -130,6 +235,7 @@ const processAffectionDecay = (currentRef: Character, currentDate: string, allLo
 
     if (currentRef.socialNetwork) {
         currentRef.socialNetwork.forEach(decayEntity);
+        pruneFadedSocialNetwork(currentRef, currentDate, allLogs);
     }
 };
 

@@ -241,7 +241,7 @@ const App: React.FC = () => {
 
   // 마을/기지/광장 복귀 시점: 누적된 일일 결산 종합 보고서 일괄 출력
   useEffect(() => {
-    if (sceneType === 'normal' && !combatResultData && !isDungeonOpen && character.bufferedTimeSkipReports && character.bufferedTimeSkipReports.length > 0) {
+    if (sceneType === 'normal' && !combatResultData && !isDungeonOpen && (character?.bufferedTimeSkipReports?.length ?? 0) > 0) {
       const { updatedCharacter, consolidatedReport } = flushBufferedReports(character);
       if (consolidatedReport) {
         setCharacter(updatedCharacter);
@@ -257,7 +257,7 @@ const App: React.FC = () => {
         }
       }
     }
-  }, [sceneType, combatResultData, isDungeonOpen, isCityOpen, isBaseModalOpen, character.bufferedTimeSkipReports]);
+  }, [sceneType, combatResultData, isDungeonOpen, isCityOpen, isBaseModalOpen, character?.bufferedTimeSkipReports]);
 
   const handleCombatSpeedChange = (speed: 'fast' | 'normal') => {
     setCombatSpeed(speed);
