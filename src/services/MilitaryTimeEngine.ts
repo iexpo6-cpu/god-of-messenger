@@ -57,7 +57,6 @@ export const processMilitaryDailyEvents = (currentRef: Character, nextDate: stri
 
     // --- 1. 플레이어 군인 로직 ---
     if (isPlayerSoldier && mData) {
-        const mData = currentRef.militaryData;
         const rank = currentRef.militaryRank || MilitaryRank.PVT;
         const rankIdx = MILITARY_RANK_ORDER.indexOf(rank);
 
@@ -468,8 +467,8 @@ const simulateGlobalButterflyEffect = (char: Character, logs: string[]) => {
     }
       // --- PART 2: 독립적 전쟁 시뮬레이션 (NPC vs NPC) ---
     // 현재 전쟁 중인 모든 국가 쌍을 찾아 진척도를 업데이트합니다.
-    Object.keys(char.militaryData.globalDiplomacy).forEach(pairKey => {
-        const status = char.militaryData.globalDiplomacy![pairKey];
+    Object.keys(char.militaryData!.globalDiplomacy!).forEach(pairKey => {
+        const status = char.militaryData!.globalDiplomacy![pairKey];
         if (status === DiplomaticStatus.WAR) {
             const nations = pairKey.split('_');
             const nation1 = nations[0];
@@ -507,8 +506,8 @@ const simulateGlobalButterflyEffect = (char: Character, logs: string[]) => {
     });
 
     // --- PART 3: 속국 해방 체크 ---
-    Object.keys(char.militaryData.globalDiplomacy).forEach(pairKey => {
-        const status = char.militaryData.globalDiplomacy![pairKey];
+    Object.keys(char.militaryData!.globalDiplomacy!).forEach(pairKey => {
+        const status = char.militaryData!.globalDiplomacy![pairKey];
         if (status === DiplomaticStatus.VASSAL_OWNER || status === DiplomaticStatus.VASSAL_SUBJECT) {
             // 5% 확률로 속국이 독립 전쟁을 일으키거나 해방됨
             if (Math.random() < 0.03) {

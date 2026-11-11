@@ -440,7 +440,7 @@ export const executeBatchOptionEnhanceUntilSuccess = (
     while (attempts < maxAllowedAttempts) {
         const optionLevels = currentItem.optionLevels && currentItem.optionLevels.length > 0
             ? [...currentItem.optionLevels]
-            : new Array(currentItem.secondaryOptions.length).fill(1);
+            : new Array(currentItem.secondaryOptions?.length || 0).fill(1);
         
         const currentLevel = optionLevels[optionIndex] || 1;
         const maxLevel = currentItem.optionMaxLevels?.[optionIndex] || currentChar.optionMaxLevel || 5;

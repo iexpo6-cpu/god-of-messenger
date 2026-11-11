@@ -278,10 +278,11 @@ export const CityAndBaseModalsLayer: React.FC<Props> = ({
             });
           }}
           onUpdateCharacter={handleUpdateCharacter}
-          onBattle={(enemies, type, source, city, nation) => {
-            handleBattleTrigger(enemies, type as any, source, city, nation);
+          onBattle={(enemies: any, type: any) => {
+            handleBattleTrigger(enemies, type as any);
           }}
-          setResultModalData={undefined}
+          addToLog={addToLog}
+          onShowDamageReport={setActiveBaseDamageReport}
         />
       )}
 

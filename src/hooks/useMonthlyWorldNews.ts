@@ -23,6 +23,15 @@ export function useMonthlyWorldNews(
     const curMonth = character.currentDate.substring(0, 7);
     if (!curMonth) return;
 
+    // 0. 시간 경과(휴식, 이동 등)에서 이미 생성된 대기 중인 세계 정세 뉴스가 있으면 즉각 팝업
+    if (character.pendingWorldNews && character.pendingWorldNews.length > 0) {
+      const pending = character.pendingWorldNews;
+      setCharacterRef.current(prev => ({ ...prev, pendingWorldNews: undefined }));
+      setWorldNewsListRef.current(pending);
+      lastProcessedMonthRef.current = curMonth;
+      return;
+    }
+
     // 이미 이번 달 뉴스를 처리했거나 확인한 경우 중복 실행 방지
     if (lastProcessedMonthRef.current === curMonth || character.lastWorldNewsMonth === curMonth) {
       lastProcessedMonthRef.current = curMonth;

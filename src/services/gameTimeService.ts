@@ -399,6 +399,7 @@ export function advanceGameTime(
         if (monthlyNewsRes.news && monthlyNewsRes.news.length > 0) {
             updatedFromSkip = monthlyNewsRes.updatedCharacter;
             worldNews = [...(worldNews || []), ...monthlyNewsRes.news];
+            updatedFromSkip.pendingWorldNews = worldNews;
         }
 
         if (options?.isDungeonOrCombat) {
@@ -545,6 +546,7 @@ export function advanceGameTime(
     if (monthlyNewsRes.news && monthlyNewsRes.news.length > 0) {
         activeChar = monthlyNewsRes.updatedCharacter;
         worldNews = monthlyNewsRes.news;
+        activeChar.pendingWorldNews = worldNews;
     }
 
     return {

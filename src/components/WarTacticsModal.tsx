@@ -186,10 +186,10 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
 
         // 1) 플레이어 유닛 생성 (시작 위치: 최하단 행 중앙)
         const pFinal = calculateFinalStats(character).finalStats;
-        const pMaxHp = pFinal.maxHp || character.stats?.maxHp || character.maxHp || 10000;
-        const pCurHp = Math.min(pMaxHp, character.stats?.hp || character.hp || pMaxHp);
-        const pMaxMp = pFinal.maxMp || character.stats?.maxMp || character.maxMp || 500;
-        const pCurMp = Math.min(pMaxMp, character.stats?.mp || character.mp || pMaxMp);
+        const pMaxHp = pFinal.maxHp || character.stats?.maxHp || 10000;
+        const pCurHp = Math.min(pMaxHp, character.stats?.hp || pMaxHp);
+        const pMaxMp = pFinal.maxMp || character.stats?.maxMp || 500;
+        const pCurMp = Math.min(pMaxMp, character.stats?.mp || pMaxMp);
         const pAtk = Math.max(100, Math.floor((pFinal.str || 20) * 2 + (pFinal.int || 20) * 2 + character.level * 10));
         const pDef = Math.max(50, Math.floor((pFinal.def || 20) * 1.5 + character.level * 5));
 
@@ -232,9 +232,9 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
             if (!comp) return;
 
             const cFinal = calculateFinalStats(comp).finalStats;
-            const cMaxHp = cFinal.maxHp || comp.stats?.maxHp || comp.maxHp || 8000;
-            const cCurHp = Math.min(cMaxHp, comp.stats?.hp || comp.hp || cMaxHp);
-            const cMaxMp = cFinal.maxMp || comp.stats?.maxMp || comp.maxMp || 300;
+            const cMaxHp = cFinal.maxHp || comp.stats?.maxHp || 8000;
+            const cCurHp = Math.min(cMaxHp, comp.stats?.hp || cMaxHp);
+            const cMaxMp = cFinal.maxMp || comp.stats?.maxMp || 300;
             const cCurMp = Math.min(cMaxMp, comp.stats?.mp || comp.mp || cMaxMp);
             const cAtk = Math.max(80, Math.floor((cFinal.str || 15) * 2 + (cFinal.int || 15) * 2 + comp.level * 8));
             const cDef = Math.max(40, Math.floor((cFinal.def || 15) * 1.5 + comp.level * 4));
@@ -289,7 +289,7 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
             enemy: bossEnemy,
             name: bossEnemy.name,
             isBoss: true,
-            level: bossEnemy.level,
+            level: bossEnemy.level || 1,
             hp: bossEnemy.hp,
             maxHp: bossEnemy.maxHp,
             atk: Math.max(100, Math.floor((bTotal.str || 50) * 2 + bossEnemy.level * 8)),
@@ -746,7 +746,7 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
 
                     const cost = usedSkill?.mpCost ?? mpCost ?? 0;
                     comp.stats.mp = Math.max(0, (comp.stats.mp || 0) - cost);
-                    comp.mp = comp.stats.mp;
+                    (comp as any).mp = comp.stats.mp;
 
                     if (usedSkill) {
                         newLogs.push(`[시스템: ${comp.name} 스킬 발동: ${usedSkill.name} (${usedSkill.tier || ClassTier.FIRST})]`);
@@ -756,7 +756,7 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                             const healTarget = targetName === comp.name ? comp : nextPlayer;
                             const healAmt = Math.max(200, Math.floor((healTarget.stats.maxHp || 5000) * 0.25));
                             healTarget.stats.hp = Math.min(healTarget.stats.maxHp, (healTarget.stats.hp || 0) + healAmt);
-                            healTarget.hp = healTarget.stats.hp;
+                            (healTarget as any).hp = healTarget.stats.hp;
                             newLogs.push(`[시스템: ${healTarget.name} HP +${healAmt}]`);
                             newLogs.push(`[시스템] ${healTarget.name}에게 ${usedSkill.name} 효과 적용`);
                         } else {

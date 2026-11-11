@@ -29,6 +29,7 @@ import { getLevelUpMpReductionBonus } from './services/aoeSkillEnhanceService';
 import { calculateMountFinalStatBonus } from './services/mountStatService';
 import { calculateClassTierStatBonus, getDerivedDefenseMultiplierForClassTier } from './services/classTierDefenseService';
 import { computeRefinedCombatPower } from './services/combatPowerCalculator';
+export { isWarSuppliesItem, isLivingFoodItem, getLivingEconomyPricing } from './services/livingWorldEngine';
 
 /**
  * [NEW] 로컬 아이템 이름 생성기

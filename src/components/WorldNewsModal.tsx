@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { WorldNewsItem } from '../types';
 import { 
-  X, Globe, Swords, Sparkles, MapPin, ArrowRight, ShieldAlert, ScrollText, Compass, ShoppingBag
+  X, Globe, Swords, Sparkles, MapPin, ArrowRight, ShieldAlert, ScrollText, Compass, ShoppingBag, Coins, TrendingUp
 } from 'lucide-react';
 
 interface WorldNewsModalProps {
@@ -17,17 +17,21 @@ export const WorldNewsModal: React.FC<WorldNewsModalProps> = ({
   onOpenDungeon,
   onOpenMap
 }) => {
-  const [activeTab, setActiveTab] = useState<'all' | 'diplomacy' | 'dungeon'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'war' | 'economy' | 'diplomacy' | 'dungeon'>('all');
 
   const filteredList = newsList.filter(item => {
     if (activeTab === 'all') return true;
-    if (activeTab === 'diplomacy') return item.category === 'diplomacy' || item.category === 'war' || item.category === 'world';
+    if (activeTab === 'war') return item.category === 'war';
+    if (activeTab === 'economy') return item.category === 'economy';
+    if (activeTab === 'diplomacy') return item.category === 'diplomacy' || item.category === 'world';
     if (activeTab === 'dungeon') return item.category === 'dungeon';
     return true;
   });
 
+  const hasWarNews = newsList.some(n => n.category === 'war');
+  const hasEconomyNews = newsList.some(n => n.category === 'economy');
   const hasDungeonNews = newsList.some(n => n.category === 'dungeon');
-  const hasDiplomacyNews = newsList.some(n => n.category === 'diplomacy' || n.category === 'war');
+  const hasDiplomacyNews = newsList.some(n => n.category === 'diplomacy' || n.category === 'world');
 
   return (
     <div 
@@ -78,6 +82,34 @@ export const WorldNewsModal: React.FC<WorldNewsModalProps> = ({
             <span>전체 소식 ({newsList.length})</span>
           </button>
 
+          {hasWarNews && (
+            <button
+              onClick={() => setActiveTab('war')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap min-h-[36px] flex items-center gap-1 ${
+                activeTab === 'war'
+                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+            >
+              <ShieldAlert size={14} />
+              <span>전쟁/전선</span>
+            </button>
+          )}
+
+          {hasEconomyNews && (
+            <button
+              onClick={() => setActiveTab('economy')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap min-h-[36px] flex items-center gap-1 ${
+                activeTab === 'economy'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+              }`}
+            >
+              <Coins size={14} />
+              <span>시장/물가</span>
+            </button>
+          )}
+
           {hasDiplomacyNews && (
             <button
               onClick={() => setActiveTab('diplomacy')}
@@ -111,30 +143,40 @@ export const WorldNewsModal: React.FC<WorldNewsModalProps> = ({
         <div className="flex-1 p-3 sm:p-4 overflow-y-auto space-y-2.5 custom-scrollbar">
           {filteredList.length > 0 ? (
             filteredList.map((item) => {
+              const isWar = item.category === 'war';
+              const isEconomy = item.category === 'economy';
               const isDungeon = item.category === 'dungeon';
               const isBlackMarket = /특별상점|암시장/i.test(item.title) || /특별상점|암시장/i.test(item.message);
+
+              const cardStyle = isWar 
+                ? 'bg-rose-950/30 border-rose-500/40 hover:border-rose-500/70 shadow-sm shadow-rose-950/20'
+                : isEconomy
+                ? 'bg-amber-950/30 border-amber-500/40 hover:border-amber-500/70 shadow-sm shadow-amber-950/20'
+                : isBlackMarket
+                ? 'bg-gradient-to-r from-purple-950/40 via-violet-950/30 to-slate-900/80 border-violet-500/50 hover:border-violet-400'
+                : isDungeon
+                ? 'bg-purple-950/30 border-purple-500/40 hover:border-purple-500/60'
+                : 'bg-slate-900/80 border-slate-800 hover:border-slate-700';
+
+              const badgeConfig = isWar
+                ? { icon: <ShieldAlert size={11} />, text: '전쟁 속보', style: 'bg-rose-500/20 border-rose-500/40 text-rose-300' }
+                : isEconomy
+                ? { icon: <Coins size={11} />, text: '시장/물가 특보', style: 'bg-amber-500/20 border-amber-500/40 text-amber-300' }
+                : isBlackMarket
+                ? { icon: <ShoppingBag size={11} />, text: '특별상점 소문', style: 'bg-violet-500/25 border-violet-400/50 text-violet-200 shadow-sm' }
+                : isDungeon
+                ? { icon: <Swords size={11} />, text: '던전 소식', style: 'bg-purple-500/20 border-purple-500/40 text-purple-300' }
+                : { icon: <Globe size={11} />, text: '외교 정세', style: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' };
 
               return (
                 <div
                   key={item.id}
-                  className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${
-                    isBlackMarket
-                      ? 'bg-gradient-to-r from-purple-950/40 via-violet-950/30 to-slate-900/80 border-violet-500/50 hover:border-violet-400'
-                      : isDungeon
-                      ? 'bg-purple-950/30 border-purple-500/40 hover:border-purple-500/60'
-                      : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
-                  }`}
+                  className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all ${cardStyle}`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${
-                      isBlackMarket
-                        ? 'bg-violet-500/25 border-violet-400/50 text-violet-200 shadow-sm'
-                        : isDungeon 
-                        ? 'bg-purple-500/20 border-purple-500/40 text-purple-300' 
-                        : 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
-                    }`}>
-                      {isBlackMarket ? <ShoppingBag size={11} /> : isDungeon ? <Swords size={11} /> : <Globe size={11} />}
-                      {isBlackMarket ? '특별상점 소문' : isDungeon ? '던전 소식' : '세계 정세'}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${badgeConfig.style}`}>
+                      {badgeConfig.icon}
+                      {badgeConfig.text}
                     </span>
                     {item.date && (
                       <span className="text-[10px] text-slate-400 font-mono">

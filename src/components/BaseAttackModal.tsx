@@ -10,7 +10,7 @@ interface BaseAttackModalProps {
     onClose: () => void;
     onUpdateCharacter: (char: Character) => void;
     onBattle: (enemies: Enemy[], type: string) => void;
-    addToLog: (msg: string) => void;
+    addToLog?: (msg: string) => void;
     onShowDamageReport?: (report: BaseDefenseReportData) => void;
 }
 
@@ -19,12 +19,20 @@ export const BaseAttackModal: React.FC<BaseAttackModalProps> = ({ character, eve
     
     const isAtBase = character.currentLocation?.city === character.base?.location?.city;
 
+    const safeLog = (msg: string) => {
+        if (typeof addToLog === 'function') {
+            addToLog(msg);
+        } else {
+            console.log(msg);
+        }
+    };
+
     const handleDelegate = () => {
         let newChar = { ...character };
         const winChance = Math.min(0.95, Math.max(0.05, baseDefense / (event.enemyPower || 1)));
         
         if (Math.random() < winChance) {
-            addToLog(`[기지 방어 성공] 거주민들이 기지의 방어 시설을 활용하여 적들을 성공적으로 격퇴했습니다!`);
+            safeLog(`[기지 방어 성공] 거주민들이 기지의 방어 시설을 활용하여 적들을 성공적으로 격퇴했습니다!`);
             newChar.fame = (newChar.fame || 0) + 50;
             if (newChar.mercenaryData) {
                 newChar.mercenaryData = {
@@ -32,7 +40,7 @@ export const BaseAttackModal: React.FC<BaseAttackModalProps> = ({ character, eve
                     reputation: (newChar.mercenaryData.reputation || 0) + 50
                 };
             }
-            addToLog(`명성이 50 상승했습니다.`);
+            safeLog(`명성이 50 상승했습니다.`);
             newChar.pendingBaseAttackEvent = undefined;
             newChar = promoteNextIncident(newChar);
             onUpdateCharacter(newChar);
@@ -45,7 +53,7 @@ export const BaseAttackModal: React.FC<BaseAttackModalProps> = ({ character, eve
                 event.enemyPower,
                 'delegated'
             );
-            addToLog(summaryLog);
+            safeLog(summaryLog);
 
             let finalChar = { ...updatedCharacter };
             finalChar.pendingBaseAttackEvent = undefined;

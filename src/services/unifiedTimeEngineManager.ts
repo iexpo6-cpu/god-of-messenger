@@ -139,7 +139,7 @@ const pruneFadedSocialNetwork = (currentRef: Character, currentDate: string, all
     const appointmentIds = new Set(
         (currentRef.socialAppointments || [])
             .filter(a => a.status === 'pending')
-            .map(a => a.targetNpcId)
+            .map(a => a.targetId)
     );
 
     let prunedCount = 0;
@@ -151,7 +151,7 @@ const pruneFadedSocialNetwork = (currentRef: Character, currentDate: string, all
         if (activeCompanionIds.has(entity.id)) return true;
 
         // 2. 플레이어의 직계 가족 / 배우자 / 연인 보호
-        if (entity.isSpouse || entity.isLover || entity.partnerId === 'player') return true;
+        if ((entity as any).isSpouse || (entity as any).isLover || (entity as any).partnerId === 'player') return true;
         if (entity.classType?.includes('자녀') || entity.classType?.includes('Child')) return true;
 
         // 3. 동료들의 가족/배우자 보호
@@ -161,7 +161,7 @@ const pruneFadedSocialNetwork = (currentRef: Character, currentDate: string, all
         if (entity.isRival || entity.isEternalRival) return true;
 
         // 5. 영생자 또는 특수 초월자 보호
-        if (entity.isImmortal) return true;
+        if ((entity as any).isImmortal) return true;
 
         // 6. 강한 호감도 (친구/절친: >= 30) 또는 강한 적대감/숙적 (<= -30) 보호
         const aff = entity.affection ?? 0;

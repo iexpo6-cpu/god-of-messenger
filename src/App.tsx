@@ -2373,6 +2373,9 @@ useEffect(() => {
           });
           if (timeResult.dailyReport) setDailyReport(timeResult.dailyReport);
           if (timeResult.toastNotice) triggerDayChangeToast(timeResult.toastNotice);
+          if (timeResult.worldNews && timeResult.worldNews.length > 0) {
+              setWorldNewsList(timeResult.worldNews);
+          }
           if (timeResult.systemLogs && timeResult.systemLogs.length > 0) {
               timeResult.systemLogs.forEach(l => addToLog(l));
           }
@@ -2456,6 +2459,9 @@ useEffect(() => {
                   });
                   if (timeResult.dailyReport) setDailyReport(timeResult.dailyReport);
                   if (timeResult.toastNotice) triggerDayChangeToast(timeResult.toastNotice);
+                  if (timeResult.worldNews && timeResult.worldNews.length > 0) {
+                      setWorldNewsList(timeResult.worldNews);
+                  }
                   if (timeResult.systemLogs && timeResult.systemLogs.length > 0) {
                       timeResult.systemLogs.forEach(l => addToLog(l));
                   }
@@ -2974,7 +2980,7 @@ useEffect(() => {
       const comp = findCompanionRef(updatedChar, selectedCompanionId);
       if (!comp) return;
 
-      const isMythicItem = item.rarity === '신화' || item.rarity === ItemRarity.MYTHTIC || (item as any).isMythic || String(item.rarity || '').includes('신화');
+      const isMythicItem = item.rarity === ItemRarity.MYTHTIC || (item as any).isMythic || String(item.rarity || '').includes('신화');
       if (isMythicItem) {
           const isLevelMet = (comp.level || 1) >= 1000;
           const isPotentialLocked = Boolean((comp as any).isPotentialLocked);
@@ -4325,7 +4331,7 @@ useEffect(() => {
   const handleEquipItem = (itemIndex: number) => {
       const item = character.inventory[itemIndex]; if (!item) return;
 
-      const isMythicItem = item.rarity === '신화' || item.rarity === ItemRarity.MYTHTIC || (item as any).isMythic || String(item.rarity || '').includes('신화');
+      const isMythicItem = item.rarity === ItemRarity.MYTHTIC || (item as any).isMythic || String(item.rarity || '').includes('신화');
       if (isMythicItem) {
           const isLevelMet = (character.level || 1) >= 1000;
           const isPotentialLocked = Boolean((character as any).isPotentialLocked);
@@ -5364,6 +5370,9 @@ const handleEquipTitle = (targetId: string, titleId: string | undefined) => {
               });
               if (result.dailyReport) setDailyReport(result.dailyReport);
               if (result.toastNotice) triggerDayChangeToast(result.toastNotice);
+              if (result.worldNews && result.worldNews.length > 0) {
+                  setWorldNewsList(result.worldNews);
+              }
               if (result.systemLogs && result.systemLogs.length > 0) {
                   result.systemLogs.forEach(l => addToLog(l));
               }

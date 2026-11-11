@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Item, Character, ItemRarity } from '../types';
 import { X, Coins, ShoppingBag, Plus, Minus, Backpack, AlertTriangle, Lock, Search, Filter, ArrowUpRight, MessageSquare, Sparkles, Sword, Shield, Package, Heart, Tag, Check, RefreshCw, Hammer, Target, Crosshair, Scroll, Activity } from 'lucide-react';
 import { calculateItemPrice, calculateInventorySize, getWeaponTypeFromItem } from '../utils';
+import { getLivingEconomyPricing } from '../services/livingWorldEngine';
 import { ItemTooltip } from './CharacterSheet';
 import { SHINRYOKU_UI_CONFIG } from '../constants';
 import { getItemDisplayImageUrl } from '../ItemData';
@@ -134,7 +135,11 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
   const maxInventorySize = calculateInventorySize(character.stats);
   const isInventoryFull = character.inventory.length >= maxInventorySize;
 
-  // 구매 물품 가격 계산 함수 (평판 할인 반영)
+  const currentNation = character.currentLocation?.nation || character.nation;
+  const isWarNation = character.economicState?.activeWarNations?.includes(currentNation);
+  const isFamineNation = character.economicState?.famineNations?.includes(currentNation);
+
+  // 구매 물품 가격 계산 함수 (평판 할인 및 살아있는 시장 경제 반영)
   const getCalculatedPrice = (item: Item) => {
     let price = item.price !== undefined ? item.price : calculateItemPrice(item) * 2;
     if (item.reputationPriceMod) {
@@ -145,12 +150,33 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
         price = Math.floor(price * item.reputationPriceMod.multiplier);
       }
     }
-    return price;
+    const living = getLivingEconomyPricing(item, currentNation, character.economicState, 'buy', price);
+    return living.finalPrice;
   };
 
-  // 판매 시 아이템 수거 가격 (인벤토리 판매가와 일치시킴)
+  const getBuyPriceDetails = (item: Item) => {
+    let price = item.price !== undefined ? item.price : calculateItemPrice(item) * 2;
+    if (item.reputationPriceMod) {
+      const rep = item.reputationPriceMod.faction === '엘프' ? (character.elfReputation || 0) :
+                  item.reputationPriceMod.faction === '수인' ? (character.beastReputation || 0) :
+                  (character.demonReputation || 0);
+      if (rep >= 50) {
+        price = Math.floor(price * item.reputationPriceMod.multiplier);
+      }
+    }
+    return getLivingEconomyPricing(item, currentNation, character.economicState, 'buy', price);
+  };
+
+  // 판매 시 아이템 수거 가격 (전쟁 특수 2.5배 매입 / 식량난 2배 매입 반영)
   const getSellPrice = (item: Item) => {
-    return calculateItemPrice(item);
+    const baseSell = calculateItemPrice(item);
+    const living = getLivingEconomyPricing(item, currentNation, character.economicState, 'sell', baseSell);
+    return living.finalPrice;
+  };
+
+  const getSellPriceDetails = (item: Item) => {
+    const baseSell = calculateItemPrice(item);
+    return getLivingEconomyPricing(item, currentNation, character.economicState, 'sell', baseSell);
   };
 
   // 카테고리 매칭 함수
@@ -384,6 +410,24 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
           </div>
         </div>
 
+        {/* 실시간 시장 경제 알림 배너 */}
+        {isWarNation && (
+          <div className="bg-amber-950/60 border-b border-amber-500/40 px-3 sm:px-5 py-2 flex items-center justify-between text-xs text-amber-200 shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-black text-[10px] shrink-0 animate-pulse">전쟁 특수</span>
+              <span className="truncate">교전국 <strong>{currentNation}</strong> 군 사령부에서 <strong>철광석, 붕대, 회복 물약</strong>을 <strong>2.5배(250%)</strong> 긴급 최고가 매입 중!</span>
+            </div>
+          </div>
+        )}
+        {isFamineNation && (
+          <div className="bg-rose-950/60 border-b border-rose-500/40 px-3 sm:px-5 py-2 flex items-center justify-between text-xs text-rose-200 shrink-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="px-2 py-0.5 rounded bg-rose-500 text-white font-black text-[10px] shrink-0 animate-pulse">식량난 경보</span>
+              <span className="truncate">기근 피해로 <strong>식량·육류 구매가가 2배 폭등</strong>하였으며, 잉여 식량을 2배 가격에 매입합니다!</span>
+            </div>
+          </div>
+        )}
+
         {/* Sub Navigation Bar: Buy / Sell Tabs & Search & Category Filter */}
         <div className="bg-slate-950/80 px-3 sm:px-5 py-2 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 shrink-0">
           
@@ -476,7 +520,8 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3">
                 {filteredBuyItems.map(({ item, originalIndex }) => {
-                  const price = getCalculatedPrice(item);
+                  const buyDetails = getBuyPriceDetails(item);
+                  const price = buyDetails.finalPrice;
                   const canAfford = character.money >= price;
                   const hasStock = item.stock === undefined || item.stock > 0;
                   const isStockLow = item.stock !== undefined && item.stock <= 3 && item.stock > 0;
@@ -568,7 +613,14 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
                       {/* Bottom Price & Purchase Button */}
                       <div className="mt-auto pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
                         <div className="flex flex-col">
-                          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">가격</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">가격</span>
+                            {buyDetails.badgeText && (
+                              <span className={`text-[8px] px-1 py-0.2 rounded border font-bold ${buyDetails.badgeStyle}`}>
+                                {buyDetails.badgeText}
+                              </span>
+                            )}
+                          </div>
                           <span className={`font-mono font-bold text-xs ${canAfford ? 'text-amber-400' : 'text-red-400'}`}>
                             {price.toLocaleString()} G
                           </span>
@@ -608,7 +660,8 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3">
                 {groupedSellItems.map((group, groupIdx) => {
                   const { item, count } = group;
-                  const sellPrice = getSellPrice(item);
+                  const sellDetails = getSellPriceDetails(item);
+                  const sellPrice = sellDetails.finalPrice;
                   const rarityStyle = RARITY_STYLES[item.rarity] || RARITY_STYLES[ItemRarity.NORMAL];
                   const displayImg = getItemDisplayImageUrl(item);
 
@@ -659,8 +712,15 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
 
                       <div className="mt-auto pt-2 border-t border-slate-800/80 flex items-center justify-between gap-2">
                         <div className="flex flex-col">
-                          <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">개당 판매가</span>
-                          <span className="font-mono font-bold text-xs text-emerald-400">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">개당 판매가</span>
+                            {sellDetails.badgeText && (
+                              <span className={`text-[8px] px-1 py-0.2 rounded border font-bold animate-pulse ${sellDetails.badgeStyle}`}>
+                                {sellDetails.badgeText}
+                              </span>
+                            )}
+                          </div>
+                          <span className={`font-mono font-bold text-xs ${sellDetails.multiplier > 1 ? 'text-amber-300 drop-shadow' : 'text-emerald-400'}`}>
                             +{sellPrice.toLocaleString()} G
                           </span>
                         </div>
@@ -686,7 +746,8 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
         {/* Quantity Overlay Modal (Buy Mode) */}
         {selectedBuyItem && (() => {
           const item = selectedBuyItem.item;
-          const unitPrice = getCalculatedPrice(item);
+          const buyDetails = getBuyPriceDetails(item);
+          const unitPrice = buyDetails.finalPrice;
           const maxAffordable = Math.floor(character.money / unitPrice);
           const stockLimit = item.stock !== undefined ? item.stock : 999;
           const spaceLimit = maxInventorySize - character.inventory.length;
@@ -750,7 +811,14 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
                 {/* Price Breakdown */}
                 <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 mb-5 space-y-2 text-xs">
                   <div className="flex justify-between items-center text-slate-400">
-                    <span>개당 단가</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>개당 단가</span>
+                      {buyDetails.badgeText && (
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded border font-bold ${buyDetails.badgeStyle}`}>
+                          {buyDetails.badgeText}
+                        </span>
+                      )}
+                    </div>
                     <span className="font-mono">{unitPrice.toLocaleString()} G</span>
                   </div>
                   <div className="border-t border-slate-800/80 pt-2 flex justify-between items-center font-bold text-sm">
@@ -786,7 +854,8 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
         {/* Quantity Overlay Modal (Sell Mode) */}
         {selectedSellGroup !== null && (() => {
           const { item, count } = selectedSellGroup;
-          const unitPrice = getSellPrice(item);
+          const sellDetails = getSellPriceDetails(item);
+          const unitPrice = sellDetails.finalPrice;
           const trueMax = count;
 
           return (
@@ -847,7 +916,14 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
                 {/* Price Breakdown */}
                 <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 mb-5 space-y-2 text-xs">
                   <div className="flex justify-between items-center text-slate-400">
-                    <span>개당 매입가</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>개당 매입가</span>
+                      {sellDetails.badgeText && (
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded border font-bold animate-pulse ${sellDetails.badgeStyle}`}>
+                          {sellDetails.badgeText}
+                        </span>
+                      )}
+                    </div>
                     <span className="font-mono text-emerald-400">+{unitPrice.toLocaleString()} G</span>
                   </div>
                   <div className="border-t border-slate-800/80 pt-2 flex justify-between items-center font-bold text-sm">

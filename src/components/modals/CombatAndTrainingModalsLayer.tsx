@@ -1,5 +1,5 @@
 import React from 'react';
-import { Character, CombatState } from '../../types';
+import { Character, CombatState, WeaponType, CombatStyle } from '../../types';
 import { ResultData } from '../ActionResultModal';
 import { SuddenEventData } from '../../services/suddenEventService';
 import { TrainingReportData } from '../TrainingReportModal';
@@ -39,15 +39,15 @@ interface Props {
   isTrainingModalOpen: boolean;
   setIsTrainingModalOpen: (open: boolean) => void;
   handleExpTraining: (amount?: number, targetName?: string) => void;
-  handleStatTraining: (statKey?: any, amount?: number, targetName?: string) => void;
-  handleWeaponTraining: (weaponType?: any, amount?: number, targetName?: string) => void;
+  handleStatTraining: (statKey: string, targetId: string, amount?: number) => void;
+  handleWeaponTraining: (weaponType: WeaponType, targetId: string, amount?: number) => void;
   trainingInitialTab: 'exp' | 'stat' | 'mastery' | 'trainer';
   trainingReportData: TrainingReportData | null;
   setTrainingReportData: (data: TrainingReportData | null) => void;
   isTrainingStyleOpen: boolean;
   setIsTrainingStyleOpen: (open: boolean) => void;
   handleUpdateCombatStyle: (style: any, target: any) => void;
-  handlePromoteCombatStyle: (target: any) => void;
+  handlePromoteCombatStyle: (targetId: string, newStyle: CombatStyle) => void;
   isTacticalTrainingOpen: boolean;
   setIsTacticalTrainingOpen: (open: boolean) => void;
   isBestiaryOpen: boolean;

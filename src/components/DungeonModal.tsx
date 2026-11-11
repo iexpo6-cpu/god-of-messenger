@@ -22,6 +22,31 @@ import {
     FloorCacheData 
 } from '../services/gridDungeonEngine';
 
+export type DungeonNodeType = 'Combat' | 'MiniBoss' | 'Rest' | 'Treasure' | 'Event' | 'Boss';
+
+export interface DungeonBranchNode {
+    id: string;
+    floor: number;
+    slotIndex: number;
+    type: DungeonNodeType;
+    name: string;
+    subtitle: string;
+    description: string;
+    isCompleted: boolean;
+    isCurrent: boolean;
+    nextIds: string[];
+    treasureData?: {
+        gold: number;
+        manaStone: number;
+        gems?: number;
+    };
+    eventData?: {
+        title: string;
+        optionA: { label: string; desc: string; type: 'heal' | 'fullHeal' | 'exp' };
+        optionB: { label: string; desc: string; type: 'manaStone' | 'exp' | 'stat' };
+    };
+}
+
 interface Props {
     isOpen: boolean;
     character: Character;
@@ -196,8 +221,9 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         // 시간 흐름 처리 (발걸음마다 30분 흐름)
         const timeAdvance = advanceGameTime(character, 0, 30);
         let activeChar = timeAdvance.updatedCharacter;
-        if (timeAdvance.isDayChanged && timeAdvance.dayChangeNotice) {
-            setDayChangeNotice(timeAdvance.dayChangeNotice);
+        const dayNotice = (timeAdvance as any).dayChangeNotice || timeAdvance.toastNotice || (timeAdvance.daysPassed > 0 ? '새로운 날이 밝았습니다.' : null);
+        if (timeAdvance.daysPassed > 0 && dayNotice) {
+            setDayChangeNotice(dayNotice);
         }
 
         // 새로운 타일 맵 복사

@@ -420,6 +420,33 @@ const NationalDiplomacyModal: React.FC<Props> = ({ character, onClose, onUpdateC
                                                         <p className="text-xs md:text-sm text-slate-200 leading-relaxed italic">
                                                             "{rel.lastEvent || "현재 특별한 동향이 보고되지 않았습니다."}"
                                                         </p>
+                                                        {rel.occupation !== undefined && (
+                                                            <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10 flex items-center justify-between">
+                                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">전선 점유율 (Frontline Occupation)</span>
+                                                                <span className={`text-xs font-mono font-bold ${rel.occupation > 0 ? 'text-blue-400' : rel.occupation < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                                                                    {rel.occupation > 0 ? `+${rel.occupation}% (아군 우세)` : rel.occupation < 0 ? `${rel.occupation}% (아군 위기)` : '0% (팽팽한 대치)'}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {(() => {
+                                                            const isEcoWar = character.economicState?.activeWarNations?.includes(selectedNation);
+                                                            const isEcoFamine = character.economicState?.famineNations?.includes(selectedNation);
+                                                            if (!isEcoWar && !isEcoFamine) return null;
+                                                            return (
+                                                                <div className="mt-2.5 pt-2.5 border-t border-white/10 flex flex-wrap gap-1.5">
+                                                                    {isEcoWar && (
+                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-950/80 border border-amber-500/50 text-amber-300">
+                                                                            ⚔️ 군수물자 품귀국 (철광석·붕대·물약 250% 매입 특수)
+                                                                        </span>
+                                                                    )}
+                                                                    {isEcoFamine && (
+                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-950/80 border border-rose-500/50 text-rose-300">
+                                                                            🌾 식량난/기근 지역 (식량 2배 매입/구매)
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                         {isWar && npcWarProgress !== null && (
                                                             <div className="mt-3 md:mt-4 pt-3 md:pt-4 border-t border-white/10">
                                                                 <p className="text-[10px] text-red-400 font-bold uppercase mb-2">Global War Progress (NPC Simulation)</p>

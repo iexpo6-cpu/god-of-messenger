@@ -1,4 +1,5 @@
-import { Character, WorldNewsItem, DiplomaticStatus } from '../types';
+import { Character, WorldNewsItem, DiplomaticStatus, MilitaryRank } from '../types';
+import { simulateMonthlyGeopoliticsAndEconomy } from './livingWorldEngine';
 
 /**
  * 매월 1일 또는 한 달 시간 경과 시 대륙 전역의 정세, 던전, 암시장 소식을 취합하여 생성합니다.
@@ -168,12 +169,32 @@ export function checkAndGenerateMonthlyWorldNews(
     return { updatedCharacter: character, news: null };
   }
 
-  // 월이 변경됨: 이번 달 월간 뉴스 생성
-  const news = generateMonthlyWorldNews(character, curMonth, currentLogs);
-  const updatedCharacter: Character = {
+  // 월이 변경됨: 30일 주기 세력 시뮬레이션 & 시장 경제 & 뉴스 생성
+  const simulation = simulateMonthlyGeopoliticsAndEconomy(character, curMonth);
+  const updatedMilitaryData = {
+    ...(character.militaryData || { rank: MilitaryRank.RECRUIT, contribution: 0 }),
+    diplomacy: simulation.updatedDiplomacy
+  };
+
+  const characterWithSim: Character = {
     ...character,
+    militaryData: updatedMilitaryData,
+    economicState: simulation.economicState,
     lastWorldNewsMonth: curMonth
   };
 
-  return { updatedCharacter, news };
+  const baseNews = generateMonthlyWorldNews(characterWithSim, curMonth, currentLogs);
+  
+  // 시뮬레이션 뉴스를 최상단에 우선 배치하고 중복 제거
+  const newsMap = new Map<string, WorldNewsItem>();
+  simulation.generatedNews.forEach(n => newsMap.set(n.id, n));
+  baseNews.forEach(n => {
+    if (!newsMap.has(n.id)) {
+      newsMap.set(n.id, n);
+    }
+  });
+
+  const finalNews = Array.from(newsMap.values());
+
+  return { updatedCharacter: characterWithSim, news: finalNews };
 }

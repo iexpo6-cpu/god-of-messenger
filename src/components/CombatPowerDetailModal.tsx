@@ -46,7 +46,7 @@ export const CombatPowerDetailModal: React.FC<Props> = ({ entity, onClose }) => 
 
   // Passive skills list (일반 패시브 스킬 + 전투 계열 장착/보유 패시브 스킬 통합)
   const regularPassives = (entity.skills || []).filter(
-    (s) => s && (s.type === 'PASSIVE' || (s.type as any) === '패시브')
+    (s) => s && (s.type === SkillType.PASSIVE || (s.type as any) === 'PASSIVE' || (s.type as any) === '패시브')
   );
 
   const stylePassives: any[] = [];

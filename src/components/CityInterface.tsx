@@ -405,6 +405,9 @@ const CityInterface: React.FC<Props> = ({
             };
             onUpdateCharacter(newChar, `[시스템] 도시 입장료 ${entryFee}G 지불 (속국 가중치 적용)`);
         }
+        if (character.economicState?.blockadedCities?.includes(loc.city)) {
+            onAction(`[국경 봉쇄 검문] ${loc.city} 관문은 무역로 전면 봉쇄령으로 삼엄한 경계와 특별 통행 검문이 진행 중입니다.`);
+        }
         setEntered(true);
         setCurrentDistrict(isElfNation || isBeastNation || isDemonNation ? 'Residential' : 'Commercial'); 
     };
@@ -1525,6 +1528,38 @@ const CityInterface: React.FC<Props> = ({
                                         </div>
                                     )}
                                 </div>
+
+                                {/* [살아있는 시장 경제 & 전황 실시간 브리핑 배너] */}
+                                {(() => {
+                                    const isCityWarNation = character.economicState?.activeWarNations?.includes(loc.nation);
+                                    const isCityFamineNation = character.economicState?.famineNations?.includes(loc.nation);
+                                    const isCityBlockaded = character.economicState?.blockadedCities?.includes(loc.city);
+
+                                    if (!isCityWarNation && !isCityFamineNation && !isCityBlockaded) return null;
+
+                                    return (
+                                        <div className="flex flex-wrap gap-2 items-center p-3 rounded-2xl bg-slate-950/80 border border-slate-800 shadow-md backdrop-blur-md">
+                                            {isCityWarNation && (
+                                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-950/70 border border-amber-500/50 text-amber-300 text-xs font-bold shadow-inner">
+                                                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                                                    <span>⚔️ 전쟁 특수: 군 사령부에서 철광석·붕대·물약 2.5배(250%) 최고가 매입 중!</span>
+                                                </div>
+                                            )}
+                                            {isCityFamineNation && (
+                                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-950/70 border border-rose-500/50 text-rose-300 text-xs font-bold shadow-inner">
+                                                    <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping" />
+                                                    <span>🌾 식량난 경보: 기근으로 식당/시장 식량 가격 2배 폭등 (식량 2배 매입)</span>
+                                                </div>
+                                            )}
+                                            {isCityBlockaded && (
+                                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-950/70 border border-red-500/50 text-red-300 text-xs font-bold shadow-inner">
+                                                    <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                                                    <span>🚧 무역로 봉쇄: 국경 관문 전면 차단 (엄격한 검문 및 비상 거래)</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
 
                                  {/* ACTION CARDS GRID */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

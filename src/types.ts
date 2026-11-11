@@ -1707,6 +1707,7 @@ export interface TacticalPreset {
 }
 
 export interface Character {
+  id?: string;
   name: string;
   age: string;
   birthYear?: number;
@@ -1895,6 +1896,8 @@ export interface Character {
   pendingInterviews?: InterviewData[];
   lastInterviewRequestMonth?: string;
   lastWorldNewsMonth?: string; // [NEW] 월간 세계 정세 뉴스 마지막 확인 월 (YYYY-MM)
+  pendingWorldNews?: WorldNewsItem[]; // [NEW] 월 변경 시 팝업 대기 중인 세계 정세 뉴스
+  economicState?: WorldEconomicState; // [NEW] 실시간 대륙 시장 경제 및 전쟁 물가 상태
   lastInterviewDate?: string;
 
   // [PLAN 1] 사회적 관계망 (평생 인연)
@@ -2044,7 +2047,7 @@ export interface CombatState {
   isOneOnOne?: boolean;
   trialTier?: ClassTier;
   challengerCompanionId?: string;
-  type?: 'normal' | 'exam_mid' | 'exam_final' | 'tournament' | 'dungeon' | 'arena' | 'war_raid' | 'war_defend' | 'bounty_hunt' | 'temple_defense' | 'wanted_battle' | 'divine_invasion' | 'relation_battle' | 'god_rebellion' | 'temple_invasion' | 'PVP_battle' | 'magye_revolt' | 'magye_divine_war' | 'magye_rebellion' | 'relation_ambush' | 'instant_dungeon' | 'magye_temple_invasion' | 'magye_god_slaying' | 'regional_uprising' | 'Coup' | 'emergency_rescue' | 'school_demo' | 'military_regional_defense' | 'military_defense' | 'base_defense' | 'final_trial_battle' | 'eternal_rival_duel';
+  type?: 'normal' | 'exam_mid' | 'exam_final' | 'tournament' | 'dungeon' | 'arena' | 'war_raid' | 'war_defend' | 'bounty_hunt' | 'temple_defense' | 'wanted_battle' | 'divine_invasion' | 'relation_battle' | 'god_rebellion' | 'temple_invasion' | 'PVP_battle' | 'magye_revolt' | 'magye_divine_war' | 'magye_rebellion' | 'relation_ambush' | 'instant_dungeon' | 'magye_temple_invasion' | 'magye_god_slaying' | 'regional_uprising' | 'Coup' | 'emergency_rescue' | 'school_demo' | 'military_regional_defense' | 'military_defense' | 'base_defense' | 'final_trial_battle' | 'eternal_rival_duel' | 'sparring_arena';
   rewards?: { exp: number, gold: number };
   rebelRankIdx?: number;
   passivesApplied?: boolean;
@@ -2237,6 +2240,9 @@ export interface Base {
   facilities: string[]; // Keep for backward compatibility or general list
   assignments: Record<string, string>;
   defenseStructures?: DefenseStructureInstance[];
+  childAcademy?: any;
+  childAcademyTrainees?: any[];
+  childAcademyReports?: any[];
   cookingJobs?: CookingJob[]; // [NEW] 전문 주방 조리 대기열 및 진행 상황
   multiAssignments?: Record<string, string[]>; // [NEW] 지원 가능한 시설에 대해 다중 배치 정보 저장
   houseAssignments?: Record<string, string>; // [NEW] 동료별 거주 집 지정 (companionId -> houseInstanceId)
@@ -2441,9 +2447,17 @@ export interface CriticalAlert {
     deceasedInfo?: DeceasedAlertInfo;
 }
 
+export interface WorldEconomicState {
+    activeWarNations: string[];     // 군수물자 품귀 국가 (철광석, 붕대, 포션 판매가 2~3배 폭등)
+    famineNations: string[];        // 식량난 국가 (음식 구매가 2배 상승, 식량 매입가 2배)
+    blockadedCities?: string[];     // 무역로 봉쇄/통행 제한 도시 목록
+    warCasualtiesReport?: string;   // 이 달의 전쟁 피해 요약
+    lastSimulatedMonth?: string;    // 마지막 시뮬레이션 월 (YYYY-MM)
+}
+
 export interface WorldNewsItem {
     id: string;
-    category: 'diplomacy' | 'dungeon' | 'world' | 'war';
+    category: 'diplomacy' | 'dungeon' | 'world' | 'war' | 'economy';
     title: string;
     message: string;
     date?: string;
@@ -2500,3 +2514,5 @@ export interface CombatResultModalData {
     activeExpBuffs?: string[];
     activeGoldBuffs?: string[];
 }
+
+export type BaseData = Base;

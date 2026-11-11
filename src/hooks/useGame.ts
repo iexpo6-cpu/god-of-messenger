@@ -371,6 +371,7 @@ export const useGame = () => {
                               (character.inactiveCompanions?.some(c => c.id === rival.id) || false);
            if (!isRecruited && Math.random() < 0.3) {
                 const growthLevel = Math.floor(Math.random()*2+1);
+                const statBoost = growthLevel * 2;
                 const updatedRival = {
                     ...rival,
                     level: rival.level + growthLevel,

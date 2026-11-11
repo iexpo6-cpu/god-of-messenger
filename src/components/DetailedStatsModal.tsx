@@ -926,7 +926,7 @@ const DetailedStatsModal: React.FC<Props> = ({ stats, bonusStats, equipment, sta
                                 <div key={idx} className="bg-slate-950/60 p-2 rounded-lg border border-slate-800/80 flex justify-between items-center text-xs">
                                     <div className="min-w-0 pr-2">
                                         <p className="font-bold text-white text-[11px] truncate">{skill.name}</p>
-                                        <p className="text-[10px] text-slate-400 leading-snug line-clamp-1">{skill.desc || skill.effectDesc || '상시 능력치 강화'}</p>
+                                        <p className="text-[10px] text-slate-400 leading-snug line-clamp-1">{skill.description || (skill as any).desc || (skill as any).effectDesc || '상시 능력치 강화'}</p>
                                     </div>
                                     <div className="text-right shrink-0">
                                         {skill.powerRatio !== undefined && (

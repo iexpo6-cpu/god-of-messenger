@@ -302,7 +302,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         const linesToProcess = newLines.length > 6 ? newLines.slice(-6) : newLines;
 
         // 전투 속도에 맞추어 연출 타이머 간격 스케일링
-        const speedScale = combatSpeed === 'ultra' ? 0.25 : combatSpeed === 'fast' ? 0.5 : 1.0;
+        const speedScale = (combatSpeed as string) === 'ultra' ? 0.25 : combatSpeed === 'fast' ? 0.5 : 1.0;
         let sequenceDelay = 0;
         const STEP_INTERVAL = Math.round(300 * speedScale);
 
