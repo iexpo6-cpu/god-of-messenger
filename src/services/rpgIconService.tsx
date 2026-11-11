@@ -1,5 +1,6 @@
 import React from 'react';
 import { Item, ItemRarity } from '../types';
+import { getRegisteredItemImage } from './visualRegistry';
 
 // ============================================================================
 // 1. CUSTOM SVG RPG SKILL VECTOR ICONS (Lucide-compatible React Components)
@@ -1312,6 +1313,10 @@ export function getItemImage(item: Partial<Item> | any): string {
     !item.imageUrl.includes('api.dicebear.com/7.x/shapes')
   ) {
     return item.imageUrl.trim();
+  }
+  if (item.name && typeof item.name === 'string') {
+    const registered = getRegisteredItemImage(item.name);
+    if (registered) return registered;
   }
 
   const rarity = item.rarity || ItemRarity.NORMAL;

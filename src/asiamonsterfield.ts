@@ -4,6 +4,8 @@ export type { AsiaLootEntry };
 export { ASIA_MONSTER_LOOT };
 
 export const ASIA_MONSTER_IMAGE_MAP: Record<string, string> = {
+    "지옥의 아수라": "https://i.ibb.co/dw9Gpd4j/hell-asura.jpg",
+    "빛의 나비": "https://i.ibb.co/VWqv9DKZ/holy-light-butterfly-1794397393983.jpg",
     "산토끼": "https://i.ibb.co/twc44z61/Gemini-Generated-Image-qkxuijqkxuijqkxu.png",
     "화난 멧돼지": "https://i.ibb.co/3yhJWX37/image.png",
     "길 잃은 삽살개": "https://i.ibb.co/0p7gHbgC/Gemini-Generated-Image-e9k0ge9k0ge9k0ge.png",

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Character, BaseDefenseReportData } from '../../types';
 import { START_DATE } from '../../constants';
 import { promoteNextIncident } from '../../services/incidentQueue';
+import SceneLoadingFallback from '../SceneLoadingFallback';
 import {
   MapModal,
   CityInterface,
@@ -151,120 +152,134 @@ export const CityAndBaseModalsLayer: React.FC<Props> = ({
   return (
     <>
       {isMapOpen && (
-        <MapModal 
-          isOpen={isMapOpen} 
-          onClose={() => { 
-            setIsMapOpen(false); 
-            setMapMode('travel'); 
-            setMapInitialTargetLocationName(undefined); 
-          }} 
-          character={character} 
-          onTravel={handleTravel} 
-          mode={mapMode} 
-          residentCount={1 + character.companions.length + (character.inactiveCompanions?.length || 0)} 
-          initialTargetLocationName={mapInitialTargetLocationName} 
-        />
+        <Suspense fallback={<SceneLoadingFallback mode="general" title="대륙 지도 불러오는 중" />}>
+          <MapModal 
+            isOpen={isMapOpen} 
+            onClose={() => { 
+              setIsMapOpen(false); 
+              setMapMode('travel'); 
+              setMapInitialTargetLocationName(undefined); 
+            }} 
+            character={character} 
+            onTravel={handleTravel} 
+            mode={mapMode} 
+            residentCount={1 + character.companions.length + (character.inactiveCompanions?.length || 0)} 
+            initialTargetLocationName={mapInitialTargetLocationName} 
+          />
+        </Suspense>
       )}
 
       {isCityOpen && sceneType !== 'combat' && (
-        <CityInterface 
-          character={character} 
-          onClose={() => {
-            setIsCityOpen(false);
-            setCityInitialConfig(null);
-          }} 
-          onAction={handleAction} 
-          onUpdateCharacter={handleUpdateCharacter} 
-          onBattle={handleBattleTrigger} 
-          onOpenDungeon={() => setIsDungeonOpen(true)}
-          initialDistrict={cityInitialConfig?.district}
-          initialOpenHuntMap={cityInitialConfig?.openHuntMap}
-          initialBandId={cityInitialConfig?.initialBandId || character.lastHuntingBandId}
-          initialOpenInstantDungeonId={cityInitialConfig?.openInstantDungeonId}
-        />
+        <Suspense fallback={<SceneLoadingFallback mode="city" title="도시 구역 진입 중" />}>
+          <CityInterface 
+            character={character} 
+            onClose={() => {
+              setIsCityOpen(false);
+              setCityInitialConfig(null);
+            }} 
+            onAction={handleAction} 
+            onUpdateCharacter={handleUpdateCharacter} 
+            onBattle={handleBattleTrigger} 
+            onOpenDungeon={() => setIsDungeonOpen(true)}
+            initialDistrict={cityInitialConfig?.district}
+            initialOpenHuntMap={cityInitialConfig?.openHuntMap}
+            initialBandId={cityInitialConfig?.initialBandId || character.lastHuntingBandId}
+            initialOpenInstantDungeonId={cityInitialConfig?.openInstantDungeonId}
+          />
+        </Suspense>
       )} 
 
       {isBaseModalOpen && (
-        <BaseModal 
-          character={character} 
-          onClose={() => { 
-            setIsBaseModalOpen(false); 
-            setBaseInitialSubModal(undefined); 
-          }} 
-          initialSubModal={baseInitialSubModal} 
-          onUpgrade={handleBaseUpgrade} 
-          onPurchaseBase={handleBasePurchase} 
-          onMoveCompanionToBase={(idx) => handleCompanionMove(idx, true)} 
-          onRecallCompanion={(idx) => handleCompanionMove(idx, false)} 
-          onAssignCompanion={handleAssignment} 
-          onUseFacility={(fid) => handleAction(`[기지 시설 이용] 시설: ${fid}`)} 
-          onStorageAction={handleItemAction as any} 
-          onHousingRest={() => handleAction('[기지 활동] (Housing) 휴식')} 
-          onFacilitySpecificAction={(fid, action, target, amount) => { 
-            if (fid === 'training_exp') { setTrainingInitialTab('exp'); setIsTrainingModalOpen(true); }
-            else if (fid === 'training_stat') { setTrainingInitialTab('stat'); setIsTrainingModalOpen(true); }
-            else if (fid === 'training_mastery') { setTrainingInitialTab('mastery'); setIsTrainingModalOpen(true); }
-            else if (fid === 'tactical_training') { setIsTacticalTrainingOpen(true); }
-            else if (fid === 'training_style') { setIsTrainingStyleOpen(true); }
-            else if (action === '경험치 훈련') { handleExpTraining(amount, target); }
-            else handleAction(`[기지 활동] (${fid}) ${action} ${target ? `대상: ${target}` : ''}`); 
-          }} 
-          onStatTraining={() => { setTrainingInitialTab('stat'); setIsTrainingModalOpen(true); }} 
-          onSkillResearch={handleSkillResearch} 
-          onSkillLimitBreak={handleSkillLimitBreak} 
-          onItemEnhancement={handleItemEnhancement} 
-          onWeaponTraining={() => { setTrainingInitialTab('mastery'); setIsTrainingModalOpen(true); }} 
-          onParty={handleHostParty} 
-          onInteraction={handleInteraction} 
-          onUpdateCharacter={handleUpdateCharacter} 
-          onRelocate={() => { setMapMode('relocate'); setIsMapOpen(true); }} 
-          onFacilityUpgrade={handleFacilityUpgrade} 
-          onExpandGrid={handleExpandGrid} 
-          onRecallMonsterFromFarm={handleRecallMonsterFromFarm} 
-          onReturnMonsterToFarm={handleReturnMonsterToFarm} 
-          onOpenProfessionMastery={() => setIsProfessionMasteryOpen(true)} 
-          onOpenChefMastery={() => setIsChefMasteryOpen(true)} 
-          onOpenBreederMastery={() => setIsBreederMasteryOpen(true)} 
-          onOpenTacticalTraining={() => setIsTacticalTrainingOpen(true)} 
-          onBattle={(enemy, type, source, targetCity, targetNation) => handleBattleTrigger(enemy, type as any, source, targetCity, targetNation)} 
-          onShowDamageReport={(rep) => setActiveBaseDamageReport(rep)} 
-        />
+        <Suspense fallback={<SceneLoadingFallback mode="base" title="기지 시설 진입 중" />}>
+          <BaseModal 
+            character={character} 
+            onClose={() => { 
+              setIsBaseModalOpen(false); 
+              setBaseInitialSubModal(undefined); 
+            }} 
+            initialSubModal={baseInitialSubModal} 
+            onUpgrade={handleBaseUpgrade} 
+            onPurchaseBase={handleBasePurchase} 
+            onMoveCompanionToBase={(idx) => handleCompanionMove(idx, true)} 
+            onRecallCompanion={(idx) => handleCompanionMove(idx, false)} 
+            onAssignCompanion={handleAssignment} 
+            onUseFacility={(fid) => handleAction(`[기지 시설 이용] 시설: ${fid}`)} 
+            onStorageAction={handleItemAction as any} 
+            onHousingRest={() => handleAction('[기지 활동] (Housing) 휴식')} 
+            onFacilitySpecificAction={(fid, action, target, amount) => { 
+              if (fid === 'training_exp') { setTrainingInitialTab('exp'); setIsTrainingModalOpen(true); }
+              else if (fid === 'training_stat') { setTrainingInitialTab('stat'); setIsTrainingModalOpen(true); }
+              else if (fid === 'training_mastery') { setTrainingInitialTab('mastery'); setIsTrainingModalOpen(true); }
+              else if (fid === 'tactical_training') { setIsTacticalTrainingOpen(true); }
+              else if (fid === 'training_style') { setIsTrainingStyleOpen(true); }
+              else if (action === '경험치 훈련') { handleExpTraining(amount, target); }
+              else handleAction(`[기지 활동] (${fid}) ${action} ${target ? `대상: ${target}` : ''}`); 
+            }} 
+            onStatTraining={() => { setTrainingInitialTab('stat'); setIsTrainingModalOpen(true); }} 
+            onSkillResearch={handleSkillResearch} 
+            onSkillLimitBreak={handleSkillLimitBreak} 
+            onItemEnhancement={handleItemEnhancement} 
+            onWeaponTraining={() => { setTrainingInitialTab('mastery'); setIsTrainingModalOpen(true); }} 
+            onParty={handleHostParty} 
+            onInteraction={handleInteraction} 
+            onUpdateCharacter={handleUpdateCharacter} 
+            onRelocate={() => { setMapMode('relocate'); setIsMapOpen(true); }} 
+            onFacilityUpgrade={handleFacilityUpgrade} 
+            onExpandGrid={handleExpandGrid} 
+            onRecallMonsterFromFarm={handleRecallMonsterFromFarm} 
+            onReturnMonsterToFarm={handleReturnMonsterToFarm} 
+            onOpenProfessionMastery={() => setIsProfessionMasteryOpen(true)} 
+            onOpenChefMastery={() => setIsChefMasteryOpen(true)} 
+            onOpenBreederMastery={() => setIsBreederMasteryOpen(true)} 
+            onOpenTacticalTraining={() => setIsTacticalTrainingOpen(true)} 
+            onBattle={(enemy, type, source, targetCity, targetNation) => handleBattleTrigger(enemy, type as any, source, targetCity, targetNation)} 
+            onShowDamageReport={(rep) => setActiveBaseDamageReport(rep)} 
+          />
+        </Suspense>
       )}
 
       {isTempleManagementOpen && (
-        <TempleManagementModal 
-          character={character} 
-          onClose={() => setIsTempleManagementOpen(false)} 
-          onUpdateCharacter={handleUpdateCharacter} 
-          onAction={handleAction} 
-          onBattle={(enemy, type, source, targetCity, targetNation) => {
-            handleBattleTrigger(enemy, type as any, source, targetCity, targetNation);
-          }} 
-        />
+        <Suspense fallback={<SceneLoadingFallback mode="general" title="성전 관리 시설 진입 중" />}>
+          <TempleManagementModal 
+            character={character} 
+            onClose={() => setIsTempleManagementOpen(false)} 
+            onUpdateCharacter={handleUpdateCharacter} 
+            onAction={handleAction} 
+            onBattle={(enemy, type, source, targetCity, targetNation) => {
+              handleBattleTrigger(enemy, type as any, source, targetCity, targetNation);
+            }} 
+          />
+        </Suspense>
       )}
 
       {isElfCityOpen && (
-        <ElfCityModal 
-          character={character} 
-          onClose={() => setIsElfCityOpen(false)} 
-          onUpdateCharacter={handleUpdateCharacter} 
-        />
+        <Suspense fallback={<SceneLoadingFallback mode="city" title="세계수의 쉼터 진입 중" />}>
+          <ElfCityModal 
+            character={character} 
+            onClose={() => setIsElfCityOpen(false)} 
+            onUpdateCharacter={handleUpdateCharacter} 
+          />
+        </Suspense>
       )}
 
       {isBeastCityOpen && (
-        <BeastCityModal 
-          character={character} 
-          onClose={() => setIsBeastCityOpen(false)} 
-          onUpdateCharacter={handleUpdateCharacter} 
-        />
+        <Suspense fallback={<SceneLoadingFallback mode="city" title="수인 투기장 진입 중" />}>
+          <BeastCityModal 
+            character={character} 
+            onClose={() => setIsBeastCityOpen(false)} 
+            onUpdateCharacter={handleUpdateCharacter} 
+          />
+        </Suspense>
       )}
 
       {isDemonCityOpen && (
-        <DemonCityModal 
-          character={character} 
-          onClose={() => setIsDemonCityOpen(false)} 
-          onUpdateCharacter={handleUpdateCharacter} 
-        />
+        <Suspense fallback={<SceneLoadingFallback mode="city" title="마인 계약소 진입 중" />}>
+          <DemonCityModal 
+            character={character} 
+            onClose={() => setIsDemonCityOpen(false)} 
+            onUpdateCharacter={handleUpdateCharacter} 
+          />
+        </Suspense>
       )}
 
       {character.pendingBaseAttackEvent && (

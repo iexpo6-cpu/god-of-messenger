@@ -27,7 +27,7 @@ import { chooseEnemySkill, isEnemyAoeSkill, adjustEnemyDamageForAoe, getEnemySki
 
 import { checkSkillParticipantsMp, buildSkillActionCommand } from '../services/BondSkillService';
 import { CompanionTacticsService } from '../services/companionTacticsService';
-import { getVisualUrlByJob } from '../services/visualManager';
+import { getVisualUrlByJob, getRegisteredSkillImage } from '../services/visualManager';
 import { isNinjaCloneSkill, handleNinjaCloneSpawn } from '../services/ninjaCloneService';
 import { Snowflake } from 'lucide-react';
 import { MESSENGER_VIDEOS, MESSENGER_VIDEO_DURATIONS, BOSS_ENTRANCE_VIDEOS } from '../messengerVideoData';
@@ -38,6 +38,7 @@ import { combatTimerPool, trimCombatLogs, combatLogTracker } from '../services/c
 import { combatTurnManager } from '../services/combatTurnManager';
 import { clearCombatStatCache } from '../services/combatStatCache';
 import { combatFloatingTextBatcher } from '../services/combatFloatingTextBatcher';
+import { FastImage } from './common/FastImage';
 
 // 분할된 전투 하위 컴포넌트들을 가져옵니다.
 import { HealthBar } from './combat/HealthBar';
@@ -2505,7 +2506,9 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                                         {idx + 1}
                                     </span>
                                     {unit.visualUrl ? (
-                                        <img src={unit.visualUrl} alt={unit.name} className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full object-cover border border-white/20" />
+                                        <div className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full overflow-hidden shrink-0 border border-white/20">
+                                            <FastImage src={unit.visualUrl} alt={unit.name} className="w-full h-full object-cover" />
+                                        </div>
                                     ) : (
                                         isPlayerUnit ? <Crown size={10} className="text-amber-400 md:size-[12px]" /> : isCompUnit ? <User size={10} className="text-indigo-400 md:size-[12px]" /> : isSummonUnit ? <Shield size={10} className="text-emerald-400 md:size-[12px]" /> : <Skull size={10} className="text-red-400 md:size-[12px]" />
                                     )}
@@ -2771,8 +2774,8 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                                                     {/* Thumbnail Icon/Image */}
                                                     <div className={`w-3 h-3 sm:w-4 sm:h-4 rounded border ${skill ? 'border-indigo-400/30' : 'border-emerald-400/30'} overflow-hidden bg-slate-950 flex items-center justify-center shrink-0 mt-0.5 shadow-inner group-hover:scale-105 transition-transform`}>
                                                         {skill ? (
-                                                            skill.imageUrl ? (
-                                                                <img src={skill.imageUrl} alt={skill.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                            (skill.imageUrl || getRegisteredSkillImage(skill.id) || getRegisteredSkillImage(skill.name)) ? (
+                                                                <FastImage src={skill.imageUrl || getRegisteredSkillImage(skill.id) || getRegisteredSkillImage(skill.name)} alt={skill.name} className="w-full h-full object-cover" />
                                                             ) : (
                                                                 (() => {
                                                                     const IconComp = getSkillIconComponent(skill);
@@ -2781,7 +2784,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                                                             )
                                                         ) : (
                                                             item ? (
-                                                                <img src={getItemImage(item)} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                                <FastImage src={getItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
                                                             ) : (
                                                                 <Package size={8} className={isItemUsable ? 'text-emerald-300 group-hover:text-amber-300' : 'text-slate-600'} />
                                                             )

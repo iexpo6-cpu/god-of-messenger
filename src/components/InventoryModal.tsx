@@ -608,8 +608,8 @@ export const InventoryModal: React.FC<Props> = memo(({
                     {hasValue ? (
                       <div className="w-full h-full rounded overflow-hidden flex items-center justify-center p-0.5 relative group">
                         {isItem ? (
-                          matchingItem?.imageUrl ? (
-                            <img src={matchingItem.imageUrl} alt={matchingItem.name} className="w-full h-full object-cover rounded-[1px]" referrerPolicy="no-referrer" />
+                          getItemImage(matchingItem) ? (
+                            <img src={getItemImage(matchingItem)} alt={matchingItem?.name} className="w-full h-full object-cover rounded-[1px]" referrerPolicy="no-referrer" />
                           ) : (
                             <Box size={9} className="text-emerald-400" />
                           )

@@ -1,5 +1,6 @@
 import { Item, ItemRarity, CityTier, WeaponType, BlackMarketItem } from './types';
 import { getAllBossDetailedLoots } from './services/bossLootService';
+import { getRegisteredItemImage } from './services/visualRegistry';
 
 // [NEW] 아이템 종류별 이미지 매핑 테이블
 export const ITEM_IMAGE_MAP: Record<string, string> = {
@@ -356,11 +357,17 @@ export const getFallbackImage = (type: string, weaponType?: string) => {
 export const getItemDisplayImageUrl = (item?: Partial<Item> | string | null): string => {
     if (!item) return "https://i.ibb.co/6RsrXBZW/image.png";
     if (typeof item === 'string') {
+        const registered = getRegisteredItemImage(item);
+        if (registered) return registered;
         return ITEM_IMAGE_MAP[item] || "https://i.ibb.co/6RsrXBZW/image.png";
     }
     if (item.imageUrl && item.imageUrl.trim() !== '') return item.imageUrl;
     if (item.visualUrl && item.visualUrl.trim() !== '') return item.visualUrl;
-    if (item.name && ITEM_IMAGE_MAP[item.name]) return ITEM_IMAGE_MAP[item.name];
+    if (item.name) {
+        const registered = getRegisteredItemImage(item.name);
+        if (registered) return registered;
+        if (ITEM_IMAGE_MAP[item.name]) return ITEM_IMAGE_MAP[item.name];
+    }
     return getFallbackImage(item.type || '', item.weaponType);
 };
 
@@ -369,7 +376,7 @@ const createShopItem = (name: string, type: Item['type'], rarity: ItemRarity, co
     const item: Item = {
         name, type, rarity, description: desc, stats, secondaryOptions: options, enhancement: 0, stock: stock, weaponType, elementalType, price: cost, reputationReq, reputationPriceMod
     };
-    item.imageUrl = ITEM_IMAGE_MAP[name] || getFallbackImage(type);
+    item.imageUrl = getRegisteredItemImage(name) || ITEM_IMAGE_MAP[name] || getFallbackImage(type);
     return item;
 };
 

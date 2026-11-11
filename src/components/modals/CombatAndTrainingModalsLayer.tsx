@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Character, CombatState, WeaponType, CombatStyle } from '../../types';
 import { ResultData } from '../ActionResultModal';
 import { SuddenEventData } from '../../services/suddenEventService';
 import { TrainingReportData } from '../TrainingReportModal';
+import SceneLoadingFallback from '../SceneLoadingFallback';
 import {
   CombatResultModal,
   SuddenEventModal,
@@ -184,7 +185,7 @@ export const CombatAndTrainingModalsLayer: React.FC<Props> = ({
       )}
 
       {isDungeonOpen && sceneType !== 'combat' && (
-        <div>
+        <Suspense fallback={<SceneLoadingFallback mode="dungeon" title="던전 심연 진입 중" />}>
           <DungeonModal 
             isOpen={isDungeonOpen} 
             character={character} 
@@ -192,7 +193,7 @@ export const CombatAndTrainingModalsLayer: React.FC<Props> = ({
             onBattle={(enemy) => handleBattleTrigger(enemy, 'dungeon')} 
             onUpdateCharacter={handleUpdateCharacter} 
           />
-        </div>
+        </Suspense>
       )}
 
       {isTacticsOpen && (

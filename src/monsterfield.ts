@@ -12,6 +12,7 @@ import { DEMON_HUNT_THEMES, DEMON_MONSTER_IMAGE_MAP } from './demonmonsterfield'
 import { INSTANT_DUNGEON_BOSS_TEMPLATES } from './data/instantDungeonBoss';
 import { INSTANT_DUNGEON_MONSTER_TEMPLATES } from './data/instantDungeonMonster';
 import { getMonsterShinryokuType, MONSTER_SHINRYOKU_MAP } from './monsterShinryokuTable';
+import { getRegisteredMonsterVisual } from './services/visualRegistry';
 
 export { getMonsterShinryokuType, MONSTER_SHINRYOKU_MAP };
 
@@ -107,7 +108,7 @@ INSTANT_DUNGEON_MONSTER_TEMPLATES.forEach(m => {
     }
 });
 
-const ALL_MONSTER_IMAGE_MAP: Record<string, string> = {
+export const ALL_MONSTER_IMAGE_MAP: Record<string, string> = {
     ...ASIA_MONSTER_IMAGE_MAP,
     ...EUROPE_MONSTER_IMAGE_MAP,
     ...AMERICA_MONSTER_IMAGE_MAP,
@@ -121,6 +122,12 @@ const ALL_MONSTER_IMAGE_MAP: Record<string, string> = {
 };
 
 const resolveMonsterVisualUrl = (rawName: string): string => {
+    // 0. 동적 비주얼 레지스트리 우선 확인
+    const registered = getRegisteredMonsterVisual(rawName);
+    if (registered) {
+        return registered;
+    }
+
     if (ALL_MONSTER_IMAGE_MAP[rawName]) {
         return ALL_MONSTER_IMAGE_MAP[rawName];
     }

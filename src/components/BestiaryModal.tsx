@@ -18,6 +18,8 @@ import {
     SEASONAL_BOSS_CONFIG,
     isMythicSeasonalBoss
 } from '../bossMonsters';
+import { getRegisteredBossVisual } from '../services/visualRegistry';
+import { FastImage } from './common/FastImage';
 
 interface Props {
     character: Character;
@@ -206,8 +208,10 @@ const BestiaryModal: React.FC<Props> = ({ character, onClose }) => {
                     if (bossData && bossData.name) {
                         const isSeasonal = isMythicSeasonalBoss(bossData);
                         const continent = defaultContinent || getContinentForNation(nation);
+                        const regVisual = getRegisteredBossVisual(bossData.name) || getRegisteredBossVisual(bossData.id);
                         map[bossData.name] = {
                             ...bossData,
+                            visualUrl: regVisual || bossData.visualUrl,
                             nation,
                             city,
                             continent,
@@ -248,8 +252,10 @@ const BestiaryModal: React.FC<Props> = ({ character, onClose }) => {
                     const nation = loc?.nation || map[bossData.name]?.nation || '신화의 영역';
                     const city = loc?.city || map[bossData.name]?.city || '비경';
                     const continent = loc?.nation ? getContinentForNation(loc.nation) : (map[bossData.name]?.continent || '신계');
+                    const regVisual = getRegisteredBossVisual(bossData.name) || getRegisteredBossVisual(bossKey) || getRegisteredBossVisual(bossData.id);
                     map[bossData.name] = {
                         ...bossData,
+                        visualUrl: regVisual || bossData.visualUrl,
                         nation,
                         city,
                         continent,
@@ -651,13 +657,13 @@ const BestiaryModal: React.FC<Props> = ({ character, onClose }) => {
                                                 <div className="relative w-8 h-8 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden shrink-0 shadow-inner flex items-center justify-center">
                                                     {isBoss ? (
                                                         bossMap[name]?.visualUrl ? (
-                                                            <img src={bossMap[name].visualUrl} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                                                            <FastImage src={bossMap[name].visualUrl} className="w-full h-full object-cover" alt="" />
                                                         ) : (
                                                             <Crown size={14} className={isSeasonal ? "text-amber-400" : "text-red-400"} />
                                                         )
                                                     ) : (
                                                         getMonsterInfo(name).visualUrl ? (
-                                                            <img src={getMonsterInfo(name).visualUrl} className={`w-full h-full object-cover ${isMDefeated ? '' : 'grayscale opacity-40'}`} alt="" referrerPolicy="no-referrer" />
+                                                            <FastImage src={getMonsterInfo(name).visualUrl} className={`w-full h-full object-cover ${isMDefeated ? '' : 'grayscale opacity-40'}`} alt="" />
                                                         ) : (
                                                             <Skull size={14} className={isMDefeated ? "text-red-500" : "text-slate-600"} />
                                                         )
@@ -746,9 +752,9 @@ const BestiaryModal: React.FC<Props> = ({ character, onClose }) => {
                                         
                                         <div className="relative z-10 w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-slate-900 border-2 border-slate-800 flex items-center justify-center shadow-2xl overflow-hidden group">
                                             {selectedBossInfo && isDefeated ? (
-                                                <img src={selectedBossInfo.visualUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="" referrerPolicy="no-referrer" />
+                                                <FastImage src={selectedBossInfo.visualUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="" />
                                             ) : (!selectedBossInfo && isDefeated && getMonsterInfo(selectedName).visualUrl) ? (
-                                                <img src={getMonsterInfo(selectedName).visualUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="" referrerPolicy="no-referrer" />
+                                                <FastImage src={getMonsterInfo(selectedName).visualUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="" />
                                             ) : (
                                                 <Skull size={44} className={`transition-all duration-700 ${isDefeated ? 'text-red-500/50 scale-115' : 'text-slate-700/30'}`} />
                                             )}

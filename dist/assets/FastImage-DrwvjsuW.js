@@ -1,0 +1,5 @@
+import{gj as d,r as i,gk as g,j as t}from"./index-BEhnUFO7.js";const v=({src:e,alt:u="",className:r="",fallbackIcon:n,skeletonClassName:f="",...x})=>{const m=e?e.startsWith("assets/")||e.startsWith("./assets/")||d(e):!1,[o,s]=i.useState(m),[h,a]=i.useState(!1);return i.useEffect(()=>{if(!e){s(!1),a(!0);return}if(e.startsWith("assets/")||e.startsWith("./assets/")||d(e)){s(!0),a(!1);return}s(!1),a(!1);let l=!0;return g(e).then(c=>{l&&(c?s(!0):a(!0))}),()=>{l=!1}},[e]),!e||h?n?t.jsx("div",{className:`flex items-center justify-center ${r}`,children:n}):t.jsx("div",{className:`bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 text-xs ${r}`,children:t.jsx("span",{children:"🖼️"})}):t.jsxs("div",{className:"relative inline-block w-full h-full overflow-hidden",children:[!o&&t.jsx("div",{className:`absolute inset-0 bg-slate-800/80 animate-pulse rounded ${f}`}),t.jsx("img",{src:e,alt:u,loading:"eager",decoding:"async",onLoad:()=>s(!0),onError:()=>a(!0),className:`
+                    transition-opacity duration-200
+                    ${o?"opacity-100":"opacity-0"}
+                    ${r}
+                `,...x})]})};export{v as F};

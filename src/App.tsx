@@ -11,6 +11,7 @@ import { chatWithCompanion, generateInterviewQuestions } from './services/gemini
 import CharacterSheet from './components/CharacterSheet';
 import GameLog from './components/GameLog';
 import { ProcessingLoadingModal } from './components/ProcessingLoadingModal';
+import SceneLoadingFallback from './components/SceneLoadingFallback';
 import StartScreen from './components/StartScreen';
 import QuestTracker from './components/QuestTracker';
 import HeaderShortcuts, { ShortcutId } from './components/HeaderShortcuts';
@@ -47,6 +48,8 @@ import { isRealTimeElixir } from './services/elixirService';
 import { elixirRealtimeService } from './services/elixirRealtimeService';
 import { filterDebuffsForCleanse } from './services/statusCleanseService';
 import { combatStateBridge } from './services/combatStateBridge';
+import { InitialAssetPreloader } from './components/InitialAssetPreloader';
+import { preloadCurrentLocationAssets } from './services/imagePreloadService';
 import { Send, Menu, X,MessageSquare, Save, User as UserIcon,LogOut, Calendar, Home,ShieldAlert, Library,FastForward, Clock,Flag, Sword, Grid, Map as MapIcon, Building2, ScrollText, Users2, Trash2, Radio, Skull, Users, MapPin, Eye, Sparkles, Settings, Flame, Mail, Target, Newspaper, Sun } from 'lucide-react';
 import { DANGER_REPUTATION_MULT,MERCENARY_RANK_THRESHOLD } from './mercenaryRankUp';
 import { applyBaseDefenseFailure } from './services/baseDefenseService';
@@ -184,6 +187,17 @@ const App: React.FC = () => {
     localStorage.setItem('ui_theme', uiTheme);
   }, [uiTheme, disableBackdropBlur, disableScreenShake]);
 
+  // 중요 모달 청크 백그라운드 사전 캐싱 (2초 후 비동기 프리페치로 지연 제거)
+  useEffect(() => {
+    const idleTimer = setTimeout(() => {
+      import('./components/CityInterface');
+      import('./components/combat/IsolatedCombatContainer');
+      import('./components/BaseModal');
+      import('./components/DungeonModal');
+    }, 2000);
+    return () => clearTimeout(idleTimer);
+  }, []);
+
   // 하루 결산 완충 장치: 가벼운 상단 텍스트 알림
   const [dayChangeToast, setDayChangeToast] = useState<string | null>(null);
   const triggerDayChangeToast = (notice?: string) => {
@@ -304,6 +318,13 @@ const App: React.FC = () => {
     if (nation.includes('신계')) return 'bg-white/5 shadow-[inset_0_0_100px_rgba(255,255,255,0.05)]';
     return '';
   }, [character.currentLocation?.nation]);
+
+  // 지역 이동 시 해당 지역 마물/보스 비주얼 백그라운드 선제 로딩 (0ms 대기 최적화)
+  useEffect(() => {
+    if (character?.currentLocation?.nation) {
+      preloadCurrentLocationAssets(character.currentLocation.nation, character.currentLocation.city);
+    }
+  }, [character?.currentLocation?.nation, character?.currentLocation?.city]);
 
   const handleRankUpEffect = (leveledUp: boolean, profession: string, level: number) => {
     if (leveledUp) {
@@ -5935,7 +5956,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
           </motion.div>
         )}
       </AnimatePresence>
-      <Suspense fallback={null}>
+      <Suspense fallback={<SceneLoadingFallback mode="general" title="대륙의 서사를 불러오는 중..." />}>
       <SaveLoadModal 
         isOpen={isSaveLoadOpen} 
         mode={saveLoadMode} 
@@ -6978,14 +6999,16 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                         <QuestTracker character={character} onToggleTrack={handleToggleTrack} />
                     )}
                     {sceneType === 'combat' ? (
-                        <IsolatedCombatContainer 
-                            combatState={combatState} 
-                            player={character} 
-                            onAction={handleActionWithTime} 
-                            isLoading={isLoading} 
-                            narrative={messages[messages.length - 1]?.role === 'ai' ? messages[messages.length - 1].text : undefined} 
-                            onUpdateCharacter={handleUpdateCharacter} 
-                        />
+                        <Suspense fallback={<SceneLoadingFallback mode="combat" title="전투 전장 진입 중..." fullScreen={false} />}>
+                            <IsolatedCombatContainer 
+                                combatState={combatState} 
+                                player={character} 
+                                onAction={handleActionWithTime} 
+                                isLoading={isLoading} 
+                                narrative={messages[messages.length - 1]?.role === 'ai' ? messages[messages.length - 1].text : undefined} 
+                                onUpdateCharacter={handleUpdateCharacter} 
+                            />
+                        </Suspense>
                     ) : (
                         <div className="flex-1 flex flex-col relative min-h-0 w-full overflow-hidden">
                             {/* City Map Board as the main visual viewport */}
@@ -7265,6 +7288,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
       />
       <ProcessingLoadingModal isOpen={isLoading} message={loadingMessage} />
       <GodAppearanceManager character={character} onUpdateCharacter={handleUpdateCharacter} />
+      <InitialAssetPreloader />
       </Suspense>
     </div>
     </GameProvider>

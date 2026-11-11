@@ -85,3 +85,11 @@ export const updateCompanionVisualUrlByJob = (companion: Companion): Companion =
     );
     return newComp;
 };
+
+// ============================================================================
+// 통합 비주얼 레지스트리 및 어댑터 리익스포트
+// ============================================================================
+export * from './visualRegistry';
+export * from './localVisualManifest';
+export * from './imagePreloadService';
+

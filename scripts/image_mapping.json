@@ -1,0 +1,38 @@
+[
+  {
+    "name": "빛의 나비",
+    "category": "monster",
+    "prompt": "Holy glowing butterfly with crystalline wings, radiating divine golden and white light",
+    "localPath": "C:\\Users\\PC\\.gemini\\antigravity\\brain\\bd241ccb-370f-4827-807e-eaf07c092c5a\\holy_light_butterfly_1794397393983.jpg",
+    "imageUrl": "https://i.ibb.co/VWqv9DKZ/holy-light-butterfly-1794397393983.jpg",
+    "viewerUrl": "https://ibb.co/99rqg2ML",
+    "host": "imgbb"
+  },
+  {
+    "name": "지옥의 아수라",
+    "category": "monster",
+    "prompt": "Fierce six-armed demonic Asura warrior engulfed in crimson hellfire and black smoke, wielding glowing demon blades",
+    "localPath": "C:\\Users\\PC\\.gemini\\antigravity\\brain\\bd241ccb-370f-4827-807e-eaf07c092c5a\\hell_asura_1794397500923.jpg",
+    "imageUrl": "https://i.ibb.co/dw9Gpd4j/hell-asura.jpg",
+    "viewerUrl": "https://ibb.co/MxTM1YkZ",
+    "host": "imgbb"
+  },
+  {
+    "name": "마력 깃든 스파링 골렘",
+    "category": "monster",
+    "prompt": "Ancient rune-carved stone sparring golem with glowing violet and sapphire-blue mana crystals",
+    "localPath": "C:\\Users\\PC\\.gemini\\antigravity\\brain\\bd241ccb-370f-4827-807e-eaf07c092c5a\\mana_infused_sparring_golem_1794397508197.jpg",
+    "imageUrl": "https://i.ibb.co/7t8yMHMb/mana-infused-sparring-golem-1794397508197.jpg",
+    "viewerUrl": "https://ibb.co/B2dsWmWw",
+    "host": "imgbb"
+  },
+  {
+    "name": "기계식 훈련 로봇",
+    "category": "monster",
+    "prompt": "Steampunk magic-tech sparring robot with polished brass gears, steel armor plates, combat stance, and glowing cyan core",
+    "localPath": "C:\\Users\\PC\\.gemini\\antigravity\\brain\\bd241ccb-370f-4827-807e-eaf07c092c5a\\mechanical_training_robot_clean_1794397527683.jpg",
+    "imageUrl": "https://i.ibb.co/fdss1kry/mechanical-training-robot-clean-1794397527683.jpg",
+    "viewerUrl": "https://ibb.co/CKff1bVY",
+    "host": "imgbb"
+  }
+]

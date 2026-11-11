@@ -10,6 +10,7 @@ import { FANTASY_BOSSES } from './fantasybossmonster';
 import { generateEnemyStats } from './utils';
 import { isEquipmentItem } from './services/bossLootBoostService';
 import { applyNpcBossGimmicks } from './services/npcCombatScaling';
+import { getRegisteredBossVisual } from './services/visualRegistry';
 
 export { EUROPE_BOSSES, SEASONAL_BOSSES, SEASONAL_BOSS_CONFIG, DIVINE_REALM_BOSSES, AMERICA_BOSSES, ASIA_BOSSES, AFRICA_BOSSES, FANTASY_BOSSES, isMythicSeasonalBoss };
 
@@ -1016,7 +1017,7 @@ export const generateBossMonster = (nation: string, city: string, month?: number
         description: `${data.title} - ${data.description}`,
         statusEffects: [],
         skills: data.skills,
-        visualUrl: data.visualUrl,
+        visualUrl: getRegisteredBossVisual(data.name) || getRegisteredBossVisual(id) || data.visualUrl,
         detailedLoot: data.detailedLoot,
         critResist: critResist,
         critDmgResist: critDmgResist,
