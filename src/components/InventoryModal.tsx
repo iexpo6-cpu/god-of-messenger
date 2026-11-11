@@ -35,6 +35,7 @@ const RARITY_COLORS: Record<string, string> = {
 };
 
 import { getItemImage } from '../services/rpgIconService';
+import { FastImage } from './common/FastImage';
 
 interface GroupedItem {
   item: Item;
@@ -609,12 +610,12 @@ export const InventoryModal: React.FC<Props> = memo(({
                       <div className="w-full h-full rounded overflow-hidden flex items-center justify-center p-0.5 relative group">
                         {isItem ? (
                           getItemImage(matchingItem) ? (
-                            <img src={getItemImage(matchingItem)} alt={matchingItem?.name} className="w-full h-full object-cover rounded-[1px]" referrerPolicy="no-referrer" />
+                            <FastImage src={getItemImage(matchingItem)} alt={matchingItem?.name} className="w-full h-full object-cover rounded-[1px]" />
                           ) : (
                             <Box size={9} className="text-emerald-400" />
                           )
                         ) : matchingSkill?.imageUrl ? (
-                          <img src={matchingSkill.imageUrl} alt={matchingSkill.name} className="w-full h-full object-cover rounded-[1px]" referrerPolicy="no-referrer" />
+                          <FastImage src={matchingSkill.imageUrl} alt={matchingSkill.name} className="w-full h-full object-cover rounded-[1px]" />
                         ) : (
                           <Sword size={9} className="text-indigo-400" />
                         )}
@@ -824,11 +825,10 @@ export const InventoryModal: React.FC<Props> = memo(({
                           : 'hover:border-slate-400 hover:scale-[1.01]'
                       }`}
                     >
-                      <img 
+                      <FastImage 
                         src={getItemImage(item)} 
                         alt={item.name} 
                         className="w-full h-full object-contain p-0.5 rounded transition-transform group-hover/slot:scale-105" 
-                        referrerPolicy="no-referrer"
                       />
 
                       {item.locked && (
@@ -897,7 +897,7 @@ export const InventoryModal: React.FC<Props> = memo(({
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-2 duration-150">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-700/80 overflow-hidden flex items-center justify-center p-1 shrink-0 relative">
-                      <img src={getItemImage(item)} className="w-full h-full object-contain" alt="" referrerPolicy="no-referrer" />
+                      <FastImage src={getItemImage(item)} className="w-full h-full object-contain" alt="" />
                       {count > 1 && (
                         <div className="absolute bottom-1 right-1 bg-slate-950 text-slate-100 text-[8px] font-mono font-bold px-1 rounded border border-slate-800">
                           {count}
@@ -1090,7 +1090,7 @@ export const InventoryModal: React.FC<Props> = memo(({
               <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden shrink-0">
-                    <img src={getItemImage(mobileDetailItem.item)} alt="" className="w-full h-full object-cover" />
+                    <FastImage src={getItemImage(mobileDetailItem.item)} alt="" className="w-full h-full object-cover" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-100 flex items-center gap-1.5">

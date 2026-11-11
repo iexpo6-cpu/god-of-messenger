@@ -34,5 +34,95 @@
     "imageUrl": "https://i.ibb.co/fdss1kry/mechanical-training-robot-clean-1794397527683.jpg",
     "viewerUrl": "https://ibb.co/CKff1bVY",
     "host": "imgbb"
+  },
+  {
+    "name": "화난 멧돼지",
+    "category": "Monster",
+    "prompt": "Dark fantasy RPG game concept art, an enraged giant wild boar monster charging forward aggressively. Thick bristly dark brown and coarse fur, deadly sharp ivory tusks curved upwards dripping with saliva, furious glowing bloodshot red eyes. Clods of earth, moss, and shattered twigs kicking up under heavy hooves, steaming hot breath bursting from snout. Dynamic dramatic combat pose, low angle perspective, detailed fur texture, moody forest atmospheric background with dramatic rim lighting, epic digital illustration, 8k resolution, cinematic lighting, masterpiece.",
+    "localPath": "c:\\Users\\PC\\Desktop\\신의 사자 RPG\\scripts\\generated_assets\\target_01_angry_boar.jpg",
+    "imageUrl": "https://i.ibb.co/twZpghGQ/target-01-angry-boar.jpg",
+    "viewerUrl": "https://ibb.co/DPGfhbJz",
+    "host": "imgbb"
+  },
+  {
+    "name": "오염된 슬라임",
+    "category": "Monster",
+    "prompt": "Dark fantasy RPG game illustration, a terrifying corrupted toxic slime monster pulsing with dark malevolent energy. Translucent viscous gelatinous blob made of deep murky violet and necrotic sludge, noxious venomous bubbles bubbling and sizzling on the glistening surface. Inside the semi-transparent gelatinous core float ancient dissolved skeletal bones and corroded rusted iron dagger fragments. Acid dripping onto the scorched cracked ground producing eerie purple smoke. Subsurface scattering, glossy reflective wet slime texture, dramatic dark atmospheric fantasy backdrop, high detail, masterpiece.",
+    "localPath": "C:\\Users\\PC\\Desktop\\신의 사자 RPG\\scripts\\generated_assets\\target_02_corrupted_slime.jpg",
+    "imageUrl": "https://i.ibb.co/4zP1xwx/target-02-corrupted-slime.jpg",
+    "viewerUrl": "https://ibb.co/hbDYvxv",
+    "host": "imgbb"
+  },
+  {
+    "name": "백사",
+    "category": "Monster",
+    "prompt": "Dark fantasy RPG concept art, a mystical giant sacred white serpent coiled imposingly atop jagged ancient mossy rocks. Pearlescent iridescent pure white scales gleaming like polished jade under moonlight, mesmerizing glowing ruby-red slit eyes. Frosty mist and ethereal pale cyan spiritual particles swirling around its majestic sinuous body. Menacing yet divine presence, sharp forked tongue flicking, hyper-detailed scales and texture, dramatic cold lighting, atmospheric misty mountain cliff background, cinematic composition, 8k resolution, fantasy digital painting.",
+    "localPath": "C:\\Users\\PC\\Desktop\\신의 사자 RPG\\scripts\\generated_assets\\target_03_white_serpent.jpg",
+    "imageUrl": "https://i.ibb.co/YFMngHhv/target-03-white-serpent.jpg",
+    "viewerUrl": "https://ibb.co/rRS89DHn",
+    "host": "imgbb"
+  },
+  {
+    "name": "검은 늑대",
+    "category": "Monster",
+    "prompt": "Dark fantasy RPG game character art, an imposing ferocious black direwolf stalking predatorily on a craggy highland ridge. Jet-black thick shaggy fur with wisps of shadowy dark aura evaporating into the air, piercing luminous golden amber eyes glowing intensely in the dusk. Bared lethal white fangs dripping frost and cold breath, muscular predatory stance ready to pounce. Detailed fur strands, dramatic moonlight rim lighting highlighting the sleek silhouette, desolate dark wilderness background, high fidelity, 8k digital illustration.",
+    "localPath": "C:\\Users\\PC\\Desktop\\신의 사자 RPG\\scripts\\generated_assets\\target_04_shadow_wolf.jpg",
+    "imageUrl": "https://i.ibb.co/CptX2gyz/target-04-shadow-wolf.jpg",
+    "viewerUrl": "https://ibb.co/spPDHn42",
+    "host": "imgbb"
+  },
+  {
+    "name": "산적 두목",
+    "category": "Boss",
+    "prompt": "Dark fantasy RPG character portrait, a ruthless and weathered oriental bandit leader standing fiercely in his mountain fortress lair. Harsh scarred face with rugged stubble, fierce menacing scowl, weathered battle-worn leather jerkin reinforced with dark iron brigandine plates and rough wolf fur mantle across broad shoulders. Resting a massive notched single-edged heavy sabre (Hwando) coated in dried crimson over his shoulder. Smoldering campfires, torchlight reflections, dramatic chiaroscuro lighting, gritty hyper-detailed texture, epic outlaw warrior, 8k concept art.",
+    "localPath": "C:\\Users\\PC\\Desktop\\신의 사자 RPG\\scripts\\generated_assets\\target_05_bandit_leader.jpg",
+    "imageUrl": "https://i.ibb.co/tpgH1Mvd/target-05-bandit-leader.jpg",
+    "viewerUrl": "https://ibb.co/60zyqRTd",
+    "host": "imgbb"
+  },
+  {
+    "name": "길 잃은 처녀귀신",
+    "category": "Monster",
+    "prompt": "Dark fantasy Korean folklore illustration, Cheonyeo Gwishin, a vengeful lost maiden ghost floating ethereally in an abandoned foggy bamboo forest. Flowing tattered white traditional Korean mourning hanbok (Sobok) stained with faint blood spatters, long disheveled pitch-black hair draping over a pale ghostly face with piercing eerie glowing cyan eyes and faint crimson tear marks. Eerie floating spectral pale-blue will-o'-the-wisps (dokkaebi-bul) illuminating the misty gloomy background, chilling and atmospheric, hyper-detailed supernatural presence, 8k concept painting.",
+    "localPath": "C:\\Users\\PC\\Desktop\\신의 사자 RPG\\scripts\\generated_assets\\target_06_lost_maiden_ghost.jpg",
+    "imageUrl": "https://i.ibb.co/j0Q24ZM/target-06-lost-maiden-ghost.jpg",
+    "viewerUrl": "https://ibb.co/PXPnCzh",
+    "host": "imgbb"
+  },
+  {
+    "name": "지석묘 수호령",
+    "category": "Monster",
+    "prompt": "Dark fantasy RPG game illustration, an ancient Dolmen Guardian Spirit, a colossal primeval stone golem formed from massive megalithic dolmen capstones and weathered granite slabs. Bound together by pulsating crackling cyan divine ley-line energy. Ancient prehistoric petroglyphs and constellation cup-marks carved into the mossy stone surfaces glowing with radiant azure light. Heavy stone fists resting on the earth, dust and mystic pebbles floating in anti-gravity around its monumental body. Epic scale, dark stormy mountain altar background, hyper-detailed stone textures, 8k concept art.",
+    "localPath": "C:\\Users\\PC\\Desktop\\신의 사자 RPG\\scripts\\generated_assets\\target_07_dolmen_guardian_spirit.jpg",
+    "imageUrl": "https://i.ibb.co/xKzWT9w8/target-07-dolmen-guardian-spirit.jpg",
+    "viewerUrl": "https://ibb.co/hx2bzQr1",
+    "host": "imgbb"
+  },
+  {
+    "name": "[유니크] 어둠 서린 가죽 튜닉",
+    "category": "Item",
+    "prompt": "Dark fantasy RPG inventory equipment icon art, [Unique] Shadow-Infused Leather Tunic. Sleek mastercrafted dark assassin armor made of midnight-black enchanted dragon leather and obsidian buckles, adorned with glowing faint purple arcane runes embroidered along the seams. Padded dark violet interior lining, segmented flexible shoulder pauldrons, ethereal wisps of dark shadow mist wafting gently around the armor. Frontal isolated display, clean dark vignette background, dramatic studio rim lighting, ultra-detailed leather stitching and metallic clasps, 8k game item render.",
+    "localPath": "C:\\Users\\PC\\Desktop\\신의 사자 RPG\\scripts\\generated_assets\\target_08_shadow_leather_tunic.jpg",
+    "imageUrl": "https://i.ibb.co/pr6MWmK2/target-08-shadow-leather-tunic.jpg",
+    "viewerUrl": "https://ibb.co/h1x4Xqds",
+    "host": "imgbb"
+  },
+  {
+    "name": "[레어] 그림자 보행자 경갑",
+    "category": "Item",
+    "prompt": "Dark fantasy RPG item concept art, [Rare] Shadow Walker Greaves. A pair of exquisitely crafted assassin greaves and boots, forged from lightweight matte dark-steel shinguards strapped over pitch-black supple leather boots. Intricate silver trim with faint glowing violet runes etched into the greaves, dark mist and faint silent wind trails curling around the ankle guards. Clean studio display isolated against dark background, dramatic rim highlights, photorealistic leather and brushed metal textures, 8k RPG item icon.",
+    "localPath": "C:\\Users\\PC\\Desktop\\신의 사자 RPG\\scripts\\generated_assets\\target_09_shadow_walker_greaves.jpg",
+    "imageUrl": "https://i.ibb.co/8LNt6rRV/target-09-shadow-walker-greaves.jpg",
+    "viewerUrl": "https://ibb.co/7djL2nTF",
+    "host": "imgbb"
+  },
+  {
+    "name": "프로토타입 레일건",
+    "category": "Item",
+    "prompt": "Sci-fi and dark fantasy RPG weapon concept art, Prototype Railgun, a legendary high-tech electromagnetic kinetic rifle. Heavy tactical matte-black military alloy chassis with exposed dual magnetic acceleration rails crackling with intense cyan plasma arcs and blinding electric lightning sparks. Glowing digital energy capacitor meters, reinforced ergonomic grip, high-power holographic scope, heat-sink vents glowing with faint turquoise exhaust. Weapon floating isolated on dark tech background, cinematic studio lighting, photorealistic hard-surface details, 8k render.",
+    "localPath": "C:\\Users\\PC\\Desktop\\신의 사자 RPG\\scripts\\generated_assets\\target_10_prototype_railgun.jpg",
+    "imageUrl": "https://i.ibb.co/mx11nPw/target-10-prototype-railgun.jpg",
+    "viewerUrl": "https://ibb.co/vtggNMG",
+    "host": "imgbb"
   }
 ]

@@ -105,7 +105,7 @@ export const preloadEssentialGameAssets = async (
         "https://i.ibb.co/fdss1kry/mechanical-training-robot-clean-1794397527683.jpg", // 기계식 훈련 로봇
         "https://i.ibb.co/7t8yMHMb/mana-infused-sparring-golem-1794397508197.jpg", // 마력 깃든 스파링 골렘
         "https://i.ibb.co/twc44z61/Gemini-Generated-Image-qkxuijqkxuijqkxu.png", // 산토끼
-        "https://i.ibb.co/3yhJWX37/image.png", // 화난 멧돼지
+        "https://i.ibb.co/twZpghGQ/target-01-angry-boar.jpg", // 화난 멧돼지
         "https://i.ibb.co/0p7gHbgC/Gemini-Generated-Image-e9k0ge9k0ge9k0ge.png", // 길 잃은 삽살개
         "https://i.ibb.co/dw9Gpd4j/hell-asura.jpg", // 지옥의 아수라
         "https://i.ibb.co/VWqv9DKZ/holy-light-butterfly-1794397393983.jpg" // 빛의 나비

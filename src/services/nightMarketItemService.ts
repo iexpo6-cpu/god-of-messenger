@@ -106,7 +106,7 @@ const TREASURE_BOX_LOOT: Record<ItemRarity, BoxLootEntry[]> = {
             stats: { def: 45, agi: 35, hp: 250, maxHp: 250 },
             secondaryOptions: ['AGI +20%', 'DEF +20%', 'HP +20%'],
             description: '어두운 밤길에서 모습을 감추어 주는 가죽 옷입니다.',
-            imageUrl: 'https://i.ibb.co/P9TfV9W1/armor.png',
+            imageUrl: 'https://i.ibb.co/pr6MWmK2/target-08-shadow-leather_tunic.jpg',
             price: 2500000
         },
         {
@@ -138,7 +138,7 @@ const TREASURE_BOX_LOOT: Record<ItemRarity, BoxLootEntry[]> = {
             stats: { def: 30, agi: 22, hp: 180, maxHp: 180 },
             secondaryOptions: ['AGI +15', '체력 +150'],
             description: '야간 잠입에 유용한 가벼운 경갑옷입니다.',
-            imageUrl: 'https://i.ibb.co/P9TfV9W1/armor.png',
+            imageUrl: 'https://i.ibb.co/8LNt6rRV/target-09-shadow-walker_greaves.jpg',
             price: 120000
         },
         {

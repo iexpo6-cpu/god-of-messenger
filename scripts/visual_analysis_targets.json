@@ -1,0 +1,127 @@
+{
+  "project": "신의 사자 RPG",
+  "generatedAt": "2026-11-11T21:45:00+09:00",
+  "description": "코드베이스 정밀 스캔을 통해 식별된 고유 이미지 누락 및 더미 URL(image.png, armor.png 등) 사용 엔티티 1차 우선순위 개선 대상 10종 및 제미나이 생성 프롬프트 데이터",
+  "targets": [
+    {
+      "id": "target_01_angry_boar",
+      "name": "화난 멧돼지",
+      "englishName": "Angry Boar",
+      "category": "Monster",
+      "priority": "P1 (초반 필드 핵심 몬스터)",
+      "currentUrl": "https://i.ibb.co/3yhJWX37/image.png",
+      "location": "대한민국 / 북한 초보 구역 (Lv 1~10)",
+      "shinryokuType": "물리 / 대지계",
+      "description": "숲과 들판을 거칠게 질주하며 침입자를 들이받는 저돌적인 멧돼지 마수입니다. 붉게 충혈된 눈과 하늘로 치솟은 날카롭고 단단한 엄니, 거칠고 뻣뻣한 강철 같은 암갈색 털을 지니고 있으며, 흥분할 때마다 콧김과 흙먼지를 거세게 뿜어냅니다.",
+      "prompt": "Dark fantasy RPG game concept art, an enraged giant wild boar monster charging forward aggressively. Thick bristly dark brown and coarse fur, deadly sharp ivory tusks curved upwards dripping with saliva, furious glowing bloodshot red eyes. Clods of earth, moss, and shattered twigs kicking up under heavy hooves, steaming hot breath bursting from snout. Dynamic dramatic combat pose, low angle perspective, detailed fur texture, moody forest atmospheric background with dramatic rim lighting, epic digital illustration, 8k resolution, cinematic lighting, masterpiece."
+    },
+    {
+      "id": "target_02_corrupted_slime",
+      "name": "오염된 슬라임",
+      "englishName": "Corrupted Slime",
+      "category": "Monster",
+      "priority": "P1 (초반 필드 핵심 몬스터)",
+      "currentUrl": "https://i.ibb.co/WvdGMJ6N/image.png",
+      "location": "대한민국 / 북한 초보 구역 (Lv 1~10)",
+      "shinryokuType": "암흑계 / 산성",
+      "description": "오염된 마력과 독기가 뭉쳐져 탄생한 불길한 점액질 마물입니다. 반투명한 검보랏빛 몸체 내부에는 소화되지 못한 해골 뼈와 부식된 금속 무기 파편이 떠다니며, 표면에서는 독성 기포가 부글거리며 바닥의 대지를 부식시킵니다.",
+      "prompt": "Dark fantasy RPG game illustration, a terrifying corrupted toxic slime monster pulsing with dark malevolent energy. Translucent viscous gelatinous blob made of deep murky violet and necrotic sludge, noxious venomous bubbles bubbling and sizzling on the glistening surface. Inside the semi-transparent gelatinous core float ancient dissolved skeletal bones and corroded rusted iron dagger fragments. Acid dripping onto the scorched cracked ground producing eerie purple smoke. Subsurface scattering, glossy reflective wet slime texture, dramatic dark atmospheric fantasy backdrop, high detail, masterpiece."
+    },
+    {
+      "id": "target_03_white_serpent",
+      "name": "백사",
+      "englishName": "Sacred White Serpent",
+      "category": "Monster",
+      "priority": "P1 (하급 필드 영물 몬스터)",
+      "currentUrl": "https://i.ibb.co/XxqwCwvH/image.png",
+      "location": "대한민국 / 북한 하급 필드 (Lv 11~30)",
+      "shinryokuType": "빙결계 / 신성",
+      "description": "영험한 기운을 품고 오랜 세월을 살아온 백색의 거대한 구렁이 영수입니다. 눈처럼 하얗고 진주빛으로 반짝이는 비늘과 영롱한 루비빛 붉은 안광을 지녔으며, 서늘한 한기와 순백의 영기를 몸 주위에 두른 채 기암괴석 위에서 위압적인 똬리를 틀고 있습니다.",
+      "prompt": "Dark fantasy RPG concept art, a mystical giant sacred white serpent coiled imposingly atop jagged ancient mossy rocks. Pearlescent iridescent pure white scales gleaming like polished jade under moonlight, mesmerizing glowing ruby-red slit eyes. Frosty mist and ethereal pale cyan spiritual particles swirling around its majestic sinuous body. Menacing yet divine presence, sharp forked tongue flicking, hyper-detailed scales and texture, dramatic cold lighting, atmospheric misty mountain cliff background, cinematic composition, 8k resolution, fantasy digital painting."
+    },
+    {
+      "id": "target_04_shadow_wolf",
+      "name": "검은 늑대",
+      "englishName": "Black Direwolf",
+      "category": "Monster",
+      "priority": "P1 (하급 필드 대표 포식자)",
+      "currentUrl": "https://i.ibb.co/ch44jmHx/image.png",
+      "location": "대한민국 / 북한 하급 필드 (Lv 11~30)",
+      "shinryokuType": "암흑계 / 물리",
+      "description": "어둠의 기운에 물든 사납고 거대한 야생 포식자 늑대입니다. 칠흑빛의 빽빽한 털가죽에서 검은 그림자 아지랑이가 피어오르며, 번뜩이는 호박색 황금빛 눈동자와 날카로운 송곳니 사이로 푸른 마력 증기를 내뿜으며 먹잇감을 사냥할 태세를 갖추고 있습니다.",
+      "prompt": "Dark fantasy RPG game character art, an imposing ferocious black direwolf stalking predatorily on a craggy highland ridge. Jet-black thick shaggy fur with wisps of shadowy dark aura evaporating into the air, piercing luminous golden amber eyes glowing intensely in the dusk. Bared lethal white fangs dripping frost and cold breath, muscular predatory stance ready to pounce. Detailed fur strands, dramatic moonlight rim lighting highlighting the sleek silhouette, desolate dark wilderness background, high fidelity, 8k digital illustration."
+    },
+    {
+      "id": "target_05_bandit_leader",
+      "name": "산적 두목",
+      "englishName": "Bandit Leader",
+      "category": "Boss",
+      "priority": "P1 (하급 필드 네임드 보스)",
+      "currentUrl": "https://i.ibb.co/Vpb2GWB6/image.png",
+      "location": "대한민국 / 북한 하급 필드 (Lv 11~30 네임드 보스)",
+      "shinryokuType": "물리",
+      "description": "험준한 산맥의 산채를 장악한 악명 높은 무법자 우두머리입니다. 얼굴을 가로지르는 험상궂은 칼자국 흉터와 텁수룩한 수염, 낡은 가죽과 무쇠 판금을 덧댄 방어구를 걸치고 있으며, 피 묻은 육중한 대도(환도)를 어깨에 걸친 채 오만한 위압감을 풍깁니다.",
+      "prompt": "Dark fantasy RPG character portrait, a ruthless and weathered oriental bandit leader standing fiercely in his mountain fortress lair. Harsh scarred face with rugged stubble, fierce menacing scowl, weathered battle-worn leather jerkin reinforced with dark iron brigandine plates and rough wolf fur mantle across broad shoulders. Resting a massive notched single-edged heavy sabre (Hwando) coated in dried crimson over his shoulder. Smoldering campfires, torchlight reflections, dramatic chiaroscuro lighting, gritty hyper-detailed texture, epic outlaw warrior, 8k concept art."
+    },
+    {
+      "id": "target_06_lost_maiden_ghost",
+      "name": "길 잃은 처녀귀신",
+      "englishName": "Lost Maiden Ghost (Cheonyeo Gwishin)",
+      "category": "Monster",
+      "priority": "P2 (중급 필드 한국 전통 원혼)",
+      "currentUrl": "https://i.ibb.co/R49QFftn/image.png",
+      "location": "대한민국 / 북한 중급 필드 (Lv 31~60)",
+      "shinryokuType": "영혼계 / 암흑계",
+      "description": "깊은 한을 품고 죽어 구천을 떠도는 한국의 전통적인 처녀 귀신입니다. 흐트러진 칠흑빛 긴 생머리카락 사이로 핏빛 눈물 자국과 창백한 얼굴이 드러나며, 피 묻은 하얀 소복을 입은 채 허공에 부유하고 있습니다. 주변에는 청백색의 차가운 도깨비불들이 섬뜩하게 떠돕니다.",
+      "prompt": "Dark fantasy Korean folklore illustration, Cheonyeo Gwishin, a vengeful lost maiden ghost floating ethereally in an abandoned foggy bamboo forest. Flowing tattered white traditional Korean mourning hanbok (Sobok) stained with faint blood spatters, long disheveled pitch-black hair draping over a pale ghostly face with piercing eerie glowing cyan eyes and faint crimson tear marks. Eerie floating spectral pale-blue will-o'-the-wisps (dokkaebi-bul) illuminating the misty gloomy background, chilling and atmospheric, hyper-detailed supernatural presence, 8k concept painting."
+    },
+    {
+      "id": "target_07_dolmen_guardian_spirit",
+      "name": "지석묘 수호령",
+      "englishName": "Dolmen Guardian Spirit",
+      "category": "Monster",
+      "priority": "P2 (상급 필드 고대 수호 골렘)",
+      "currentUrl": "https://i.ibb.co/m5xJMCVk/image.png",
+      "location": "대한민국 / 북한 상급 필드 (Lv 61~100)",
+      "shinryokuType": "대지계 / 고대 신성",
+      "description": "고대 청동기 시대 고인돌(지석묘)에 깃든 영험한 기운이 형상화된 거대한 암석 골렘입니다. 거대한 거석 덮개돌을 등 뒤에 짊어지고 이끼 낀 고대 바위 덩어리들이 푸른 신력의 에너지로 결합되어 있으며, 바위 표면에 새겨진 고대 성혈과 별자리 룬 문양이 신비로운 푸른 빛을 발산합니다.",
+      "prompt": "Dark fantasy RPG game illustration, an ancient Dolmen Guardian Spirit, a colossal primeval stone golem formed from massive megalithic dolmen capstones and weathered granite slabs. Bound together by pulsating crackling cyan divine ley-line energy. Ancient prehistoric petroglyphs and constellation cup-marks carved into the mossy stone surfaces glowing with radiant azure light. Heavy stone fists resting on the earth, dust and mystic pebbles floating in anti-gravity around its monumental body. Epic scale, dark stormy mountain altar background, hyper-detailed stone textures, 8k concept art."
+    },
+    {
+      "id": "target_08_shadow_leather_tunic",
+      "name": "[유니크] 어둠 서린 가죽 튜닉",
+      "englishName": "Shadow-Infused Leather Tunic",
+      "category": "Item",
+      "priority": "P1 (암시장 전용 유니크 방어구 - armor.png 대체)",
+      "currentUrl": "https://i.ibb.co/P9TfV9W1/armor.png",
+      "location": "심야 암시장 고대 보물함 전용 장비",
+      "shinryokuType": "암흑계 / 민첩",
+      "description": "심연의 그림자와 마수가죽을 엮어 벼려낸 최고급 유니크 가죽 갑옷입니다. 깊은 흑남색 가죽 위에 마력으로 정밀하게 각인된 은빛 룬 띠와 어깨 보호대가 장착되어 있으며, 표면에서 은은한 보랏빛 그림자 연기가 감돌아 착용자의 기척을 완벽하게 숨겨줍니다.",
+      "prompt": "Dark fantasy RPG inventory equipment icon art, [Unique] Shadow-Infused Leather Tunic. Sleek mastercrafted dark assassin armor made of midnight-black enchanted dragon leather and obsidian buckles, adorned with glowing faint purple arcane runes embroidered along the seams. Padded dark violet interior lining, segmented flexible shoulder pauldrons, ethereal wisps of dark shadow mist wafting gently around the armor. Frontal isolated display, clean dark vignette background, dramatic studio rim lighting, ultra-detailed leather stitching and metallic clasps, 8k game item render."
+    },
+    {
+      "id": "target_09_shadow_walker_greaves",
+      "name": "[레어] 그림자 보행자 경갑",
+      "englishName": "Shadow Walker Greaves",
+      "category": "Item",
+      "priority": "P1 (암시장 전용 레어 방어구 - armor.png 대체)",
+      "currentUrl": "https://i.ibb.co/P9TfV9W1/armor.png",
+      "location": "심야 암시장 고대 보물함 전용 장비",
+      "shinryokuType": "암흑계 / 이동",
+      "description": "어둠 속을 소리 없이 달리는 그림자 보행자들의 정강이받이 및 전투 장화입니다. 유연한 검은 가죽과 가벼운 흑철 정강이 판금으로 보강되어 있으며, 발목 부위에는 공기의 저항을 없애주는 바람과 그림자의 룬 문양이 새겨져 있습니다.",
+      "prompt": "Dark fantasy RPG item concept art, [Rare] Shadow Walker Greaves. A pair of exquisitely crafted assassin greaves and boots, forged from lightweight matte dark-steel shinguards strapped over pitch-black supple leather boots. Intricate silver trim with faint glowing violet runes etched into the greaves, dark mist and faint silent wind trails curling around the ankle guards. Clean studio display isolated against dark background, dramatic rim highlights, photorealistic leather and brushed metal textures, 8k RPG item icon."
+    },
+    {
+      "id": "target_10_prototype_railgun",
+      "name": "프로토타입 레일건",
+      "englishName": "Prototype Railgun",
+      "category": "Item",
+      "priority": "P2 (미국 상점 전설 무기 - 누락 복원)",
+      "currentUrl": "MISSING (Fallback to Kz56VGDS/image.png)",
+      "location": "미국 특수 무기 상점 전설 장비",
+      "shinryokuType": "전격계 / 기계공학",
+      "description": "미합중국 군의 최첨단 비밀 연구소에서 개발된 극비 프로토타입 전자기 가속 레일건입니다. 무광 매트 블랙의 군용 합금 바디와 듀얼 액셀러레이터 레일 사이로 눈부신 푸른빛의 초고압 플라즈마 아크와 번개가 스파크를 튀기며, 측면의 마이크로 반응로 게이지가 위험 수위를 가리키고 있습니다.",
+      "prompt": "Sci-fi and dark fantasy RPG weapon concept art, Prototype Railgun, a legendary high-tech electromagnetic kinetic rifle. Heavy tactical matte-black military alloy chassis with exposed dual magnetic acceleration rails crackling with intense cyan plasma arcs and blinding electric lightning sparks. Glowing digital energy capacitor meters, reinforced ergonomic grip, high-power holographic scope, heat-sink vents glowing with faint turquoise exhaust. Weapon floating isolated on dark tech background, cinematic studio lighting, photorealistic hard-surface details, 8k render."
+    }
+  ]
+}

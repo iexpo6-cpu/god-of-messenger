@@ -131,22 +131,26 @@ def update_mapping_table(entry: dict, mapping_file: Path = DEFAULT_MAPPING_FILE)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Upload images directly to ko.imgbb.com")
-    parser.add_argument("file", help="Path to image file")
+    parser.add_argument("file", nargs="?", default=None, help="Path to image file")
+    parser.add_argument("--file", dest="file_opt", help="Path to image file as option flag", default=None)
     parser.add_argument("--name", help="Display name of asset", default=None)
     parser.add_argument("--category", help="Category (monster, boss, item, skill, etc.)", default="monster")
     parser.add_argument("--prompt", help="Prompt used", default="")
 
     args = parser.parse_args()
+    target_file = args.file_opt or args.file
+    if not target_file:
+        parser.error("Target file path must be provided either as positional argument or via --file")
 
-    result = upload_to_imgbb(args.file, args.name)
+    result = upload_to_imgbb(target_file, args.name)
     print(f"[ImgBB SUCCESS] Direct URL: {result['direct_url']}")
     print(f"[ImgBB SUCCESS] Viewer URL: {result['viewer_url']}")
 
     entry = {
-        "name": args.name or os.path.basename(args.file),
+        "name": args.name or os.path.basename(target_file),
         "category": args.category,
         "prompt": args.prompt,
-        "localPath": os.path.abspath(args.file),
+        "localPath": os.path.abspath(target_file),
         "imageUrl": result["direct_url"],
         "viewerUrl": result["viewer_url"],
         "host": "imgbb"

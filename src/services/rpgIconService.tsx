@@ -1,6 +1,7 @@
 import React from 'react';
 import { Item, ItemRarity } from '../types';
-import { getRegisteredItemImage } from './visualRegistry';
+import { getRegisteredItemImage, isFallbackVisualUrl } from './visualRegistry';
+import { ITEM_IMAGE_MAP } from '../ItemData';
 
 // ============================================================================
 // 1. CUSTOM SVG RPG SKILL VECTOR ICONS (Lucide-compatible React Components)
@@ -1298,11 +1299,22 @@ const itemSvgCache = new Map<string, string>();
  */
 export function getItemImage(item: Partial<Item> | any): string {
   if (!item) return '';
+
+  // 1순위: 로컬 에셋 및 visualRegistry / ITEM_IMAGE_MAP 매핑된 고유 아이템 이미지
+  if (item.name && typeof item.name === 'string') {
+    const registered = getRegisteredItemImage(item.name);
+    if (registered) return registered;
+    if (ITEM_IMAGE_MAP && ITEM_IMAGE_MAP[item.name]) {
+      return ITEM_IMAGE_MAP[item.name];
+    }
+  }
+
+  // 2순위: 개별 아이템 인스턴스에 지정된 이미지 (폴백/더미/다이스베어 제외)
   if (
     item.visualUrl &&
     typeof item.visualUrl === 'string' &&
     item.visualUrl.trim() &&
-    !item.visualUrl.includes('api.dicebear.com/7.x/shapes')
+    !isFallbackVisualUrl(item.visualUrl)
   ) {
     return item.visualUrl.trim();
   }
@@ -1310,13 +1322,9 @@ export function getItemImage(item: Partial<Item> | any): string {
     item.imageUrl &&
     typeof item.imageUrl === 'string' &&
     item.imageUrl.trim() &&
-    !item.imageUrl.includes('api.dicebear.com/7.x/shapes')
+    !isFallbackVisualUrl(item.imageUrl)
   ) {
     return item.imageUrl.trim();
-  }
-  if (item.name && typeof item.name === 'string') {
-    const registered = getRegisteredItemImage(item.name);
-    if (registered) return registered;
   }
 
   const rarity = item.rarity || ItemRarity.NORMAL;

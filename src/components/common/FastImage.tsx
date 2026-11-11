@@ -23,8 +23,8 @@ export const FastImage: React.FC<FastImageProps> = ({
     skeletonClassName = '',
     ...props
 }) => {
-    // 로컬 에셋(assets/visuals/...)이거나 이미 프리로드된 경우 즉시 완료 상태로 시작
-    const isInstant = src ? (src.startsWith('assets/') || src.startsWith('./assets/') || isImagePreloaded(src)) : false;
+    // 로컬 에셋, SVG Data URI, 또는 이미 프리로드된 경우 즉시 완료 상태로 시작
+    const isInstant = src ? (src.startsWith('assets/') || src.startsWith('./assets/') || src.startsWith('/') || src.startsWith('data:') || isImagePreloaded(src)) : false;
     const [isLoaded, setIsLoaded] = useState<boolean>(isInstant);
     const [hasError, setHasError] = useState<boolean>(false);
 
@@ -35,7 +35,7 @@ export const FastImage: React.FC<FastImageProps> = ({
             return;
         }
 
-        const instant = src.startsWith('assets/') || src.startsWith('./assets/') || isImagePreloaded(src);
+        const instant = src.startsWith('assets/') || src.startsWith('./assets/') || src.startsWith('/') || src.startsWith('data:') || isImagePreloaded(src);
         if (instant) {
             setIsLoaded(true);
             setHasError(false);

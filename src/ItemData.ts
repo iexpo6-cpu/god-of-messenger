@@ -1,6 +1,6 @@
 import { Item, ItemRarity, CityTier, WeaponType, BlackMarketItem } from './types';
 import { getAllBossDetailedLoots } from './services/bossLootService';
-import { getRegisteredItemImage } from './services/visualRegistry';
+import { getRegisteredItemImage, isFallbackVisualUrl } from './services/visualRegistry';
 
 // [NEW] 아이템 종류별 이미지 매핑 테이블
 export const ITEM_IMAGE_MAP: Record<string, string> = {
@@ -99,12 +99,13 @@ export const ITEM_IMAGE_MAP: Record<string, string> = {
     "철제 석궁":"https://i.ibb.co/v6Tt1NkN/4.png",
     "헤비 크로스보우":"https://i.ibb.co/v6Tt1NkN/4.png",
     "연발 석궁":"https://i.ibb.co/v6Tt1NkN/4.png",
-    "저격용 레일건 (프로토타입)":"https://i.ibb.co/1DgJ8cm/6.png",
+    "저격용 레일건 (프로토타입)":"https://i.ibb.co/mx11nPw/target-10-prototype-railgun.jpg",
+    "프로토타입 레일건":"https://i.ibb.co/mx11nPw/target-10-prototype-railgun.jpg",
     "철 수리검":"https://i.ibb.co/cSsfXy5N/3.png",
     "폭발 표창":"https://i.ibb.co/cSsfXy5N/3.png",
     "강철 표창":"https://i.ibb.co/cSsfXy5N/3.png",
     "피스메이커":"https://i.ibb.co/LDt6vW0W/Kakao-Talk-20251224-125511292-01.png",
-    "프로토타입 레일걸":"https://i.ibb.co/Nn6Xs6jy/Kakao-Talk-20251224-125511292.png",
+    "프로토타입 레일걸":"https://i.ibb.co/mx11nPw/target-10-prototype-railgun.jpg",
     "정밀 공학 라이플":"https://i.ibb.co/S4zRD0Nv/Kakao-Talk-20251224-170321153.png",
     // 무기 (마법/기타)
     "낡은 나무 지팡이": "https://i.ibb.co/PzmWXLdG/4.png",
@@ -171,10 +172,12 @@ export const ITEM_IMAGE_MAP: Record<string, string> = {
     "[에픽] 어둠의 추적자 단검": "https://i.ibb.co/8gc7BCs8/Gemini-Generated-Image-t0mu6tt0mu6tt0mu.png",
     "[에픽] 황천의 마력 반지": "https://i.ibb.co/1GCj1Rx4/Gemini-Generated-Image-zexal1zexal1zexa.png",
     "[유니크] 고대 지하도시 장검": "https://i.ibb.co/ZpTVjmQZ/Gemini-Generated-Image-7k1m5e7k1m5e7k1m.png",
-    "[유니크] 어둠 서린 가죽 튜닉": "https://i.ibb.co/P9TfV9W1/armor.png",
+    "[유니크] 어둠 서린 가죽 튜닉": "https://i.ibb.co/pr6MWmK2/target-08-shadow-leather_tunic.jpg",
+    "어둠 서린 가죽 튜닉": "https://i.ibb.co/pr6MWmK2/target-08-shadow-leather_tunic.jpg",
     "[유니크] 밀수꾼의 행운 나침반": "https://i.ibb.co/1GCj1Rx4/Gemini-Generated-Image-zexal1zexal1zexa.png",
     "[레어] 심연 암석 망치": "https://i.ibb.co/8DXCnWkm/Gemini-Generated-Image-5ec4um5ec4um5ec4.png",
-    "[레어] 그림자 보행자 경갑": "https://i.ibb.co/P9TfV9W1/armor.png",
+    "[레어] 그림자 보행자 경갑": "https://i.ibb.co/8LNt6rRV/target-09-shadow-walker_greaves.jpg",
+    "그림자 보행자 경갑": "https://i.ibb.co/8LNt6rRV/target-09-shadow-walker_greaves.jpg",
     "[레어] 어둠의 호신 부적": "https://i.ibb.co/1GCj1Rx4/Gemini-Generated-Image-zexal1zexal1zexa.png",
     
     // 몬스터 및 전리품 이미지 맵
@@ -361,13 +364,13 @@ export const getItemDisplayImageUrl = (item?: Partial<Item> | string | null): st
         if (registered) return registered;
         return ITEM_IMAGE_MAP[item] || "https://i.ibb.co/6RsrXBZW/image.png";
     }
-    if (item.imageUrl && item.imageUrl.trim() !== '') return item.imageUrl;
-    if (item.visualUrl && item.visualUrl.trim() !== '') return item.visualUrl;
     if (item.name) {
         const registered = getRegisteredItemImage(item.name);
         if (registered) return registered;
         if (ITEM_IMAGE_MAP[item.name]) return ITEM_IMAGE_MAP[item.name];
     }
+    if (item.visualUrl && !isFallbackVisualUrl(item.visualUrl)) return item.visualUrl.trim();
+    if (item.imageUrl && !isFallbackVisualUrl(item.imageUrl)) return item.imageUrl.trim();
     return getFallbackImage(item.type || '', item.weaponType);
 };
 

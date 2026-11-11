@@ -384,14 +384,33 @@ if (typeof window !== 'undefined') {
 }
 
 // ----------------------------------------------------------------------------
-// 7. 1차 생성 및 검증된 비주얼 에셋 기본 초기화 등록 (ko.imgbb.com 공식 호스팅)
+// 7. 1차 & 2차 생성 및 검증된 비주얼 에셋 기본 초기화 등록 (ko.imgbb.com 공식 호스팅)
 // ----------------------------------------------------------------------------
 registerVisualBatch({
     monsters: {
         "지옥의 아수라": "https://i.ibb.co/dw9Gpd4j/hell-asura.jpg",
         "기계식 훈련 로봇": "https://i.ibb.co/fdss1kry/mechanical-training-robot-clean-1794397527683.jpg",
         "마력 깃든 스파링 골렘": "https://i.ibb.co/7t8yMHMb/mana-infused-sparring-golem-1794397508197.jpg",
-        "빛의 나비": "https://i.ibb.co/VWqv9DKZ/holy-light-butterfly-1794397393983.jpg"
+        "빛의 나비": "https://i.ibb.co/VWqv9DKZ/holy-light-butterfly-1794397393983.jpg",
+        "화난 멧돼지": "https://i.ibb.co/twZpghGQ/target-01-angry-boar.jpg",
+        "오염된 슬라임": "https://i.ibb.co/4zP1xwx/target-02-corrupted-slime.jpg",
+        "백사": "https://i.ibb.co/YFMngHhv/target-03-white-serpent.jpg",
+        "검은 늑대": "https://i.ibb.co/CptX2gyz/target-04-shadow-wolf.jpg",
+        "산적 두목": "https://i.ibb.co/tpgH1Mvd/target-05-bandit-leader.jpg",
+        "길 잃은 처녀귀신": "https://i.ibb.co/j0Q24ZM/target-06-lost-maiden-ghost.jpg",
+        "지석묘 수호령": "https://i.ibb.co/xKzWT9w8/target-07-dolmen-guardian-spirit.jpg"
+    },
+    bosses: {
+        "산적 두목": "https://i.ibb.co/tpgH1Mvd/target-05-bandit-leader.jpg"
+    },
+    items: {
+        "[유니크] 어둠 서린 가죽 튜닉": "https://i.ibb.co/pr6MWmK2/target-08-shadow-leather_tunic.jpg",
+        "어둠 서린 가죽 튜닉": "https://i.ibb.co/pr6MWmK2/target-08-shadow-leather_tunic.jpg",
+        "[레어] 그림자 보행자 경갑": "https://i.ibb.co/8LNt6rRV/target-09-shadow-walker_greaves.jpg",
+        "그림자 보행자 경갑": "https://i.ibb.co/8LNt6rRV/target-09-shadow-walker_greaves.jpg",
+        "프로토타입 레일건": "https://i.ibb.co/mx11nPw/target-10-prototype-railgun.jpg",
+        "프로토타입 레일걸": "https://i.ibb.co/mx11nPw/target-10-prototype-railgun.jpg",
+        "저격용 레일건 (프로토타입)": "https://i.ibb.co/mx11nPw/target-10-prototype-railgun.jpg"
     }
 });
 
