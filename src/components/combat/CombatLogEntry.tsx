@@ -76,6 +76,22 @@ const HighlightedCombatText: React.FC<{ content: string; isCrit?: boolean }> = (
                             </span>
                         );
                     }
+                    if (inner.includes('상성 우위') || inner.includes('상성 유리')) {
+                        return (
+                            <span key={i} className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded bg-emerald-950/80 text-emerald-300 font-extrabold border border-emerald-500/50 text-[10px] md:text-xs shadow-[0_0_8px_rgba(16,185,129,0.3)]">
+                                <Zap size={11} className="mr-0.5 text-emerald-400 fill-emerald-400 animate-pulse" />
+                                상성 우위
+                            </span>
+                        );
+                    }
+                    if (inner.includes('상성 불리') || inner.includes('상성 열세')) {
+                        return (
+                            <span key={i} className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded bg-rose-950/70 text-rose-300 font-bold border border-rose-500/40 text-[10px] md:text-xs">
+                                <AlertTriangle size={11} className="mr-0.5 text-rose-400" />
+                                상성 불리
+                            </span>
+                        );
+                    }
                     if (inner.includes('빗나') || inner.includes('회피')) {
                         return (
                             <span key={i} className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded bg-cyan-950/70 text-cyan-300 font-bold border border-cyan-500/40 text-[10px] md:text-xs">

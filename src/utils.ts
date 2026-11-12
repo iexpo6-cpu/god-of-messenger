@@ -4797,8 +4797,8 @@ export const calculateDamage = (
     elementalMult = atkAtkVal / defResVal;
         // 4. 상성 보너스 (기존 로직 유지)
     if (SHINRYOKU_AFFINITY[atkType]) {
-        if (SHINRYOKU_AFFINITY[atkType].strong.includes(defType)) { elementalMult *= 1.5; affinityEffect = ` (상성 유리: ${atkType})`; }
-        else if (SHINRYOKU_AFFINITY[atkType].weak.includes(defType)) { elementalMult *= 0.5; affinityEffect = ` (상성 불리: ${atkType})`; }
+        if (SHINRYOKU_AFFINITY[atkType].strong.includes(defType)) { elementalMult *= 1.5; affinityEffect = " (상성 우위)"; }
+        else if (SHINRYOKU_AFFINITY[atkType].weak.includes(defType)) { elementalMult *= 0.5; affinityEffect = " (상성 불리)"; }
     }
 
 
@@ -6033,27 +6033,31 @@ export const checkAndApplyLevelUp = (char: Character): { updatedChar: Character,
         entity.skills.forEach((skill: any) => {
             if (skill.type === SkillType.PASSIVE && skill.effectFormula?.includes('SPECIAL')) return;
             
-            const required = 20 * (skill.level + 4);
-            while (skill.currentMastery >= required) {
-                if (skill.level < (skill.maxLevel || 10)) {
-                    skill.currentMastery -= required;
-                    skill.level += 1;
-                    // MP 소모 감소 (클래스 티어별 차등 감소: 퍼스트 10, 세컨드 20, 라스트 50, 파이널 100 + 스킬 강화 보너스)
-                    const bonusMpReduction = getLevelUpMpReductionBonus(skill);
-                    if (skill.type !== SkillType.DEBUFF) {
-                        const tier = skill.tier || skill.baseTier || skill.minClassTier;
-                        let reduction = 10;
-                        if (tier === ClassTier.FINAL || tier === '파이널 클래스' || tier === 'FINAL') reduction = 100;
-                        else if (tier === ClassTier.LAST || tier === '라스트 클래스' || tier === 'LAST') reduction = 50;
-                        else if (tier === ClassTier.SECOND || tier === '세컨드 클래스' || tier === 'SECOND') reduction = 20;
-                        else if (tier === ClassTier.FIRST || tier === '퍼스트 클래스' || tier === 'FIRST') reduction = 10;
-                        skill.mpCost = Math.max(1, (skill.mpCost || 10) - (reduction + bonusMpReduction));
-                    } else if (bonusMpReduction > 0) {
-                        skill.mpCost = Math.max(1, (skill.mpCost || 10) - bonusMpReduction);
-                    }
-                } else {
-                    skill.currentMastery = required;
-                    break;
+            while (skill.level < (skill.maxLevel || 10)) {
+                const required = 20 * (skill.level + 4);
+                if (skill.currentMastery < required) break;
+                
+                skill.currentMastery -= required;
+                skill.level += 1;
+                // MP 소모 감소 (클래스 티어별 차등 감소: 퍼스트 10, 세컨드 20, 라스트 50, 파이널 100 + 스킬 강화 보너스)
+                const bonusMpReduction = getLevelUpMpReductionBonus(skill);
+                if (skill.type !== SkillType.DEBUFF) {
+                    const tier = skill.tier || skill.baseTier || skill.minClassTier;
+                    let reduction = 10;
+                    if (tier === ClassTier.FINAL || tier === '파이널 클래스' || tier === 'FINAL') reduction = 100;
+                    else if (tier === ClassTier.LAST || tier === '라스트 클래스' || tier === 'LAST') reduction = 50;
+                    else if (tier === ClassTier.SECOND || tier === '세컨드 클래스' || tier === 'SECOND') reduction = 20;
+                    else if (tier === ClassTier.FIRST || tier === '퍼스트 클래스' || tier === 'FIRST') reduction = 10;
+                    skill.mpCost = Math.max(1, (skill.mpCost || 10) - (reduction + bonusMpReduction));
+                } else if (bonusMpReduction > 0) {
+                    skill.mpCost = Math.max(1, (skill.mpCost || 10) - bonusMpReduction);
+                }
+            }
+            // 최대 레벨 달성 시 초과 숙련도는 최대 필요 숙련도 상한으로 제한
+            if (skill.level >= (skill.maxLevel || 10)) {
+                const maxCap = 20 * (skill.level + 4);
+                if (skill.currentMastery > maxCap) {
+                    skill.currentMastery = maxCap;
                 }
             }
         });

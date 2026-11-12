@@ -252,6 +252,7 @@ export const getMpTierMultiplier = (tier: string | ClassTier): number => {
 
 const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacter, onLearnSkill, onUpdateCharacter }) => {
   const [activeTab, setActiveTab] = useState<string>(character.classTier);
+  const [selectedSkillTypeFilter, setSelectedSkillTypeFilter] = useState<'ALL' | 'ATTACK' | 'BUFF' | 'DEBUFF' | 'PASSIVE'>('ALL');
   const [creationStep, setCreationStep] = useState<CreationStep>('none');
 
   // 파이널 클래스 슬롯 번호(1-indexed), 기준 레벨 티어, 1000레벨당 보너스 단계 계산
@@ -781,10 +782,26 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
           if (!uniqueMap.has(key)) uniqueMap.set(key, s);
         }
       });
-      return Array.from(uniqueMap.values());
+      const bondResults = Array.from(uniqueMap.values());
+      if (selectedSkillTypeFilter === 'ALL') return bondResults;
+      return bondResults.filter(s => {
+        if (selectedSkillTypeFilter === 'ATTACK') return s.type === SkillType.PHYSICAL || s.type === SkillType.MAGIC;
+        if (selectedSkillTypeFilter === 'BUFF') return s.type === SkillType.BUFF || s.type === SkillType.HEAL;
+        if (selectedSkillTypeFilter === 'DEBUFF') return s.type === SkillType.DEBUFF;
+        if (selectedSkillTypeFilter === 'PASSIVE') return s.type === SkillType.PASSIVE;
+        return true;
+      });
     }
-    return (migratedSkills || []).filter(s => normalizeTierForTab(s.tier) === activeTab);
-  }, [character.skills, (character as any).bondSkills, (playerCharacter as any)?.bondSkills, (character as any).id, playerCharacter, activeTab]);
+    const baseList = (migratedSkills || []).filter(s => normalizeTierForTab(s.tier) === activeTab);
+    if (selectedSkillTypeFilter === 'ALL') return baseList;
+    return baseList.filter(s => {
+      if (selectedSkillTypeFilter === 'ATTACK') return s.type === SkillType.PHYSICAL || s.type === SkillType.MAGIC;
+      if (selectedSkillTypeFilter === 'BUFF') return s.type === SkillType.BUFF || s.type === SkillType.HEAL;
+      if (selectedSkillTypeFilter === 'DEBUFF') return s.type === SkillType.DEBUFF;
+      if (selectedSkillTypeFilter === 'PASSIVE') return s.type === SkillType.PASSIVE;
+      return true;
+    });
+  }, [character.skills, (character as any).bondSkills, (playerCharacter as any)?.bondSkills, (character as any).id, playerCharacter, activeTab, selectedSkillTypeFilter]);
   const currentTierConfig = TIER_CONFIG[activeTab] || TIER_CONFIG[ClassTier.NONE];
   const tierLevels = {
       [ClassTier.NONE]: 10,
@@ -2465,16 +2482,47 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                     </div>
                                 )}
 
+                                {/* 스킬 타입 퀵 필터 칩 */}
+                                <div className="col-span-full flex items-center justify-between gap-2 pb-2.5 border-b border-slate-800/80 mb-2 flex-wrap">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        {[
+                                            { id: 'ALL', label: '전체' },
+                                            { id: 'ATTACK', label: '⚔️ 공격' },
+                                            { id: 'BUFF', label: '🛡️ 버프' },
+                                            { id: 'DEBUFF', label: '💀 디버프' },
+                                            { id: 'PASSIVE', label: '🧬 패시브' },
+                                        ].map(item => (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                onClick={() => setSelectedSkillTypeFilter(item.id as any)}
+                                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all active:scale-95 ${
+                                                    selectedSkillTypeFilter === item.id
+                                                        ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                                                        : 'bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800'
+                                                }`}
+                                            >
+                                                {item.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <span className="text-[11px] text-slate-500 font-mono">
+                                        총 <strong className="text-amber-400">{filteredSkills.length}</strong>개 기술
+                                    </span>
+                                </div>
+
                                 {filteredSkills.length === 0 ? (
                                     <div className="col-span-full text-center py-20 text-slate-600">
-                                        <p>습득한 기술이 없습니다.</p>
+                                        <p>조건에 맞는 기술이 없습니다.</p>
                                         <p className="text-xs mt-2">왼쪽 사이드바의 '신규 스킬 창조'를 통해 힘을 얻으세요.</p>
                                     </div>
                                 ) : (
                                 filteredSkills.map((skill, idx) => {
                                     const TypeIcon = SKILL_TYPE_ICONS[skill.type] || Sword;
                                     const requiredMastery = 20 * (skill.level + 4);
-                                    const masteryPercent = skill.maxLevel ? Math.min(100, (skill.currentMastery / requiredMastery) * 100) : 0;
+                                    const effectiveMaxLevel = skill.maxLevel || 10;
+                                    const isMaxLevel = skill.level >= effectiveMaxLevel;
+                                    const masteryPercent = isMaxLevel ? 100 : Math.min(100, Math.max(0, ((skill.currentMastery || 0) / requiredMastery) * 100));
                                     const isAttack = skill.type === SkillType.PHYSICAL || skill.type === SkillType.MAGIC;
                                     const isBuff = skill.type === SkillType.BUFF;
                                     const isDebuff = skill.type === SkillType.DEBUFF;
@@ -2934,11 +2982,18 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                     <TrendingUp size={11} className="mr-1 text-amber-500"/> 숙련도 (Mastery)
                                                 </span>
                                                 <span className="text-[10px] text-slate-400 font-mono">
-                                                    {skill.currentMastery || 0} / {requiredMastery} ({masteryPercent.toFixed(1)}%)
+                                                    {isMaxLevel ? (
+                                                        <span className="text-amber-400 font-bold">✨ MAX (마스터 완료)</span>
+                                                    ) : (
+                                                        `${skill.currentMastery || 0} / ${requiredMastery} (${masteryPercent.toFixed(1)}%)`
+                                                    )}
                                                 </span>
                                             </div>
                                             <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                                                <div className="h-full bg-gradient-to-r from-amber-700 to-amber-500 transition-all duration-500" style={{ width: `${masteryPercent}%` }}></div>
+                                                <div 
+                                                    className={`h-full transition-all duration-500 ${isMaxLevel ? 'bg-gradient-to-r from-emerald-500 to-amber-400' : 'bg-gradient-to-r from-amber-700 to-amber-500'}`} 
+                                                    style={{ width: `${masteryPercent}%` }}
+                                                ></div>
                                             </div>
                                         </div>
                                     </div>

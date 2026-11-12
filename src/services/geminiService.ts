@@ -22,8 +22,8 @@ const getAi = () => {
   return new GoogleGenAI({ apiKey });
 };
 
-const GEMINI_FLASH_MODEL = 'gemini-3.8-flash';
-const GEMINI_PRO_MODEL = 'gemini-3.1-pro-preview';
+const GEMINI_FLASH_MODEL = 'gemini-2.5-flash';
+const GEMINI_PRO_MODEL = 'gemini-2.5-pro';
 
 let chatSession: any = null;
 
