@@ -321,9 +321,11 @@ export const useGame = () => {
       setMessages(prev => [...prev, { role: 'ai', text }]);
   };
 
-  // [AUTO SAVE SYSTEM] (전투 중에는 매 턴 저장을 건너뛰어 렉 차단)
+  // [AUTO SAVE SYSTEM] (전투 진행 중에는 매 턴 저장을 건너뛰고 렉을 원천 차단)
   useEffect(() => {
-    if (view !== 'game' || !autoSaveEnabled || messages.length === 0 || sceneType === 'combat') {
+    // 전투 진행 중(combatState 활성화 및 종료 전, 혹은 sceneType이 combat)일 때는 자동 저장을 유예
+    const isActivelyInCombat = sceneType === 'combat' || (combatState && !combatState.isEnded);
+    if (view !== 'game' || !autoSaveEnabled || messages.length === 0 || isActivelyInCombat) {
       return;
     }
 
@@ -349,10 +351,10 @@ export const useGame = () => {
       }
     };
 
-    // [최적화] 연속 전투 및 전환 시 CPU 압축 부하 완화를 위해 디바운스를 2.5초로 안정화
-    const timer = setTimeout(triggerAutoSave, 2500);
+    // [최적화] 연속 전투 및 로그 누적 시 메인 스레드 I/O 블로킹 방지를 위해 디바운스를 5초로 최적화
+    const timer = setTimeout(triggerAutoSave, 5000);
     return () => clearTimeout(timer);
-  }, [messages, autoSaveEnabled, view]);
+  }, [messages, autoSaveEnabled, view, sceneType, combatState?.isEnded]);
 
   useEffect(() => {
     if (view !== 'game' || !character.schoolData) return;

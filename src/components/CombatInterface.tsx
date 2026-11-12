@@ -31,7 +31,7 @@ import { getVisualUrlByJob, getRegisteredSkillImage } from '../services/visualMa
 import { isNinjaCloneSkill, handleNinjaCloneSpawn } from '../services/ninjaCloneService';
 import { Snowflake } from 'lucide-react';
 import { MESSENGER_VIDEOS, MESSENGER_VIDEO_DURATIONS, BOSS_ENTRANCE_VIDEOS } from '../messengerVideoData';
-import { CombatVFXOverlay, CombatVFXData, combatVfxBus, preloadSkillFrameAnimations } from './CombatVFX';
+import { CombatVFXOverlay, CombatVFXData, combatVfxBus, preloadSkillFrameAnimations, clearFrameImageCache } from './CombatVFX';
 import { CombatShortcutKeybindModal } from './CombatShortcutKeybindModal';
 import { loadCombatKeybinds, formatKeyDisplay, useCombatKeybindHandler } from '../services/combatKeybindService';
 import { combatTimerPool, trimCombatLogs, combatLogTracker } from '../services/combatPerformanceService';
@@ -267,21 +267,25 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         combatFloatingTextBatcher.add(targetName, text, type, delay, rawText);
     };
 
-    // 전투 시작(로그 초기화)/종료/언마운트 시 잔여 연출 타이머 및 플로팅 텍스트 강제 정리
+    // 전투 시작(로그 초기화)/종료/언마운트 시 잔여 연출 타이머 및 플로팅 텍스트 강제 정리 & 캔버스 비트맵 메모리 회수
     useEffect(() => {
         if (!combatState.log || combatState.log.length === 0 || combatState.isEnded) {
             combatLogTracker.reset();
             combatTimerPool.clearAllTimers();
             combatFloatingTextBatcher.clear();
+            if (combatState.isEnded) {
+                clearFrameImageCache();
+            }
         }
     }, [combatState.log?.length === 0, combatState.isEnded]);
 
-    // 컴포넌트 언마운트 시에도 모든 연출 타이머 완벽 청소
+    // 컴포넌트 언마운트 시에도 모든 연출 타이머 완벽 청소 및 캔버스 비트맵 메모리 즉시 해제
     useEffect(() => {
         return () => {
             combatLogTracker.reset();
             combatTimerPool.clearAllTimers();
             combatFloatingTextBatcher.clear();
+            clearFrameImageCache();
         };
     }, []);
 
@@ -1842,10 +1846,10 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         return { isSkip: false, name: '' };
     };
 
-    // 전투 시작 시 플레이어 및 파티원의 모든 프레임 애니메이션 이미지를 백그라운드에서 미리 비트맵 캐싱 (발동 딜레이 0초화)
+    // [최적화] 전투 시작 시 또는 보유 스킬/동료 목록 변경 시에만 1회 백그라운드 캐싱 (매 턴 HP 피격 시 수십 번 중복 재호출 차단)
     useEffect(() => {
         preloadSkillFrameAnimations(player);
-    }, [player]);
+    }, [player.id, player.skills?.length, player.companions?.length]);
 
     const triggerCombatEffect = (
         skillOrType?: Skill | string,

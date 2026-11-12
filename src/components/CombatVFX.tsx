@@ -1795,12 +1795,42 @@ export interface SkillFrameAnimationRendererProps {
     onFrameDrag?: (frameId: string, newX: number, newY: number) => void;
 }
 
+const MAX_FRAME_IMAGE_CACHE_SIZE = 60;
 const frameImageCache = new Map<string, HTMLCanvasElement | HTMLImageElement>();
+
+/**
+ * 캔버스 비트맵 메모리를 명시적으로 0x0으로 리셋하여 브라우저 가비지 컬렉터의 즉시 회수 지원
+ */
+function releaseCanvasMemory(item: HTMLCanvasElement | HTMLImageElement | undefined) {
+    if (item && item instanceof HTMLCanvasElement) {
+        item.width = 0;
+        item.height = 0;
+    }
+}
+
+/**
+ * 전투 종료 또는 컴포넌트 언마운트 시 프레임 애니메이션 캔버스 캐시 완전 비우기 (메모리 누수 원천 차단)
+ */
+export function clearFrameImageCache(): void {
+    frameImageCache.forEach((value) => {
+        releaseCanvasMemory(value);
+    });
+    frameImageCache.clear();
+}
 
 const getFrameImage = (url: string, onLoad?: () => void): HTMLCanvasElement | HTMLImageElement | null => {
     if (!url) return null;
     const cached = frameImageCache.get(url);
     if (!cached) {
+        // [최적화] LRU 정책: 캐시 최대 크기 초과 시 가장 오래된 항목 메모리 해제 후 제거
+        if (frameImageCache.size >= MAX_FRAME_IMAGE_CACHE_SIZE) {
+            const oldestKey = frameImageCache.keys().next().value;
+            if (oldestKey) {
+                releaseCanvasMemory(frameImageCache.get(oldestKey));
+                frameImageCache.delete(oldestKey);
+            }
+        }
+
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.referrerPolicy = 'no-referrer';
@@ -1848,8 +1878,14 @@ const getFrameImage = (url: string, onLoad?: () => void): HTMLCanvasElement | HT
             img.addEventListener('load', handleLoad, { once: true });
         }
         return img;
-    } else if (cached instanceof HTMLImageElement && !cached.complete && onLoad) {
-        cached.addEventListener('load', onLoad, { once: true });
+    } else {
+        // LRU 갱신: 최근 사용된 항목을 뒤로 이동
+        frameImageCache.delete(url);
+        frameImageCache.set(url, cached);
+
+        if (cached instanceof HTMLImageElement && !cached.complete && onLoad) {
+            cached.addEventListener('load', onLoad, { once: true });
+        }
     }
     return cached;
 };
