@@ -19,7 +19,19 @@ export const LOCAL_VISUAL_MANIFEST: Record<string, string> = {
     "그림자 보행자 경갑": "assets/visuals/items/그림자_보행자_경갑.jpg",
     "프로토타입 레일건": "assets/visuals/items/프로토타입_레일건.jpg",
     "프로토타입 레일걸": "assets/visuals/items/프로토타입_레일건.jpg",
-    "저격용 레일건 (프로토타입)": "assets/visuals/items/프로토타입_레일건.jpg"
+    "저격용 레일건 (프로토타입)": "assets/visuals/items/프로토타입_레일건.jpg",
+
+    // 판타지 대륙 및 지역 배경 에셋
+    "신계_배경": "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+    "마계_배경": "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+    "실바나르_배경": "assets/visuals/backgrounds/silvanar_myrtal_forest.jpg",
+    "페랄디아_배경": "assets/visuals/backgrounds/feraldia_leonis_colosseum.jpg",
+    "아비살론_배경": "assets/visuals/backgrounds/abyssalon_necrodium.jpg",
+    "아시아_배경": "assets/visuals/backgrounds/asia_korea_celestial_palace.jpg",
+    "대한민국_배경": "assets/visuals/backgrounds/asia_korea_celestial_palace.jpg",
+    "유럽_배경": "assets/visuals/backgrounds/europe_gothic_cathedral.jpg",
+    "아프리카_배경": "assets/visuals/backgrounds/africa_middle_east_oasis_temple.jpg",
+    "아메리카_배경": "assets/visuals/backgrounds/america_oceania_magitech_city.jpg"
 };
 
 /**

@@ -6,6 +6,7 @@ import { isMythicSeasonalBoss, SEASONAL_BOSS_CONFIG, SEASONAL_BOSSES } from '../
 import { getTimeOfDay } from '../services/gameTimeService';
 import { isNightMarketActive } from '../services/facilityOperatingService';
 import { getShingyeSanctuaryTheme } from '../services/shingyeSanctuaryTheme';
+import { getCityBackgroundImage, getTimeAtmosphereFilter } from '../services/cityBackgroundManifest';
 import QuickTravelModal from './QuickTravelModal';
 import MidnightPenaltyModal from './MidnightPenaltyModal';
 import MilitaryCityActionPanel from './MilitaryCityActionPanel';
@@ -382,6 +383,10 @@ const CityMapBoard: React.FC<Props> = ({
 
     const theme = getThemeConfig();
 
+    // 현재 위치 및 시간대에 대응하는 고화질 판타지 배경 및 대기 필터
+    const cityBg = getCityBackgroundImage(loc);
+    const timeFilter = getTimeAtmosphereFilter(timeAtmosphere.period, isMidnightLabor);
+
     // Helper to check if district is active/available in this city
     const isDistrictAvailable = (type: DistrictType | 'Gate') => {
         if (isShingye || isMagye) {
@@ -393,6 +398,69 @@ const CityMapBoard: React.FC<Props> = ({
 
     return (
         <div className="flex-1 relative overflow-hidden bg-slate-950 flex flex-col justify-between p-2.5 sm:p-4 md:p-6 lg:p-8 select-none">
+            {/* 고화질 지역별 고유 판타지 일러스트 배경 레이어 & 시간대 색조 블렌딩 오버레이 */}
+            <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true">
+                {/* 1. 고화질 판타지 배경 이미지 (25%~32% 은은한 불투명도 + 시간대별 필터 블렌딩 + 자동 CDN 폴백) */}
+                <img 
+                    src={cityBg.url} 
+                    alt={cityBg.title}
+                    onError={(e) => {
+                        if (cityBg.fallbackUrl && e.currentTarget.src !== cityBg.fallbackUrl) {
+                            e.currentTarget.src = cityBg.fallbackUrl;
+                        }
+                    }}
+                    className={`w-full h-full object-cover object-center opacity-30 transition-all duration-700 ease-in-out scale-105 ${timeFilter.filterClass}`}
+                />
+
+                {/* 2. 시간대 색조 블렌딩 오버레이 (여명/낮/석양/야간/심야) */}
+                <div className={`absolute inset-0 ${timeFilter.blendOverlayColor} mix-blend-multiply transition-colors duration-700`} />
+
+                {/* 3. 대기광(Ambient Glow) 방사형 그라데이션 */}
+                <div 
+                    className="absolute inset-0 opacity-40 mix-blend-screen transition-all duration-700"
+                    style={{
+                        background: `radial-gradient(circle at 50% 38%, ${timeFilter.ambientGlow} 0%, transparent 68%)`
+                    }}
+                />
+
+                {/* 4. 지역 테마 고유 강조 틴트 (Shingye / Magye / Elf / Beast 등) */}
+                <div 
+                    className="absolute inset-0 opacity-25 mix-blend-color-dodge transition-all duration-700"
+                    style={{
+                        background: `radial-gradient(ellipse at 50% 50%, ${cityBg.accentTint} 0%, transparent 80%)`
+                    }}
+                />
+
+                {/* 5. 천체(태양/달/신계 천체) 천공 궤적 및 은은한 광원 오라 */}
+                {celestialBody && (
+                    <div 
+                        className="absolute pointer-events-none -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ease-out"
+                        style={{ left: celestialBody.left, top: celestialBody.top }}
+                    >
+                        {celestialBody.type === 'shingye' ? (
+                            <div className="relative flex items-center justify-center">
+                                <div className="w-44 h-44 rounded-full bg-amber-400/20 blur-2xl animate-pulse" />
+                                <div className="absolute w-24 h-24 rounded-full bg-gradient-to-br from-amber-200 via-amber-400 to-yellow-500 opacity-50 blur-md" />
+                            </div>
+                        ) : celestialBody.type === 'sun' && celestialBody.sunColors ? (
+                            <div className="relative flex items-center justify-center">
+                                <div className={`w-40 h-40 rounded-full blur-2xl ${celestialBody.sunColors.corona}`} />
+                                <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${celestialBody.sunColors.core} opacity-40 blur-sm ${celestialBody.sunColors.glow}`} />
+                            </div>
+                        ) : (
+                            <div className="relative flex items-center justify-center">
+                                <div className="w-36 h-36 rounded-full bg-indigo-500/15 blur-2xl" />
+                                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-slate-100 via-indigo-200 to-blue-300 opacity-35 blur-sm shadow-[0_0_35px_8px_rgba(147,197,253,0.25)]" />
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* 6. UI 가독성(중앙 방사형 노드 및 텍스트)을 완벽 보장하는 다중 slate-950 비네트 그라데이션 */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-950/55" />
+                <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-transparent to-slate-950/90" />
+                <div className="absolute inset-0 bg-radial from-transparent via-slate-950/50 to-slate-950/90" />
+            </div>
             {/* Header: Geographic status, Date, Time & Midnight Alert (Unobstructed top-left) */}
             <div className="z-10 flex items-start select-none">
                 {/* Header Card: Location, Date, Time & Time-of-Day Badge */}

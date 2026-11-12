@@ -52,6 +52,7 @@ import { getFacilityOperatingState, StandardFacilityType } from '../services/fac
 import EternalRivalModal from './EternalRivalModal';
 import { createRivalEnemies } from '../services/npcLifeEngine';
 import { getValidRivalLocation, hasFoughtRivalThisMonth, recordRivalDuel } from '../services/rivalLocationService';
+import { getCityBackgroundConfig } from '../services/cityBackgroundManifest';
 
 interface Props {
     character: Character;
@@ -79,6 +80,7 @@ const CityInterface: React.FC<Props> = ({
     initialOpenInstantDungeonId
 }) => {
     const loc = character.currentLocation || { region: "아시아", nation: "대한민국", city: "서울" };
+    const bgConfig = getCityBackgroundConfig(loc.region, loc.nation, loc.city);
     
     const isMagye = loc.region === '마계' || loc.nation === '임페리얼 제국';
     const isShingye = loc.region === '신계';
@@ -1105,6 +1107,20 @@ const CityInterface: React.FC<Props> = ({
             {/* Main City Container */}
             <div className={`w-full max-w-6xl h-[92vh] max-h-[880px] rounded-2xl border ${theme.containerBorder} ${theme.bgGradient} shadow-2xl flex flex-col overflow-hidden relative transition-all duration-300`}>
                 
+                {/* Immersive Fantasy Background Layer */}
+                <div 
+                    className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat pointer-events-none transition-all duration-700 opacity-40 scale-105"
+                    style={{
+                        backgroundImage: `url(${bgConfig.localPath})`,
+                    }}
+                />
+                <div 
+                    className="absolute inset-0 z-0 pointer-events-none transition-all duration-700"
+                    style={{
+                        background: bgConfig.theme.overlayGradient,
+                    }}
+                />
+
                 {/* WANTED Ribbon Overlay */}
                 {isWanted && (
                     <div className="absolute top-16 right-8 z-30 pointer-events-none rotate-12 opacity-85 animate-pulse">
@@ -1199,7 +1215,7 @@ const CityInterface: React.FC<Props> = ({
 
                 {/* GATE / ENTRY VIEW (When not entered yet) */}
                 {!entered ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300 relative overflow-y-auto custom-scrollbar">
+                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300 relative overflow-y-auto custom-scrollbar z-10">
                         {/* Background Visual Pattern */}
                         <div className="max-w-xl w-full bg-slate-950/80 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl backdrop-blur-xl relative z-10 flex flex-col items-center">
                             
@@ -1316,7 +1332,7 @@ const CityInterface: React.FC<Props> = ({
                     </div>
                 ) : (
                     /* ENTERED CITY VIEW: SPLIT NAVIGATION + ACTION CARDS */
-                    <div className="flex flex-1 overflow-hidden">
+                    <div className="flex flex-1 overflow-hidden relative z-10">
                         
                         {/* LEFT: DISTRICTS NAVIGATION (SIDEBAR) */}
                         <div className="w-20 md:w-64 bg-slate-950/90 border-r border-slate-800/80 flex flex-col overflow-y-auto custom-scrollbar shrink-0 z-10">

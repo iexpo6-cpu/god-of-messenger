@@ -124,5 +124,86 @@
     "imageUrl": "https://i.ibb.co/mx11nPw/target-10-prototype-railgun.jpg",
     "viewerUrl": "https://ibb.co/vtggNMG",
     "host": "imgbb"
+  },
+  {
+    "name": "신계_배경",
+    "category": "location",
+    "region": "신계",
+    "prompt": "Breathtaking high fantasy RPG wide panoramic landscape, celestial divine sanctuary floating high above golden sunset clouds. Monumental radiant crystal spires, majestic floating holy islands with waterfalls of pure liquid sunlight cascading into the azure abyss, intricate rotating sacred golden halos in the sky, ethereal divine god rays, serene awe-inspiring atmosphere, 8k resolution, masterpiece.",
+    "localPath": "src/public/assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+    "imageUrl": "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_배경",
+    "category": "location",
+    "region": "마계",
+    "prompt": "Epic dark fantasy RPG landscape, wide panoramic matte painting of the sprawling demonic capital city of Magye. In the center rises a towering twisted obsidian fortress citadel with sharp Gothic spires and jagged battlements. Glowing molten orange and crimson lava rivers carve through black jagged basalt canyons and chasms below. Ominous crimson blood-red demonic miasma and dark ethereal smoke rise into tempestuous storm clouds. In the dramatic dark sky hangs a colossal blood moon eclipse casting eerie crimson rim-light across colossal stone gargoyles and spiked fortifications. Masterpiece fantasy concept art, intricate dark gothic architecture, highly detailed, atmospheric perspective, cinematic lighting, 8k resolution, volumetric fog.",
+    "localPath": "src/public/assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "실바나르_배경",
+    "category": "location",
+    "region": "실바나르",
+    "prompt": "Majestic high fantasy RPG wide panoramic matte painting of the enchanted elven forest sanctuary of Silvanar and Myrtal. In the center stands a gigantic colossal world tree Yggdrasil with luminescent roots and sprawling canopy glowing with emerald and teal bioluminescent moss. Elegant high-elven translucent white tree-spires and arched bridges interwoven with living vines and flora. Glowing cyan spirit lotus ponds, magical floating pollen motes, twilight starry sky with celestial aurora, dreamlike tranquil elven sanctuary, 8k resolution, masterpiece.",
+    "localPath": "src/public/assets/visuals/backgrounds/silvanar_myrtal_forest.jpg",
+    "imageUrl": "assets/visuals/backgrounds/silvanar_myrtal_forest.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "페랄디아_배경",
+    "category": "location",
+    "region": "페랄디아",
+    "prompt": "Vibrant epic dark fantasy RPG wide panoramic landscape of the beastfolk warrior nation Feraldia. A monumental ancient stone gladiatorial colosseum is carved directly into towering red rock canyon cliffs. Roaring ceremonial bonfires burning on rugged stone bastions, massive beast skull totems, weathered tribal war banners fluttering in fierce desert canyon winds, dusty sunset golden hour rim lighting, wild primal warrior glory, 8k resolution, cinematic lighting, masterpiece.",
+    "localPath": "src/public/assets/visuals/backgrounds/feraldia_leonis_colosseum.jpg",
+    "imageUrl": "assets/visuals/backgrounds/feraldia_leonis_colosseum.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "아비살론_배경",
+    "category": "location",
+    "region": "아비살론",
+    "prompt": "Haunting dark fantasy RPG wide panoramic matte painting, spectral sunken necropolis city of Abyssalon Necrodium. In the shadowed subterranean abyss rise towering mausoleum spires constructed from bleached dragon bones and blackened obsidian. Eerie glowing emerald green soul-fire lantern flames, ethereal ghostly cyan mist hovering over arched bone bridges crossing dark bottomless chasms, floating departed spirit orbs, chilling gloomy gothic atmospheric depth, 8k resolution, masterpiece.",
+    "localPath": "src/public/assets/visuals/backgrounds/abyssalon_necrodium.jpg",
+    "imageUrl": "assets/visuals/backgrounds/abyssalon_necrodium.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "아시아_배경",
+    "category": "location",
+    "region": "아시아",
+    "prompt": "Splendid oriental fantasy RPG wide panoramic landscape, majestic ancient East Asian imperial celestial palace built atop floating mist-shrouded mountain peaks. Traditional ornate jade and gold-trimmed curved eaves roofs, towering vermilion pillars and grand marble stone staircases rising through a vast sea of swirling clouds. Glowing golden Taoist talismans and spiritual lotus lanterns floating softly in the night air, silhouette of mythical azure dragons soaring through the moonlight sky, cherry blossom petals drifting, 8k resolution, cinematic digital art.",
+    "localPath": "src/public/assets/visuals/backgrounds/asia_korea_celestial_palace.jpg",
+    "imageUrl": "assets/visuals/backgrounds/asia_korea_celestial_palace.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "유럽_배경",
+    "category": "location",
+    "region": "유럽",
+    "prompt": "Epic medieval gothic fantasy city wide panoramic view, soaring grand gothic cathedral with monumental stained-glass rose windows glowing with sapphire and golden arcane light. Formidable ancient stone fortress ramparts inlaid with glowing blue protective magic barrier runes, grand cobblestone plaza with ornate wrought-iron street lamps under twilight starry sky, gargoyle carved battlements, majestic chivalric kingdom atmosphere, 8k resolution, cinematic masterpiece.",
+    "localPath": "src/public/assets/visuals/backgrounds/europe_gothic_cathedral.jpg",
+    "imageUrl": "assets/visuals/backgrounds/europe_gothic_cathedral.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "아프리카_배경",
+    "category": "location",
+    "region": "아프리카",
+    "prompt": "Magnificent Arabian fantasy RPG wide panoramic landscape, vast sweeping golden sand dunes glowing under a glorious desert sunset. Shimmering turquoise mystical oasis surrounded by towering palm trees, ancient sandstone sun-god pyramid temples adorned with glowing golden hieroglyphics, magnificent gilded domes and minarets glistening in twilight, floating brass magical astrolabes, magical desert kingdom, 8k resolution, cinematic lighting, masterpiece.",
+    "localPath": "src/public/assets/visuals/backgrounds/africa_middle_east_oasis_temple.jpg",
+    "imageUrl": "assets/visuals/backgrounds/africa_middle_east_oasis_temple.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "아메리카_배경",
+    "category": "location",
+    "region": "북아메리카",
+    "prompt": "Dazzling high-fantasy magitech metropolis wide panoramic landscape, futuristic arcane skyscraping crystal towers infused with glowing vibrant cyan ether conduits and mana conductors. Sleek floating arcane airships and winged sky gliders soaring gracefully between elevated glass skybridges, radiant holographic magic circle runes, grand coastal harbor looking out over boundless sapphire ocean waves, vibrant adventurous dawn sunlight, 8k resolution, concept art masterpiece.",
+    "localPath": "src/public/assets/visuals/backgrounds/america_oceania_magitech_city.jpg",
+    "imageUrl": "assets/visuals/backgrounds/america_oceania_magitech_city.jpg",
+    "host": "local_bundle"
   }
 ]
