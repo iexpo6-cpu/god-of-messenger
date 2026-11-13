@@ -336,13 +336,7 @@ export const ShopModal: React.FC<Props> = ({ title, items, character, onBuy, onC
     if (onSell) {
       onSell(indicesToSell, unitPrice, transactionQuantity);
     } else {
-      // fallback sell simulation if onSell prop is not passed
-      const gainedGold = unitPrice * transactionQuantity;
-      character.money += gainedGold;
-      const sortedIndices = [...indicesToSell].sort((a, b) => b - a);
-      sortedIndices.forEach(idx => {
-        character.inventory.splice(idx, 1);
-      });
+      console.warn('[ShopModal] onSell 핸들러가 제공되지 않아 아이템 판매 처리가 건너뛰어졌습니다.');
     }
 
     setMerchantQuote(`"여기 [${item.name}] x${transactionQuantity}개 값으로 ${(unitPrice * transactionQuantity).toLocaleString()} G를 지급했다네!"`);

@@ -641,8 +641,8 @@ const CityMapBoard: React.FC<Props> = ({
                 {/* 1. 일반 도시 구역 노드 (지상 인간계 및 이종족 도시 - 신계/마계 제외) */}
                 {!isShingye && !isMagye && (
                     <>
-                        {/* 1. Commercial (Left Middle) */}
-                        <div className="absolute left-[2%] xs:left-[5%] sm:left-[14%] top-[45%] -translate-y-1/2 z-10">
+                        {/* 1. Commercial (Left Middle) - [모바일 컴팩트 클러스터 배치] */}
+                        <div className="absolute left-[6%] xs:left-[9%] sm:left-[14%] top-[45%] -translate-y-1/2 z-10">
                             <MapNode 
                                 type="Commercial" 
                                 available={isDistrictAvailable('Commercial')}
@@ -652,8 +652,8 @@ const CityMapBoard: React.FC<Props> = ({
                             />
                         </div>
          
-                        {/* 2. Residential (Right Middle) */}
-                        <div className="absolute right-[2%] xs:right-[5%] sm:right-[14%] top-[45%] -translate-y-1/2 z-10">
+                        {/* 2. Residential (Right Middle) - [모바일 컴팩트 클러스터 배치] */}
+                        <div className="absolute right-[6%] xs:right-[9%] sm:right-[14%] top-[45%] -translate-y-1/2 z-10">
                             <MapNode 
                                 type="Residential" 
                                 available={isDistrictAvailable('Residential')}
@@ -662,8 +662,8 @@ const CityMapBoard: React.FC<Props> = ({
                             />
                         </div>
          
-                        {/* 3. Mercenary Guild (Top Left) */}
-                        <div className="absolute left-[3%] xs:left-[8%] sm:left-[22%] top-[6%] sm:top-[12%] z-10">
+                        {/* 3. Mercenary Guild (Top Left) - [모바일 컴팩트 클러스터 배치] */}
+                        <div className="absolute left-[7%] xs:left-[11%] sm:left-[22%] top-[7%] sm:top-[12%] z-10">
                             <MapNode 
                                 type="Mercenary" 
                                 available={isDistrictAvailable('Mercenary')}
@@ -673,8 +673,8 @@ const CityMapBoard: React.FC<Props> = ({
                             />
                         </div>
          
-                        {/* 4. Regulus Academy (Top Right) */}
-                        <div className="absolute right-[3%] xs:right-[8%] sm:right-[22%] top-[6%] sm:top-[12%] z-10">
+                        {/* 4. Regulus Academy (Top Right) - [모바일 컴팩트 클러스터 배치] */}
+                        <div className="absolute right-[7%] xs:right-[11%] sm:right-[22%] top-[7%] sm:top-[12%] z-10">
                             <MapNode 
                                 type="Academic" 
                                 available={isDistrictAvailable('Academic')}
@@ -684,8 +684,8 @@ const CityMapBoard: React.FC<Props> = ({
                             />
                         </div>
          
-                        {/* 5. Military Base / Castle Gate (Lower Left) */}
-                        <div className="absolute left-[3%] xs:left-[6%] sm:left-[20%] bottom-[24%] sm:bottom-[18%] z-10">
+                        {/* 5. Military Base / Castle Gate (Lower Left) - [모바일 컴팩트 클러스터 배치] */}
+                        <div className="absolute left-[7%] xs:left-[10%] sm:left-[20%] bottom-[24%] sm:bottom-[18%] z-10">
                             <MapNode 
                                 type="Military" 
                                 available={isDistrictAvailable('Military')}
@@ -695,8 +695,8 @@ const CityMapBoard: React.FC<Props> = ({
                             />
                         </div>
 
-                        {/* 5.5 Night Market Node */}
-                        <div className="absolute left-[2%] xs:left-[5%] sm:left-[13%] bottom-[6%] sm:bottom-[7%] z-10">
+                        {/* 5.5 Night Market Node - [모바일 컴팩트 클러스터 배치] */}
+                        <div className="absolute left-[5%] xs:left-[8%] sm:left-[13%] bottom-[7%] sm:bottom-[7%] z-10">
                             <button 
                                 onClick={() => onEnterCity('Residential')}
                                 className="w-[56px] xs:w-[68px] sm:w-[78px] flex flex-col items-center group cursor-pointer relative"
@@ -1044,10 +1044,11 @@ const CityMapBoard: React.FC<Props> = ({
             </div>
 
             {/* 하단 네비게이션 및 첩보 작전 버튼 바 (좌측 하단 고정 - 실시간 로그 위로 배치) */}
-            <div className="absolute left-2.5 xs:left-4 bottom-[64px] xs:bottom-[72px] z-20 flex items-center gap-2 flex-wrap">
+            <div className="absolute left-2.5 xs:left-4 bottom-[72px] sm:bottom-[64px] z-20 flex items-center gap-2 flex-wrap">
+                {/* [모바일 최적화] 모바일에서는 하단 5대 네비게이션의 [지도] 탭이 있으므로 화면을 가리는 중복 버튼 숨김 */}
                 <button
                     onClick={onOpenMap}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-950/90 border border-indigo-500/50 hover:border-indigo-400 text-indigo-300 hover:text-indigo-200 shadow-lg shadow-indigo-950/40 backdrop-blur-md text-[11px] sm:text-xs font-black transition-all hover:scale-105 active:scale-95"
+                    className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-950/90 border border-indigo-500/50 hover:border-indigo-400 text-indigo-300 hover:text-indigo-200 shadow-lg shadow-indigo-950/40 backdrop-blur-md text-[11px] sm:text-xs font-black transition-all hover:scale-105 active:scale-95"
                 >
                     <Map size={13} className="animate-pulse" />
                     <span>다른 지역으로 이동</span>

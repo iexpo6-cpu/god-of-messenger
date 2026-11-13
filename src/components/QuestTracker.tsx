@@ -10,13 +10,29 @@ interface Props {
 }
 
 const QuestTracker: React.FC<Props> = ({ character, onToggleTrack }) => {
-    // 모바일에서는 화면 및 메뉴를 가리지 않도록 기본 접힌 상태로 시작
+    // [스마트 상태 기억] 사용자가 접어두면 접힌 상태, 펼쳐두면 펼친 상태를 localStorage에 유지 (모바일은 기본 접힘)
     const [isCollapsed, setIsCollapsed] = React.useState(() => {
         if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('quest_tracker_collapsed');
+            if (saved !== null) return saved === 'true';
             return window.innerWidth < 768;
         }
         return false;
     });
+
+    const handleToggleCollapse = () => {
+        setIsCollapsed(prev => {
+            const next = !prev;
+            if (typeof window !== 'undefined') {
+                try {
+                    localStorage.setItem('quest_tracker_collapsed', String(next));
+                } catch {
+                    // Ignore quota error
+                }
+            }
+            return next;
+        });
+    };
 
     const trackedQuestIds = character?.trackedQuestIds || [];
     if (trackedQuestIds.length === 0) return null;
@@ -77,13 +93,13 @@ const QuestTracker: React.FC<Props> = ({ character, onToggleTrack }) => {
         <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="fixed top-28 right-2 md:top-20 md:right-4 z-30 w-auto max-w-[220px] sm:max-w-[240px] md:w-64 pointer-events-none"
+            className="fixed top-28 right-2 md:top-20 md:right-4 z-[60] w-auto max-w-[220px] sm:max-w-[240px] md:w-64 pointer-events-none"
         >
-            <div className="bg-slate-950/85 backdrop-blur-md border border-slate-800 rounded-xl shadow-2xl overflow-hidden pointer-events-auto">
+            <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800/80 rounded-xl shadow-2xl overflow-hidden pointer-events-auto">
                 {/* Header */}
                 <div 
-                    className={`p-2.5 md:p-3 ${!isCollapsed ? 'border-b border-slate-800' : ''} flex justify-between items-center cursor-pointer hover:bg-slate-900/50 transition-colors gap-2`}
-                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className={`p-2.5 md:p-3 ${!isCollapsed ? 'border-b border-slate-800/80' : ''} flex justify-between items-center cursor-pointer hover:bg-slate-900/60 transition-colors gap-2 select-none`}
+                    onClick={handleToggleCollapse}
                 >
                     <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
                         <ScrollText size={15} className="text-indigo-400 shrink-0" />

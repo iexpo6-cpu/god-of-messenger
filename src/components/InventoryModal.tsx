@@ -460,12 +460,12 @@ export const InventoryModal: React.FC<Props> = memo(({
       <div 
         style={isMobile ? {
           position: 'fixed',
-          left: 0,
-          top: 0,
-          width: '100vw',
-          height: '100vh',
-          borderRadius: 0,
-          border: 'none'
+          left: '8px',
+          top: 'max(env(safe-area-inset-top, 0px), 12px)',
+          width: 'calc(100vw - 16px)',
+          height: 'calc(100dvh - max(env(safe-area-inset-top, 0px), 12px) - 84px)',
+          borderRadius: '16px',
+          border: '1px solid rgba(16, 185, 129, 0.4)'
         } : { 
           position: 'fixed', 
           left: `${position.x}px`, 
@@ -474,26 +474,26 @@ export const InventoryModal: React.FC<Props> = memo(({
           height: `${size.height}px`
         }}
         className={`bg-slate-900 flex flex-col shadow-2xl overflow-hidden pointer-events-auto select-none relative ${
-          isMobile ? 'border-none rounded-none' : 'border border-emerald-500/40 rounded-2xl'
+          isMobile ? 'rounded-2xl border border-emerald-500/40 shadow-emerald-950/50' : 'border border-emerald-500/40 rounded-2xl'
         }`}
       >
         
-        {/* Header */}
+        {/* Header - [모바일 최적화: sticky 고정 및 상시 노출 닫기 버튼] */}
         <div 
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
-          className="cursor-move bg-slate-950 px-3 py-2 sm:px-4 sm:py-3 border-b border-slate-800 flex items-center justify-between shrink-0 gap-2 select-none"
+          className="sticky top-0 z-50 cursor-move bg-slate-950 px-3.5 py-2.5 sm:px-4 sm:py-3 border-b border-slate-800 flex items-center justify-between shrink-0 gap-2 select-none shadow-md"
         >
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <div className="p-1.5 sm:p-2 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/30 shrink-0">
-              <Backpack size={16} className="sm:w-[18px] sm:h-[18px]" />
+              <Backpack size={18} className="sm:w-[18px] sm:h-[18px]" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1 flex-wrap">
-                <h2 className="text-xs sm:text-sm font-bold text-emerald-400 truncate">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h2 className="text-sm sm:text-base font-black text-emerald-400 truncate">
                   가방
                 </h2>
-                <span className={`text-[8px] sm:text-[10px] px-1.5 py-0.2 rounded-full border font-mono font-bold shrink-0 ${
+                <span className={`text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded-full border font-mono font-bold shrink-0 ${
                   isFull ? 'bg-red-950 text-red-400 border-red-700 animate-pulse' : 'bg-slate-800 text-slate-300 border-slate-700'
                 }`}>
                   {character.inventory.length}/{maxCapacity}
@@ -502,17 +502,20 @@ export const InventoryModal: React.FC<Props> = memo(({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <div className="bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 flex items-center gap-1 text-amber-400 font-mono text-[9px] sm:text-[10px] font-bold shadow-inner">
-              <Coins size={10} className="text-amber-500 shrink-0" />
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center gap-1 text-amber-400 font-mono text-[10px] sm:text-[11px] font-bold shadow-inner">
+              <Coins size={12} className="text-amber-500 shrink-0" />
               <span>{character.money.toLocaleString()} G</span>
             </div>
+            {/* [모바일 최적화] 한눈에 들어오는 큼직한 닫기(X) 액션 버튼 */}
             <button
               onClick={onClose}
-              className="p-1 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors shrink-0"
-              aria-label="닫기"
+              className="px-2.5 py-1.5 sm:px-2 sm:py-1 bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-black rounded-xl transition-all active:scale-90 shadow-lg shadow-rose-950/60 shrink-0 flex items-center gap-1 cursor-pointer border border-rose-400/60"
+              aria-label="가방 닫기"
+              title="가방 닫기"
             >
-              <X size={13} className="sm:w-[15px] sm:h-[15px]" />
+              <X size={16} className="stroke-[3]" />
+              <span className="text-[11px] font-bold pr-0.5">닫기</span>
             </button>
           </div>
         </div>

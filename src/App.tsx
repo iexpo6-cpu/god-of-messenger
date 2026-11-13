@@ -78,6 +78,8 @@ import { calculateTravelCostAndDays } from './services/travelCalculationService'
 import { calculateBaseRelocationPlan, executeBaseRelocation } from './services/baseRelocationService';
 import { getBaseGridExpansionDuration, calculateCompletionDateTime, getConstructionRemainingTime } from './services/baseConstructionService';
 import { advanceGameTime, applyRestHealing, flushBufferedReports } from './services/gameTimeService';
+import { MobileBottomNavigationBar } from './components/common/MobileBottomNavigationBar';
+import { InventoryModal } from './components/InventoryModal';
 
 import { auth } from './services/firebase';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
@@ -140,6 +142,7 @@ const App: React.FC = () => {
   const [activeSuddenEvent, setActiveSuddenEvent] = useState<SuddenEventData | null>(null);
   const [isCondolenceModalOpen, setIsCondolenceModalOpen] = useState(false);
   const [isTutorialGuideOpen, setIsTutorialGuideOpen] = useState(false);
+  const [isInventoryModalOpen, setIsInventoryModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   
@@ -6995,9 +6998,8 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                     </>
                     )}
 
-                    {sceneType !== 'combat' && (
-                        <QuestTracker character={character} onToggleTrack={handleToggleTrack} />
-                    )}
+                    {/* [상시 퀘스트 트래커] 전투 중(combat)이나 도시 시설(CityInterface) 진입 시에도 최상단 플로팅으로 상시 표시 */}
+                    <QuestTracker character={character} onToggleTrack={handleToggleTrack} />
                     {sceneType === 'combat' ? (
                         <Suspense fallback={<SceneLoadingFallback mode="combat" title="전투 전장 진입 중..." fullScreen={false} />}>
                             <IsolatedCombatContainer 
@@ -7269,6 +7271,70 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                         setIsMapOpen(true);
                     }}
                 />
+
+                {/* [모바일 전용 가방 모달] 가방 탭 클릭 시 독립적으로 팝업 */}
+                {isInventoryModalOpen && (
+                    <InventoryModal
+                        character={character}
+                        onClose={() => setIsInventoryModalOpen(false)}
+                        onUseItem={(item, idx) => handleItemAction('use', item, idx as number)}
+                        onEquipItem={handleEquipItem}
+                        onSellClick={(item, idxs, isAll) => {
+                            if (isAll) {
+                                executeBatchItemAction('sell', item, idxs);
+                            } else {
+                                handleItemAction('sell', item, idxs[0]);
+                            }
+                        }}
+                        onDiscardClick={(item, idxs) => {
+                            if (idxs.length > 1) {
+                                executeBatchItemAction('discard', item, idxs);
+                            } else {
+                                handleItemAction('discard', item, idxs[0]);
+                            }
+                        }}
+                        onToggleLock={handleToggleItemLock}
+                        onToggleFavorite={handleToggleItemFavorite}
+                        onAutoSell={handleAutoSellItems}
+                        onUpdateCharacter={setCharacter}
+                    />
+                )}
+
+                {/* [모바일 전용] 엄지손가락 하단 6대 고정 탭 바 (오직 CityMapBoard 메인 화면에서만 노출) */}
+                {view === 'game' && 
+                 sceneType !== 'combat' && 
+                 !isCityOpen && 
+                 !isDungeonOpen && 
+                 !isMapOpen && 
+                 !isMobileMenuOpen && 
+                 !isBaseModalOpen && 
+                 !isSaveLoadOpen && 
+                 !isSkillBookOpen && 
+                 !isDevModeOpen && 
+                 !isInventoryModalOpen && 
+                 !isSettingsOpen && (
+                    <MobileBottomNavigationBar
+                        sceneType={sceneType}
+                        onOpenCharacter={() => setIsMobileMenuOpen(true)}
+                        onOpenInventory={() => setIsInventoryModalOpen(true)}
+                        onOpenHunt={() => {
+                            setCityInitialConfig({ openHuntMap: true });
+                            setIsCityOpen(true);
+                        }}
+                        onOpenSkills={() => {
+                            setSkillBookTarget(null);
+                            setIsSkillBookOpen(true);
+                        }}
+                        onOpenMap={() => {
+                            setMapMode('travel');
+                            setIsMapOpen(true);
+                        }}
+                        onSave={() => {
+                            setSaveLoadMode('save');
+                            setIsSaveLoadOpen(true);
+                        }}
+                    />
+                )}
                 </div>
             </div>
         </>

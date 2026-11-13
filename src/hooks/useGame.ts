@@ -169,13 +169,18 @@ export const useGame = () => {
       const reward = pendingTournamentReward;
       setPendingTournamentReward(null);
 
+      let initialLevel = 1;
+      let finalLevel = 1;
+      let leveledUp = false;
+      let finalCurrentExp = 0;
+      let finalMaxExp = 0;
+
       setCharacter(prev => {
         const updatedChar = { ...prev, stats: { ...prev.stats } };
-        const initialLevel = updatedChar.level;
+        initialLevel = updatedChar.level;
 
         updatedChar.currentExp += reward.exp;
         
-        let leveledUp = false;
         if (!updatedChar.maxExp) updatedChar.maxExp = getRequiredExp(updatedChar.level);
 
         while (updatedChar.currentExp >= updatedChar.maxExp) {
@@ -194,22 +199,25 @@ export const useGame = () => {
           updatedChar.stats.mp = finalStats.maxMp;
         }
 
-        setTimeout(() => {
-          setResultModalData({
-            type: leveledUp ? 'levelup' : 'success',
-            title: '🏆 토너먼트 우승 보상 경험치 지급!',
-            message: `'${reward.tournamentName}' 최종 우승 보상 경험치가 지급되었습니다.`,
-            items: [
-              { label: '우승 획득 경험치', after: `+${reward.exp.toLocaleString()} EXP` },
-              { label: '현재 경험치', after: `${updatedChar.currentExp.toLocaleString()} / ${updatedChar.maxExp.toLocaleString()} EXP` },
-              ...(leveledUp ? [{ label: '레벨 업!', after: `Lv.${initialLevel} → Lv.${updatedChar.level}` }] : [])
-            ]
-          });
-          addToLog(`[시스템] ${reward.tournamentName} 우승 보상 경험치 +${reward.exp.toLocaleString()} EXP를 획득했습니다.`);
-        }, 100);
+        finalLevel = updatedChar.level;
+        finalCurrentExp = updatedChar.currentExp;
+        finalMaxExp = updatedChar.maxExp;
 
         return updatedChar;
       });
+
+      // [부수효과 분리] 상태 업데이터 내부에서 setTimeout/setResultModalData를 부르지 않고, useEffect 레벨에서 안전하게 동기 호출
+      setResultModalData({
+        type: leveledUp ? 'levelup' : 'success',
+        title: '🏆 토너먼트 우승 보상 경험치 지급!',
+        message: `'${reward.tournamentName}' 최종 우승 보상 경험치가 지급되었습니다.`,
+        items: [
+          { label: '우승 획득 경험치', after: `+${reward.exp.toLocaleString()} EXP` },
+          { label: '현재 경험치', after: `${finalCurrentExp.toLocaleString()} / ${finalMaxExp.toLocaleString()} EXP` },
+          ...(leveledUp ? [{ label: '레벨 업!', after: `Lv.${initialLevel} → Lv.${finalLevel}` }] : [])
+        ]
+      });
+      addToLog(`[시스템] ${reward.tournamentName} 우승 보상 경험치 +${reward.exp.toLocaleString()} EXP를 획득했습니다.`);
     }
   }, [pendingTournamentReward, combatResultData, resultModalData, sceneType]);
 
