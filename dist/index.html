@@ -428,6 +428,32 @@
           try { navigator.vibrate(12); } catch(e){}
         }
 
+        // [최우선] React 내부 전역 브릿지가 연결되어 있으면 0ms 직통 실행!
+        if (type === 'character' && window.__openGameCharacter) {
+          window.__openGameCharacter();
+          return;
+        }
+        if (type === 'inventory' && window.__openGameInventory) {
+          window.__openGameInventory();
+          return;
+        }
+        if (type === 'hunt' && window.__openGameHunt) {
+          window.__openGameHunt();
+          return;
+        }
+        if (type === 'skills' && window.__openGameSkills) {
+          window.__openGameSkills();
+          return;
+        }
+        if (type === 'map' && window.__openGameMap) {
+          window.__openGameMap();
+          return;
+        }
+        if (type === 'save' && window.__openGameSave) {
+          window.__openGameSave();
+          return;
+        }
+
         if (type === 'character') {
           // 상태 클릭 ➔ CharacterSheet 직행
           var shortcutCharBtn = findExternalButton(function(b) {
@@ -484,7 +510,7 @@
           var mapShortcut = findExternalButton(function(b) {
             var title = b.getAttribute('title') || '';
             var txt = b.textContent || '';
-            return title.includes('지도') || title.includes('월드맵') || txt.trim() === '지도';
+            return title.includes('지도') || title.includes('월드맵') || txt.includes('지도') || txt.includes('다른 지역') || txt.includes('이동');
           });
           if (mapShortcut) {
             mapShortcut.click();

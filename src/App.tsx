@@ -190,6 +190,37 @@ const App: React.FC = () => {
     localStorage.setItem('ui_theme', uiTheme);
   }, [uiTheme, disableBackdropBlur, disableScreenShake]);
 
+  // [모바일 전용 하단 내비게이션 바 전역 브릿지] HTML 인덱스 및 외부 UI 스크립트와 100% 직통 연결
+  useEffect(() => {
+    (window as any).__openGameCharacter = () => setIsMobileMenuOpen(true);
+    (window as any).__openGameInventory = () => setIsInventoryModalOpen(true);
+    (window as any).__openGameHunt = () => {
+      setCityInitialConfig({ openHuntMap: true });
+      setIsCityOpen(true);
+    };
+    (window as any).__openGameSkills = () => {
+      setSkillBookTarget(null);
+      setIsSkillBookOpen(true);
+    };
+    (window as any).__openGameMap = () => {
+      setMapMode('travel');
+      setIsMobileMenuOpen(false);
+      setIsMapOpen(true);
+    };
+    (window as any).__openGameSave = () => {
+      setSaveLoadMode('save');
+      setIsSaveLoadOpen(true);
+    };
+    return () => {
+      delete (window as any).__openGameCharacter;
+      delete (window as any).__openGameInventory;
+      delete (window as any).__openGameHunt;
+      delete (window as any).__openGameSkills;
+      delete (window as any).__openGameMap;
+      delete (window as any).__openGameSave;
+    };
+  }, []);
+
   // 중요 모달 청크 백그라운드 사전 캐싱 (2초 후 비동기 프리페치로 지연 제거)
   useEffect(() => {
     const idleTimer = setTimeout(() => {

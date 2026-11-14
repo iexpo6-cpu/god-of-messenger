@@ -1,0 +1,1 @@
+import{aU as r}from"./index-Dj7ukTF3.js";const u=i=>{const t=Math.random();return i>=800?t<.25?r.FINAL:t<.55?r.LAST:t<.78?r.SECOND:t<.9?r.FIRST:r.NONE:i>=500?t<.15?r.FINAL:t<.45?r.LAST:t<.75?r.SECOND:t<.9?r.FIRST:r.NONE:i>=200?t<.25?r.LAST:t<.65?r.SECOND:t<.88?r.FIRST:r.NONE:i>=100?t<.45?r.SECOND:t<.8?r.FIRST:r.NONE:i>=50?t<.5?r.FIRST:r.NONE:t<.25?r.FIRST:r.NONE};export{u as d};
