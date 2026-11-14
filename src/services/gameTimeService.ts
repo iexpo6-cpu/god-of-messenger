@@ -460,19 +460,21 @@ export function advanceGameTime(
         quickChar.currentTime = targetTimeStr;
         quickChar = addWakingFatigue(quickChar, minutesToAdd);
 
-        // 훈련소 및 서당은 경량 사전 검사(0ms) 통과 시에만 반영
-        try {
-            const trainingRes = advanceCombatTrainingTime(quickChar, minutesToAdd, totalCurrentMinutes);
-            quickChar = trainingRes.updatedCharacter;
-        } catch (e) {
-            console.error('Fast path training progression error:', e);
-        }
+        // 던전/전투 중이 아닐 때에만 기지 훈련 및 서당 갱신 (던전 1보 1분 이동 시 CPU 렉 원천 차단)
+        if (!options?.isDungeonOrCombat) {
+            try {
+                const trainingRes = advanceCombatTrainingTime(quickChar, minutesToAdd, totalCurrentMinutes);
+                quickChar = trainingRes.updatedCharacter;
+            } catch (e) {
+                console.error('Fast path training progression error:', e);
+            }
 
-        try {
-            const academyRes = advanceChildAcademyTime(quickChar, minutesToAdd, totalCurrentMinutes);
-            quickChar = academyRes.updatedCharacter;
-        } catch (e) {
-            console.error('Fast path academy training error:', e);
+            try {
+                const academyRes = advanceChildAcademyTime(quickChar, minutesToAdd, totalCurrentMinutes);
+                quickChar = academyRes.updatedCharacter;
+            } catch (e) {
+                console.error('Fast path academy training error:', e);
+            }
         }
 
         const logMsg = `[시간 경과] ${options?.activityName ? `${options?.activityName}으로 ` : ''}${formattedDuration}이 흘렀습니다. (현재: ${quickChar.currentDate || ''} ${quickChar.currentTime})`;

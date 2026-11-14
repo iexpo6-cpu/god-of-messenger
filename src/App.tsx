@@ -2874,49 +2874,56 @@ useEffect(() => {
           setResultModalData(modalData);
       });
 
-      // 호감도 상한선(최대 100) 보정
-      if (leveledChar.companions) {
-          leveledChar.companions = leveledChar.companions.map(c => ({
-              ...c,
-              affection: Math.min(100, Math.max(-100, c.affection ?? 0))
-          }));
-      }
-      if (leveledChar.inactiveCompanions) {
-          leveledChar.inactiveCompanions = leveledChar.inactiveCompanions.map(c => ({
-              ...c,
-              affection: Math.min(100, Math.max(-100, c.affection ?? 0))
-          }));
-      }
-      if (leveledChar.socialNetwork) {
-          leveledChar.socialNetwork = leveledChar.socialNetwork.map(n => ({
-              ...n,
-              affection: Math.min(100, Math.max(-100, n.affection ?? 0))
-          }));
-      }
+      // 호감도 보정 및 이탈 검사 (이상치 감지 시에만 수행하여 매 걸음/시간 갱신 시 CPU 렉 방지)
+      const needsSanitization = Boolean(
+          (leveledChar.companions && leveledChar.companions.some(c => c && (c.affection !== undefined && (c.affection > 100 || c.affection < 0 || ((c.affection || 0) + (c.loyalty || 0)) <= -100)))) ||
+          (leveledChar.inactiveCompanions && leveledChar.inactiveCompanions.some(c => c && (c.affection !== undefined && (c.affection > 100 || c.affection < 0 || ((c.affection || 0) + (c.loyalty || 0)) <= -100)))) ||
+          (leveledChar.socialNetwork && leveledChar.socialNetwork.some(n => n && (n.affection !== undefined && (n.affection > 100 || n.affection < -100))))
+      );
 
-      // 호감도 0 미만 동료 이탈 처리 및 과거의 인연 등록
       const departureLogs: string[] = [];
       const departedIds = new Set<string>();
       const departedCompanions: Companion[] = [];
-      
-      const filterDeparting = (list: Companion[] | undefined) => {
-          if (!list) return [];
-          return list.filter(c => {
-              if ((c.affection !== undefined && c.affection < 0) || ((c.affection || 0) + (c.loyalty || 0)) <= -100) {
-                  departureLogs.push(`[시스템] ${c.name}의 호감도가 0 미만으로 떨어져 파티를 떠났으며, 과거의 인연으로 등록되었습니다.`);
-                  departedIds.add(c.id);
-                  departedCompanions.push(c);
-                  return false;
-              }
-              return true;
-          });
-      };
-      
-      leveledChar = {
-          ...leveledChar,
-          companions: filterDeparting(leveledChar.companions),
-          inactiveCompanions: filterDeparting(leveledChar.inactiveCompanions)
-      };
+
+      if (needsSanitization) {
+          if (leveledChar.companions) {
+              leveledChar.companions = leveledChar.companions.map(c => ({
+                  ...c,
+                  affection: Math.min(100, Math.max(-100, c.affection ?? 0))
+              }));
+          }
+          if (leveledChar.inactiveCompanions) {
+              leveledChar.inactiveCompanions = leveledChar.inactiveCompanions.map(c => ({
+                  ...c,
+                  affection: Math.min(100, Math.max(-100, c.affection ?? 0))
+              }));
+          }
+          if (leveledChar.socialNetwork) {
+              leveledChar.socialNetwork = leveledChar.socialNetwork.map(n => ({
+                  ...n,
+                  affection: Math.min(100, Math.max(-100, n.affection ?? 0))
+              }));
+          }
+
+          const filterDeparting = (list: Companion[] | undefined) => {
+              if (!list) return [];
+              return list.filter(c => {
+                  if ((c.affection !== undefined && c.affection < 0) || ((c.affection || 0) + (c.loyalty || 0)) <= -100) {
+                      departureLogs.push(`[시스템] ${c.name}의 호감도가 0 미만으로 떨어져 파티를 떠났으며, 과거의 인연으로 등록되었습니다.`);
+                      departedIds.add(c.id);
+                      departedCompanions.push(c);
+                      return false;
+                  }
+                  return true;
+              });
+          };
+
+          leveledChar = {
+              ...leveledChar,
+              companions: filterDeparting(leveledChar.companions),
+              inactiveCompanions: filterDeparting(leveledChar.inactiveCompanions)
+          };
+      }
 
       if (departedCompanions.length > 0) {
           if (!leveledChar.socialNetwork) leveledChar.socialNetwork = [];

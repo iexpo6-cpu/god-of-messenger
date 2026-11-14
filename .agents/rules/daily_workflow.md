@@ -17,6 +17,12 @@ trigger: always_on
    - 적용자의 코드 수정 및 빌드 검증이 끝나면 반드시 `local-tester`를 먼저 가동합니다.
    - 사용자에게 로컬 테스트 URL과 검증 체크리스트를 전달하여 직접 플레이해보실 수 있도록 합니다.
 
-## 2. 배포 트리거 규칙
+## 2. 배포 트리거 및 빌드 동기화 규칙
 - **금지 사항**: 사용자의 명시적인 승인 없이 코드를 GitHub 푸시하거나 배포하지 않습니다.
 - **트리거**: 사용자가 채팅창에 **"배포"**라고 입력하거나 지시할 때에만 `deployer` 서브에이전트가 가동되어 **오직 GitHub 원격 저장소(`origin/main`) 커밋 & 푸시만** 진행합니다. (Firebase 등 외부 호스팅 배포는 절대 수행하지 않습니다.)
+- **배경 이미지 및 빌드 산출물 동기화 필수 원칙 (엄수)**:
+  1. GitHub Pages는 프로젝트 루트(`/`)를 기준으로 정적 사이트를 호스팅하므로, 빌드 시 `dist/` 폴더뿐만 아니라 **프로젝트 루트의 `index.html`과 `assets/` 디렉터리도 100% 동일하게 최신 번들로 동기화**해야 합니다. (실행 스크립트: `node scripts/build_and_sync.cjs`)
+  2. 신규 배경 이미지 및 일러스트 에셋 추가 시:
+     - `public/assets/visuals/`와 루트 `assets/visuals/`, `dist/assets/visuals/` 3곳에 누락 없이 동시 배치되어야 합니다.
+     - `src/services/cityBackgroundManifest.ts` 매니페스트에 등록하고 `CityMapBoard.tsx`의 안전 리졸버를 거쳐 GitHub Pages 서브패스(`/god-of-messenger/`)에서도 404 없이 로드되도록 해야 합니다.
+  3. GitHub Pages의 Jekyll 파서 간섭을 방지하기 위해 루트 및 `dist/`에 `.nojekyll` 파일이 항상 유지되어야 합니다.

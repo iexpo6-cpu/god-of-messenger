@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Character, Enemy } from '../types';
 import { 
     X, Sword, Shield, Clock, Calendar, Sun, ChevronRight, Skull, Crown, Heart, Loader2, 
@@ -218,8 +218,8 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
             return;
         }
 
-        // 시간 흐름 처리 (발걸음마다 30분 흐름)
-        const timeAdvance = advanceGameTime(character, 30, { isDungeonOrCombat: true, activityName: '던전 탐사' });
+        // 시간 흐름 처리 (발걸음/1칸 이동마다 1분 흐름)
+        const timeAdvance = advanceGameTime(character, 1, { isDungeonOrCombat: true, activityName: '던전 탐사' });
         let activeChar = timeAdvance.updatedCharacter;
         const dayNotice = (timeAdvance as any).dayChangeNotice || timeAdvance.toastNotice || (timeAdvance.daysPassed > 0 ? '새로운 날이 밝았습니다.' : null);
         if (timeAdvance.daysPassed > 0 && dayNotice) {
@@ -534,9 +534,70 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         handleMoveToTile(targetX, targetY);
     };
 
+    // PC 키보드 방향키(↑↓←→) 및 WASD 조작 지원
+    useEffect(() => {
+        if (!isOpen || !gridState) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // 입력창에 포커스가 있으면 키 이벤트 무시
+            const target = e.target as HTMLElement | null;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+                return;
+            }
+
+            // 이벤트 알림 팝업 열려 있을 때 Enter, Space, Escape로 닫기
+            if (eventNotice || dayChangeNotice) {
+                if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+                    e.preventDefault();
+                    if (eventNotice) setEventNotice(null);
+                    if (dayChangeNotice) setDayChangeNotice(null);
+                }
+                return;
+            }
+
+            if (rescuedModalInfo) return;
+
+            let dx = 0;
+            let dy = 0;
+
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    dy = -1;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    dy = 1;
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    dx = -1;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    dx = 1;
+                    break;
+                default:
+                    return;
+            }
+
+            e.preventDefault();
+            handleDPadMove(dx, dy);
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, gridState, eventNotice, dayChangeNotice, rescuedModalInfo]);
+
     if (!isOpen) return null;
 
-    const playerFinalStats = calculateFinalStats(character).finalStats;
+    const playerFinalStats = useMemo(() => {
+        return calculateFinalStats(character).finalStats;
+    }, [character.stats, character.level, character.equippedItems, character.title]);
 
     const city = character.currentLocation?.city || "알 수 없는 도시";
     const isAlreadyClearedToday = character.clearedDungeonsByCity && character.clearedDungeonsByCity[city] === character.currentDate;
@@ -792,9 +853,10 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                     )}
                                 </div>
 
-                                {/* D-Pad 한 손 방향키 컨트롤러 */}
+                                {/* D-Pad 한 손 방향키 및 키보드 컨트롤러 */}
                                 <div className="bg-slate-950/50 border border-slate-800/80 p-3 rounded-xl flex flex-col items-center">
-                                    <span className="text-[10px] font-bold text-slate-500 mb-2">방향키 조작 (D-PAD)</span>
+                                    <span className="text-[10px] font-bold text-amber-400 mb-0.5">방향키(↑↓←→) / WASD 지원</span>
+                                    <span className="text-[9px] text-slate-500 mb-2">클릭 또는 키보드로 이동</span>
                                     <div className="grid grid-cols-3 gap-1.5 w-36">
                                         <div />
                                         <button
