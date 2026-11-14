@@ -589,14 +589,16 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
     }, []);
 
     // [전투 스탯/비주얼 캐시] HP/MP가 변할 때마다 주인공과 다수 동료의 calculateFinalStats를 매번 재계산하는 병목 차단
-    const combatProfileCacheRef = useRef<Map<string, { sig: string; finalStats: any; visualUrl: string; classType: string }>>(new Map());
+    const combatProfileCacheRef = useRef<Record<string, { sig: string; finalStats: any; visualUrl: string; classType: string }>>({});
     const getCachedCombatProfile = useCallback((entity: any, isPlayerUnit: boolean) => {
         const cacheKey = isPlayerUnit ? '__player__' : (entity.id || entity.name);
         const eq = entity.equipment || {};
         const statusSig = (entity.statusEffects || []).map((s: any) => `${s.name}:${s.val}`).join(',');
         const sig = `${entity.level}|${entity.job}|${entity.gender}|${entity.affection || 0}|${entity.shinryokuType || ''}|${entity.equippedTitleId || ''}|${entity.classTier || ''}|${entity.stats?.str}|${entity.stats?.int}|${entity.stats?.agi}|${entity.stats?.wis}|${entity.stats?.def}|${entity.stats?.ctrl}|${entity.stats?.maxHp}|${entity.stats?.maxMp}|${eq.Weapon?.name || ''}:${eq.Weapon?.enhancement || 0}|${eq.SubWeapon?.name || ''}|${eq.Body?.name || ''}|${eq.Accessory?.name || ''}|${eq.Head?.name || ''}|${eq.Hand?.name || ''}|${eq.Feets?.name || ''}|${statusSig}`;
 
-        const cached = combatProfileCacheRef.current.get(cacheKey);
+        const cached = Object.prototype.hasOwnProperty.call(combatProfileCacheRef.current, cacheKey)
+            ? combatProfileCacheRef.current[cacheKey]
+            : undefined;
         if (cached && cached.sig === sig) {
             return cached;
         }
@@ -609,7 +611,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         const classType = getDisplayClassName(entity);
 
         const nextEntry = { sig, finalStats, visualUrl, classType };
-        combatProfileCacheRef.current.set(cacheKey, nextEntry);
+        combatProfileCacheRef.current[cacheKey] = nextEntry;
         return nextEntry;
     }, [getDisplayClassName]);
 
