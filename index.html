@@ -353,7 +353,7 @@
       </button>
     </div>
     <script>
-      // [오직 CityMapBoard 화면에서만 탭 바를 노출하도록 정밀 상태 감시]
+      // [오직 CityMapBoard 순수 메인 화면에서만 탭 바를 노출하도록 정밀 상태 감시]
       setInterval(function() {
         var nav = document.getElementById('mobile-bottom-nav-preview');
         var root = document.getElementById('root');
@@ -366,14 +366,15 @@
           return;
         }
 
-        // CityMapBoard 특징 노드 존재 여부 확인 (수도 중앙광장, 성문/관문, 광장 진입 등)
+        // 1. CityMapBoard 메인 화면 판정 (수도 중앙광장, 광장 진입, 성전 진입, 심연 진입 등)
         var allButtons = Array.from(document.querySelectorAll('button, div, span'));
         var hasCityMapBoard = allButtons.some(function(el) {
+          if (el.closest('#mobile-bottom-nav-preview')) return false;
           var t = el.textContent || '';
           return t.includes('중앙광장') || t.includes('광장 진입') || t.includes('성전 진입') || t.includes('심연 진입');
         });
 
-        // 시작화면(StartScreen), 전투화면, 또는 다른 풀화면 모달이 떠있는지 확인
+        // 2. 시작화면(StartScreen), 캐릭터 생성, 전투화면 여부 확인
         var isStartScreen = allButtons.some(function(el) {
           var t = el.textContent || '';
           return t.includes('신의 사자') && (t.includes('새 게임 시작') || t.includes('이어하기'));
@@ -383,7 +384,27 @@
           return t.includes('전투 진행') || t.includes('전투 승리') || t.includes('전투 패배');
         });
 
-        var shouldShow = hasCityMapBoard && !isStartScreen && !isCombat;
+        // 3. [핵심] 사냥터, 상점, 던전, 인벤토리 등 어떤 모달/오버레이라도 열려있으면 즉시 숨김!
+        var hasModalOpen = false;
+        var overlays = document.querySelectorAll('.fixed.inset-0, [role="dialog"], div[class*="z-[50]"], div[class*="z-50"], div[class*="z-[100]"], div[class*="z-[120]"]');
+        for (var i = 0; i < overlays.length; i++) {
+          var el = overlays[i];
+          if (el.id === 'mobile-bottom-nav-preview') continue;
+          if (el.offsetWidth > 0 || el.offsetHeight > 0) {
+            hasModalOpen = true;
+            break;
+          }
+        }
+
+        if (!hasModalOpen) {
+          var bodyText = document.body.innerText || '';
+          if (bodyText.includes('사냥터 목록') || bodyText.includes('선택 사냥터 상세') || bodyText.includes('사냥터 목록 보기') || bodyText.includes('상점') || bodyText.includes('던전') || bodyText.includes('기지')) {
+            hasModalOpen = true;
+          }
+        }
+
+        // 오직 CityMapBoard 메인 맵에 있고 어떠한 모달/오버레이도 없을 때만 하단 바 노출!
+        var shouldShow = hasCityMapBoard && !isStartScreen && !isCombat && !hasModalOpen;
         if (shouldShow) {
           nav.style.setProperty('display', 'flex', 'important');
           if (root) root.style.paddingBottom = '72px';
@@ -391,37 +412,46 @@
           nav.style.setProperty('display', 'none', 'important');
           if (root) root.style.paddingBottom = '0px';
         }
-      }, 250);
+      }, 150);
+
+      // 외부 버튼 전용 검색 헬퍼 (자기 자신 탭 바 요소 제외)
+      function findExternalButton(matcher) {
+        var buttons = Array.from(document.querySelectorAll('button'));
+        return buttons.find(function(b) {
+          if (b.closest('#mobile-bottom-nav-preview')) return false;
+          return matcher(b);
+        });
+      }
 
       function triggerNavAction(type) {
         if (typeof window !== 'undefined' && 'vibrate' in navigator) {
           try { navigator.vibrate(12); } catch(e){}
         }
 
-        var findButtonByText = function(text) {
-          return Array.from(document.querySelectorAll('button')).find(function(b) {
-            return b.textContent && b.textContent.includes(text);
-          });
-        };
-
         if (type === 'character') {
           // 상태 클릭 ➔ CharacterSheet 직행
-          var shortcutCharBtn = document.querySelector('button[title*="캐릭터"]') || document.querySelector('button[title*="내 정보"]');
+          var shortcutCharBtn = findExternalButton(function(b) {
+            var title = b.getAttribute('title') || '';
+            return title.includes('캐릭터') || title.includes('내 정보');
+          });
           if (shortcutCharBtn) {
             shortcutCharBtn.click();
             return;
           }
-          var funcBtn = findButtonByText('기능');
+          var funcBtn = findExternalButton(function(b) { return b.textContent && b.textContent.includes('기능'); });
           if (funcBtn) {
             funcBtn.click();
             setTimeout(function() {
-              var myInfoBtn = findButtonByText('내 정보') || findButtonByText('캐릭터 상세');
+              var myInfoBtn = findExternalButton(function(b) {
+                var t = b.textContent || '';
+                return t.includes('내 정보') || t.includes('캐릭터 상세');
+              });
               if (myInfoBtn) myInfoBtn.click();
             }, 60);
           }
         } else if (type === 'inventory') {
           // 가방 클릭 ➔ InventoryModal 열기
-          var existingInvBtn = Array.from(document.querySelectorAll('button')).find(function(b) {
+          var existingInvBtn = findExternalButton(function(b) {
             var txt = b.textContent ? b.textContent.trim() : '';
             return txt.startsWith('가방') && txt.includes('슬롯');
           });
@@ -429,15 +459,18 @@
             existingInvBtn.click();
             return;
           }
-          var funcBtn = findButtonByText('기능');
+          var funcBtn = findExternalButton(function(b) { return b.textContent && b.textContent.includes('기능'); });
           if (funcBtn) {
             funcBtn.click();
             setTimeout(function() {
-              var myInfoBtn = findButtonByText('내 정보') || findButtonByText('캐릭터 상세');
+              var myInfoBtn = findExternalButton(function(b) {
+                var t = b.textContent || '';
+                return t.includes('내 정보') || t.includes('캐릭터 상세');
+              });
               if (myInfoBtn) {
                 myInfoBtn.click();
                 setTimeout(function() {
-                  var invBtn = Array.from(document.querySelectorAll('button')).find(function(b) {
+                  var invBtn = findExternalButton(function(b) {
                     var txt = b.textContent ? b.textContent.trim() : '';
                     return txt.startsWith('가방') || txt.includes('슬롯');
                   });
@@ -447,37 +480,57 @@
             }, 60);
           }
         } else if (type === 'map') {
-          var mapShortcut = document.querySelector('button[title*="지도"]') || findButtonByText('지도');
+          // 지도 클릭 ➔ 상단 헤더 바로가기 바의 지도 버튼 또는 기능 메뉴 지도 열기
+          var mapShortcut = findExternalButton(function(b) {
+            var title = b.getAttribute('title') || '';
+            var txt = b.textContent || '';
+            return title.includes('지도') || title.includes('월드맵') || txt.trim() === '지도';
+          });
           if (mapShortcut) {
             mapShortcut.click();
           } else {
-            var funcBtn = findButtonByText('기능');
+            var funcBtn = findExternalButton(function(b) { return b.textContent && b.textContent.includes('기능'); });
             if (funcBtn) {
               funcBtn.click();
               setTimeout(function() {
-                var mapBtn = findButtonByText('지도');
+                var mapBtn = findExternalButton(function(b) { return b.textContent && b.textContent.includes('지도'); });
                 if (mapBtn) mapBtn.click();
               }, 60);
             }
           }
         } else if (type === 'skills') {
-          var skillBtn = document.querySelector('button[title*="스킬"]') || findButtonByText('스킬');
+          var skillBtn = findExternalButton(function(b) {
+            var title = b.getAttribute('title') || '';
+            var txt = b.textContent || '';
+            return title.includes('스킬') || title.includes('스킬북') || txt.trim() === '스킬';
+          });
           if (skillBtn) skillBtn.click();
         } else if (type === 'hunt') {
-          var huntNode = findButtonByText('야외 사냥터') || findButtonByText('사냥터');
+          // 사냥 클릭 ➔ CityMapBoard 위의 '야외 사냥터' / '성스러운 필드' 노드 정확히 트리거
+          var huntNode = findExternalButton(function(b) {
+            var txt = b.textContent || '';
+            return txt.includes('야외 사냥터') || txt.includes('성스러운 필드') || (txt.includes('사냥터') && !txt.includes('사냥터 목록'));
+          });
           if (huntNode) {
             huntNode.click();
           } else {
-            var altHuntBtn = findButtonByText('사냥');
+            // 상단 숏컷이나 기능 메뉴 검색
+            var altHuntBtn = findExternalButton(function(b) {
+              var txt = b.textContent || '';
+              return txt.includes('사냥');
+            });
             if (altHuntBtn) altHuntBtn.click();
           }
         } else if (type === 'save') {
           // 저장 클릭 ➔ 게임 내 저장/불러오기 모달 직행 열기
-          var menuBtn = findButtonByText('메뉴');
+          var menuBtn = findExternalButton(function(b) { return b.textContent && b.textContent.includes('메뉴'); });
           if (menuBtn) {
             menuBtn.click();
             setTimeout(function() {
-              var saveBtn = findButtonByText('저장') || findButtonByText('저장하기');
+              var saveBtn = findExternalButton(function(b) {
+                var t = b.textContent || '';
+                return t.includes('저장') || t.includes('저장하기');
+              });
               if (saveBtn) saveBtn.click();
             }, 60);
           }
