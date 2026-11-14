@@ -4702,7 +4702,9 @@ export const calculateDamage = (
 
         const atkFinal = calculateFinalStats(attacker).finalStats;
         const defFinal = calculateFinalStats(target).finalStats;
-        const levelDiff = attacker.level - target.level;
+        const attackerLevel = attacker.level || 1;
+        const targetLevel = target.level || 1;
+        const levelDiff = attackerLevel - targetLevel;
         const bonusPerLevel = 1;     // 레벨 1당 2%
         const maxBonus = 10;         // 최대 20%
 
@@ -4981,7 +4983,7 @@ export const calculateDamage = (
                         const cStat = bs.companionSkillType === SkillType.PHYSICAL ? cpAtk : cmAtk;
                         
                         basePower = 1;
-                        ratio = (pStat + cStat) * (bs.powerRatio / 200);
+                        ratio = ((pStat || 0) + (cStat || 0)) * ((bs.powerRatio || 100) / 200);
                     }
                 }
                 
@@ -5092,7 +5094,7 @@ export const calculateDamage = (
                     const cStat = bs.companionSkillType === SkillType.PHYSICAL ? cpAtk : cmAtk;
                     
                     basePower = 1;
-                    ratio = (pStat + cStat) * (bs.powerRatio / 200);
+                    ratio = ((pStat || 0) + (cStat || 0)) * ((bs.powerRatio || 100) / 200);
                 }
             }
 
@@ -5172,7 +5174,9 @@ export const calculateDamage = (
             damage = 0;
         }
         
-        if (isNaN(damage)) damage = 0;
+        if (isNaN(damage) || !isFinite(damage)) {
+            damage = Math.max(1, Math.floor(atkDerived?.pAtk || 1));
+        }
    // [MODIFIED] 방어 태세 감쇄 효과 적용 로직 추가
         if (target.statusEffects?.some(e => e.name === "방어 태세")) {
             damage = Math.floor(damage * 0.5);

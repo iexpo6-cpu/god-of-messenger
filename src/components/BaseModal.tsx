@@ -18,7 +18,7 @@ import {
   checkAndCompleteBaseConstructions 
 } from '../services/baseConstructionService';
 import { startCookingJob, claimCookedDish, cancelCookingJob } from '../services/cookingService';
-import { X, Home, Hammer, Users, Package, ArrowUpCircle, Coins,Info, Leaf, Shield, CalendarCheck ,TestTube, Zap, ShoppingCart,Lock, DollarSign, UserCheck, Briefcase, Play, Box, ArrowRight, ArrowLeft, BedDouble, MessageCircle, Dog, BookOpen, Microscope, Trash2, Sword, Swords, Dumbbell, Trophy, Target, Brain, Activity, User, Utensils, ChevronLeft, Wine, Gamepad2, Hand, Sparkles, Heart, CheckCircle, Filter, Pickaxe, Mountain, FlaskConical, Gem, Layers, MapPin, Truck, AlertTriangle, AlertCircle, Clock, ChevronsUp, TrendingUp, Trees, Apple, Flame, Building2, Crosshair, Eye, Skull, Waves, Wind, Sun, Moon, Edit, PenTool, Upload, Store, Award, Star, Wand2, Search, ArrowUpDown } from 'lucide-react';
+import { X, Home, Hammer, Users, Package, ArrowUpCircle, Coins,Info, Leaf, Shield, CalendarCheck ,TestTube, Zap, ShoppingCart,Lock, DollarSign, UserCheck, Briefcase, Play, Box, ArrowRight, ArrowLeft, BedDouble, MessageCircle, Dog, BookOpen, Microscope, Trash2, Sword, Swords, Dumbbell, Trophy, Target, Brain, Activity, User, Utensils, ChevronLeft, Wine, Gamepad2, Hand, Sparkles, Heart, CheckCircle, Filter, Pickaxe, Mountain, FlaskConical, Gem, Layers, MapPin, Truck, AlertTriangle, AlertCircle, Clock, ChevronsUp, TrendingUp, Trees, Apple, Flame, Building2, Crosshair, Eye, Skull, Waves, Wind, Sun, Moon, Edit, PenTool, Upload, Store, Award, Star, Wand2, Search, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
 
 const STORAGE_RARITY_COLORS: Record<string, string> = {
   [ItemRarity.NORMAL]: 'text-slate-300 border-slate-700 bg-slate-950/70',
@@ -205,6 +205,7 @@ const BaseModal: React.FC<Props> = ({
     const nextConfig = base ? BASE_LEVEL_CONFIG[base.level + 1] : null;
 
     const [activeTab, setActiveTab] = useState<Tab>('overview');
+    const [facilityMobileSubTab, setFacilityMobileSubTab] = useState<'list' | 'grid'>('list');
     const [activeResourceTab, setActiveResourceTab] = useState<ResourceSubTab>('basic');
     const [residentSearchQuery, setResidentSearchQuery] = useState<string>('');
     const [residentTypeFilter, setResidentTypeFilter] = useState<'all' | 'human' | 'monster' | 'custom'>('all');
@@ -5160,13 +5161,56 @@ const BaseModal: React.FC<Props> = ({
                         </div>
                     )}
                     {activeTab === 'facilities' && (
-                        <div className="space-y-6">
-                            {renderBaseGrid()}
+                        <div className="space-y-4 sm:space-y-6">
+                            {/* 모바일 전용 서브 탭 전환 바 */}
+                            <div className="flex sm:hidden p-1 bg-slate-950/90 rounded-xl border border-indigo-500/30 gap-1 shadow-inner">
+                                <button
+                                    onClick={() => setFacilityMobileSubTab('list')}
+                                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                                        facilityMobileSubTab === 'list'
+                                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-950/50'
+                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+                                    }`}
+                                >
+                                    <List size={14} /> 시설 목록 ({(character.base?.layout || []).length})
+                                </button>
+                                <button
+                                    onClick={() => setFacilityMobileSubTab('grid')}
+                                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                                        facilityMobileSubTab === 'grid'
+                                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-950/50'
+                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+                                    }`}
+                                >
+                                    <LayoutGrid size={14} /> 기지 배치도/건설
+                                </button>
+                            </div>
+
+                            {/* 기지 전술 배치도 격자 (데스크톱에서는 상시 표시, 모바일에서는 'grid' 서브탭일 때 표시) */}
+                            <div className={`${facilityMobileSubTab === 'grid' ? 'block' : 'hidden'} sm:block`}>
+                                {renderBaseGrid()}
+                            </div>
                             
-                            <div className="border-t border-slate-800 pt-6">
-                                <h3 className="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center">
-                                    <Info size={16} className="mr-2 text-indigo-400"/> 시설 관리 목록
-                                </h3>
+                            {/* 시설 관리 목록 (데스크톱에서는 상시 표시, 모바일에서는 'list' 서브탭일 때 표시) */}
+                            <div className={`border-t border-slate-800/80 pt-4 sm:pt-6 ${facilityMobileSubTab === 'list' ? 'block' : 'hidden'} sm:block`}>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-sm font-bold text-slate-300 uppercase flex items-center">
+                                        <Info size={16} className="mr-2 text-indigo-400"/> 시설 관리 목록
+                                        <span className="text-xs text-slate-500 font-normal ml-2 font-mono">
+                                            ({(character.base?.layout || []).length}개 가동 중)
+                                        </span>
+                                    </h3>
+                                    {/* 모바일 시설 목록 뷰에서 바로 배치/건설 모드로 전환하는 버튼 */}
+                                    <button
+                                        onClick={() => {
+                                            setFacilityMobileSubTab('grid');
+                                            setIsBuildMode(true);
+                                        }}
+                                        className="sm:hidden text-xs text-emerald-400 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-600/40 px-2.5 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-all"
+                                    >
+                                        <Hammer size={12} /> 배치도/건설
+                                    </button>
+                                </div>
                                 {assigningInstanceId && (
                                     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                                         <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-sm w-full">
@@ -5238,7 +5282,7 @@ const BaseModal: React.FC<Props> = ({
                                         </div>
                                     </div>
                                 )}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5">
                                     {(character.base?.layout || []).map((instance, idx) => { 
                                         const facility = FACILITIES_INFO.find(f => f.id === instance.type);
                                         if (!facility) return null;
@@ -5256,11 +5300,11 @@ const BaseModal: React.FC<Props> = ({
                                         const facilityLevel = instance.level || 1; 
                                         
                                         return (
-                                            <div key={instance.id} className={`p-4 rounded-xl border flex flex-col justify-between gap-3 transition-all ${isUnlocked ? 'bg-slate-900 border-slate-800 hover:border-slate-700 shadow-md' : 'bg-slate-950 border-slate-900 opacity-60'}`}>
+                                            <div key={instance.id} className={`p-3 sm:p-4 rounded-xl border flex flex-col justify-between gap-2.5 sm:gap-3 transition-all ${isUnlocked ? 'bg-slate-900 border-slate-800 hover:border-slate-700 shadow-md' : 'bg-slate-950 border-slate-900 opacity-60'}`}>
                                                 <div className="flex flex-col flex-1 w-full min-w-0">
-                                                    <div className="flex items-start justify-between mb-2">
+                                                    <div className="flex items-start justify-between mb-1.5 sm:mb-2">
                                                         <div className="flex items-center min-w-0">
-                                                            <div className={`p-2 rounded-lg mr-2 shrink-0 ${isUnlocked ? 'bg-indigo-950 text-indigo-400 border border-indigo-900/40' : 'bg-slate-950 text-slate-600'}`}>
+                                                            <div className={`p-1.5 sm:p-2 rounded-lg mr-2 shrink-0 ${isUnlocked ? 'bg-indigo-950 text-indigo-400 border border-indigo-900/40' : 'bg-slate-950 text-slate-600'}`}>
                                                                 {isUnlocked ? <Briefcase size={15}/> : <Lock size={15}/>}
                                                             </div>
                                                             <div className="min-w-0">
@@ -5288,10 +5332,10 @@ const BaseModal: React.FC<Props> = ({
                                                             </button>
                                                         )}
                                                     </div>
-                                                    <p className="text-[11px] text-slate-400 mb-2 leading-relaxed min-h-[30px] line-clamp-2">{facility.desc}</p>
+                                                    <p className="text-[11px] text-slate-400 mb-1.5 sm:mb-2 leading-relaxed min-h-0 sm:min-h-[30px] line-clamp-2">{facility.desc}</p>
                                                     
                                                     {isUnlocked && (
-                                                        <div className="bg-slate-950 p-2 rounded-lg border border-slate-850 text-[10px] space-y-1 my-2">
+                                                        <div className="bg-slate-950/80 p-2 rounded-lg border border-slate-850 text-[10px] space-y-0.5 sm:space-y-1 my-1.5">
                                                             {getFacilityBonusText(facility.id, mainAssignee, assignedComps)}
                                                         </div>
                                                     )}
@@ -5314,12 +5358,12 @@ const BaseModal: React.FC<Props> = ({
                                                 </div>
 
                                                 {isUnlocked && (
-                                                    <div className="space-y-2 mt-auto border-t border-slate-850 pt-3">
+                                                    <div className="space-y-2 mt-auto border-t border-slate-850 pt-2.5 sm:pt-3">
                                                         {/* 담당자 배정 위젯 */}
-                                                        <div className="flex items-center justify-between bg-slate-950/60 p-1.5 rounded-lg border border-slate-850">
+                                                        <div className="flex items-center justify-between bg-slate-950/70 p-2 rounded-lg border border-slate-850">
                                                             <div className="text-[10px] flex flex-col min-w-0 mr-2">
                                                                 <span className="text-slate-500 uppercase text-[8px] font-bold">{isMulti ? '배치인원' : '담당자'}</span>
-                                                                <span className={`font-extrabold truncate max-w-[90px] text-[10px] sm:text-xs ${assignedComps.length > 0 ? 'text-indigo-400' : 'text-slate-600'}`}>
+                                                                <span className={`font-extrabold truncate max-w-[120px] text-[11px] sm:text-xs ${assignedComps.length > 0 ? 'text-indigo-400' : 'text-slate-500'}`}>
                                                                     {assignedComps.length > 0 
                                                                         ? (isMulti ? `${assignedComps.length}명 배치` : assignedComps[0].name) 
                                                                         : "미배치"}
@@ -5332,7 +5376,7 @@ const BaseModal: React.FC<Props> = ({
                                                             ) : (
                                                                 <button 
                                                                     onClick={() => setAssigningInstanceId(instance.id)} 
-                                                                    className="px-2 py-1 bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-900 rounded text-[10px] transition-colors font-bold shrink-0"
+                                                                    className="px-2.5 py-1.5 sm:py-1 bg-indigo-950 hover:bg-indigo-900 text-indigo-300 border border-indigo-800 rounded-md text-[11px] sm:text-[10px] transition-colors font-bold shrink-0 active:scale-95"
                                                                 >
                                                                     {assignedComps.length > 0 ? (isMulti ? "추가" : "변경") : "배치"}
                                                                 </button>
@@ -5340,16 +5384,17 @@ const BaseModal: React.FC<Props> = ({
                                                         </div>
 
                                                         {isMulti && assignedComps.length > 0 && (
-                                                            <div className="flex flex-wrap gap-1 max-h-[40px] overflow-y-auto custom-scrollbar">
+                                                            <div className="flex flex-wrap gap-1 max-h-[48px] overflow-y-auto custom-scrollbar">
                                                                 {assignedComps.map(c => (
-                                                                    <div key={c.id} className="flex items-center gap-1 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-850 text-[9px] text-slate-400">
-                                                                        <span className="truncate max-w-[50px]">{c.name}</span>
+                                                                    <div key={c.id} className="flex items-center gap-1 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 text-[10px] text-slate-300">
+                                                                        <span className="truncate max-w-[65px]">{c.name}</span>
                                                                         <button 
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
                                                                                 onAssignCompanion(c.id, instance.id); 
                                                                             }}
-                                                                            className="text-red-500 hover:text-red-400 font-bold ml-1 shrink-0"
+                                                                            className="text-red-400 hover:text-red-300 font-bold ml-1 shrink-0 p-0.5"
+                                                                            title="배치 해제"
                                                                         >
                                                                             ×
                                                                         </button>
@@ -5378,7 +5423,7 @@ const BaseModal: React.FC<Props> = ({
                                                                             }
                                                                         });
                                                                     }}
-                                                                    className="flex-1 py-1.5 bg-amber-950/80 hover:bg-amber-900 border border-amber-600/60 text-amber-300 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center active:scale-95 shadow-md shadow-amber-950/40"
+                                                                    className="flex-1 py-2 sm:py-1.5 bg-amber-950/80 hover:bg-amber-900 border border-amber-600/60 text-amber-300 rounded-lg text-xs font-bold transition-all flex items-center justify-center active:scale-95 shadow-md shadow-amber-950/40"
                                                                 >
                                                                     <Hammer size={12} className="mr-1 animate-bounce"/> 공사 진행 중
                                                                 </button>
@@ -5388,7 +5433,7 @@ const BaseModal: React.FC<Props> = ({
                                                                         setSelectedInstanceId(instance.id);
                                                                         setUpgradingFacility(facility.id);
                                                                     }}
-                                                                    className="flex-1 py-1.5 bg-green-750 hover:bg-green-650 text-white rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center justify-center active:scale-95 shadow-md shadow-green-950/30"
+                                                                    className="flex-1 py-2 sm:py-1.5 bg-green-750 hover:bg-green-650 text-white rounded-lg text-xs font-bold transition-all flex items-center justify-center active:scale-95 shadow-md shadow-green-950/30"
                                                                 >
                                                                     <ArrowUpCircle size={12} className="mr-1"/> 레벨업
                                                                 </button>
@@ -5403,9 +5448,9 @@ const BaseModal: React.FC<Props> = ({
                                                                         setSelectedInstanceId(instance.id);
                                                                     }
                                                                 }} 
-                                                                className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-indigo-100 rounded-lg text-[10px] sm:text-xs font-bold transition-colors flex items-center justify-center active:scale-95 shadow-md shadow-indigo-950/30"
+                                                                className="flex-1 py-2 sm:py-1.5 bg-indigo-600 hover:bg-indigo-500 text-indigo-100 rounded-lg text-xs font-bold transition-colors flex items-center justify-center active:scale-95 shadow-md shadow-indigo-950/30"
                                                             >
-                                                                <Play size={10} className="mr-1 fill-indigo-100"/> 이용하기
+                                                                <Play size={11} className="mr-1 fill-indigo-100"/> 이용하기
                                                             </button>
                                                         </div>
                                                     </div>

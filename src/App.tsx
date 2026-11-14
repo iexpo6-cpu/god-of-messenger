@@ -194,6 +194,10 @@ const App: React.FC = () => {
   useEffect(() => {
     (window as any).__openGameCharacter = () => setIsMobileMenuOpen(true);
     (window as any).__openGameInventory = () => setIsInventoryModalOpen(true);
+    (window as any).__openGameBase = () => {
+      setIsMobileMenuOpen(false);
+      setIsBaseModalOpen(true);
+    };
     (window as any).__openGameHunt = () => {
       setCityInitialConfig({ openHuntMap: true });
       setIsCityOpen(true);
@@ -214,6 +218,7 @@ const App: React.FC = () => {
     return () => {
       delete (window as any).__openGameCharacter;
       delete (window as any).__openGameInventory;
+      delete (window as any).__openGameBase;
       delete (window as any).__openGameHunt;
       delete (window as any).__openGameSkills;
       delete (window as any).__openGameMap;
@@ -4058,7 +4063,7 @@ useEffect(() => {
             // [NEW] 테이밍 숙련도 획득
             const { newChar: charWithExp, leveledUp, newLevel } = gainProfessionExp(newChar, 'taming', 50);
             handleRankUpEffect(leveledUp, 'taming', newLevel);
-            const tamingLevel = character.professions?.taming.level || 1;
+            const tamingLevel = character.professions?.taming?.level || 1;
             
             addToLog(`[시스템] ${capturedMonster.name} 포획에 성공했습니다! 기지 사육소로 이송되었습니다. (테이밍 숙련도 +50)`);
             if (leveledUp) addToLog(`[시스템] 테이밍 전문기술 레벨이 상승했습니다! (Lv.${tamingLevel} -> Lv.${tamingLevel + 1})`);

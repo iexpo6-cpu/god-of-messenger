@@ -1324,12 +1324,13 @@ export const useGame = () => {
     if (daysPassed > 0 && timeAdvancedChar.base?.dispatched && Array.isArray(timeAdvancedChar.base.dispatched)) {
         let hasDeath = false;
         const deadNames: string[] = [];
-        const now = timeAdvancedChar.currentDate;
+        const now = timeAdvancedChar.currentDate || character.currentDate || "2000-01-01";
         
         timeAdvancedChar.base.urgentAlarms = [];
         
         timeAdvancedChar.base.dispatched = (timeAdvancedChar.base.dispatched || []).filter(mission => {
-            if (now >= mission.expectedReturnDate) {
+            if (!mission) return false;
+            if (mission.expectedReturnDate && now >= mission.expectedReturnDate) {
                 if (mission.missionType === 'RecruitTravel') {
                     const comp = timeAdvancedChar.inactiveCompanions?.find(c => c.id === mission.companionId);
                     setTimeout(() => addToLog(`[시스템 알림] 먼 곳에서 온 인연 '${comp?.name || '동료'}'이(가) 기지에 도착했습니다.`), 100);
@@ -1778,7 +1779,7 @@ if (!timeAdvancedChar.divineRelations) {
                     
                     // [NEW] 테이밍 숙련도 획득
                     const { newChar: charWithExp, leveledUp } = gainProfessionExp(timeAdvancedChar, 'taming', 50);
-                    const tamingLevel = timeAdvancedChar.professions?.taming.level || 1;
+                    const tamingLevel = timeAdvancedChar.professions?.taming?.level || 1;
                     
                     const logMsg = `[시스템: 포획] ${logMessages[0]} (테이밍 숙련도 +50)`;
                     let finalLogMsg = logMsg;

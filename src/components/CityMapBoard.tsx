@@ -400,24 +400,28 @@ const CityMapBoard: React.FC<Props> = ({
         <div className="flex-1 relative overflow-hidden bg-slate-950 flex flex-col justify-between p-2.5 sm:p-4 md:p-6 lg:p-8 select-none">
             {/* 고화질 지역별 고유 판타지 일러스트 배경 레이어 & 시간대 색조 블렌딩 오버레이 */}
             <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true">
-                {/* 1. 고화질 판타지 배경 이미지 (25%~32% 은은한 불투명도 + 시간대별 필터 블렌딩 + 자동 CDN 폴백) */}
+                {/* 1. 고화질 판타지 배경 이미지 (선명한 불투명도 70~80% + 시간대별 필터 + 자동 상대/절대 경로 폴백) */}
                 <img 
-                    src={cityBg.url} 
+                    src={cityBg.url?.startsWith('/') || cityBg.url?.startsWith('./') ? cityBg.url : `/${cityBg.url}`} 
                     alt={cityBg.title}
                     onError={(e) => {
-                        if (cityBg.fallbackUrl && e.currentTarget.src !== cityBg.fallbackUrl) {
-                            e.currentTarget.src = cityBg.fallbackUrl;
+                        const target = e.currentTarget;
+                        if (!target.dataset.triedRelative) {
+                            target.dataset.triedRelative = 'true';
+                            target.src = `./${cityBg.url.replace(/^\/?/, '')}`;
+                        } else if (cityBg.fallbackUrl && target.src !== cityBg.fallbackUrl) {
+                            target.src = cityBg.fallbackUrl;
                         }
                     }}
-                    className={`w-full h-full object-cover object-center opacity-30 transition-all duration-700 ease-in-out scale-105 ${timeFilter.filterClass}`}
+                    className={`w-full h-full object-cover object-center opacity-70 sm:opacity-80 transition-all duration-700 ease-in-out scale-100 ${timeFilter.filterClass}`}
                 />
 
                 {/* 2. 시간대 색조 블렌딩 오버레이 (여명/낮/석양/야간/심야) */}
-                <div className={`absolute inset-0 ${timeFilter.blendOverlayColor} mix-blend-multiply transition-colors duration-700`} />
+                <div className={`absolute inset-0 ${timeFilter.blendOverlayColor} mix-blend-multiply opacity-40 transition-colors duration-700`} />
 
                 {/* 3. 대기광(Ambient Glow) 방사형 그라데이션 */}
                 <div 
-                    className="absolute inset-0 opacity-40 mix-blend-screen transition-all duration-700"
+                    className="absolute inset-0 opacity-30 mix-blend-screen transition-all duration-700"
                     style={{
                         background: `radial-gradient(circle at 50% 38%, ${timeFilter.ambientGlow} 0%, transparent 68%)`
                     }}
@@ -425,7 +429,7 @@ const CityMapBoard: React.FC<Props> = ({
 
                 {/* 4. 지역 테마 고유 강조 틴트 (Shingye / Magye / Elf / Beast 등) */}
                 <div 
-                    className="absolute inset-0 opacity-25 mix-blend-color-dodge transition-all duration-700"
+                    className="absolute inset-0 opacity-20 mix-blend-color-dodge transition-all duration-700"
                     style={{
                         background: `radial-gradient(ellipse at 50% 50%, ${cityBg.accentTint} 0%, transparent 80%)`
                     }}
@@ -456,10 +460,9 @@ const CityMapBoard: React.FC<Props> = ({
                     </div>
                 )}
 
-                {/* 6. UI 가독성(중앙 방사형 노드 및 텍스트)을 완벽 보장하는 다중 slate-950 비네트 그라데이션 */}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-950/55" />
-                <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-transparent to-slate-950/90" />
-                <div className="absolute inset-0 bg-radial from-transparent via-slate-950/50 to-slate-950/90" />
+                {/* 6. UI 가독성을 위한 상/하단 및 좌우 은은한 비네트 그라데이션 (배경을 가리지 않고 텍스트 대비만 보장) */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/50" />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/40 via-transparent to-slate-950/40" />
             </div>
             {/* Header: Geographic status, Date, Time & Midnight Alert (Unobstructed top-left) */}
             <div className="z-10 flex items-start select-none">
