@@ -520,21 +520,25 @@ export const syncUnifiedCombatTrainingToCharacter = (
     trainees: CombatTrainingTrainee[],
     reports?: CombatTrainingReportItem[]
 ): Character => {
-    const newChar = JSON.parse(JSON.stringify(character)) as Character;
-    if (!newChar.base) return newChar;
+    if (!character.base) return character;
 
-    const instances = newChar.base.layout?.filter(inst => inst.type === 'combat_training') || [];
+    const instances = character.base.layout?.filter(inst => inst.type === 'combat_training') || [];
     if (instances.length === 0) {
-        newChar.base.combatTraining = {};
-        return newChar;
+        return {
+            ...character,
+            base: {
+                ...character.base,
+                combatTraining: {}
+            }
+        };
     }
 
     const currentReports = reports || (() => {
-        const unified = getUnifiedCombatTrainingData(newChar);
+        const unified = getUnifiedCombatTrainingData(character);
         return unified.recentReports;
     })();
 
-    // 과거 철거/재배치로 남은 잔존 인스턴스 키를 제거하고 현재 활성 인스턴스에만 일괄 동기화
+    // 과거 철거/재배치로 남은 잔존 인스턴스 키를 제거하고 현재 활성 인스턴스에만 일괄 동기화 (O(N) 경량 얕은 복사)
     const syncedCombatTraining: Record<string, { trainees: CombatTrainingTrainee[]; recentReports: CombatTrainingReportItem[] }> = {};
     instances.forEach(inst => {
         syncedCombatTraining[inst.id] = {
@@ -542,13 +546,18 @@ export const syncUnifiedCombatTrainingToCharacter = (
             recentReports: [...currentReports]
         };
     });
-    newChar.base.combatTraining = syncedCombatTraining;
 
-    return newChar;
+    return {
+        ...character,
+        base: {
+            ...character.base,
+            combatTraining: syncedCombatTraining
+        }
+    };
 };
 
 /**
- * 날짜와 시간을 기반으로 게임 내 절대 시간(분 단위)을 계산합니다.
+ * 날짜와 시간을 기반으로 게임 내 절대 시간(분 단위, UTC 기준 타임존 무관)을 계산합니다.
  */
 export const getAbsoluteMinutes = (dateStr: string, timeStr: string): number => {
     const date = dateStr || '2000-03-02';
@@ -575,11 +584,12 @@ export const getAbsoluteMinutes = (dateStr: string, timeStr: string): number => 
         let hour = 8, minute = 0;
         if (time.includes(':')) {
             const tParts = time.split(':').map(Number);
-            hour = tParts[0] || 0;
-            minute = tParts[1] || 0;
+            hour = isNaN(tParts[0]) ? 0 : tParts[0];
+            minute = isNaN(tParts[1]) ? 0 : tParts[1];
         }
 
-        const ms = new Date(year, month - 1, day, hour, minute).getTime();
+        // Date.UTC를 사용하여 로컬 타임존(+09:00 등)에 따른 06:00~22:00 오프셋 왜곡 원천 차단
+        const ms = Date.UTC(year, month - 1, day, hour, minute);
         return Math.floor(ms / (1000 * 60));
     } catch (e) {
         return 0;
@@ -587,36 +597,50 @@ export const getAbsoluteMinutes = (dateStr: string, timeStr: string): number => 
 };
 
 /**
- * 두 절대 시간(분 단위) 사이에 실제로 흘러간 주간 시간(06:00 ~ 22:00)의 분을 계산합니다.
+ * Epoch 기준 누적 주간(06:00~22:00, 하루 960분) 활동 시간 계산 헬퍼 (O(1))
+ */
+const getCumulativeActiveMinutesFromEpoch = (absMin: number): number => {
+    const dayIndex = Math.floor(absMin / 1440);
+    const minOfDay = ((absMin % 1440) + 1440) % 1440;
+    const dayActive = Math.max(0, Math.min(minOfDay, 1320) - 360);
+    return dayIndex * 960 + dayActive;
+};
+
+/**
+ * 두 절대 시간(분 단위) 사이에 실제로 흘러간 주간 시간(06:00 ~ 22:00)의 분을 O(1)로 계산합니다.
  */
 export const getActiveTrainingMinutes = (startAbsMin: number, endAbsMin: number): number => {
     if (endAbsMin <= startAbsMin) return 0;
-    
-    let activeMinutes = 0;
-    const diff = endAbsMin - startAbsMin;
-    if (diff > 10080) { // 7일 이상은 대략적인 주간 비율(하루 16시간 = 960분)로 고속 계산
-        const days = Math.floor(diff / 1440);
-        activeMinutes += days * 960;
-        const remain = diff % 1440;
-        let temp = startAbsMin + days * 1440;
-        for (let i = 0; i < remain; i++) {
-            const minOfDay = ((temp % 1440) + 1440) % 1440;
-            if (minOfDay >= 360 && minOfDay < 1320) {
-                activeMinutes++;
-            }
-            temp++;
-        }
-    } else {
-        let temp = startAbsMin;
-        for (let i = 0; i < diff; i++) {
-            const minOfDay = ((temp % 1440) + 1440) % 1440;
-            if (minOfDay >= 360 && minOfDay < 1320) {
-                activeMinutes++;
-            }
-            temp++;
-        }
+    return Math.max(0, getCumulativeActiveMinutesFromEpoch(endAbsMin) - getCumulativeActiveMinutesFromEpoch(startAbsMin));
+};
+
+/**
+ * 시작 절대 시각과 필요한 주간 훈련 시간(기본 720분=12시간)을 바탕으로 예상 종료 절대 시각을 O(1)로 계산합니다.
+ */
+export const calculateEstimatedEndAbsMinutes = (startAbsMin: number, neededActiveMinutes: number = 720): number => {
+    if (neededActiveMinutes <= 0) return startAbsMin;
+    const startCum = getCumulativeActiveMinutesFromEpoch(startAbsMin);
+    const targetCum = startCum + neededActiveMinutes;
+    let targetDayIndex = Math.floor(targetCum / 960);
+    let remActive = targetCum % 960;
+    if (remActive === 0 && targetCum > 0) {
+        targetDayIndex -= 1;
+        remActive = 960;
     }
-    return activeMinutes;
+    return targetDayIndex * 1440 + 360 + remActive;
+};
+
+/**
+ * 절대 분(UTC 기준)을 'YYYY-MM-DD HH:mm' 형식 문자열로 변환합니다.
+ */
+export const formatAbsMinutesToDateTime = (absMin: number): string => {
+    const d = new Date(absMin * 60 * 1000);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day} ${hh}:${mm}`;
 };
 
 /**
@@ -629,7 +653,7 @@ export const advanceCombatTrainingTime = (
 ): { updatedCharacter: Character; logs: string[] } => {
     const logs: string[] = [];
 
-    // 1. 전투훈련소 시설이 있는지 빠른 사전 검사
+    // 1. 전투훈련소 시설 및 훈련생 존재 여부 빠른 사전 검사
     const trainingInstances = character.base?.layout?.filter(inst => 
         inst && inst.type === 'combat_training' && !inst.underConstruction && (inst.level || 0) > 0
     ) || [];
@@ -637,37 +661,40 @@ export const advanceCombatTrainingTime = (
         return { updatedCharacter: character, logs };
     }
 
-    // 훈련생 배정 여부 올바른 사전 검사
-    const hasTrainees = Object.values(character.base?.combatTraining || {}).some(
-        ct => ct && ct.trainees && ct.trainees.length > 0
-    );
-    if (!hasTrainees) {
+    const unified = getUnifiedCombatTrainingData(character);
+    if (!unified.trainees || unified.trainees.length === 0) {
         return { updatedCharacter: character, logs };
     }
 
-    let charCopy = JSON.parse(JSON.stringify(character)) as Character;
+    // 현재 절대 시각 구하기 (UTC 기반)
+    const currentAbsMinutes = getAbsoluteMinutes(character.currentDate || '2000-03-02', character.currentTime || '08:00');
 
-    // 2. 훈련소 통합 데이터 가져오기
-    const unified = getUnifiedCombatTrainingData(charCopy);
-    if (!unified.trainees || unified.trainees.length === 0) {
-        return { updatedCharacter: charCopy, logs };
+    // [성능 최적화 핵심] 모든 훈련생이 이미 예상 종료 시각을 갖고 있고 아직 도달하지 않았다면
+    // 어떠한 객체 복사나 루프 연산도 없이 0ms 즉시 종료 (O(1) Zero-Copy Fast Exit)
+    const needsProcessing = unified.trainees.some(t => 
+        t.targetEndAbsMinutes === undefined || currentAbsMinutes >= t.targetEndAbsMinutes
+    );
+    if (!needsProcessing) {
+        return { updatedCharacter: character, logs };
     }
 
-    const activeCompanions = charCopy.companions || [];
-    const baseInactive = charCopy.inactiveCompanions || [];
-    const allCompanions: any[] = [charCopy, ...activeCompanions, ...baseInactive];
+    let charCopy: Character = {
+        ...character,
+        companions: [...(character.companions || [])],
+        inactiveCompanions: [...(character.inactiveCompanions || [])],
+        messages: [...(character.messages || [])]
+    };
 
-    // 유효한 훈련생만 필터링
-    const validTrainees = (unified.trainees || []).filter(t => 
-        allCompanions.some(c => c && c.id === t.companionId && !c.isDead && !c.isMonster)
-    );
+    const allCompanions: any[] = [charCopy, ...charCopy.companions, ...(charCopy.inactiveCompanions || [])];
+
+    // 유효한 훈련생만 필터링 (복사본 배열 생성)
+    const validTrainees = unified.trainees
+        .filter(t => allCompanions.some(c => c && c.id === t.companionId && !c.isDead && !c.isMonster))
+        .map(t => ({ ...t }));
 
     if (validTrainees.length === 0) {
-        return { updatedCharacter: charCopy, logs };
+        return { updatedCharacter: character, logs };
     }
-
-    // 현재 절대 시각 구하기
-    const currentAbsMinutes = getAbsoluteMinutes(charCopy.currentDate || '2000-03-02', charCopy.currentTime || '08:00');
 
     const manager = unified.bestManager;
     const efficiencyBonus = getCombatTrainingEfficiencyBonus(manager);
@@ -691,13 +718,15 @@ export const advanceCombatTrainingTime = (
     };
 
     const curDate = charCopy.currentDate || '2000-03-02';
+    const settledSummaryLines: string[] = [];
 
-    // 3. 각 훈련생별로 절대 시각 기반 주간 훈련 시간 누적 및 12시간 정산 체크
+    // 3. 각 훈련생별로 시작/예상종료 시각 기반 주간 훈련 시간 누적 및 12시간 정산 체크
     validTrainees.forEach(traineeInfo => {
-        const trainee = allCompanions.find(c => c && c.id === traineeInfo.companionId);
-        if (!trainee) return;
+        const origTrainee = allCompanions.find(c => c && c.id === traineeInfo.companionId);
+        if (!origTrainee) return;
+        const trainee = { ...origTrainee, stats: origTrainee.stats ? { ...origTrainee.stats } : undefined };
 
-        // 훈련 시작 기준 시점 계산 (lastTrainedAbsMinutes가 없으면 startDate 및 startTime 기반으로 복원)
+        // 훈련 시작/마지막 체크 시점 복원
         let lastTrainedMin = traineeInfo.lastTrainedAbsMinutes;
         if (lastTrainedMin === undefined || lastTrainedMin <= 0) {
             if (traineeInfo.startDate) {
@@ -706,64 +735,77 @@ export const advanceCombatTrainingTime = (
                 lastTrainedMin = currentAbsMinutes;
             }
         }
-
-        // 현재 시각보다 미래로 설정되어 있다면 현재 시각으로 보정
         if (lastTrainedMin > currentAbsMinutes) {
             lastTrainedMin = currentAbsMinutes;
         }
 
-        // 훈련 시작 시간과 현재 시각 사이의 정확한 주간 경과 시간(분) 계산
-        const trainingMinutesAccumulated = getActiveTrainingMinutes(lastTrainedMin, currentAbsMinutes);
-        if (trainingMinutesAccumulated <= 0) {
-            traineeInfo.lastTrainedAbsMinutes = currentAbsMinutes;
+        // 아직 예상 종료 시각이 계산되지 않은 구형 데이터인 경우 계산하여 부여
+        if (traineeInfo.targetEndAbsMinutes === undefined) {
+            const needed = Math.max(1, 720 - (traineeInfo.accumulatedMinutes || 0));
+            traineeInfo.lastTrainedAbsMinutes = lastTrainedMin;
+            traineeInfo.targetEndAbsMinutes = calculateEstimatedEndAbsMinutes(lastTrainedMin, needed);
+            if (currentAbsMinutes < traineeInfo.targetEndAbsMinutes) {
+                return;
+            }
+        }
+
+        // 예상 종료 시각에 아직 도달하지 않은 훈련생은 스킵
+        if (currentAbsMinutes < traineeInfo.targetEndAbsMinutes) {
             return;
         }
 
-        // 절대 시각 갱신
+        // 훈련 시작/체크 시간과 현재 시각 사이의 정확한 주간 경과 시간(분) O(1) 계산
+        const trainingMinutesAccumulated = getActiveTrainingMinutes(lastTrainedMin, currentAbsMinutes);
         traineeInfo.lastTrainedAbsMinutes = currentAbsMinutes;
 
-        // 누적 훈련 분 증가
         const prevMinutes = traineeInfo.accumulatedMinutes || 0;
         traineeInfo.accumulatedMinutes = prevMinutes + trainingMinutesAccumulated;
 
-        // 12시간(=720분) 채웠는지 여부 (시간 누락 없이 다중 정산 지원)
+        // 12시간(=720분) 정산 처리
         if (traineeInfo.accumulatedMinutes >= 720) {
             const settlementCount = Math.floor(traineeInfo.accumulatedMinutes / 720);
             traineeInfo.accumulatedMinutes = traineeInfo.accumulatedMinutes % 720;
 
-            let successMessage = "";
+            // 다음 12시간 회차 예상 종료 시각 즉시 재예약
+            traineeInfo.targetEndAbsMinutes = calculateEstimatedEndAbsMinutes(
+                currentAbsMinutes,
+                Math.max(1, 720 - traineeInfo.accumulatedMinutes)
+            );
+
             let statDetailText = "";
             const statKey = traineeInfo.targetStat;
             const statLabel = STAT_NAME_MAP[statKey] || statKey;
+            let totalUnitGain = 0;
+            const oldLevel = trainee.level;
+            let anyLeveledUp = false;
 
             for (let s = 0; s < settlementCount; s++) {
                 if (statKey === 'exp') {
-                    // 경험치 훈련
                     const expGain = finalGain * 5;
-                    const oldLevel = trainee.level;
+                    totalUnitGain += expGain;
                     trainee.currentExp = (trainee.currentExp || 0) + expGain;
                     trainee.maxExp = getRequiredExp(trainee.level);
-                    let leveledUp = false;
 
                     while (trainee.currentExp >= trainee.maxExp) {
-                        leveledUp = true;
+                        anyLeveledUp = true;
                         trainee.currentExp -= trainee.maxExp;
                         trainee.level += 1;
                         trainee.maxExp = getRequiredExp(trainee.level);
                         trainee.statPoints = (trainee.statPoints || 0) + getStatPointsPerLevel(trainee);
-                        trainee.stats.maxHp += 20;
-                        trainee.stats.maxMp += 20;
-
-                        const { finalStats: compFinal } = calculateFinalStats(trainee);
-                        trainee.stats.hp = compFinal.maxHp;
-                        trainee.stats.mp = compFinal.maxMp;
-                        trainee.stats.maxHp = compFinal.maxHp;
-                        trainee.stats.maxMp = compFinal.maxMp;
-                        (trainee as any).hp = compFinal.maxHp;
-                        (trainee as any).maxHp = compFinal.maxHp;
-                        if ((trainee as any).mp !== undefined || (trainee as any).maxMp !== undefined) {
-                            (trainee as any).mp = compFinal.maxMp;
-                            (trainee as any).maxMp = compFinal.maxMp;
+                        if (trainee.stats) {
+                            trainee.stats.maxHp += 20;
+                            trainee.stats.maxMp += 20;
+                            const { finalStats: compFinal } = calculateFinalStats(trainee);
+                            trainee.stats.hp = compFinal.maxHp;
+                            trainee.stats.mp = compFinal.maxMp;
+                            trainee.stats.maxHp = compFinal.maxHp;
+                            trainee.stats.maxMp = compFinal.maxMp;
+                            (trainee as any).hp = compFinal.maxHp;
+                            (trainee as any).maxHp = compFinal.maxHp;
+                            if ((trainee as any).mp !== undefined || (trainee as any).maxMp !== undefined) {
+                                (trainee as any).mp = compFinal.maxMp;
+                                (trainee as any).maxMp = compFinal.maxMp;
+                            }
                         }
                     }
 
@@ -771,105 +813,39 @@ export const advanceCombatTrainingTime = (
                     traineeInfo.lastGain = expGain;
                     traineeInfo.lastTrainedDate = curDate;
                     traineeInfo.totalDaysTrained = (traineeInfo.totalDaysTrained || 0) + 1;
-
-                    successMessage = leveledUp
-                        ? `[전투 훈련소] 대원 '${trainee.name}' - 경험치 +${expGain.toLocaleString()} 획득! 🌟 레벨업 달성 (Lv.${oldLevel} ➔ Lv.${trainee.level})`
-                        : `[전투 훈련소] 대원 '${trainee.name}' - 경험치 +${expGain.toLocaleString()} 획득 (${trainee.currentExp.toLocaleString()} / ${trainee.maxExp.toLocaleString()} EXP)`;
-
-                    statDetailText = leveledUp 
-                        ? `레벨업 달성 (Lv.${oldLevel} ➔ Lv.${trainee.level})` 
-                        : `경험치 +${expGain.toLocaleString()} 획득 (현재: ${trainee.currentExp.toLocaleString()} / ${trainee.maxExp.toLocaleString()})`;
-
-                    trainingReports.unshift({
-                        companionId: trainee.id,
-                        companionName: trainee.name,
-                        targetStat: 'exp',
-                        targetStatLabel: '경험치',
-                        gain: expGain,
-                        accumulatedGain: traineeInfo.accumulatedGain,
-                        statValue: trainee.level,
-                        currentLevel: trainee.level,
-                        date: curDate
-                    });
                 } else if (statKey === 'weapon') {
-                    // 무기 숙련도 수련 (기존 대비 1.5배 상향 조정)
                     const weaponType = traineeInfo.targetWeaponType || 'Sword';
                     const baseWeaponExp = Math.max(3, Math.round(finalGain * 0.25) + 2);
                     const expGain = Math.max(4, Math.round(baseWeaponExp * 1.5));
+                    totalUnitGain += expGain;
                     const result = addMasteryExp(trainee, weaponType, expGain);
                     trainee.weaponMastery = (result.char as any).weaponMastery;
+                    if (result.leveledUp) anyLeveledUp = true;
 
                     traineeInfo.accumulatedGain = (traineeInfo.accumulatedGain || 0) + expGain;
                     traineeInfo.lastGain = expGain;
                     traineeInfo.lastTrainedDate = curDate;
                     traineeInfo.totalDaysTrained = (traineeInfo.totalDaysTrained || 0) + 1;
-
-                    const weaponKorean = WEAPON_TYPE_KOREAN[weaponType] || weaponType;
-                    const oldLvl = result.oldLevel ?? 0;
-                    const newLvl = result.newLevel ?? 0;
-                    const currentWeaponExp = trainee.weaponMastery?.[weaponType]?.exp ?? 0;
-
-                    successMessage = result.leveledUp
-                        ? `[전투 훈련소] 대원 '${trainee.name}' - [${weaponKorean}] 숙련도 +${expGain} 증가! 🌟 숙련 등급 상승 (Lv.${oldLvl} ➔ Lv.${newLvl}, 누적 숙련도: ${currentWeaponExp})`
-                        : `[전투 훈련소] 대원 '${trainee.name}' - [${weaponKorean}] 숙련도 +${expGain} 증가 (현재: Lv.${newLvl}, 누적 숙련도: ${currentWeaponExp})`;
-
-                    statDetailText = result.leveledUp
-                        ? `[${weaponKorean}] 숙련 등급 상승 (Lv.${oldLvl} ➔ Lv.${newLvl}, 누적 숙련도: ${currentWeaponExp})`
-                        : `[${weaponKorean}] 숙련도 +${expGain} 증가 (현재: Lv.${newLvl}, 누적 숙련도: ${currentWeaponExp})`;
-
-                    trainingReports.unshift({
-                        companionId: trainee.id,
-                        companionName: trainee.name,
-                        targetStat: 'weapon',
-                        targetStatLabel: `무기 숙련도 (${weaponKorean})`,
-                        gain: expGain,
-                        accumulatedGain: traineeInfo.accumulatedGain,
-                        statValue: newLvl,
-                        currentLevel: newLvl,
-                        oldLevel: oldLvl,
-                        leveledUp: result.leveledUp,
-                        date: curDate
-                    });
                 } else if (statKey === 'skill') {
-                    // 스킬 숙련도 수련 (기존 대비 3배 상향 조정)
                     const skillName = traineeInfo.targetSkillName;
-                    const foundSkill = trainee.skills?.find(s => s.name === skillName);
+                    const foundSkill = trainee.skills?.find((sk: any) => sk.name === skillName);
                     if (foundSkill) {
                         const baseSkillGain = Math.round(finalGain / 15) + 1;
                         let skillGain = baseSkillGain * 3;
-                        if (trainee.isPotentialLocked) {
-                            skillGain *= 2;
-                        }
+                        if (trainee.isPotentialLocked) skillGain *= 2;
+                        totalUnitGain += skillGain;
                         foundSkill.currentMastery = (foundSkill.currentMastery || 0) + skillGain;
 
                         traineeInfo.accumulatedGain = (traineeInfo.accumulatedGain || 0) + skillGain;
                         traineeInfo.lastGain = skillGain;
                         traineeInfo.lastTrainedDate = curDate;
                         traineeInfo.totalDaysTrained = (traineeInfo.totalDaysTrained || 0) + 1;
-
-                        const lockBonusTag = trainee.isPotentialLocked ? ' [잠재력 제한 특화 2배]' : '';
-                        successMessage = `[전투 훈련소] 대원 '${trainee.name}' - [${skillName}] 스킬 숙련도 +${skillGain} 상승 (현재 숙련도: ${foundSkill.currentMastery})${lockBonusTag}`;
-                        statDetailText = `[${skillName}] 스킬 숙련도 +${skillGain} 상승 (현재 숙련도: ${foundSkill.currentMastery})${lockBonusTag}`;
-
-                        trainingReports.unshift({
-                            companionId: trainee.id,
-                            companionName: trainee.name,
-                            targetStat: 'skill',
-                            targetStatLabel: `스킬 숙련도 (${skillName})`,
-                            gain: skillGain,
-                            accumulatedGain: traineeInfo.accumulatedGain,
-                            statValue: foundSkill.currentMastery,
-                            currentLevel: trainee.level,
-                            date: curDate
-                        });
                     }
                 } else {
-                    // 기본 6대 능력치 수련
                     const statKeyName = statKey === 'maxHp' ? 'maxHp' : statKey === 'maxMp' ? 'maxMp' : statKey;
                     let growth = Math.round(finalGain / 10) + 1;
-                    if (statKeyName === 'maxHp' || statKeyName === 'maxMp') {
-                        growth *= 10;
-                    }
+                    if (statKeyName === 'maxHp' || statKeyName === 'maxMp') growth *= 10;
+                    totalUnitGain += growth;
 
                     if (!trainee.stats) trainee.stats = { hp: 100, maxHp: 100, mp: 50, maxMp: 50, str: 10, int: 10, agi: 10, wis: 10, def: 5, ctrl: 5 };
                     trainee.stats[statKeyName] = (trainee.stats[statKeyName] || 0) + growth;
@@ -889,51 +865,109 @@ export const advanceCombatTrainingTime = (
                     traineeInfo.lastGain = growth;
                     traineeInfo.lastTrainedDate = curDate;
                     traineeInfo.totalDaysTrained = (traineeInfo.totalDaysTrained || 0) + 1;
-
-                    successMessage = `[전투 훈련소] 대원 '${trainee.name}' - ${statLabel} +${growth} 상승 (현재: ${(trainee.stats as any)[statKeyName]})`;
-                    statDetailText = `${statLabel} +${growth} 상승 (현재: ${(trainee.stats as any)[statKeyName]})`;
-
-                    trainingReports.unshift({
-                        companionId: trainee.id,
-                        companionName: trainee.name,
-                        targetStat: statKeyName,
-                        targetStatLabel: statLabel,
-                        gain: growth,
-                        accumulatedGain: traineeInfo.accumulatedGain,
-                        statValue: (trainee.stats as any)[statKeyName],
-                        currentLevel: trainee.level,
-                        date: curDate
-                    });
-                }
-
-                if (successMessage) {
-                    // [중복 방지] 상세 서신([전투 수련])이 발송되므로 중복 한 줄 로그(successMessage)는 제외
-                    // 능력치 오르면 서신(편지)오도록 하고 동일 내용 중복 발송 방지
-                    if (!charCopy.messages) charCopy.messages = [];
-                    const mailText = `[전투 수련] 대원 '${trainee.name}'의 12시간 훈련 정산 완료!\n\n전투훈련소에서 12시간 동안 성실하게 훈련에 매진한 대원 '${trainee.name}'이(가) 한 단계 더 성장했습니다.\n\n- 대상 훈련: ${statLabel} 수련\n- 훈련 성과: ${statDetailText}\n\n땀방울은 거짓말을 하지 않습니다. 대원의 다음 성장 로드맵을 계획하고 훈련을 이어나가도록 독려해주세요!`;
-                    const settlementMailId = `combat_training_mail_${trainee.id}_${traineeInfo.lastTrainedAbsMinutes}_${s}`;
-                    const isDuplicateMail = charCopy.messages.slice(-15).some(m => m.id === settlementMailId || m.text === mailText);
-                    if (!isDuplicateMail) {
-                        charCopy.messages.push({
-                            id: settlementMailId,
-                            role: 'ai',
-                            text: mailText,
-                            timestamp: Date.now()
-                        });
-                    }
                 }
             }
-        }
 
-        // 동료 원본 정보 배열에 복사 반영
-        if (trainee.id === 'player') {
-            charCopy = { ...charCopy, ...trainee };
-        } else if (charCopy.companions.some(c => c.id === trainee.id)) {
-            charCopy.companions = charCopy.companions.map(c => c.id === trainee.id ? trainee : c);
-        } else if (charCopy.inactiveCompanions) {
-            charCopy.inactiveCompanions = charCopy.inactiveCompanions.map(c => c.id === trainee.id ? trainee : c);
+            // 정산 보고서(UI 최근 활동 피드)는 대원당 합산 1건으로 깔끔하게 기록
+            if (statKey === 'exp') {
+                statDetailText = anyLeveledUp
+                    ? `경험치 +${totalUnitGain.toLocaleString()} (${settlementCount}회차 완료) ➔ 🌟 Lv.${oldLevel} → Lv.${trainee.level}`
+                    : `경험치 +${totalUnitGain.toLocaleString()} (${settlementCount}회차 완료)`;
+                trainingReports.unshift({
+                    companionId: trainee.id,
+                    companionName: trainee.name,
+                    targetStat: 'exp',
+                    targetStatLabel: '경험치',
+                    gain: totalUnitGain,
+                    accumulatedGain: traineeInfo.accumulatedGain,
+                    statValue: trainee.level,
+                    currentLevel: trainee.level,
+                    date: curDate
+                });
+            } else if (statKey === 'weapon') {
+                const weaponType = traineeInfo.targetWeaponType || 'Sword';
+                const weaponKorean = WEAPON_TYPE_KOREAN[weaponType] || weaponType;
+                const newLvl = trainee.weaponMastery?.[weaponType]?.level ?? 0;
+                statDetailText = `[${weaponKorean}] 숙련도 +${totalUnitGain} (${settlementCount}회차 완료, Lv.${newLvl})`;
+                trainingReports.unshift({
+                    companionId: trainee.id,
+                    companionName: trainee.name,
+                    targetStat: 'weapon',
+                    targetStatLabel: `무기 숙련도 (${weaponKorean})`,
+                    gain: totalUnitGain,
+                    accumulatedGain: traineeInfo.accumulatedGain,
+                    statValue: newLvl,
+                    currentLevel: newLvl,
+                    leveledUp: anyLeveledUp,
+                    date: curDate
+                });
+            } else if (statKey === 'skill') {
+                const skillName = traineeInfo.targetSkillName;
+                const foundSkill = trainee.skills?.find((sk: any) => sk.name === skillName);
+                const curMastery = foundSkill?.currentMastery ?? 0;
+                statDetailText = `[${skillName}] 숙련도 +${totalUnitGain} (${settlementCount}회차 완료, 현재 ${curMastery})`;
+                trainingReports.unshift({
+                    companionId: trainee.id,
+                    companionName: trainee.name,
+                    targetStat: 'skill',
+                    targetStatLabel: `스킬 숙련도 (${skillName})`,
+                    gain: totalUnitGain,
+                    accumulatedGain: traineeInfo.accumulatedGain,
+                    statValue: curMastery,
+                    currentLevel: trainee.level,
+                    date: curDate
+                });
+            } else {
+                const statKeyName = statKey === 'maxHp' ? 'maxHp' : statKey === 'maxMp' ? 'maxMp' : statKey;
+                const curVal = (trainee.stats as any)?.[statKeyName] ?? 0;
+                statDetailText = `${statLabel} +${totalUnitGain} 상승 (${settlementCount}회차 완료, 현재 ${curVal})`;
+                trainingReports.unshift({
+                    companionId: trainee.id,
+                    companionName: trainee.name,
+                    targetStat: statKeyName,
+                    targetStatLabel: statLabel,
+                    gain: totalUnitGain,
+                    accumulatedGain: traineeInfo.accumulatedGain,
+                    statValue: curVal,
+                    currentLevel: trainee.level,
+                    date: curDate
+                });
+            }
+
+            settledSummaryLines.push(`• ${trainee.name} [${statLabel}]: ${statDetailText}`);
+
+            // 동료 원본 정보 배열에 복사 반영
+            if (trainee.id === 'player') {
+                charCopy = { ...charCopy, ...trainee };
+            } else if (charCopy.companions.some(c => c.id === trainee.id)) {
+                charCopy.companions = charCopy.companions.map(c => c.id === trainee.id ? trainee : c);
+            } else if (charCopy.inactiveCompanions) {
+                charCopy.inactiveCompanions = charCopy.inactiveCompanions.map(c => c.id === trainee.id ? trainee : c);
+            }
+        } else {
+            // 720분 미만 잔여 시간만 경과한 경우, 다음 예상 종료 시각 보정
+            traineeInfo.targetEndAbsMinutes = calculateEstimatedEndAbsMinutes(
+                currentAbsMinutes,
+                Math.max(1, 720 - traineeInfo.accumulatedMinutes)
+            );
         }
     });
+
+    // 4. [1회 통합 정산 서신] 여러 회차/여러 대원이 정산되었더라도 단 1통의 통합 서신만 발송
+    if (settledSummaryLines.length > 0) {
+        if (!charCopy.messages) charCopy.messages = [];
+        const mailId = `combat_training_unified_${currentAbsMinutes}`;
+        const isDup = charCopy.messages.slice(-10).some(m => m.id === mailId);
+        if (!isDup) {
+            const mailText = `[전투 수련 통합 보고] 전투훈련소 훈련 정산 완료!\n\n기지 전투훈련소에서 훈련을 마친 대원들의 종합 성장 보고서입니다.\n\n${settledSummaryLines.join('\n')}\n\n다음 훈련 회차도 자동으로 이어서 진행됩니다.`;
+            charCopy.messages.push({
+                id: mailId,
+                role: 'ai',
+                text: mailText,
+                timestamp: Date.now()
+            });
+        }
+    }
 
     // 5. 보고서 목록 정리 및 훈련소 동기화 적용
     const trimmedReports = trainingReports.slice(0, 30);

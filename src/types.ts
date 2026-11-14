@@ -2191,6 +2191,7 @@ export interface CombatTrainingTrainee {
     accumulatedMinutes?: number; // 누적 훈련 시간 (분 단위)
     lastTrainedAbsMinutes?: number; // 훈련 절대 시각 비교를 위한 총 누적 분
     startedAtAbsMinutes?: number; // 훈련 시작 절대 분
+    targetEndAbsMinutes?: number; // [NEW] 12시간 주간 누적 예상 종료 절대 분
 }
 
 export interface CombatTrainingCenterData {

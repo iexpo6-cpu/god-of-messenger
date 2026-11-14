@@ -579,46 +579,73 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
     const enemies = combatState.enemies || [];
     const turn = combatState.turn || 1;
 
-    const { finalStats: playerFinalStats } = calculateFinalStats(player);
-    
-    const displayPlayerHp = player.stats.hp;
-    const displayPlayerMp = player.stats.mp;
-    const playerVisualUrl = getVisualUrlByJob(player.job, player.gender, player.visualUrl);
-
     // Helper to get display class name based on tier
-    const getDisplayClassName = (entity: any) => {
+    const getDisplayClassName = useCallback((entity: any) => {
         if (entity.classTier === ClassTier.FINAL && entity.finalClassName) return entity.finalClassName;
         if (entity.classTier === ClassTier.LAST && entity.lastClassName) return entity.lastClassName;
         if (entity.classTier === ClassTier.SECOND && entity.secondClassName) return entity.secondClassName;
         if (entity.classTier === ClassTier.FIRST && entity.firstClassName) return entity.firstClassName;
         return entity.classType || entity.firstClassName || "모험가";
-    };
+    }, []);
+
+    // [전투 스탯/비주얼 캐시] HP/MP가 변할 때마다 주인공과 다수 동료의 calculateFinalStats를 매번 재계산하는 병목 차단
+    const combatProfileCacheRef = useRef<Map<string, { sig: string; finalStats: any; visualUrl: string; classType: string }>>(new Map());
+    const getCachedCombatProfile = useCallback((entity: any, isPlayerUnit: boolean) => {
+        const cacheKey = isPlayerUnit ? '__player__' : (entity.id || entity.name);
+        const eq = entity.equipment || {};
+        const statusSig = (entity.statusEffects || []).map((s: any) => `${s.name}:${s.val}`).join(',');
+        const sig = `${entity.level}|${entity.job}|${entity.gender}|${entity.affection || 0}|${entity.shinryokuType || ''}|${entity.equippedTitleId || ''}|${entity.classTier || ''}|${entity.stats?.str}|${entity.stats?.int}|${entity.stats?.agi}|${entity.stats?.wis}|${entity.stats?.def}|${entity.stats?.ctrl}|${entity.stats?.maxHp}|${entity.stats?.maxMp}|${eq.Weapon?.name || ''}:${eq.Weapon?.enhancement || 0}|${eq.SubWeapon?.name || ''}|${eq.Body?.name || ''}|${eq.Accessory?.name || ''}|${eq.Head?.name || ''}|${eq.Hand?.name || ''}|${eq.Feets?.name || ''}|${statusSig}`;
+
+        const cached = combatProfileCacheRef.current.get(cacheKey);
+        if (cached && cached.sig === sig) {
+            return cached;
+        }
+
+        const { finalStats } = calculateFinalStats(entity);
+        const defaultVisualUrl = entity.defaultVisualUrl || generateDefaultVisualUrl(entity.name, entity.nation || '기타', entity.race, entity.gender);
+        const visualUrl = isPlayerUnit
+            ? getVisualUrlByJob(entity.job, entity.gender, entity.visualUrl)
+            : getVisualUrlByJob(entity.job, entity.gender, entity.visualUrl || entity.monsterData?.visualUrl || defaultVisualUrl);
+        const classType = getDisplayClassName(entity);
+
+        const nextEntry = { sig, finalStats, visualUrl, classType };
+        combatProfileCacheRef.current.set(cacheKey, nextEntry);
+        return nextEntry;
+    }, [getDisplayClassName]);
+
+    const playerProfile = getCachedCombatProfile(player, true);
+    const playerFinalStats = playerProfile.finalStats;
+    const playerVisualUrl = playerProfile.visualUrl;
+    
+    const displayPlayerHp = player.stats.hp;
+    const displayPlayerMp = player.stats.mp;
 
     const resurrectionKeywords = ["부활", "되살리기", "재생생명", "Resurrection", "피닉스", "소생", "부활약"];
     
-    const isOneOnOneRaw = [
-        'tournament', 'arena', 'exam_mid', 'exam_final', 
-        'relation_battle', 'school_pvp', 'school_duel', 'school_demo', 'school_exam', 'school_rival', 'school_pvp_select',
-        'final_trial_battle', 'sparring_arena', 'sparring'
-    ].includes(combatState.type || '') ||
-    (combatState.type && combatState.type.startsWith('school_')) ||
-    combatState.isOneOnOne === true ||
-    (combatState.enemies && combatState.enemies.some(e => e.name?.includes('모의 대련'))) ||
-    (combatState.log && combatState.log.some(l => l.includes('대련') || l.includes('결투') || l.includes('토너먼트') || l.includes('1:1')));
+    const isOneOnOne = useMemo(() => {
+        const isRivalCombat = combatState.type === 'eternal_rival_duel' || 
+            (combatState as any).suddenEventType === 'rival_ambush' ||
+            combatState.enemies?.some(e => 
+                e.name?.includes('영원의 라이벌') || 
+                e.name?.includes('영원의 숙적') || 
+                e.name?.includes('[영원의 라이벌]') || 
+                e.name?.includes('[영원의 숙적]') || 
+                e.name?.includes('숙적') ||
+                (e as any).isRivalEscort
+            );
+        if (isRivalCombat) return false;
 
-    const isRivalCombat = combatState.type === 'eternal_rival_duel' || 
-        (combatState as any).suddenEventType === 'rival_ambush' ||
-        combatState.enemies?.some(e => 
-            e.name?.includes('영원의 라이벌') || 
-            e.name?.includes('영원의 숙적') || 
-            e.name?.includes('[영원의 라이벌]') || 
-            e.name?.includes('[영원의 숙적]') || 
-            e.name?.includes('숙적') ||
-            (e as any).isRivalEscort
-        );
-
-    // [MODIFIED] 영원의 라이벌전 및 숙적 기습전은 동료를 동반한 다대다 전투이므로 1:1 제약에서 전면 제외
-    const isOneOnOne = !isRivalCombat && isOneOnOneRaw;
+        const firstLogs = combatState.log ? combatState.log.slice(0, 8) : [];
+        return [
+            'tournament', 'arena', 'exam_mid', 'exam_final', 
+            'relation_battle', 'school_pvp', 'school_duel', 'school_demo', 'school_exam', 'school_rival', 'school_pvp_select',
+            'final_trial_battle', 'sparring_arena', 'sparring'
+        ].includes(combatState.type || '') ||
+        !!(combatState.type && combatState.type.startsWith('school_')) ||
+        combatState.isOneOnOne === true ||
+        !!(combatState.enemies && combatState.enemies.some(e => e.name?.includes('모의 대련'))) ||
+        firstLogs.some(l => l.includes('대련') || l.includes('결투') || l.includes('토너먼트') || l.includes('1:1'));
+    }, [combatState.type, combatState.isOneOnOne, combatState.enemies, combatState.log?.length ? combatState.log[0] : '']);
 
     const challengerCompanion = useMemo(() => {
         const cId = (combatState as any).challengerCompanionId;
@@ -772,9 +799,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         if (isOneOnOne) return base;
 
         const comps = player.companions.map((comp, idx) => {
-            const { finalStats: compFinalStats } = calculateFinalStats(comp);
-            const defaultVisualUrl = comp.defaultVisualUrl || generateDefaultVisualUrl(comp.name, comp.nation || '기타', comp.race, comp.gender);
-            const compVisualUrl = getVisualUrlByJob(comp.job, comp.gender, comp.visualUrl || comp.monsterData?.visualUrl || defaultVisualUrl);
+            const cached = getCachedCombatProfile(comp, false);
             return {
                 id: comp.id,
                 name: comp.name,
@@ -782,12 +807,12 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                 isPlayer: false,
                 position: comp.battlePosition || { row: 1, col: 1 },
                 stats: comp.stats,
-                finalStats: compFinalStats,
-                visualUrl: compVisualUrl,
+                finalStats: cached.finalStats,
+                visualUrl: cached.visualUrl,
                 statusEffects: comp.statusEffects,
                 level: comp.level,
                 shinryokuType: comp.shinryokuType,
-                classType: getDisplayClassName(comp),
+                classType: cached.classType,
                 idx: idx
             };
         });

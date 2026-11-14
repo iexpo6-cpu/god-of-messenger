@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useMemo } from 'react';
 import { Companion, Skill } from '../../types';
 import { PartyCard } from './PartyCard';
 import { FloatingFeedbackItem } from './FloatingFeedbackOverlay';
@@ -47,6 +47,23 @@ export const CombatAlliesGrid = memo(({
         }
     }, [selectionMode, onTargetSelect]);
 
+    // 3x3 그리드 O(1) 매핑 및 VFX 공격자 진영 판정 사전 캐싱
+    const gridMap = useMemo(() => {
+        const map: Record<string, any> = {};
+        for (let i = 0; i < partyMembers.length; i++) {
+            const m = partyMembers[i];
+            if (m && m.position) {
+                map[`${m.position.row}_${m.position.col}`] = m;
+            }
+        }
+        return map;
+    }, [partyMembers]);
+
+    const vfxIsEnemyAttacker = useMemo(() => {
+        if (!combatVfx || !combatVfx.attackerName) return false;
+        return enemies.some(e => e.name === combatVfx.attackerName);
+    }, [combatVfx, enemies]);
+
     return (
         <div 
             data-combat-area="allies" 
@@ -56,14 +73,14 @@ export const CombatAlliesGrid = memo(({
                 {[0, 1, 2].map(row => (
                     <React.Fragment key={`row_${row}`}>
                         {[0, 1, 2].map(col => {
-                            const member = partyMembers.find(m => m.position.row === row && m.position.col === col);
+                            const member = gridMap[`${row}_${col}`];
                             const isCurrentTurn = (activeUnit?.unitType === 'player' && member?.isPlayer) || 
                                                   (activeUnit?.unitType === 'companion' && (activeUnit.id === member?.id || activeUnit.name === member?.name));
                             
                             const isHit = member && (
                                 combatVfx?.targetName === member.name || 
-                                (combatVfx?.isAoe && combatVfx?.tier !== 'BUFF' && enemies.some(e => e.name === combatVfx?.attackerName)) || 
-                                (combatVfx?.isAoe && combatVfx?.tier === 'BUFF' && !enemies.some(e => e.name === combatVfx?.attackerName))
+                                (combatVfx?.isAoe && combatVfx?.tier !== 'BUFF' && vfxIsEnemyAttacker) || 
+                                (combatVfx?.isAoe && combatVfx?.tier === 'BUFF' && !vfxIsEnemyAttacker)
                             );
 
                             return (

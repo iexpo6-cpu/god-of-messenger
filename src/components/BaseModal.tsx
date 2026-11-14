@@ -97,7 +97,7 @@ import { calculateTotalSquadDefenseContribution } from '../services/baseDefenseS
 import ActionResultModal, { ResultData } from './ActionResultModal';
 import QuantityModal from './QuantityModal';
 import { addDays, getYear, calculateAgeFromYear,calculateFinalStats, calculateBaseDefense, gainProfessionExp, calculateResearcherBonus } from '../utils';
-import { getCombatTrainingEfficiencyBonus, getCombatTrainingTrainerInfo, getUnifiedCombatTrainingData, syncUnifiedCombatTrainingToCharacter, getAbsoluteMinutes } from '../services/trainingService';
+import { getCombatTrainingEfficiencyBonus, getCombatTrainingTrainerInfo, getUnifiedCombatTrainingData, syncUnifiedCombatTrainingToCharacter, getAbsoluteMinutes, getActiveTrainingMinutes, calculateEstimatedEndAbsMinutes, formatAbsMinutesToDateTime } from '../services/trainingService';
 import { processTimeSkip } from '../services/timeEngine';
 import { RECIPES, COOKED_ITEMS, COOKING_TOOLS, consumeIngredients, getAvailableIngredientCount } from '../recipes';
 import { payOffBaseMaintenance } from '../services/maintenanceValidationService';
@@ -856,14 +856,20 @@ const BaseModal: React.FC<Props> = ({
             return;
         }
 
-        const currentAbsMin = getAbsoluteMinutes(character.currentDate || '2000-03-02', character.currentTime || '08:00');
+        const curDate = character.currentDate || '2000-03-02';
+        const curTime = character.currentTime || '08:00';
+        const currentAbsMin = getAbsoluteMinutes(curDate, curTime);
+        const estimatedEndAbsMin = calculateEstimatedEndAbsMinutes(currentAbsMin, 720);
         const updatedTrainees = [
             ...unified.trainees,
             {
                 companionId: compId,
-                startDate: character.currentDate || '2000-03-02',
+                startDate: curDate,
+                startTime: curTime,
                 targetStat: 'exp' as const,
+                startedAtAbsMinutes: currentAbsMin,
                 lastTrainedAbsMinutes: currentAbsMin,
+                targetEndAbsMinutes: estimatedEndAbsMin,
                 accumulatedMinutes: 0
             }
         ];
@@ -3794,25 +3800,41 @@ const BaseModal: React.FC<Props> = ({
                                                                 </div>
                                                             )}
 
-                                                            {/* [NEW] 누적 훈련 시간 게이지 (12시간 달성 시 능력치 상승) */}
-                                                            <div className="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80 text-[11px] space-y-1">
-                                                                <div className="flex justify-between items-center text-slate-300">
-                                                                    <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
-                                                                        <Clock size={11} className="text-amber-400 shrink-0" />
-                                                                        <span>누적 훈련 시간</span>
-                                                                        <span className="text-[9px] text-slate-500 font-normal">(주간 06:00~22:00 누적)</span>
-                                                                    </span>
-                                                                    <span className="font-bold text-amber-300 text-[10px] font-mono">
-                                                                        {Math.floor((tc.accumulatedMinutes || 0) / 60)}시간 {(tc.accumulatedMinutes || 0) % 60}분 / 12시간 ({Math.min(100, Math.round(((tc.accumulatedMinutes || 0) / 720) * 100))}%)
-                                                                    </span>
-                                                                </div>
-                                                                <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800/80">
-                                                                    <div
-                                                                        className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-300"
-                                                                        style={{ width: `${Math.min(100, Math.round(((tc.accumulatedMinutes || 0) / 720) * 100))}%` }}
-                                                                    />
-                                                                </div>
-                                                            </div>
+                                                            {/* [NEW] 시작/예상종료 시각 기반 실시간 누적 훈련 시간 게이지 (O(1) 계산, 렉 제로) */}
+                                                            {(() => {
+                                                                const nowAbs = getAbsoluteMinutes(character.currentDate || '2000-03-02', character.currentTime || '08:00');
+                                                                const baseLastMin = tc.lastTrainedAbsMinutes || (tc.startDate ? getAbsoluteMinutes(tc.startDate, tc.startTime || '08:00') : nowAbs);
+                                                                const liveExtra = getActiveTrainingMinutes(baseLastMin, nowAbs);
+                                                                const liveTotalAcc = ((tc.accumulatedMinutes || 0) + liveExtra) % 720;
+                                                                const estEndAbs = tc.targetEndAbsMinutes || calculateEstimatedEndAbsMinutes(baseLastMin, Math.max(1, 720 - (tc.accumulatedMinutes || 0)));
+                                                                const startLabel = `${tc.startDate || '-'} ${tc.startTime || ''}`.trim();
+                                                                const endLabel = formatAbsMinutesToDateTime(estEndAbs);
+                                                                const pct = Math.min(100, Math.round((liveTotalAcc / 720) * 100));
+                                                                return (
+                                                                    <div className="bg-slate-950/70 p-2 rounded-lg border border-slate-800/80 text-[11px] space-y-1">
+                                                                        <div className="flex justify-between items-center text-slate-300">
+                                                                            <span className="text-[10px] text-amber-400 font-bold flex items-center gap-1">
+                                                                                <Clock size={11} className="text-amber-400 shrink-0" />
+                                                                                <span>누적 훈련 시간</span>
+                                                                                <span className="text-[9px] text-slate-500 font-normal">(주간 06~22시)</span>
+                                                                            </span>
+                                                                            <span className="font-bold text-amber-300 text-[10px] font-mono">
+                                                                                {Math.floor(liveTotalAcc / 60)}시간 {liveTotalAcc % 60}분 / 12시간 ({pct}%)
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800/80">
+                                                                            <div
+                                                                                className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-300"
+                                                                                style={{ width: `${pct}%` }}
+                                                                            />
+                                                                        </div>
+                                                                        <div className="flex justify-between items-center text-[9px] text-slate-400 pt-0.5 font-mono">
+                                                                            <span>시작: {startLabel}</span>
+                                                                            <span className="text-cyan-300">예상 완료: {endLabel}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })()}
 
                                                             <div className="grid grid-cols-2 gap-1.5 pt-0.5 text-[10px]">
                                                                 <div className="bg-slate-950/60 px-2 py-1 rounded border border-slate-800/80 flex justify-between">
