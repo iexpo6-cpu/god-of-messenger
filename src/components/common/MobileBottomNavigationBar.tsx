@@ -1,27 +1,32 @@
-import React from 'react';
-import { User, Backpack, Swords, BookOpen, Compass, Save } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Backpack, Swords, Compass, Save, Home, Users, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface Props {
   sceneType?: string;
   onOpenCharacter: () => void;
   onOpenInventory: () => void;
+  onOpenBase: () => void;
+  onOpenCompanion: () => void;
   onOpenHunt: () => void;
-  onOpenSkills: () => void;
+  onOpenSkills?: () => void;
   onOpenMap: () => void;
   onSave?: () => void;
-  activeTab?: 'character' | 'inventory' | 'hunt' | 'skills' | 'map' | 'save' | null;
+  activeTab?: 'character' | 'inventory' | 'base' | 'companion' | 'hunt' | 'skills' | 'map' | 'save' | null;
 }
 
 export const MobileBottomNavigationBar: React.FC<Props> = ({
   sceneType,
   onOpenCharacter,
   onOpenInventory,
+  onOpenBase,
+  onOpenCompanion,
   onOpenHunt,
-  onOpenSkills,
   onOpenMap,
   onSave,
   activeTab = null
 }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   // 합의된 스펙: 전투 진행 중에는 전투 조작 공간 확보를 위해 자동 숨김
   if (sceneType === 'combat') {
     return null;
@@ -61,6 +66,28 @@ export const MobileBottomNavigationBar: React.FC<Props> = ({
       }
     },
     {
+      id: 'base',
+      label: '기지',
+      icon: Home,
+      color: 'text-indigo-400 group-hover:text-indigo-300',
+      activeBg: 'bg-indigo-500/15 border-indigo-500/40 text-indigo-300',
+      action: () => {
+        triggerHaptic();
+        onOpenBase();
+      }
+    },
+    {
+      id: 'companion',
+      label: '동료',
+      icon: Users,
+      color: 'text-violet-400 group-hover:text-violet-300',
+      activeBg: 'bg-violet-500/15 border-violet-500/40 text-violet-300',
+      action: () => {
+        triggerHaptic();
+        onOpenCompanion();
+      }
+    },
+    {
       id: 'hunt',
       label: '사냥',
       icon: Swords,
@@ -70,17 +97,6 @@ export const MobileBottomNavigationBar: React.FC<Props> = ({
       action: () => {
         triggerHaptic();
         onOpenHunt();
-      }
-    },
-    {
-      id: 'skills',
-      label: '스킬북',
-      icon: BookOpen,
-      color: 'text-emerald-400 group-hover:text-emerald-300',
-      activeBg: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
-      action: () => {
-        triggerHaptic();
-        onOpenSkills();
       }
     },
     {
@@ -109,11 +125,36 @@ export const MobileBottomNavigationBar: React.FC<Props> = ({
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-[95] backdrop-blur-xl bg-slate-950/92 border-t border-slate-800/80 shadow-[0_-4px_25px_rgba(0,0,0,0.6)] px-2 pt-1.5 pb-2 transition-all duration-300"
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)' }}
+      className={`md:hidden fixed bottom-0 left-0 right-0 z-[95] backdrop-blur-xl bg-slate-950/95 border-t border-slate-800/80 shadow-[0_-4px_25px_rgba(0,0,0,0.7)] px-1 pt-1 transition-transform duration-300 ease-in-out select-none ${
+        isCollapsed ? 'translate-y-full' : 'translate-y-0'
+      }`}
+      style={{ paddingBottom: isCollapsed ? '0px' : 'max(env(safe-area-inset-bottom, 0px), 6px)' }}
       aria-label="모바일 하단 내비게이션 바"
     >
-      <div className="flex items-center justify-around max-w-md mx-auto">
+      {/* 상단 접기/펼치기 토글 핸들 탭 */}
+      <button
+        type="button"
+        onClick={() => {
+          triggerHaptic();
+          setIsCollapsed(!isCollapsed);
+        }}
+        className="absolute -top-6 left-1/2 -translate-x-1/2 h-6 px-3 bg-slate-950/95 border border-slate-700/80 border-b-0 rounded-t-lg flex items-center justify-center gap-1 text-[11px] font-bold text-slate-300 hover:text-white shadow-[-2px_-4px_12px_rgba(0,0,0,0.6)] cursor-pointer select-none active:scale-95 transition-all z-10"
+        aria-label={isCollapsed ? '메뉴 열기' : '메뉴 접기'}
+      >
+        {isCollapsed ? (
+          <>
+            <ChevronUp size={13} className="text-amber-400" />
+            <span className="text-amber-300">메뉴 열기</span>
+          </>
+        ) : (
+          <>
+            <ChevronDown size={13} className="text-slate-400" />
+            <span>접기</span>
+          </>
+        )}
+      </button>
+
+      <div className="flex items-center justify-between w-full max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -123,15 +164,15 @@ export const MobileBottomNavigationBar: React.FC<Props> = ({
               <button
                 key={item.id}
                 onClick={item.action}
-                className="group relative -top-3.5 flex flex-col items-center justify-center p-1.5 active:scale-90 transition-all select-none"
+                className="group relative -top-3 flex flex-col items-center justify-center px-0.5 active:scale-90 transition-all select-none shrink-0"
                 aria-label={item.label}
               >
-                <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-rose-600 via-red-500 to-amber-500 p-0.5 shadow-[0_0_20px_rgba(244,63,94,0.45)] border border-rose-400/50 flex items-center justify-center animate-pulse">
-                  <div className="w-full h-full bg-slate-950/70 rounded-[14px] flex items-center justify-center">
-                    <Icon size={22} className="text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]" />
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-rose-600 via-red-500 to-amber-500 p-0.5 shadow-[0_0_16px_rgba(244,63,94,0.45)] border border-rose-400/50 flex items-center justify-center animate-pulse">
+                  <div className="w-full h-full bg-slate-950/70 rounded-[10px] flex items-center justify-center">
+                    <Icon size={19} className="text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]" />
                   </div>
                 </div>
-                <span className="text-[10px] font-black text-rose-300 mt-1 drop-shadow-md">
+                <span className="text-[9px] font-black text-rose-300 mt-0.5 drop-shadow-md">
                   {item.label}
                 </span>
               </button>
@@ -142,17 +183,17 @@ export const MobileBottomNavigationBar: React.FC<Props> = ({
             <button
               key={item.id}
               onClick={item.action}
-              className={`group flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all active:scale-90 select-none ${
+              className={`group flex-1 flex flex-col items-center justify-center py-0.5 px-0.5 rounded-lg transition-all active:scale-90 select-none min-w-0 ${
                 isActive
                   ? item.activeBg + ' border shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
               aria-label={item.label}
             >
-              <div className="p-1 rounded-lg">
-                <Icon size={19} className={isActive ? 'scale-110 transition-transform' : item.color} />
+              <div className="p-0.5 rounded-md">
+                <Icon size={17} className={isActive ? 'scale-110 transition-transform' : item.color} />
               </div>
-              <span className={`text-[10px] font-bold tracking-tight ${isActive ? 'font-black' : 'text-slate-400'}`}>
+              <span className={`text-[9px] font-bold tracking-tight truncate ${isActive ? 'font-black' : 'text-slate-400'}`}>
                 {item.label}
               </span>
             </button>

@@ -387,6 +387,24 @@ const CityMapBoard: React.FC<Props> = ({
     const cityBg = getCityBackgroundImage(loc);
     const timeFilter = getTimeAtmosphereFilter(timeAtmosphere.period, isMidnightLabor);
 
+    // GitHub Pages 및 로컬 환경 동시 대응 서브패스 안전 경로 리졸버
+    const getResolvedBackgroundUrl = (url?: string) => {
+        if (!url) return '';
+        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+            return url;
+        }
+        const clean = url.replace(/^\.?\//, '');
+        if (typeof window !== 'undefined') {
+            let pathname = window.location.pathname || '/';
+            if (!pathname.endsWith('/') && !pathname.includes('.')) {
+                pathname += '/';
+            }
+            const dir = pathname.substring(0, pathname.lastIndexOf('/') + 1);
+            return `${window.location.origin}${dir}${clean}`;
+        }
+        return `./${clean}`;
+    };
+
     // Helper to check if district is active/available in this city
     const isDistrictAvailable = (type: DistrictType | 'Gate') => {
         if (isShingye || isMagye) {
@@ -402,13 +420,13 @@ const CityMapBoard: React.FC<Props> = ({
             <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true">
                 {/* 1. 고화질 판타지 배경 이미지 (선명한 불투명도 70~80% + 시간대별 필터 + 자동 상대/절대 경로 폴백) */}
                 <img 
-                    src={cityBg.url?.startsWith('/') || cityBg.url?.startsWith('./') ? cityBg.url : `/${cityBg.url}`} 
+                    src={getResolvedBackgroundUrl(cityBg.url)} 
                     alt={cityBg.title}
                     onError={(e) => {
                         const target = e.currentTarget;
                         if (!target.dataset.triedRelative) {
                             target.dataset.triedRelative = 'true';
-                            target.src = `./${cityBg.url.replace(/^\/?/, '')}`;
+                            target.src = `./${cityBg.url.replace(/^\.?\//, '')}`;
                         } else if (cityBg.fallbackUrl && target.src !== cityBg.fallbackUrl) {
                             target.src = cityBg.fallbackUrl;
                         }

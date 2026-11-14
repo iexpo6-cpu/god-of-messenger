@@ -80,6 +80,7 @@ import { getBaseGridExpansionDuration, calculateCompletionDateTime, getConstruct
 import { advanceGameTime, applyRestHealing, flushBufferedReports } from './services/gameTimeService';
 import { MobileBottomNavigationBar } from './components/common/MobileBottomNavigationBar';
 import { InventoryModal } from './components/InventoryModal';
+import CompanionModal from './components/CompanionModal';
 
 import { auth } from './services/firebase';
 import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
@@ -108,6 +109,7 @@ const App: React.FC = () => {
   useMonthlyWorldNews(character, view, setCharacter, setWorldNewsList);
 
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
+  const [isCompanionModalOpen, setIsCompanionModalOpen] = useState(false);
   const [baseInitialSubModal, setBaseInitialSubModal] = useState<{ type: string; instanceId?: string } | undefined>(undefined);
 
   const [isMonsterSkillBookOpen, setIsMonsterSkillBookOpen] = useState(false);
@@ -7336,7 +7338,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                     />
                 )}
 
-                {/* [모바일 전용] 엄지손가락 하단 6대 고정 탭 바 (오직 CityMapBoard 메인 화면에서만 노출) */}
+                {/* [모바일 전용] 엄지손가락 하단 7대 고정 탭 바 (오직 CityMapBoard 메인 화면에서만 노출, 접기/펼치기 지원) */}
                 {view === 'game' && 
                  sceneType !== 'combat' && 
                  !isCityOpen && 
@@ -7344,6 +7346,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                  !isMapOpen && 
                  !isMobileMenuOpen && 
                  !isBaseModalOpen && 
+                 !isCompanionModalOpen && 
                  !isSaveLoadOpen && 
                  !isSkillBookOpen && 
                  !isDevModeOpen && 
@@ -7353,13 +7356,11 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                         sceneType={sceneType}
                         onOpenCharacter={() => setIsMobileMenuOpen(true)}
                         onOpenInventory={() => setIsInventoryModalOpen(true)}
+                        onOpenBase={() => setIsBaseModalOpen(true)}
+                        onOpenCompanion={() => setIsCompanionModalOpen(true)}
                         onOpenHunt={() => {
                             setCityInitialConfig({ openHuntMap: true });
                             setIsCityOpen(true);
-                        }}
-                        onOpenSkills={() => {
-                            setSkillBookTarget(null);
-                            setIsSkillBookOpen(true);
                         }}
                         onOpenMap={() => {
                             setMapMode('travel');
@@ -7370,6 +7371,58 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                             setSaveLoadMode('save');
                             setIsSaveLoadOpen(true);
                         }}
+                    />
+                )}
+
+                {/* [모바일 전용 및 전역] 동료 관리 모달 */}
+                {isCompanionModalOpen && (
+                    <CompanionModal
+                        character={character}
+                        inactiveCompanions={character.inactiveCompanions}
+                        onClose={() => setIsCompanionModalOpen(false)}
+                        onSelectCompanion={(idx) => {
+                            const comp = character.companions[idx];
+                            if (comp) {
+                                setIsCompanionModalOpen(false);
+                                handleSelectCompanion(comp.id);
+                            }
+                        }}
+                        onRejoinCompanion={(idx) => {
+                            const c = character.inactiveCompanions![idx];
+                            const ni = [...character.inactiveCompanions!];
+                            ni.splice(idx, 1);
+                            let updatedChar: Character = {...character, companions: [...character.companions, c], inactiveCompanions: ni};
+                            updatedChar = unassignFromTraining(updatedChar, c.id);
+                            setCharacter(updatedChar);
+                            addToLog(`[시스템] ${c.name} 동료가 재합류했습니다.`);
+                        }}
+                        onPermanentlyDismissCompanion={(idx) => {
+                            const c = character.inactiveCompanions![idx];
+                            const ni = [...character.inactiveCompanions!];
+                            ni.splice(idx, 1);
+                            let updatedChar: Character = {...character, inactiveCompanions: ni};
+                            updatedChar = unassignFromTraining(updatedChar, c.id);
+                            setCharacter(updatedChar);
+                            addToLog(`[시스템] ${c.name} 동료를 영구적으로 삭제했습니다.`);
+                        }}
+                        onDismissCompanion={(idx) => {
+                            const comp = character.companions[idx];
+                            if (!comp) return;
+                            if (!character.base) {
+                                setResultModalData({ type: 'failure', title: '대기명단 이동 불가', message: '기지가 아직 건설되지 않았습니다.\n기지가 없는 상태에서는 동료를 대기명단(숙소)으로 보낼 수 없습니다. 먼저 기지를 건설해야 잠시 이별이 가능합니다.', items: [] });
+                                return;
+                            }
+                            const newChar = { ...character };
+                            newChar.companions = newChar.companions.filter((_, i) => i !== idx);
+                            if (!newChar.inactiveCompanions) newChar.inactiveCompanions = [];
+                            newChar.inactiveCompanions = newChar.inactiveCompanions.filter(c => c.id !== comp.id);
+                            newChar.inactiveCompanions.push(comp);
+                            setCharacter(newChar);
+                            addToLog("[시스템] " + comp.name + "와(과) 잠시 이별했습니다. 기지(숙소)에서 다시 만날 수 있습니다.");
+                        }}
+                        onUpdateCharacter={setCharacter}
+                        onZoom={() => {}}
+                        onToggleFavoriteCompanion={handleToggleFavoriteCompanion}
                     />
                 )}
                 </div>
