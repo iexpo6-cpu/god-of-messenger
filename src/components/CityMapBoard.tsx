@@ -418,7 +418,7 @@ const CityMapBoard: React.FC<Props> = ({
         <div className="flex-1 relative overflow-hidden bg-slate-950 flex flex-col justify-between p-2.5 sm:p-4 md:p-6 lg:p-8 select-none">
             {/* 고화질 지역별 고유 판타지 일러스트 배경 레이어 & 시간대 색조 블렌딩 오버레이 */}
             <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true">
-                {/* 1. 고화질 판타지 배경 이미지 (선명한 불투명도 70~80% + 시간대별 필터 + 자동 상대/절대 경로 폴백) */}
+                {/* 1. 고화질 판타지 배경 이미지 (선명한 불투명도 75~90% + 신계 전용 광휘 보존/시간대별 필터 + 자동 상대/절대 경로 폴백) */}
                 <img 
                     src={getResolvedBackgroundUrl(cityBg.url)} 
                     alt={cityBg.title}
@@ -431,17 +431,17 @@ const CityMapBoard: React.FC<Props> = ({
                             target.src = cityBg.fallbackUrl;
                         }
                     }}
-                    className={`w-full h-full object-cover object-center opacity-70 sm:opacity-80 transition-all duration-700 ease-in-out scale-100 ${timeFilter.filterClass}`}
+                    className={`w-full h-full object-cover object-center ${isShingye ? 'opacity-80 sm:opacity-90' : 'opacity-70 sm:opacity-80'} transition-all duration-700 ease-in-out scale-100 ${isShingye ? (isMidnightLabor ? 'brightness-90 contrast-110 saturate-120' : 'brightness-105 contrast-105 saturate-110') : timeFilter.filterClass}`}
                 />
 
-                {/* 2. 시간대 색조 블렌딩 오버레이 (여명/낮/석양/야간/심야) */}
-                <div className={`absolute inset-0 ${timeFilter.blendOverlayColor} mix-blend-multiply opacity-40 transition-colors duration-700`} />
+                {/* 2. 시간대 색조 블렌딩 오버레이 (신계는 은은한 신성 광휘 유지, 지상은 여명/낮/석양/야간/심야) */}
+                <div className={`absolute inset-0 ${isShingye ? 'bg-amber-950/15' : timeFilter.blendOverlayColor} mix-blend-multiply opacity-40 transition-colors duration-700`} />
 
                 {/* 3. 대기광(Ambient Glow) 방사형 그라데이션 */}
                 <div 
-                    className="absolute inset-0 opacity-30 mix-blend-screen transition-all duration-700"
+                    className="absolute inset-0 opacity-35 mix-blend-screen transition-all duration-700"
                     style={{
-                        background: `radial-gradient(circle at 50% 38%, ${timeFilter.ambientGlow} 0%, transparent 68%)`
+                        background: `radial-gradient(circle at 50% 38%, ${isShingye ? (cityBg.accentTint || 'rgba(251, 191, 36, 0.4)') : timeFilter.ambientGlow} 0%, transparent 68%)`
                     }}
                 />
 

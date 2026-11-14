@@ -44,7 +44,7 @@ export interface CityBackgroundConfig {
 }
 
 export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
-    // 1. 신계 (천상 성소 / 신성 빛과 부유도)
+    // 1-0. 신계 범용/폴백 (천상 성소 / 신성 빛과 부유도)
     shingye_celestial_sanctuary: {
         id: "shingye_celestial_sanctuary",
         name: "신계 천상 성소",
@@ -52,6 +52,7 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
         concept: "천상 성소/신성 빛과 부유도",
         prompt: "Breathtaking high fantasy RPG wide panoramic landscape, celestial divine sanctuary floating high above golden sunset clouds. Monumental radiant crystal spires, majestic floating holy islands with waterfalls of pure liquid sunlight cascading into the azure abyss, intricate rotating sacred golden halos in the sky, ethereal divine god rays, serene awe-inspiring atmosphere, 8k resolution, masterpiece.",
         localPath: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye/shingye_god_abode.jpg",
         theme: {
             overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.75) 0%, rgba(30, 27, 75, 0.5) 50%, rgba(15, 23, 42, 0.9) 100%)",
             accentColor: "text-amber-300",
@@ -62,6 +63,300 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
             description: "끝없는 황금빛 구름 위로 솟아오른 거대 수정 첨탑과 영원히 마르지 않는 신성한 빛의 폭포가 흐르는 신들의 천상 성역입니다."
         },
         matchedNations: ["신계", "신의 성소", "양의 기운의 성전", "음의 기운의 성전", "무의 궁"]
+    },
+
+    // 1-1. 신의 거처 / 창조신의 절대 성소
+    shingye_god_abode: {
+        id: "shingye_god_abode",
+        name: "창조신의 절대 성소 (신의 거처)",
+        region: "신계",
+        concept: "창조신의 시원핵과 황금빛 천상 절대 거처",
+        prompt: "Sacred creator god holy sanctuary floating high in celestial clouds, massive golden halo rings, floating divine pillars, crystalline spires, pure white and gold ethereal light, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_god_abode.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.75) 0%, rgba(30, 27, 75, 0.5) 50%, rgba(15, 23, 42, 0.9) 100%)",
+            accentColor: "text-amber-300",
+            borderColor: "border-amber-400/70",
+            glowColor: "rgba(254, 240, 138, 0.45)",
+            badgeText: "✨ 창조신의 성소 (Creator Sanctuary)",
+            badgeClass: "bg-amber-950/80 text-amber-200 border-amber-400/70 shadow-[0_0_20px_rgba(254,240,138,0.3)]",
+            description: "만물의 시원과 영겁의 신비가 깃든 창조신께서 좌정한 거룩한 천상 절대 성소입니다."
+        },
+        matchedNations: ["신계", "신의 성소"]
+    },
+
+    // 1-2. 태양의 사자의 성전
+    shingye_sun_temple: {
+        id: "shingye_sun_temple",
+        name: "태양의 사자의 성전",
+        region: "신계",
+        concept: "작열하는 영원의 태양과 황금빛 성전",
+        prompt: "Blazing solar deity temple in celestial heavens, massive burning miniature sun hovering above golden temple spires, fiery solar flares, shimmering heat distortion, pure radiant light, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_sun_temple.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(30, 15, 10, 0.75) 0%, rgba(67, 20, 7, 0.5) 50%, rgba(15, 23, 42, 0.9) 100%)",
+            accentColor: "text-amber-400",
+            borderColor: "border-amber-500/70",
+            glowColor: "rgba(245, 158, 11, 0.45)",
+            badgeText: "☀️ 태양의 성전 (Solar Sanctuary)",
+            badgeClass: "bg-amber-950/80 text-amber-300 border-amber-500/70 shadow-[0_0_20px_rgba(245,158,11,0.3)]",
+            description: "영원히 타오르는 태양의 신열과 황금빛 광염이 작열하는 태양의 사자의 성역입니다."
+        },
+        matchedNations: ["신계", "양의 기운의 성전"]
+    },
+
+    // 1-3. 광휘의 사자의 성소
+    shingye_radiance_sanctuary: {
+        id: "shingye_radiance_sanctuary",
+        name: "광휘의 사자의 성소",
+        region: "신계",
+        concept: "눈부신 절대 백색광과 성스러운 크리스탈 광휘",
+        prompt: "Dazzling crystal sanctuary bathed in pure white holy radiance, floating translucent diamond spires, shimmering light prisms, floating halos of light, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_radiance_sanctuary.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(20, 20, 30, 0.75) 0%, rgba(40, 35, 20, 0.45) 50%, rgba(15, 23, 42, 0.9) 100%)",
+            accentColor: "text-yellow-200",
+            borderColor: "border-yellow-300/70",
+            glowColor: "rgba(254, 240, 138, 0.45)",
+            badgeText: "🌟 광휘의 성소 (Radiance Sanctuary)",
+            badgeClass: "bg-yellow-950/80 text-yellow-200 border-yellow-300/70 shadow-[0_0_20px_rgba(254,240,138,0.3)]",
+            description: "티끌 하나 없는 순수한 성광과 백색의 수정 첨탑들이 찬란히 빛나는 절대 광휘의 성소입니다."
+        },
+        matchedNations: ["신계", "양의 기운의 성전"]
+    },
+
+    // 1-4. 초화의 사자의 성초
+    shingye_nature_sanctuary: {
+        id: "shingye_nature_sanctuary",
+        name: "초화의 사자의 성초",
+        region: "신계",
+        concept: "태고의 생명력과 에메랄드빛 신비의 화원",
+        prompt: "Celestial world tree sanctuary with floating emerald islands, glowing green life essence vines, giant blooming divine flowers, celestial butterflies, tranquil garden of deities, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_nature_sanctuary.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(6, 78, 59, 0.75) 0%, rgba(4, 47, 46, 0.45) 50%, rgba(2, 6, 23, 0.92) 100%)",
+            accentColor: "text-emerald-300",
+            borderColor: "border-emerald-500/70",
+            glowColor: "rgba(16, 185, 129, 0.4)",
+            badgeText: "🌿 초화의 성초 (Verdant Sanctuary)",
+            badgeClass: "bg-emerald-950/80 text-emerald-300 border-emerald-500/70 shadow-[0_0_20px_rgba(16,185,129,0.3)]",
+            description: "생명의 숨결이 약동하며 신성한 세계수와 에메랄드빛 영초들이 만개한 신비의 화원입니다."
+        },
+        matchedNations: ["신계", "양의 기운의 성전"]
+    },
+
+    // 1-5. 화염의 사자의 성화
+    shingye_fire_citadel: {
+        id: "shingye_fire_citadel",
+        name: "화염의 사자의 성화",
+        region: "신계",
+        concept: "신성한 정화의 불꽃과 붉은 성채",
+        prompt: "Holy flame fortress in the heavens, swirling sacred crimson and gold flames, ornate floating brazier temples, purification fire waterfalls, dramatic warm atmospheric lighting, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_fire_citadel.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(69, 10, 10, 0.75) 0%, rgba(120, 20, 20, 0.45) 50%, rgba(15, 23, 42, 0.92) 100%)",
+            accentColor: "text-red-400",
+            borderColor: "border-red-500/70",
+            glowColor: "rgba(239, 68, 68, 0.45)",
+            badgeText: "🔥 화염의 성화 (Blaze Citadel)",
+            badgeClass: "bg-red-950/80 text-red-300 border-red-500/70 shadow-[0_0_20px_rgba(239,68,68,0.3)]",
+            description: "모든 부정을 정화하는 신성한 성화가 기둥을 이루어 솟아오르는 불멸의 화염 성역입니다."
+        },
+        matchedNations: ["신계", "양의 기운의 성전"]
+    },
+
+    // 1-6. 해수의 사자의 성수전
+    shingye_sea_palace: {
+        id: "shingye_sea_palace",
+        name: "해수의 사자의 성수전",
+        region: "신계",
+        concept: "맑고 투명한 천상의 대해와 사파이어 궁궐",
+        prompt: "Floating celestial ocean palace in the clouds, ethereal crystal water streams spiraling upward, sapphire water pillars, sacred marine motifs, glowing azure depths, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_sea_palace.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(12, 74, 110, 0.75) 0%, rgba(3, 105, 161, 0.45) 50%, rgba(2, 6, 23, 0.92) 100%)",
+            accentColor: "text-cyan-300",
+            borderColor: "border-cyan-500/70",
+            glowColor: "rgba(14, 165, 233, 0.4)",
+            badgeText: "🌊 해수의 성수전 (Oceanic Palace)",
+            badgeClass: "bg-cyan-950/80 text-cyan-300 border-cyan-500/70 shadow-[0_0_20px_rgba(14,165,233,0.3)]",
+            description: "부유하는 천상 대양의 푸른 물결과 사파이어 수정 기둥들이 신비롭게 넘실거리는 성수전입니다."
+        },
+        matchedNations: ["신계", "양의 기운의 성전"]
+    },
+
+    // 1-7. 전격의 사자의 성전
+    shingye_thunder_temple: {
+        id: "shingye_thunder_temple",
+        name: "전격의 사자의 성전",
+        region: "신계",
+        concept: "천둥번개의 뇌전과 황금 번갯불이 교차하는 성전",
+        prompt: "Heavenly divine lightning temple, crackling golden and purple lightning bolts arcing between floating storm obelisks, towering celestial thunder conductors, electric ozone clouds, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_thunder_temple.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(46, 16, 101, 0.75) 0%, rgba(88, 28, 135, 0.45) 50%, rgba(15, 23, 42, 0.92) 100%)",
+            accentColor: "text-amber-300",
+            borderColor: "border-amber-400/70",
+            glowColor: "rgba(217, 119, 6, 0.45)",
+            badgeText: "⚡ 전격의 성전 (Thunder Temple)",
+            badgeClass: "bg-purple-950/80 text-amber-200 border-amber-400/70 shadow-[0_0_20px_rgba(217,119,6,0.3)]",
+            description: "천상을 뒤흔드는 신성한 뇌명과 금빛 번개가 수정 오벨리스크를 타고 포효하는 전격의 성역입니다."
+        },
+        matchedNations: ["신계", "양의 기운의 성전"]
+    },
+
+    // 1-8. 월광의 사자의 성
+    shingye_moonlight_castle: {
+        id: "shingye_moonlight_castle",
+        name: "월광의 사자의 성",
+        region: "신계",
+        concept: "은은하고 고요한 보름달빛과 신비의 월광성",
+        prompt: "Ethereal silver moonlight castle floating amidst starry cosmic nebulae, colossal radiant full moon in background, glowing pale blue celestial spires, stardust water pools, serene mystic night, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_moonlight_castle.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 27, 75, 0.5) 50%, rgba(2, 6, 23, 0.95) 100%)",
+            accentColor: "text-indigo-200",
+            borderColor: "border-indigo-400/70",
+            glowColor: "rgba(199, 210, 254, 0.4)",
+            badgeText: "🌙 월광의 성 (Moonlight Castle)",
+            badgeClass: "bg-indigo-950/80 text-indigo-200 border-indigo-400/70 shadow-[0_0_20px_rgba(199,210,254,0.3)]",
+            description: "영원히 지지 않는 은빛 보름달과 고요한 밤하늘의 성운이 흐르는 월광의 사자의 신성 거처입니다."
+        },
+        matchedNations: ["신계", "음의 기운의 성전"]
+    },
+
+    // 1-9. 질풍의 사자의 질풍전
+    shingye_gale_palace: {
+        id: "shingye_gale_palace",
+        name: "질풍의 사자의 질풍전",
+        region: "신계",
+        concept: "휘몰아치는 천상의 청록색 돌풍과 유려한 비상 누각",
+        prompt: "Celestial palace of gale and tempests, dynamic spiraling wind vortex currents, floating aerodynamic teal jade towers, soaring wind streamers, majestic sky currents, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_gale_palace.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(19, 78, 74, 0.75) 0%, rgba(13, 148, 136, 0.4) 50%, rgba(2, 6, 23, 0.92) 100%)",
+            accentColor: "text-teal-300",
+            borderColor: "border-teal-400/70",
+            glowColor: "rgba(45, 212, 191, 0.4)",
+            badgeText: "🌪️ 질풍의 질풍전 (Gale Palace)",
+            badgeClass: "bg-teal-950/80 text-teal-200 border-teal-400/70 shadow-[0_0_20px_rgba(45,212,191,0.3)]",
+            description: "자유로운 바람의 날개가 허공을 가르고 옥빛 폭풍이 부유도를 감싸는 질풍의 사자의 성역입니다."
+        },
+        matchedNations: ["신계", "음의 기운의 성전"]
+    },
+
+    // 1-10. 빙결의 사자의 빙궁
+    shingye_ice_palace: {
+        id: "shingye_ice_palace",
+        name: "빙결의 사자의 빙궁",
+        region: "신계",
+        concept: "순백의 만년빙과 서리 맺힌 다이아몬드 얼음 궁전",
+        prompt: "Magnificent divine ice palace carved from perennial glacier crystals, floating diamond spires with frost runes, delicate snowflake particles, icy aurora borealis in sky, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_ice_palace.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(12, 74, 110, 0.75) 0%, rgba(56, 189, 248, 0.35) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-sky-200",
+            borderColor: "border-sky-400/70",
+            glowColor: "rgba(125, 211, 252, 0.45)",
+            badgeText: "❄️ 빙결의 빙궁 (Frost Palace)",
+            badgeClass: "bg-sky-950/80 text-sky-200 border-sky-400/70 shadow-[0_0_20px_rgba(125,211,252,0.3)]",
+            description: "영구동토의 절대 영도가 머무는 서리꽃과 투명한 다이아몬드 빙정으로 조각된 영롱한 빙궁입니다."
+        },
+        matchedNations: ["신계", "음의 기운의 성전"]
+    },
+
+    // 1-11. 강철의 사자의 강성
+    shingye_steel_fortress: {
+        id: "shingye_steel_fortress",
+        name: "강철의 사자의 강성",
+        region: "신계",
+        concept: "부서지지 않는 백금과 강철의 천상 난공불락 요새",
+        prompt: "Impenetrable celestial steel fortress, colossal divine platinum walls inlaid with glowing runic gold, giant sword-like towers, holy divine armor aesthetic, epic scale, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_steel_fortress.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(30, 41, 59, 0.8) 0%, rgba(71, 85, 105, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-slate-200",
+            borderColor: "border-slate-400/70",
+            glowColor: "rgba(226, 232, 240, 0.4)",
+            badgeText: "🛡️ 강철의 강성 (Steel Fortress)",
+            badgeClass: "bg-slate-900/80 text-slate-200 border-slate-400/70 shadow-[0_0_20px_rgba(226,232,240,0.3)]",
+            description: "어떠한 악도 꿰뚫지 못하는 백금의 방벽과 거대한 신성 강철 기둥이 위용을 뽐내는 철옹성입니다."
+        },
+        matchedNations: ["신계", "음의 기운의 성전"]
+    },
+
+    // 1-12. 지령의 사자의 궁궐
+    shingye_earth_palace: {
+        id: "shingye_earth_palace",
+        name: "지령의 사자의 궁궐",
+        region: "신계",
+        concept: "황금빛 광맥과 고대 암석의 웅장한 대지 궁전",
+        prompt: "Monumental floating earthen palace, primordial bedrock towers infused with glowing golden ore veins and amber geodes, massive levitating megaliths, ancient divine sanctuary, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_earth_palace.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(67, 40, 16, 0.75) 0%, rgba(120, 80, 20, 0.45) 50%, rgba(15, 23, 42, 0.92) 100%)",
+            accentColor: "text-amber-200",
+            borderColor: "border-amber-400/70",
+            glowColor: "rgba(251, 191, 36, 0.4)",
+            badgeText: "⛰️ 지령의 궁궐 (Earthen Palace)",
+            badgeClass: "bg-amber-950/80 text-amber-200 border-amber-400/70 shadow-[0_0_20px_rgba(251,191,36,0.3)]",
+            description: "태초의 대지가 품은 황금 광석과 묵직한 거석들이 신성한 율동으로 부유하는 지령의 궁궐입니다."
+        },
+        matchedNations: ["신계", "음의 기운의 성전"]
+    },
+
+    // 1-13. 암연의 사자의 심연
+    shingye_dark_abyss: {
+        id: "shingye_dark_abyss",
+        name: "암연의 사자의 심연",
+        region: "신계",
+        concept: "모든 것을 집어삼키는 자줏빛 신성 흑동과 공허의 심연",
+        prompt: "Sacred dark abyss sanctuary in cosmic void, majestic event horizon with swirling deep purple nebula and obsidian floating thrones, gravitational dark halos, eerie sublime beauty, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_dark_abyss.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(20, 5, 30, 0.85) 0%, rgba(59, 7, 100, 0.55) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-purple-300",
+            borderColor: "border-purple-500/70",
+            glowColor: "rgba(192, 132, 252, 0.45)",
+            badgeText: "🌌 암연의 심연 (Abyssal Void)",
+            badgeClass: "bg-purple-950/85 text-purple-200 border-purple-500/70 shadow-[0_0_20px_rgba(192,132,252,0.3)]",
+            description: "빛마저 휘감겨 사라지는 신성한 흑야의 특이점과 보랏빛 성운이 침묵을 지키는 심연의 성역입니다."
+        },
+        matchedNations: ["신계", "음의 기운의 성전"]
+    },
+
+    // 1-14. 무의 궁궐
+    shingye_void_palace: {
+        id: "shingye_void_palace",
+        name: "무의 궁궐",
+        region: "신계",
+        concept: "모든 것이 비어 있으나 모든 것을 잉태하는 초월의 무",
+        prompt: "Transcendental void palace beyond space and time, monochrome minimalist ethereal architecture dissolving into pure emptiness, sacred silver geometry, eternal silence and ultimate truth, 8k masterpiece",
+        localPath: "assets/visuals/backgrounds/shingye/shingye_void_palace.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 15, 20, 0.8) 0%, rgba(30, 30, 40, 0.5) 50%, rgba(2, 6, 23, 0.95) 100%)",
+            accentColor: "text-zinc-300",
+            borderColor: "border-zinc-400/70",
+            glowColor: "rgba(212, 212, 216, 0.35)",
+            badgeText: "☯️ 무의 궁궐 (Transcendental Void)",
+            badgeClass: "bg-zinc-900/85 text-zinc-200 border-zinc-500/70 shadow-[0_0_20px_rgba(212,212,216,0.25)]",
+            description: "형상도 시작도 끝도 없는 태허의 정적 속에서 시공간을 초월하여 고요히 존재하는 궁궐입니다."
+        },
+        matchedNations: ["신계", "무의 궁"]
     },
 
     // 2. 마계 / 임페리얼 제국 (뒤틀린 흑요석 요새, 핏빛 마기)
@@ -226,15 +521,74 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
 };
 
 /**
+ * 신계 14개 성전(도시)별 전용 배경 매니페스트 키 매핑
+ */
+const SHINGYE_CITY_TO_MANIFEST_KEY: Record<string, string> = {
+    "신의 거처": "shingye_god_abode",
+    "태양의 사자의 성전": "shingye_sun_temple",
+    "광휘의 사자의 성소": "shingye_radiance_sanctuary",
+    "초화의 사자의 성초": "shingye_nature_sanctuary",
+    "화염의 사자의 성화": "shingye_fire_citadel",
+    "해수의 사자의 성수전": "shingye_sea_palace",
+    "전격의 사자의 성전": "shingye_thunder_temple",
+    "월광의 사자의 성": "shingye_moonlight_castle",
+    "질풍의 사자의 질풍전": "shingye_gale_palace",
+    "빙결의 사자의 빙궁": "shingye_ice_palace",
+    "강철의 사자의 강성": "shingye_steel_fortress",
+    "지령의 사자의 궁궐": "shingye_earth_palace",
+    "암연의 사자의 심연": "shingye_dark_abyss",
+    "무의 궁궐": "shingye_void_palace",
+};
+
+/**
  * 주어진 대륙(region), 국가(nation), 도시(city) 정보에 부합하는 최적의 판타지 배경 구성을 반환합니다.
  */
-export function getCityBackgroundConfig(region?: string, nation?: string, _city?: string): CityBackgroundConfig {
+export function getCityBackgroundConfig(region?: string, nation?: string, city?: string): CityBackgroundConfig {
     const r = (region || '').trim();
     const n = (nation || '').trim();
+    const c = (city || '').trim();
 
-    // 1. 신계 판정
-    if (r === '신계' || n === '신의 성소' || n.includes('성전') || n === '무의 궁') {
-        return CITY_BACKGROUND_MANIFEST.shingye_celestial_sanctuary;
+    // 1. 신계 판정 (14개 성전별 고유 고해상도 배경 정밀 매칭)
+    const isShingyeDomain = r === '신계' || n === '신의 성소' || n.includes('성전') || n === '무의 궁';
+    if (isShingyeDomain) {
+        // 1-1. 도시명 정확 매칭
+        if (c && SHINGYE_CITY_TO_MANIFEST_KEY[c] && CITY_BACKGROUND_MANIFEST[SHINGYE_CITY_TO_MANIFEST_KEY[c]]) {
+            return CITY_BACKGROUND_MANIFEST[SHINGYE_CITY_TO_MANIFEST_KEY[c]];
+        }
+
+        // 1-2. 도시명 부분/키워드 매칭
+        if (c) {
+            for (const [keyName, manifestKey] of Object.entries(SHINGYE_CITY_TO_MANIFEST_KEY)) {
+                if (c.includes(keyName) || keyName.includes(c)) {
+                    if (CITY_BACKGROUND_MANIFEST[manifestKey]) {
+                        return CITY_BACKGROUND_MANIFEST[manifestKey];
+                    }
+                }
+            }
+            if (c.includes('태양')) return CITY_BACKGROUND_MANIFEST.shingye_sun_temple;
+            if (c.includes('광휘')) return CITY_BACKGROUND_MANIFEST.shingye_radiance_sanctuary;
+            if (c.includes('초화')) return CITY_BACKGROUND_MANIFEST.shingye_nature_sanctuary;
+            if (c.includes('화염') || c.includes('성화')) return CITY_BACKGROUND_MANIFEST.shingye_fire_citadel;
+            if (c.includes('해수') || c.includes('성수')) return CITY_BACKGROUND_MANIFEST.shingye_sea_palace;
+            if (c.includes('전격') || c.includes('뇌전')) return CITY_BACKGROUND_MANIFEST.shingye_thunder_temple;
+            if (c.includes('월광')) return CITY_BACKGROUND_MANIFEST.shingye_moonlight_castle;
+            if (c.includes('질풍')) return CITY_BACKGROUND_MANIFEST.shingye_gale_palace;
+            if (c.includes('빙결') || c.includes('빙궁')) return CITY_BACKGROUND_MANIFEST.shingye_ice_palace;
+            if (c.includes('강철') || c.includes('강성')) return CITY_BACKGROUND_MANIFEST.shingye_steel_fortress;
+            if (c.includes('지령')) return CITY_BACKGROUND_MANIFEST.shingye_earth_palace;
+            if (c.includes('암연') || c.includes('심연')) return CITY_BACKGROUND_MANIFEST.shingye_dark_abyss;
+            if (c.includes('신의 거처') || c.includes('창조신')) return CITY_BACKGROUND_MANIFEST.shingye_god_abode;
+            if (c.includes('무의 궁')) return CITY_BACKGROUND_MANIFEST.shingye_void_palace;
+        }
+
+        // 1-3. 국가명 기준 매칭
+        if (n === '신의 성소') return CITY_BACKGROUND_MANIFEST.shingye_god_abode;
+        if (n === '무의 궁') return CITY_BACKGROUND_MANIFEST.shingye_void_palace;
+        if (n === '양의 기운의 성전') return CITY_BACKGROUND_MANIFEST.shingye_sun_temple;
+        if (n === '음의 기운의 성전') return CITY_BACKGROUND_MANIFEST.shingye_moonlight_castle;
+
+        // 1-4. 신계 기본 배경 폴백
+        return CITY_BACKGROUND_MANIFEST.shingye_god_abode || CITY_BACKGROUND_MANIFEST.shingye_celestial_sanctuary;
     }
 
     // 2. 마계 / 임페리얼 제국 판정
