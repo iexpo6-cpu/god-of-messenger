@@ -196,7 +196,7 @@ const MagyePersonnelModal: React.FC<Props> = ({ character, city, onClose, onUpda
                                                     <span className="text-xs font-semibold text-amber-400">Lv.{c.level || 1}</span>
                                                 </div>
                                                 <div className="text-[11px] text-slate-400 truncate mt-0.5">
-                                                    {c.combatClass || c.job || '전사'} {c.shinryokuType ? `• ${c.shinryokuType}` : ''}
+                                                    {(c as any).combatClass || c.classType || c.job || '전사'} {c.shinryokuType ? `• ${c.shinryokuType}` : ''}
                                                 </div>
                                             </div>
                                         </div>

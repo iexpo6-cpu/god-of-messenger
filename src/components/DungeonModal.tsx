@@ -219,7 +219,7 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         }
 
         // 시간 흐름 처리 (발걸음마다 30분 흐름)
-        const timeAdvance = advanceGameTime(character, 0, 30);
+        const timeAdvance = advanceGameTime(character, 30, { isDungeonOrCombat: true, activityName: '던전 탐사' });
         let activeChar = timeAdvance.updatedCharacter;
         const dayNotice = (timeAdvance as any).dayChangeNotice || timeAdvance.toastNotice || (timeAdvance.daysPassed > 0 ? '새로운 날이 밝았습니다.' : null);
         if (timeAdvance.daysPassed > 0 && dayNotice) {

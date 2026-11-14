@@ -135,7 +135,7 @@ export const getResidentDutySummary = (character: Character, compId: string): Re
 
     // 5. 훈련소 수련생 / 아카데미 등록 상태 확인 (표시용)
     const trainingDuties: string[] = [];
-    if (base?.combatTraining?.slots?.some(s => s.companionId === compId)) {
+    if (base?.combatTraining?.trainees?.some(s => s.companionId === compId) || (base?.combatTraining as any)?.slots?.some((s: any) => s.companionId === compId)) {
         trainingDuties.push('실전 훈련소 수련생');
     }
     if (base?.childAcademy?.studentIds?.includes(compId)) {

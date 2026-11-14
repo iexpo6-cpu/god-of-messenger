@@ -172,7 +172,7 @@ export function checkAndGenerateMonthlyWorldNews(
   // 월이 변경됨: 30일 주기 세력 시뮬레이션 & 시장 경제 & 뉴스 생성
   const simulation = simulateMonthlyGeopoliticsAndEconomy(character, curMonth);
   const updatedMilitaryData = {
-    ...(character.militaryData || { rank: MilitaryRank.RECRUIT, contribution: 0 }),
+    ...(character.militaryData || { rank: MilitaryRank.PVT, contribution: 0 }),
     diplomacy: simulation.updatedDiplomacy
   };
 

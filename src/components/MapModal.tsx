@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Character, Location } from '../types';
 import { WORLD_GEOGRAPHY } from '../constants';
 import { calculateFinalStats } from '../utils';
@@ -1045,8 +1046,8 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, mode 
       setSelectedCity(city);
   };
 
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 sm:p-4 font-sans animate-in fade-in duration-300">
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 sm:p-4 font-sans animate-in fade-in duration-300">
       <div className={`w-full max-w-6xl h-[92vh] max-h-[880px] rounded-2xl border shadow-2xl flex flex-col relative overflow-hidden transition-colors duration-500 ${
           realm === 'divine' ? 'bg-indigo-950 border-amber-500/50' : 'bg-slate-950 border-slate-700'
       }`}>
@@ -2166,7 +2167,8 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, mode 
             </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

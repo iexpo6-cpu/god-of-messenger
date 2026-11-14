@@ -163,7 +163,7 @@ export const CityAndBaseModalsLayer: React.FC<Props> = ({
             character={character} 
             onTravel={handleTravel} 
             mode={mapMode} 
-            residentCount={1 + character.companions.length + (character.inactiveCompanions?.length || 0)} 
+            residentCount={1 + (character.companions?.length || 0) + (character.inactiveCompanions?.length || 0)} 
             initialTargetLocationName={mapInitialTargetLocationName} 
           />
         </Suspense>

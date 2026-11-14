@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Character, Companion, CombatStyle } from '../types';
+import { Character, Companion, CombatStyle, SkillType } from '../types';
 import { calculateFinalStats, calculateTotalStats, getUnlockedCombatStylesList } from '../utils';
 import { COMBAT_STYLE_CONFIG } from '../constants';
 import { getCombatStyleSkillSet } from '../combatStyleSkills';

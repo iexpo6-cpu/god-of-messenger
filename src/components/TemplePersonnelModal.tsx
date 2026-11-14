@@ -452,10 +452,10 @@ const TemplePersonnelModal: React.FC<Props> = ({ character, templeCity, templeLe
                                                     <span className={c.shinryokuType === requiredElement ? 'text-indigo-300 font-semibold' : 'text-slate-400'}>
                                                         신력: {c.shinryokuType || '무속성'}
                                                     </span>
-                                                    {c.combatClass && (
+                                                    {((c as any).combatClass || c.classType || c.job) && (
                                                         <>
                                                             <span>•</span>
-                                                            <span className="text-slate-300">{c.combatClass}</span>
+                                                            <span className="text-slate-300">{(c as any).combatClass || c.classType || c.job}</span>
                                                         </>
                                                     )}
                                                 </div>

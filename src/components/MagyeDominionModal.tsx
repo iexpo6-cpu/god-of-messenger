@@ -607,7 +607,7 @@ return (
                                                             <div className="text-xs text-slate-400 mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
                                                                 <span>Lv.{comp.level || 1}</span>
                                                                 <span>•</span>
-                                                                <span>{comp.combatClass || comp.job || '전사'}</span>
+                                                                <span>{(comp as any).combatClass || comp.classType || comp.job || '전사'}</span>
                                                                 {comp.shinryokuType && (
                                                                     <>
                                                                         <span>•</span>

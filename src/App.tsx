@@ -7327,6 +7327,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                         }}
                         onOpenMap={() => {
                             setMapMode('travel');
+                            setIsMobileMenuOpen(false);
                             setIsMapOpen(true);
                         }}
                         onSave={() => {
