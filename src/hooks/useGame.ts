@@ -5207,7 +5207,12 @@ let targetIdx = -1;
                 activeGoldBuffs: Array.from(new Set(activeGoldBuffs)),
                 combatType: currentCombat?.type,
                 dungeonId: (currentCombat as any)?.dungeonId || finalChar.dungeonProgress?.dungeonId,
-                suddenEvent
+                suddenEvent,
+                lastEnemies: finalEnemies,
+                defenseSource: (currentCombat as any)?.defenseSource,
+                targetCity: (currentCombat as any)?.targetCity,
+                targetNation: (currentCombat as any)?.targetNation,
+                rebelRankIdx: (currentCombat as any)?.rebelRankIdx
             };
 
             setTimeout(() => {

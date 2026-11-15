@@ -359,7 +359,7 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
         matchedNations: ["신계", "무의 궁"]
     },
 
-    // 2. 마계 / 임페리얼 제국 (뒤틀린 흑요석 요새, 핏빛 마기)
+    // 2-0. 마계 범용/폴백 (뒤틀린 흑요석 요새, 핏빛 마기)
     magye_imperial_citadel: {
         id: "magye_imperial_citadel",
         name: "마계 임페리얼 제국",
@@ -367,6 +367,7 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
         concept: "뒤틀린 흑요석 요새, 핏빛 마기",
         prompt: "Epic dark fantasy RPG landscape, wide panoramic matte painting of the sprawling demonic capital city of Magye. In the center rises a towering twisted obsidian fortress citadel with sharp Gothic spires and jagged battlements. Glowing molten orange and crimson lava rivers carve through black jagged basalt canyons and chasms below. Ominous crimson blood-red demonic miasma and dark ethereal smoke rise into tempestuous storm clouds. In the dramatic dark sky hangs a colossal blood moon eclipse casting eerie crimson rim-light across colossal stone gargoyles and spiked fortifications. Masterpiece fantasy concept art, intricate dark gothic architecture, highly detailed, atmospheric perspective, cinematic lighting, 8k resolution, volumetric fog.",
         localPath: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye/magye_imperial.jpg",
         theme: {
             overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(69, 10, 10, 0.55) 50%, rgba(0, 0, 0, 0.95) 100%)",
             accentColor: "text-red-400",
@@ -375,6 +376,258 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
             badgeText: "💀 마계 제국령 (Nether Dominion)",
             badgeClass: "bg-red-950/70 text-red-400 border-red-700/60 shadow-[0_0_15px_rgba(220,38,38,0.3)] animate-pulse",
             description: "뒤틀린 거대 흑요석 성채와 핏빛 마기가 하늘을 뒤덮고, 발밑으로는 용암 하천이 굽이치는 마신황의 난공불락 요새입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-1. 임페리얼 (제1황도)
+    magye_imperial: {
+        id: "magye_imperial",
+        name: "마계 제1황도 임페리얼",
+        region: "마계",
+        concept: "마황의 거성, 솟구치는 흑요석 궁전과 핏빛 마기",
+        prompt: "Monumental imperial demonic capital palace citadel of Magye, towering sharp twisted obsidian spires, molten red rivers, giant blood moon, ominous dark majesty, 8k cinematic masterpiece",
+        localPath: "assets/visuals/backgrounds/magye/magye_imperial.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(69, 10, 10, 0.55) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-red-400",
+            borderColor: "border-red-600/70",
+            glowColor: "rgba(220, 38, 38, 0.45)",
+            badgeText: "👑 제1황도 임페리얼 (Imperial Capital)",
+            badgeClass: "bg-red-950/80 text-red-300 border-red-600/70 shadow-[0_0_20px_rgba(220,38,38,0.35)]",
+            description: "뒤틀린 거대 흑요석 성채와 핏빛 마기가 하늘을 뒤덮고, 발밑으로는 용암 하천이 굽이치는 마신황의 난공불락 황도 요새입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-2. 눌바리온 (공허의 요새)
+    magye_nullbarion: {
+        id: "magye_nullbarion",
+        name: "공허의 요새 눌바리온",
+        region: "마계",
+        concept: "무(無)의 파동, 뒤틀린 중력과 공허의 균열",
+        prompt: "Dark fantasy void fortress of Nullbarion in demon realm, distorted gravity anomalies, floating fractured black stone monoliths, pulsating purple-black void rift energy, cold void mist, 8k",
+        localPath: "assets/visuals/backgrounds/magye/magye_nullbarion.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(10, 10, 25, 0.8) 0%, rgba(45, 10, 60, 0.55) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-purple-400",
+            borderColor: "border-purple-600/70",
+            glowColor: "rgba(168, 85, 247, 0.45)",
+            badgeText: "🌀 공허의 요새 눌바리온 (Void Bastion)",
+            badgeClass: "bg-purple-950/80 text-purple-300 border-purple-600/70 shadow-[0_0_20px_rgba(168,85,247,0.35)]",
+            description: "모든 것을 집어삼키는 공허의 균열과 중력이 왜곡된 부유 흑요석 암석들이 군림하는 허무의 요새입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-3. 딜리리움 (환각과 광기의 도시)
+    magye_delirium: {
+        id: "magye_delirium",
+        name: "환각과 광기의 도시 딜리리움",
+        region: "마계",
+        concept: "몽환적인 보랏빛 포자, 왜곡된 시공간과 광기의 미궁",
+        prompt: "Demonic labyrinth city of madness Delirium, swirling hallucinatory violet and neon-magenta fog, impossible Escher-like twisting architecture, neon hallucinogenic flowers, eerie eyes glowing in the mist, 8k",
+        localPath: "assets/visuals/backgrounds/magye/magye_delirium.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(25, 10, 30, 0.8) 0%, rgba(70, 10, 65, 0.5) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-fuchsia-400",
+            borderColor: "border-fuchsia-600/70",
+            glowColor: "rgba(217, 70, 239, 0.45)",
+            badgeText: "👁️ 광기의 도시 딜리리움 (City of Delirium)",
+            badgeClass: "bg-fuchsia-950/80 text-fuchsia-300 border-fuchsia-600/70 shadow-[0_0_20px_rgba(217,70,239,0.35)]",
+            description: "몽환적인 독기 어린 안개와 왜곡된 차원 속에서 감각을 잃고 영원한 광기에 빠져드는 마계의 미궁 도시입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-4. 노크티아 (영구야의 도시)
+    magye_noctia: {
+        id: "magye_noctia",
+        name: "영구야의 도시 노크티아",
+        region: "마계",
+        concept: "태양이 뜨지 않는 심연의 암흑 도시, 푸른 도깨비불",
+        prompt: "Eternal midnight shadow city of Noctia in demonic realm, perpetual starless black sky, glowing cold cyan soulfire torches along spired stone bridges, shadowed gothic cathedrals, silent abyssal mist, 8k",
+        localPath: "assets/visuals/backgrounds/magye/magye_noctia.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(5, 10, 20, 0.85) 0%, rgba(15, 23, 42, 0.6) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-cyan-400",
+            borderColor: "border-cyan-600/70",
+            glowColor: "rgba(6, 182, 212, 0.45)",
+            badgeText: "🌑 영구야 노크티아 (Eternal Night Noctia)",
+            badgeClass: "bg-slate-950/80 text-cyan-300 border-cyan-600/70 shadow-[0_0_20px_rgba(6,182,212,0.35)]",
+            description: "태양의 빛이 단 한 번도 닿지 않은 영원한 암흑 속에서 서늘한 영혼의 푸른 불꽃만이 골목을 비추는 밤의 도시입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-5. 엔드라실 (부식의 마목)
+    magye_endrasil: {
+        id: "magye_endrasil",
+        name: "부식의 마목 엔드라실",
+        region: "마계",
+        concept: "오염되고 메마른 거대 마목, 저주의 뿌리",
+        prompt: "Corrupted dead colossal world tree Endrasil in demon lands, twisted withered branches reaching like claws into stormy crimson sky, oozing black tar and cursed sap, decaying thorny bark, ominous glowing red fungal growths, 8k",
+        localPath: "assets/visuals/backgrounds/magye/magye_endrasil.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(20, 20, 15, 0.8) 0%, rgba(45, 30, 15, 0.55) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-amber-500",
+            borderColor: "border-amber-700/70",
+            glowColor: "rgba(217, 119, 6, 0.45)",
+            badgeText: "🥀 부식의 마목 엔드라실 (Corrupted Endrasil)",
+            badgeClass: "bg-amber-950/80 text-amber-300 border-amber-700/70 shadow-[0_0_20px_rgba(217,119,6,0.35)]",
+            description: "타락한 저주의 수액과 거대한 부식의 고목 뿌리가 대지를 옥죄며 마물의 둥지를 이루고 있는 마계의 영목입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-6. 세라피엘 몰락지 (타락 천사의 성역)
+    magye_seraphiel_fall: {
+        id: "magye_seraphiel_fall",
+        name: "타락 천사의 성역 세라피엘 몰락지",
+        region: "마계",
+        concept: "추락한 천사의 부러진 날개, 더럽혀진 백색 대리석과 핏빛 잔해",
+        prompt: "Shattered ruins of fallen archangel sanctuary Seraphiel Fall in demon realm, colossal broken angel stone wings buried in dark volcanic soil, shattered white marble columns covered in demonic thorns and blood stains, tainted holy light struggling against dark mist, 8k",
+        localPath: "assets/visuals/backgrounds/magye/magye_seraphiel_fall.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(25, 20, 30, 0.8) 0%, rgba(55, 15, 35, 0.55) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-rose-300",
+            borderColor: "border-rose-500/70",
+            glowColor: "rgba(244, 63, 94, 0.4)",
+            badgeText: "🪶 세라피엘 몰락지 (Fallen Seraphiel)",
+            badgeClass: "bg-rose-950/80 text-rose-200 border-rose-500/70 shadow-[0_0_20px_rgba(244,63,94,0.35)]",
+            description: "하늘에서 추락한 대천사의 부러진 거대 석조 날개와 짓밟힌 신성한 성역이 마기에 더럽혀진 비극의 땅입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-7. 카르나쥬 (전쟁요새)
+    magye_carnage: {
+        id: "magye_carnage",
+        name: "도살과 전쟁의 요새 카르나쥬",
+        region: "마계",
+        concept: "피로 물든 투기장, 거대한 무구와 마족 군단의 전초기지",
+        prompt: "Brutal iron and blood fortress city of Carnage, iron spiked bastions, towering war forges pouring molten iron, massive siege engines, ground stained deep crimson, jagged demonic blades mounted on stone walls, ominous battle flags, 8k",
+        localPath: "assets/visuals/backgrounds/magye/magye_carnage.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(30, 10, 10, 0.8) 0%, rgba(75, 15, 15, 0.55) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-red-500",
+            borderColor: "border-red-700/70",
+            glowColor: "rgba(239, 68, 68, 0.5)",
+            badgeText: "⚔️ 전쟁요새 카르나쥬 (Fortress Carnage)",
+            badgeClass: "bg-red-950/90 text-red-200 border-red-600/80 shadow-[0_0_20px_rgba(239,68,68,0.4)]",
+            description: "거대한 강철 가시와 마족 군단의 진군 북소리가 끊이지 않는 마계 최강의 군사 요새이자 유혈의 땅입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-8. 인페르노스 (업화의 분화구)
+    magye_infernos: {
+        id: "magye_infernos",
+        name: "업화의 분화구 인페르노스",
+        region: "마계",
+        concept: "끝없이 분출하는 화산과 지옥불, 용암 바다",
+        prompt: "Infernal apocalyptic volcano city of Infernos, roaring colossal caldera spouting fiery geysers of magma and volcanic ash, glowing rivers of liquid fire crisscrossing black obsidian plateaus, dark demonic structures built into basalt cliffs, 8k",
+        localPath: "assets/visuals/backgrounds/magye/magye_infernos.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(35, 10, 5, 0.8) 0%, rgba(85, 20, 5, 0.55) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-orange-400",
+            borderColor: "border-orange-600/70",
+            glowColor: "rgba(249, 115, 22, 0.5)",
+            badgeText: "🔥 업화의 인페르노스 (Infernos Caldera)",
+            badgeClass: "bg-orange-950/80 text-orange-300 border-orange-600/70 shadow-[0_0_20px_rgba(249,115,22,0.4)]",
+            description: "대지가 갈라지며 뿜어져 나오는 지옥의 화염과 붉게 끓어오르는 용암 바다 위에 지어진 맹렬한 업화의 도시입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-9. 네크로폴리스 (망자의 사령도시)
+    magye_necropolis: {
+        id: "magye_necropolis",
+        name: "망자의 사령도시 네크로폴리스",
+        region: "마계",
+        concept: "용의 유골과 묘비석, 영혼의 비명과 시체탑",
+        prompt: "Haunting demonic necropolis city in Magye, colossal ancient dragon ribcages forming arches over endless rows of black crypts, green ghostly soul lanterns, silent walking shadows, eerie emerald mist, gothic mausoleums, 8k",
+        localPath: "assets/visuals/backgrounds/magye/magye_necropolis.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(10, 20, 15, 0.8) 0%, rgba(15, 45, 30, 0.5) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-emerald-400",
+            borderColor: "border-emerald-600/70",
+            glowColor: "rgba(16, 185, 129, 0.45)",
+            badgeText: "☠️ 사령도시 네크로폴리스 (Nether Necropolis)",
+            badgeClass: "bg-emerald-950/80 text-emerald-300 border-emerald-600/70 shadow-[0_0_20px_rgba(16,185,129,0.35)]",
+            description: "고대 거룡의 유골과 수만 개의 비석이 늘어선 채, 안식에 들지 못한 영혼들이 흐느끼는 마계의 거대한 공동묘지 도시입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-10. 베놈가든 (맹독의 화원)
+    magye_venomgarden: {
+        id: "magye_venomgarden",
+        name: "맹독의 화원 베놈가든",
+        region: "마계",
+        concept: "치명적인 마계의 독초, 부식성 늪과 형광빛 식인 식물",
+        prompt: "Lethal venomous demonic flora garden city Venomgarden, glowing neon-green and toxic violet carnivorous flowers, boiling corrosive acidic pools with bubbling vapors, overgrown giant thorn vines crawling over obsidian ruins, 8k",
+        localPath: "assets/visuals/backgrounds/magye/magye_venomgarden.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 25, 15, 0.8) 0%, rgba(30, 60, 25, 0.5) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-lime-400",
+            borderColor: "border-lime-600/70",
+            glowColor: "rgba(163, 230, 53, 0.45)",
+            badgeText: "🧪 맹독의 화원 베놈가든 (Venom Garden)",
+            badgeClass: "bg-emerald-950/80 text-lime-300 border-lime-600/70 shadow-[0_0_20px_rgba(163,230,53,0.35)]",
+            description: "아름답지만 스치기만 해도 살을 녹이는 형광빛 독초와 부식성 산성 늪이 지배하는 치명적인 마계의 화원입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-11. 크로노폴 (시공 왜곡의 첨탑)
+    magye_chronopol: {
+        id: "magye_chronopol",
+        name: "시공 왜곡의 첨탑 크로노폴",
+        region: "마계",
+        concept: "부서진 거대 시계태엽, 역행하는 모래시계와 시간의 균열",
+        prompt: "Demonic chronomancy fortress Chronopol, massive fractured ancient brass and iron clockwork gears suspended in dark purple stormy skies, reversing golden hour sands drifting upwards, temporal rifts freezing falling rubble in mid-air, 8k",
+        localPath: "assets/visuals/backgrounds/magye/magye_chronopol.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(20, 15, 30, 0.8) 0%, rgba(50, 25, 60, 0.5) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-indigo-300",
+            borderColor: "border-indigo-500/70",
+            glowColor: "rgba(99, 102, 241, 0.45)",
+            badgeText: "⏳ 시공 왜곡 크로노폴 (Chronomantic Chronopol)",
+            badgeClass: "bg-indigo-950/80 text-indigo-300 border-indigo-500/70 shadow-[0_0_20px_rgba(99,102,241,0.35)]",
+            description: "시간의 흐름이 거꾸로 흐르고 거대한 흑철 태엽 장치가 하늘에 멈춰 선 채 시공간의 균열을 통제하는 마법 첨탑입니다."
+        },
+        matchedNations: ["마계", "임페리얼 제국"]
+    },
+
+    // 2-12. 블러드문 (혈월의 제단)
+    magye_bloodmoon: {
+        id: "magye_bloodmoon",
+        name: "혈월의 제단 블러드문",
+        region: "마계",
+        concept: "거대한 진홍빛 붉은 달, 피의 제단과 흡혈귀의 고성",
+        prompt: "Gothic vampire castle city beneath colossal ominous blood moon, blood-red moon dominating the sky, dark spires bathed in vivid crimson moonlight, blood waterfalls cascading into red reflection pools, swarms of bats, haunting atmosphere, 8k",
+        localPath: "assets/visuals/backgrounds/magye/magye_bloodmoon.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(30, 5, 10, 0.85) 0%, rgba(70, 10, 25, 0.55) 50%, rgba(0, 0, 0, 0.95) 100%)",
+            accentColor: "text-rose-400",
+            borderColor: "border-rose-600/70",
+            glowColor: "rgba(244, 63, 94, 0.5)",
+            badgeText: "🩸 혈월의 제단 블러드문 (Blood Moon Altar)",
+            badgeClass: "bg-rose-950/90 text-rose-300 border-rose-600/80 shadow-[0_0_20px_rgba(244,63,94,0.4)]",
+            description: "하늘 전체를 붉게 물들인 거대한 혈월 아래, 피의 갈증을 품은 상위 마족들이 제의를 올리는 진홍빛 고성입니다."
         },
         matchedNations: ["마계", "임페리얼 제국"]
     },
@@ -591,9 +844,26 @@ export function getCityBackgroundConfig(region?: string, nation?: string, city?:
         return CITY_BACKGROUND_MANIFEST.shingye_god_abode || CITY_BACKGROUND_MANIFEST.shingye_celestial_sanctuary;
     }
 
-    // 2. 마계 / 임페리얼 제국 판정
+    // 2. 마계 / 임페리얼 제국 판정 (마계 12개 고유 도시 우선 매칭)
     if (r === '마계' || n === '임페리얼 제국' || n.includes('임페리얼')) {
-        return CITY_BACKGROUND_MANIFEST.magye_imperial_citadel;
+        // 2-1. 도시명 기준 마계 12개 고유 도시 매핑
+        if (c) {
+            if (c.includes('임페리얼')) return CITY_BACKGROUND_MANIFEST.magye_imperial;
+            if (c.includes('눌바리온')) return CITY_BACKGROUND_MANIFEST.magye_nullbarion;
+            if (c.includes('딜리리움')) return CITY_BACKGROUND_MANIFEST.magye_delirium;
+            if (c.includes('노크티아')) return CITY_BACKGROUND_MANIFEST.magye_noctia;
+            if (c.includes('엔드라실')) return CITY_BACKGROUND_MANIFEST.magye_endrasil;
+            if (c.includes('세라피엘')) return CITY_BACKGROUND_MANIFEST.magye_seraphiel_fall;
+            if (c.includes('카르나쥬') || c.includes('카르나')) return CITY_BACKGROUND_MANIFEST.magye_carnage;
+            if (c.includes('인페르노스') || c.includes('인페르노')) return CITY_BACKGROUND_MANIFEST.magye_infernos;
+            if (c.includes('네크로폴리스')) return CITY_BACKGROUND_MANIFEST.magye_necropolis;
+            if (c.includes('베놈가든') || c.includes('베놈')) return CITY_BACKGROUND_MANIFEST.magye_venomgarden;
+            if (c.includes('크로노폴') || c.includes('크로노')) return CITY_BACKGROUND_MANIFEST.magye_chronopol;
+            if (c.includes('블러드문')) return CITY_BACKGROUND_MANIFEST.magye_bloodmoon;
+        }
+
+        // 2-2. 마계 기본 배경 폴백
+        return CITY_BACKGROUND_MANIFEST.magye_imperial || CITY_BACKGROUND_MANIFEST.magye_imperial_citadel;
     }
 
     // 3. 실바나르 / 미르탈 숲연합 판정

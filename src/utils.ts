@@ -6027,45 +6027,94 @@ export const migrateCompanion = (comp: any, baseLevel?: number, playerAgeStr?: s
     return assignRandomCombatStyle(res, false, true);
 };
 
+// [NEW] 스킬 숙련도 레벨업 결과 인터페이스 및 개별 유닛 스킬 레벨업 독립 함수
+export interface SkillLevelUpResult {
+    skillName: string;
+    oldLevel: number;
+    newLevel: number;
+}
+
+export const processSkillLevelUp = (entity: any): { updated: boolean; leveledSkills: SkillLevelUpResult[] } => {
+    if (!entity || !entity.skills) return { updated: false, leveledSkills: [] };
+    let anyUpdated = false;
+    const leveledSkills: SkillLevelUpResult[] = [];
+
+    entity.skills.forEach((skill: any) => {
+        if (skill.type === SkillType.PASSIVE && skill.effectFormula?.includes('SPECIAL')) return;
+        
+        const initialLevel = skill.level;
+        while (skill.level < (skill.maxLevel || 10)) {
+            const required = 20 * (skill.level + 4);
+            if (skill.currentMastery < required) break;
+            
+            skill.currentMastery -= required;
+            skill.level += 1;
+            // MP 소모 감소 (클래스 티어별 차등 감소: 퍼스트 10, 세컨드 20, 라스트 50, 파이널 100 + 스킬 강화 보너스)
+            const bonusMpReduction = getLevelUpMpReductionBonus(skill);
+            if (skill.type !== SkillType.DEBUFF) {
+                const tier = skill.tier || skill.baseTier || skill.minClassTier;
+                let reduction = 10;
+                if (tier === ClassTier.FINAL || tier === '파이널 클래스' || tier === 'FINAL') reduction = 100;
+                else if (tier === ClassTier.LAST || tier === '라스트 클래스' || tier === 'LAST') reduction = 50;
+                else if (tier === ClassTier.SECOND || tier === '세컨드 클래스' || tier === 'SECOND') reduction = 20;
+                else if (tier === ClassTier.FIRST || tier === '퍼스트 클래스' || tier === 'FIRST') reduction = 10;
+                skill.mpCost = Math.max(1, (skill.mpCost || 10) - (reduction + bonusMpReduction));
+            } else if (bonusMpReduction > 0) {
+                skill.mpCost = Math.max(1, (skill.mpCost || 10) - bonusMpReduction);
+            }
+        }
+        // 최대 레벨 달성 시 초과 숙련도는 최대 필요 숙련도 상한으로 제한
+        if (skill.level >= (skill.maxLevel || 10)) {
+            const maxCap = 20 * (skill.level + 4);
+            if (skill.currentMastery > maxCap) {
+                skill.currentMastery = maxCap;
+            }
+        }
+        if (skill.level > initialLevel) {
+            anyUpdated = true;
+            leveledSkills.push({
+                skillName: skill.name,
+                oldLevel: initialLevel,
+                newLevel: skill.level
+            });
+        }
+    });
+
+    return { updated: anyUpdated, leveledSkills };
+};
+
+// [NEW] 캐릭터 및 전체 동료 대상 실시간 스킬 숙련도 레벨업 검사 및 알림 도출
+export const checkAndApplySkillLevelUp = (char: Character): { updatedChar: Character; notifications: string[] } => {
+    let updatedChar = { ...char, skills: char.skills ? char.skills.map(s => ({ ...s })) : [] };
+    const notifications: string[] = [];
+
+    const charRes = processSkillLevelUp(updatedChar);
+    if (charRes.updated) {
+        charRes.leveledSkills.forEach(ls => {
+            notifications.push(`[스킬 레벨업] ${char.name}의 스킬 [${ls.skillName}]이(가) Lv.${ls.newLevel}(으)로 상승했습니다!`);
+        });
+    }
+
+    if (updatedChar.companions && updatedChar.companions.length > 0) {
+        updatedChar.companions = updatedChar.companions.map(comp => {
+            const cCopy = { ...comp, skills: comp.skills ? comp.skills.map(s => ({ ...s })) : [] };
+            const compRes = processSkillLevelUp(cCopy);
+            if (compRes.updated) {
+                compRes.leveledSkills.forEach(ls => {
+                    notifications.push(`[동료 스킬 레벨업] ${comp.name}의 스킬 [${ls.skillName}]이(가) Lv.${ls.newLevel}(으)로 상승했습니다!`);
+                });
+            }
+            return cCopy;
+        });
+    }
+
+    return { updatedChar, notifications };
+};
+
 export const checkAndApplyLevelUp = (char: Character): { updatedChar: Character, leveledUp: boolean, oldLevel: number, leveledUpCompanions: { companion: Companion, oldLevel: number }[] } => {
     let updatedChar = { ...char };
     let leveledUp = false;
     let oldLevel = char.level;
-      // [NEW] 스킬 숙련도 레벨업 체크 로직 통합
-    const processSkillLevelUp = (entity: any) => {
-        if (!entity.skills) return;
-        entity.skills.forEach((skill: any) => {
-            if (skill.type === SkillType.PASSIVE && skill.effectFormula?.includes('SPECIAL')) return;
-            
-            while (skill.level < (skill.maxLevel || 10)) {
-                const required = 20 * (skill.level + 4);
-                if (skill.currentMastery < required) break;
-                
-                skill.currentMastery -= required;
-                skill.level += 1;
-                // MP 소모 감소 (클래스 티어별 차등 감소: 퍼스트 10, 세컨드 20, 라스트 50, 파이널 100 + 스킬 강화 보너스)
-                const bonusMpReduction = getLevelUpMpReductionBonus(skill);
-                if (skill.type !== SkillType.DEBUFF) {
-                    const tier = skill.tier || skill.baseTier || skill.minClassTier;
-                    let reduction = 10;
-                    if (tier === ClassTier.FINAL || tier === '파이널 클래스' || tier === 'FINAL') reduction = 100;
-                    else if (tier === ClassTier.LAST || tier === '라스트 클래스' || tier === 'LAST') reduction = 50;
-                    else if (tier === ClassTier.SECOND || tier === '세컨드 클래스' || tier === 'SECOND') reduction = 20;
-                    else if (tier === ClassTier.FIRST || tier === '퍼스트 클래스' || tier === 'FIRST') reduction = 10;
-                    skill.mpCost = Math.max(1, (skill.mpCost || 10) - (reduction + bonusMpReduction));
-                } else if (bonusMpReduction > 0) {
-                    skill.mpCost = Math.max(1, (skill.mpCost || 10) - bonusMpReduction);
-                }
-            }
-            // 최대 레벨 달성 시 초과 숙련도는 최대 필요 숙련도 상한으로 제한
-            if (skill.level >= (skill.maxLevel || 10)) {
-                const maxCap = 20 * (skill.level + 4);
-                if (skill.currentMastery > maxCap) {
-                    skill.currentMastery = maxCap;
-                }
-            }
-        });
-    };
 
     processSkillLevelUp(updatedChar);
     if (!updatedChar.stats.maxHp) updatedChar.stats.maxHp = updatedChar.level * 20;

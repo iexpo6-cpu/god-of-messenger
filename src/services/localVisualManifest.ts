@@ -31,7 +31,21 @@ export const LOCAL_VISUAL_MANIFEST: Record<string, string> = {
     "대한민국_배경": "assets/visuals/backgrounds/asia_korea_celestial_palace.jpg",
     "유럽_배경": "assets/visuals/backgrounds/europe_gothic_cathedral.jpg",
     "아프리카_배경": "assets/visuals/backgrounds/africa_middle_east_oasis_temple.jpg",
-    "아메리카_배경": "assets/visuals/backgrounds/america_oceania_magitech_city.jpg"
+    "아메리카_배경": "assets/visuals/backgrounds/america_oceania_magitech_city.jpg",
+
+    // 마계 12개 도시 배경 에셋
+    "마계_임페리얼_배경": "assets/visuals/backgrounds/magye/magye_imperial.jpg",
+    "마계_눌바리온_배경": "assets/visuals/backgrounds/magye/magye_nullbarion.jpg",
+    "마계_딜리리움_배경": "assets/visuals/backgrounds/magye/magye_delirium.jpg",
+    "마계_노크티아_배경": "assets/visuals/backgrounds/magye/magye_noctia.jpg",
+    "마계_엔드라실_배경": "assets/visuals/backgrounds/magye/magye_endrasil.jpg",
+    "마계_세라피엘_몰락지_배경": "assets/visuals/backgrounds/magye/magye_seraphiel_fall.jpg",
+    "마계_카르나쥬_배경": "assets/visuals/backgrounds/magye/magye_carnage.jpg",
+    "마계_인페르노스_배경": "assets/visuals/backgrounds/magye/magye_infernos.jpg",
+    "마계_네크로폴리스_배경": "assets/visuals/backgrounds/magye/magye_necropolis.jpg",
+    "마계_베놈가든_배경": "assets/visuals/backgrounds/magye/magye_venomgarden.jpg",
+    "마계_크로노폴_배경": "assets/visuals/backgrounds/magye/magye_chronopol.jpg",
+    "마계_블러드문_배경": "assets/visuals/backgrounds/magye/magye_bloodmoon.jpg"
 };
 
 /**

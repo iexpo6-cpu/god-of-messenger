@@ -54,9 +54,15 @@ export interface CombatResultModalProps {
         combatType?: string;
         dungeonId?: string;
         suddenEvent?: any;
+        lastEnemies?: any[];
+        defenseSource?: string;
+        targetCity?: string;
+        targetNation?: string;
+        rebelRankIdx?: number;
     } | null;
     onClose: () => void;
     onContinueBattle?: () => void;
+    onRematch?: () => void;
     onTriggerSuddenEvent?: (suddenEvent: any) => void;
 }
 
@@ -79,7 +85,7 @@ const WEAPON_TYPE_KOREAN: Record<string, string> = {
     SubSword: '단검'
 };
 
-export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onClose, onContinueBattle, onTriggerSuddenEvent }) => {
+export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onClose, onContinueBattle, onRematch, onTriggerSuddenEvent }) => {
     const [progressValues, setProgressValues] = useState<Record<string, number>>({});
     const [animateText, setAnimateText] = useState(false);
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
@@ -882,6 +888,16 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                             </button>
                         ) : (
                             <>
+                                {isVictory && onRematch && (
+                                    <button
+                                        type="button"
+                                        onClick={onRematch}
+                                        className="flex-1 py-3 px-4 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-black text-sm rounded-xl transition-all shadow-[0_0_15px_rgba(244,63,94,0.4)] active:scale-98 cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
+                                    >
+                                        <Swords size={18} className="text-white shrink-0" />
+                                        <span>즉시 재전투 ⚔️</span>
+                                    </button>
+                                )}
                                 {onContinueBattle && (
                                     <button
                                         onClick={() => {

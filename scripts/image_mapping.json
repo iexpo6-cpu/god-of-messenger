@@ -205,5 +205,125 @@
     "localPath": "src/public/assets/visuals/backgrounds/america_oceania_magitech_city.jpg",
     "imageUrl": "assets/visuals/backgrounds/america_oceania_magitech_city.jpg",
     "host": "local_bundle"
+  },
+  {
+    "name": "마계_임페리얼_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "임페리얼",
+    "prompt": "Breathtaking dark fantasy RPG panoramic wide landscape, Imperial capital citadel of the Demon God Imperial. A gargantuan twisted obsidian fortress palace rising menacingly into stormy violet and crimson skies, massive jagged spires tearing the dimensional fabric with black lightning, glowing rift portals into the cosmic void, colossal demon statues and spiked battlements, cascading rivers of dark energy and molten lava below, grand cinematic lighting, 8k resolution, masterpiece.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_imperial.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_imperial.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_눌바리온_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "눌바리온",
+    "prompt": "Breathtaking dark fantasy RPG wide panoramic landscape of Nullbarion, the void city of General Zero the Void King. Towering spires carved from pitch-black cosmic shadow stone, surrounded by floating anti-gravity basalt monoliths in total zero gravity. Black holes and swirling abyssal vortexes consuming pale starlight, ethereal silver and violet stardust mist drifting through dark gothic arches, hollow ethereal void crown floating above the central citadel, 8k resolution, cinematic lighting, masterpiece.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_nullbarion.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_nullbarion.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_딜리리움_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "딜리리움",
+    "prompt": "Epic dark fantasy RPG wide panoramic illustration of Delirium, city of the Queen of Madness Lucien. An extravagant yet horrifying gothic palace of shattered mirrors and distorted warped architecture. Gigantic broken porcelain and obsidian doll face sculptures with weeping jewel tears, glowing magenta and toxic purple crystalline mist swirling through spiraling labyrinthine bridges, reality-warping surrealist shadows, haunting beauty and madness, 8k resolution, masterpiece.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_delirium.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_delirium.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_노크티아_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "노크티아",
+    "prompt": "Haunting dark fantasy RPG wide panoramic scenery of Noctia, dominion of General Aporia the Shadow of the Demon Emperor. A colossal metropolis veiled in perpetual pitch-black twilight and shadowy mist. Massive gothic obsidian towers crowned with thousands of unfurling shadowy feathered wings, a central monolith throne of pure darkness surrounded by phantom silhouettes, eerie cold blue and indigo rim lighting piercing the deep gloom, 8k resolution, cinematic composition.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_noctia.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_noctia.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_엔드라실_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "엔드라실",
+    "prompt": "Epic dark fantasy RPG wide panoramic matte painting of Endrasil, domain of General Barcalone the Dragon of the End. A fortress city built into a giant smoldering volcanic caldera, with ramparts shaped like colossal broken black dragon wings. Ancient glowing crimson dragon runes carved into jagged obsidian cliffs, molten magma waterfalls cascading into dark volcanic lakes, dragon bone arches and smoking war towers, draconic majesty and doom, 8k resolution, masterpiece.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_endrasil.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_endrasil.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_세라피엘_몰락지_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "세라피엘 몰락지",
+    "prompt": "Spectacular dark fantasy RPG wide panoramic landscape of the Fall of Seraphiel, dominion of General Azar the Apostle of Retribution. A shattered holy temple ruin in the demon realm where colossal ruined marble angel statues and snapped feathered stone wings lie fallen among dark volcanic ash. Corrupted black halos glowing with sinister dark gold and purple light hovering above desecrated gothic cathedrals, holy-demonic contrast, dramatic god rays piercing storm clouds, 8k resolution, masterpiece.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_seraphiel_fall.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_seraphiel_fall.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_카르나쥬_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "카르나쥬",
+    "prompt": "Breathtaking dark fantasy RPG wide panoramic landscape of Carnage fortress, dominion of General Carnival the Knight of Slaughter. A brutal spiked black-iron war fortress city towering over rushing rivers of crimson blood. Giant executioner blades and ominous laughing-mask iron crests hanging from barbed ramparts, roaring ceremonial bonfires casting crimson and orange firelight onto grim battle bastions, heavy atmospheric battle haze and smoking skies, epic cinematic lighting, 8k resolution, masterpiece.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_carnage.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_carnage.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_인페르노스_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "인페르노스",
+    "prompt": "Breathtaking dark fantasy RPG wide panoramic scenery of Infernos, realm of General Ignis the Lord of Purgatory. A sprawling hellfire citadel constructed directly atop boiling volcanic magma lakes and blazing sulfur chasms. Soaring dark basalt spires shaped like colossal blazing wings of fire, incandescent orange and yellow lava falls illuminating blackened demon gargoyles, suffocating smoke plumes with embers swirling in stormy volcanic skies, 8k resolution, cinematic lighting, masterpiece.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_infernos.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_infernos.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_네크로폴리스_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "네크로폴리스",
+    "prompt": "Epic dark fantasy RPG wide panoramic illustration of the Magye Necropolis, tomb domain of General Moldrick the Lord of Corpses. A vast silent cemetery city made of towering catacombs, mausoleums built entirely from colossal white titan bones and bleached skulls. Eerie emerald and ghost-cyan soul fires flickering across ancient bone bridges, swirling necrotic soul fog rising from bottomless ossuary chasms, haunting gothic majesty and undead eternity, 8k resolution, masterpiece.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_necropolis.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_necropolis.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_베놈가든_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "베놈가든",
+    "prompt": "Haunting dark fantasy RPG wide panoramic landscape of Venomgarden, botanical sanctuary of General Schola the Queen of Poison. A labyrinthine bio-citadel overgrown with carnivorous demonic flora, giant spiny scorpion-tail vines, and luminescent poisonous orchids. Glowing toxic purple and emerald acid mist hovering over bubbling venom waterfalls and pools of corrosive slime, thorny gothic greenhouse domes intertwined with ancient obsidian arches, deadly surreal beauty, 8k resolution, masterpiece.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_venomgarden.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_venomgarden.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_크로노폴_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "크로노폴",
+    "prompt": "Epic dark fantasy RPG wide panoramic matte painting of Chronopol, domain of General Kairos the Rider of the End. A monumental clockwork gothic metropolis where gigantic floating brass and obsidian gear mechanisms revolve in mid-air. Towering ancient clocktowers with glowing golden and cyan temporal runes, frozen glass shards and time-distorted vortexes floating along suspended skybridges, twilight sky with fractured time rifts, awe-inspiring concept art, 8k resolution, masterpiece.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_chronopol.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_chronopol.jpg",
+    "host": "local_bundle"
+  },
+  {
+    "name": "마계_블러드문_배경",
+    "category": "location",
+    "region": "마계",
+    "city": "블러드문",
+    "prompt": "Spectacular dark fantasy RPG wide panoramic landscape of Bloodmoon, domain of General Lunas the Claws of Blood Moonlight. A feral yet majestic mountain fortress overlooking jagged crags under a gargantuan, brilliant blood-red eclipse moon dominating the starry night sky. Monumental dragon-wolf hybrid stone totems guarding high battlements, glowing crimson moonlight bathing ancient monolithic claw shrines and snowy jagged peaks, wild primal draconic lupine grandeur, 8k resolution, masterpiece.",
+    "localPath": "public/assets/visuals/backgrounds/magye/magye_bloodmoon.jpg",
+    "imageUrl": "assets/visuals/backgrounds/magye/magye_bloodmoon.jpg",
+    "host": "local_bundle"
   }
 ]

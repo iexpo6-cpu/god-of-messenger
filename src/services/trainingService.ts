@@ -1,5 +1,5 @@
 import { Character, Companion, TrainerRank, TrainerBranch, TRAINER_RANK_CONFIG, JobType, CombatTrainingTrainee, CombatTrainingReportItem, FacilityInstance, WeaponType, SkillType } from '../types';
-import { getTrainerBranchMultiplier, calculateFinalStats, getRequiredExp, getStatPointsPerLevel, addMasteryExp } from '../utils';
+import { getTrainerBranchMultiplier, calculateFinalStats, getRequiredExp, getStatPointsPerLevel, addMasteryExp, processSkillLevelUp, checkAndApplySkillLevelUp } from '../utils';
 import { getReducedMpCostOnLevelUp } from './skillMpService';
 import { WEAPON_TYPE_KOREAN } from '../constants';
 
@@ -835,6 +835,7 @@ export const advanceCombatTrainingTime = (
                         if (trainee.isPotentialLocked) skillGain *= 2;
                         totalUnitGain += skillGain;
                         foundSkill.currentMastery = (foundSkill.currentMastery || 0) + skillGain;
+                        processSkillLevelUp(trainee);
 
                         traineeInfo.accumulatedGain = (traineeInfo.accumulatedGain || 0) + skillGain;
                         traineeInfo.lastGain = skillGain;
@@ -969,7 +970,13 @@ export const advanceCombatTrainingTime = (
         }
     }
 
-    // 5. 보고서 목록 정리 및 훈련소 동기화 적용
+    // 5. 실시간 스킬 레벨업 반영, 보고서 목록 정리 및 훈련소 동기화 적용
+    const { updatedChar: skillUpdatedChar, notifications: skillLogs } = checkAndApplySkillLevelUp(charCopy);
+    charCopy = skillUpdatedChar;
+    if (skillLogs.length > 0) {
+        logs.push(...skillLogs);
+    }
+
     const trimmedReports = trainingReports.slice(0, 30);
     const finalUpdatedChar = syncUnifiedCombatTrainingToCharacter(charCopy, validTrainees, trimmedReports);
 

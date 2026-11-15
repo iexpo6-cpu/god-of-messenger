@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Character, Companion, Skill, ClassTier, SkillType, SkillTarget, WeaponType, CombatStyle } from '../types';
 import { BookOpen, Lock, Sparkles,CheckCircle2, X, Zap, Flame, Crown, Star, Shield, Sword, Activity, Info, PenTool, Dices, RefreshCw, Calculator, TrendingUp, PlusCircle, Loader2, Target, Crosshair, UserCheck, Trash2, CheckCircle, CheckSquare, Square, AlertCircle, Skull, Link, Brain, Type, User, Waves, Wind, Sun, Moon, Heart, Package, Upload, HelpCircle } from 'lucide-react';
 import { generateSkillSuggestion, generateSkillDescriptionSuggestion, generateSkillNameOnlySuggestion } from '../services/geminiService';
-import { calculateBuffSuccessRate, calculateTotalStats, calculateFinalStats, calculateDebuffSuccessRate, generateLocalSkillSuggestion, getUnlockedCombatStylesList, getCombatStyleActiveSkill, getEntityAllCombatSkills } from '../utils';
+import { calculateBuffSuccessRate, calculateTotalStats, calculateFinalStats, calculateDebuffSuccessRate, generateLocalSkillSuggestion, getUnlockedCombatStylesList, getCombatStyleActiveSkill, getEntityAllCombatSkills, checkAndApplySkillLevelUp } from '../utils';
 import { getCombatStyleSkillSet, StyleLearnedPassive, StyleEquippedPassive } from '../combatStyleSkills';
 import ActionResultModal, { ResultData } from './ActionResultModal';
 import ShortcutAssignModal from './ShortcutAssignModal';
@@ -305,6 +305,16 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
   const [customSkillName, setCustomSkillName] = useState('');
   const [customSkillDesc, setCustomSkillDesc] = useState('');
   const [customSkillType, setCustomSkillType] = useState<SkillType>(SkillType.PHYSICAL);
+
+  // [NEW] 스킬북 진입 시 실시간 스킬 숙련도 레벨업 정산 및 상태 동기화
+  useEffect(() => {
+    if (isOpen && playerCharacter && onUpdateCharacter) {
+      const { updatedChar, notifications } = checkAndApplySkillLevelUp(playerCharacter);
+      if (notifications.length > 0) {
+        onUpdateCharacter(updatedChar);
+      }
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (customSkillType === SkillType.PHYSICAL) setSelectedIcon('Sword');

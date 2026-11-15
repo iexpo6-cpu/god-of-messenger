@@ -136,6 +136,45 @@ export const CombatAndTrainingModalsLayer: React.FC<Props> = ({
             }
             setIsCityOpen(true);
           }}
+          onRematch={() => {
+            if (character.stats && character.stats.hp <= 0) {
+              alert("체력이 다하여 재전투를 진행할 수 없습니다. 휴식을 취하거나 회복 후 도전하세요.");
+              return;
+            }
+            const enemies = combatResultData?.lastEnemies;
+            const cType = combatResultData?.combatType || 'normal';
+            const defSrc = combatResultData?.defenseSource;
+            const tCity = combatResultData?.targetCity;
+            const tNation = combatResultData?.targetNation;
+
+            const timeRes = advanceGameTime(character, 1, { isDungeonOrCombat: true, activityName: "전투 종료 및 즉시 재전투" });
+            if (timeRes.systemLogs && timeRes.systemLogs.length > 0) {
+              timeRes.systemLogs.forEach((l: string) => addToLog(l));
+            }
+            setCharacter(timeRes.updatedCharacter);
+            setCombatResultData?.(null);
+
+            if (enemies && enemies.length > 0) {
+              const freshEnemies = enemies.map((e: any) => ({
+                ...e,
+                stats: { 
+                  ...e.stats, 
+                  hp: e.stats?.maxHp || e.stats?.hp || 100,
+                  mp: e.stats?.maxMp !== undefined ? e.stats.maxMp : e.stats?.mp
+                },
+                statusEffects: []
+              }));
+              handleBattleTrigger(freshEnemies, cType, defSrc, tCity, tNation);
+            } else {
+              // 직전 적 정보가 없는 경우 사냥터로 전환
+              setCityInitialConfig({ 
+                district: 'Outskirts', 
+                openHuntMap: true,
+                initialBandId: character.lastHuntingBandId 
+              });
+              setIsCityOpen(true);
+            }
+          }}
         />
       )}
 

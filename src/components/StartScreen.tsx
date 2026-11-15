@@ -100,12 +100,7 @@ const StartScreen: React.FC<Props> = ({ onNewGame, onContinue, currentUser, onOp
   };
 
   const handleStartWithCheck = (callback: () => void) => {
-    if (!isKeySelected) {
-      setShowManualInput(true);
-      alert("게임을 시작하려면 먼저 Gemini API 키 설정이 필요합니다.");
-    } else {
-      callback();
-    }
+    callback();
   };
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -160,8 +155,8 @@ const StartScreen: React.FC<Props> = ({ onNewGame, onContinue, currentUser, onOp
                                 <CheckCircle size={10} className="mr-1"/> 연결됨
                             </span>
                         ) : (
-                            <span className="text-[10px] text-red-400 font-bold bg-red-950/30 px-2 py-0.5 rounded border border-red-900/50 flex items-center animate-pulse">
-                                <AlertCircle size={10} className="mr-1"/> 키 설정 필요
+                            <span className="text-[10px] text-amber-400/80 font-bold bg-amber-950/30 px-2 py-0.5 rounded border border-amber-900/50 flex items-center">
+                                <AlertCircle size={10} className="mr-1"/> 미설정 (선택)
                             </span>
                         )}
                     </div>

@@ -428,7 +428,7 @@ const CityMapBoard: React.FC<Props> = ({
                             target.dataset.triedRelative = 'true';
                             target.src = `./${cityBg.url.replace(/^\.?\//, '')}`;
                         } else if (cityBg.fallbackUrl && target.src !== cityBg.fallbackUrl) {
-                            target.src = cityBg.fallbackUrl;
+                            target.src = getResolvedBackgroundUrl(cityBg.fallbackUrl);
                         }
                     }}
                     className={`w-full h-full object-cover object-center ${isShingye ? 'opacity-80 sm:opacity-90' : 'opacity-70 sm:opacity-80'} transition-all duration-700 ease-in-out scale-100 ${isShingye ? (isMidnightLabor ? 'brightness-90 contrast-110 saturate-120' : 'brightness-105 contrast-105 saturate-110') : timeFilter.filterClass}`}
