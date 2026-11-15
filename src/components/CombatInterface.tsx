@@ -2325,7 +2325,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             <BondGaugesPanel activeBondSkills={activeBondSkills} player={player} />
 
             {/* [MODIFIED] Video Cutscene Overlay - Improved PC Scaling */}{activeVideo && (
-  <div className="fixed inset-0 z-[1000] bg-black/95 flex items-center justify-center animate-in fade-in duration-500 backdrop-blur-md">
+  <div className="fixed inset-0 z-[1000] bg-black/95 flex items-center justify-center animate-in fade-in duration-500">
     <div className="relative w-full max-w-4xl max-h-[80vh] aspect-video flex items-center justify-center bg-black shadow-[0_0_50px_rgba(245,158,11,0.3)] rounded-2xl overflow-hidden">
       
       {/* 1. 유튜브 영상인 경우 (shorts, watch?v=, youtu.be 포함) */}
@@ -2367,7 +2367,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
       {/* 닫기 버튼: 유튜브는 영상이 끝나도 창이 안 닫히므로 필수입니다 */}
       <button 
         onClick={() => setActiveVideo(null)}
-        className="absolute top-4 right-4 z-[1001] bg-white/10 hover:bg-white/20 text-white w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm transition-all pointer-events-auto"
+        className="absolute top-4 right-4 z-[1001] bg-black/70 hover:bg-black/90 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all pointer-events-auto"
       >
         ✕
       </button>
@@ -2379,7 +2379,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
 )}
 
             {selectionMode && (
-                <div className={`absolute top-0 left-0 right-0 z-40 p-2 text-center font-bold animate-pulse ${isResurrectionModeActive ? 'bg-amber-900/90 text-amber-300 border-b border-amber-500' : 'bg-black/85 text-amber-500 border-b border-amber-500/40'}`}>
+                <div className={`absolute top-0 left-0 right-0 z-40 p-2 text-center font-bold ${isResurrectionModeActive ? 'bg-amber-900/95 text-amber-300 border-b border-amber-500' : 'bg-black/90 text-amber-500 border-b border-amber-500/40'}`}>
                     <div className="flex items-center justify-center gap-2 flex-wrap">
                         <span>
                             {isPureResurrectionPending ? "부활시킬 대상을 선택하세요 (사망자 전용)" : isResurrectionModeActive ? "대상군을 선택하세요 (부활 및 회복 가능)" : selectionMode === 'enemy' ? "공격 대상을 선택하세요" : "아군 대상을 선택하세요"}
@@ -2533,7 +2533,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                                     title={`행동 수치: ${unit.agility} (민첩 + 지능)`}
                                     className={`flex items-center space-x-1 md:space-x-1.5 px-1.5 py-0.5 md:px-2 md:py-1 rounded border text-[9px] md:text-[11px] font-semibold shrink-0 transition-all ${bgStyle} ${isCurrent ? 'scale-105' : 'opacity-80'}`}
                                 >
-                                    <span className={`text-[8px] md:text-[9px] font-mono font-bold px-0.5 md:px-1 rounded ${isCurrent ? 'bg-amber-500 text-black animate-pulse' : 'bg-slate-800 text-slate-400'}`}>
+                                    <span className={`text-[8px] md:text-[9px] font-mono font-bold px-0.5 md:px-1 rounded ${isCurrent ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-400'}`}>
                                         {idx + 1}
                                     </span>
                                     {unit.visualUrl ? (
@@ -2546,7 +2546,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                                     <span className="truncate max-w-[65px] sm:max-w-[80px] md:max-w-[110px]">{unit.name}</span>
                                     <span className="text-[8px] md:text-[9px] text-amber-400/80 font-mono">({unit.agility})</span>
                                     {isCurrent && (
-                                        <span className="text-[7px] md:text-[8px] bg-amber-400 text-black px-0.5 md:px-1 rounded font-black tracking-tight animate-pulse">행동</span>
+                                        <span className="text-[7px] md:text-[8px] bg-amber-400 text-black px-0.5 md:px-1 rounded font-black tracking-tight">행동</span>
                                     )}
                                 </div>
                             );
@@ -2656,7 +2656,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                         <div className="max-w-4xl mx-auto mb-1 bg-slate-950/90 p-1 rounded-lg border border-amber-500/30 shadow-md relative">
                             <div className="flex items-center justify-between mb-0.5 px-0.5">
                                 <div className="flex items-center gap-1 text-[8px] md:text-xs font-bold text-slate-300">
-                                    <Zap size={10} className="text-amber-400 fill-amber-400 animate-pulse shrink-0" />
+                                    <Zap size={10} className="text-amber-400 fill-amber-400 shrink-0" />
                                     <span className="text-amber-300 truncate">[{currentUnit.name}] 퀵 슬롯</span>
                                     <span className="text-[7.5px] text-slate-500 font-mono">({shortcuts.filter(Boolean).length}/10)</span>
                                 </div>
@@ -2693,7 +2693,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                                         <div key={slotIdx} className="relative group">
                                             {/* Hover / Touch Info Tooltip */}
                                             {isHovered && skill && (
-                                                <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 w-44 md:w-52 bg-slate-950/95 backdrop-blur border border-amber-500/60 p-1.5 rounded-lg shadow-2xl z-50 pointer-events-none text-left animate-in fade-in zoom-in-95">
+                                                <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 w-44 md:w-52 bg-slate-950 border border-amber-500/60 p-1.5 rounded-lg shadow-2xl z-50 pointer-events-none text-left">
                                                     <div className="flex justify-between items-start mb-0.5 border-b border-slate-800 pb-0.5">
                                                         <h5 className="font-bold text-[10px] text-amber-300 flex items-center gap-1">
                                                             <span>{skill.name}</span>
@@ -2733,7 +2733,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                                             )}
 
                                             {isHovered && item && (
-                                                <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 w-44 md:w-52 bg-slate-950/95 backdrop-blur border border-emerald-500/60 p-1.5 rounded-lg shadow-2xl z-50 pointer-events-none text-left animate-in fade-in zoom-in-95">
+                                                <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 w-44 md:w-52 bg-slate-950 border border-emerald-500/60 p-1.5 rounded-lg shadow-2xl z-50 pointer-events-none text-left">
                                                     <div className="flex justify-between items-start mb-0.5 border-b border-slate-800 pb-0.5">
                                                         <h5 className="font-bold text-[10px] text-emerald-300 flex items-center gap-1">
                                                             <span>{item.name}</span>
@@ -2857,22 +2857,22 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                     <div className="flex items-center space-x-2 text-xs md:text-sm font-bold">
                         {activeUnit?.unitType === 'player' ? (
                             <span className="text-amber-400 flex items-center">
-                                <Crown size={15} className="mr-1 text-amber-400 animate-pulse" />
+                                <Crown size={15} className="mr-1 text-amber-400" />
                                 <span>[플레이어 {player.name}]의 행동 차례입니다!</span>
                             </span>
                         ) : activeUnit?.unitType === 'companion' && activeCompanion ? (
                             <span className="text-indigo-400 flex items-center">
-                                <User size={15} className="mr-1 text-indigo-400 animate-pulse" />
+                                <User size={15} className="mr-1 text-indigo-400" />
                                 <span>[동료 {activeCompanion.name}]의 행동 차례입니다 {!isCompanionAuto && !isAutoBattle ? '(수동 지휘)' : '(자동)'}</span>
                             </span>
                         ) : activeUnit?.unitType === 'enemy' ? (
                             <span className="text-red-400 flex items-center">
-                                <Skull size={15} className="mr-1 text-red-400 animate-pulse" />
+                                <Skull size={15} className="mr-1 text-red-400" />
                                 <span>[{activeUnit.name}]의 행동 차례입니다...</span>
                             </span>
                         ) : activeUnit?.unitType === 'summon' ? (
                             <span className="text-emerald-400 flex items-center">
-                                <Sparkles size={15} className="mr-1 text-emerald-400 animate-pulse" />
+                                <Sparkles size={15} className="mr-1 text-emerald-400" />
                                 <span>[소환수 {activeUnit.name}]의 행동 차례입니다...</span>
                             </span>
                         ) : (
@@ -2883,7 +2883,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                         )}
                     </div>
                     {activeTurnBgmName && (
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-[10px] text-cyan-300 font-bold shadow-sm animate-pulse shrink-0">
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-[10px] text-cyan-300 font-bold shadow-sm shrink-0">
                             <Music size={11} className="text-cyan-400" />
                             <span className="truncate max-w-[130px] sm:max-w-[200px]">[{activeTurnBgmName}] 테마 BGM</span>
                         </div>
@@ -3003,8 +3003,8 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                     </div>
                 ) : activeUnit?.unitType === 'enemy' ? (
                     <div className="max-w-4xl mx-auto flex items-center justify-center py-3 bg-slate-950/60 rounded-xl border border-red-500/20">
-                        <Skull size={18} className="text-red-400 mr-2 animate-bounce" />
-                        <span className="text-xs text-red-300 font-bold animate-pulse">{activeUnit.name}의 행동을 처리하는 중...</span>
+                        <Skull size={18} className="text-red-400 mr-2" />
+                        <span className="text-xs text-red-300 font-bold">{activeUnit.name}의 행동을 처리하는 중...</span>
                     </div>
                 ) : (
                     /* Default Player Turn Controls */
@@ -3019,7 +3019,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             </div>
 
             {isSkillModalOpen && (
-                <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="absolute inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
                     <SkillSelector 
                         skills={getEntityAllCombatSkills(player, (!!combatState.trialTier || combatState.type === 'final_trial_battle') ? [] : readyBondSkills.filter(bs => !bs.sourceId))} 
                         currentTier={player.classTier} 
@@ -3056,7 +3056,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
 
           
          {isItemModalOpen && (
-                <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="absolute inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
                     <ItemSelectionModal
                         items={player.inventory.filter(item => item.type === "Consumable" && !item.name.includes("차원이동주문서") && !item.name.includes("차원이동 주문서"))}
                         partyMembers={partyMembers}
@@ -3099,7 +3099,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             )}
 
             {selectedMount && (
-                <div className="absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="absolute inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
                     <MountDetailsModal 
                         mount={selectedMount.mount || selectedMount} 
                         riderShinryokuType={selectedMount.riderShinryokuType} 

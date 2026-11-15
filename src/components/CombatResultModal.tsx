@@ -54,6 +54,9 @@ export interface CombatResultModalProps {
         combatType?: string;
         dungeonId?: string;
         suddenEvent?: any;
+        suddenEventType?: string;
+        isSuddenEvent?: boolean;
+        huntingBandId?: string;
         lastEnemies?: any[];
         defenseSource?: string;
         targetCity?: string;
@@ -888,7 +891,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                             </button>
                         ) : (
                             <>
-                                {isVictory && onRematch && (
+                                {isVictory && onRematch && (!data.combatType || data.combatType === 'normal') && !data.suddenEvent && !data.suddenEventType && !data.isSuddenEvent && (
                                     <button
                                         type="button"
                                         onClick={onRematch}

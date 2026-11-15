@@ -1,5 +1,7 @@
 import React, { Suspense } from 'react';
-import { Character, CombatState, WeaponType, CombatStyle } from '../../types';
+import { Character, CombatState, WeaponType, CombatStyle, Enemy } from '../../types';
+import { NATION_THEMES, getMonsterInfo, getHuntBandsForLocation, getMonsterPoolForBand } from '../../monsterfield';
+import { generateProceduralEnemy } from '../../utils';
 import { ResultData } from '../ActionResultModal';
 import { SuddenEventData } from '../../services/suddenEventService';
 import { TrainingReportData } from '../TrainingReportModal';
@@ -137,15 +139,14 @@ export const CombatAndTrainingModalsLayer: React.FC<Props> = ({
             setIsCityOpen(true);
           }}
           onRematch={() => {
+            const cType = combatResultData?.combatType || 'normal';
+            if (cType !== 'normal' || combatResultData?.suddenEvent || combatResultData?.suddenEventType || combatResultData?.isSuddenEvent) {
+              return;
+            }
             if (character.stats && character.stats.hp <= 0) {
               alert("체력이 다하여 재전투를 진행할 수 없습니다. 휴식을 취하거나 회복 후 도전하세요.");
               return;
             }
-            const enemies = combatResultData?.lastEnemies;
-            const cType = combatResultData?.combatType || 'normal';
-            const defSrc = combatResultData?.defenseSource;
-            const tCity = combatResultData?.targetCity;
-            const tNation = combatResultData?.targetNation;
 
             const timeRes = advanceGameTime(character, 1, { isDungeonOrCombat: true, activityName: "전투 종료 및 즉시 재전투" });
             if (timeRes.systemLogs && timeRes.systemLogs.length > 0) {
@@ -154,25 +155,60 @@ export const CombatAndTrainingModalsLayer: React.FC<Props> = ({
             setCharacter(timeRes.updatedCharacter);
             setCombatResultData?.(null);
 
-            if (enemies && enemies.length > 0) {
-              const freshEnemies = enemies.map((e: any) => ({
-                ...e,
-                stats: { 
-                  ...e.stats, 
-                  hp: e.stats?.maxHp || e.stats?.hp || 100,
-                  mp: e.stats?.maxMp !== undefined ? e.stats.maxMp : e.stats?.mp
-                },
-                statusEffects: []
-              }));
-              handleBattleTrigger(freshEnemies, cType, defSrc, tCity, tNation);
-            } else {
-              // 직전 적 정보가 없는 경우 사냥터로 전환
-              setCityInitialConfig({ 
-                district: 'Outskirts', 
-                openHuntMap: true,
-                initialBandId: character.lastHuntingBandId 
+            const region = character.currentLocation?.region;
+            const nation = character.currentLocation?.nation || character.nation;
+            const city = character.currentLocation?.city || "";
+            const bandId = combatResultData?.huntingBandId || character.lastHuntingBandId;
+            const bands = getHuntBandsForLocation(nation, region, city);
+            const matchedBand = bandId ? bands.find(b => b.id === bandId) : undefined;
+
+            if (matchedBand) {
+              const [minLvl, maxLvl] = matchedBand.levelRange;
+              const targetLevel = Math.floor(Math.random() * (maxLvl - minLvl + 1)) + minLvl;
+              const theme = NATION_THEMES[city] || NATION_THEMES[nation] || NATION_THEMES["default"];
+              const monsterPool = getMonsterPoolForBand(theme, matchedBand.id);
+              const enemyCount = Math.floor(Math.random() * 4) + 1;
+              const tempEnemies: Enemy[] = [];
+              for (let i = 0; i < enemyCount; i++) {
+                const baseEnemy = generateProceduralEnemy(targetLevel);
+                if (monsterPool && monsterPool.length > 0) {
+                  const themedName = monsterPool[Math.floor(Math.random() * monsterPool.length)];
+                  const monsterInfo = getMonsterInfo(themedName);
+                  baseEnemy.name = monsterInfo.name;
+                  baseEnemy.visualUrl = monsterInfo.visualUrl;
+                  if (monsterInfo.shinryokuType) {
+                    baseEnemy.shinryokuType = monsterInfo.shinryokuType;
+                  }
+                }
+                tempEnemies.push(baseEnemy);
+              }
+              const nameCounts: Record<string, number> = {};
+              tempEnemies.forEach(e => { nameCounts[e.name] = (nameCounts[e.name] || 0) + 1; });
+              const freshEnemies = tempEnemies.map((e, idx) => {
+                if (nameCounts[e.name] > 1) {
+                  const count = tempEnemies.slice(0, idx + 1).filter(n => n.name === e.name).length;
+                  return { ...e, name: `${e.name} ${String.fromCharCode(64 + count)}` };
+                }
+                return e;
               });
-              setIsCityOpen(true);
+              handleBattleTrigger(freshEnemies, 'normal');
+            } else {
+              const fallbackLevel = combatResultData?.lastEnemies?.[0]?.level || character.level;
+              const enemyCount = Math.floor(Math.random() * 3) + 1;
+              const tempEnemies: Enemy[] = [];
+              for (let i = 0; i < enemyCount; i++) {
+                tempEnemies.push(generateProceduralEnemy(fallbackLevel));
+              }
+              const nameCounts: Record<string, number> = {};
+              tempEnemies.forEach(e => { nameCounts[e.name] = (nameCounts[e.name] || 0) + 1; });
+              const freshEnemies = tempEnemies.map((e, idx) => {
+                if (nameCounts[e.name] > 1) {
+                  const count = tempEnemies.slice(0, idx + 1).filter(n => n.name === e.name).length;
+                  return { ...e, name: `${e.name} ${String.fromCharCode(64 + count)}` };
+                }
+                return e;
+              });
+              handleBattleTrigger(freshEnemies, 'normal');
             }
           }}
         />

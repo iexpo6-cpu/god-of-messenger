@@ -45,7 +45,7 @@ const HighlightedCombatText: React.FC<{ content: string; isCrit?: boolean }> = (
                     if (tagContent.includes('인연')) {
                         return (
                             <span key={i} className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded bg-fuchsia-900/60 text-fuchsia-300 font-bold border border-fuchsia-500/40 text-[10px] md:text-xs shadow-sm">
-                                <Sparkles size={11} className="mr-1 text-fuchsia-300 animate-pulse" />
+                                <Sparkles size={11} className="mr-1 text-fuchsia-300" />
                                 {tagContent}
                             </span>
                         );
@@ -70,7 +70,7 @@ const HighlightedCombatText: React.FC<{ content: string; isCrit?: boolean }> = (
                     const inner = part.slice(1, -1).trim();
                     if (inner.includes('치명타')) {
                         return (
-                            <span key={i} className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded bg-gradient-to-r from-amber-600/80 to-red-600/80 text-yellow-100 font-black border border-amber-300/60 shadow-sm text-[10px] md:text-xs animate-bounce">
+                            <span key={i} className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded bg-gradient-to-r from-amber-600/80 to-red-600/80 text-yellow-100 font-black border border-amber-300/60 shadow-sm text-[10px] md:text-xs">
                                 <Flame size={12} className="mr-0.5 text-yellow-200 fill-yellow-300" />
                                 치명타!
                             </span>
@@ -79,7 +79,7 @@ const HighlightedCombatText: React.FC<{ content: string; isCrit?: boolean }> = (
                     if (inner.includes('상성 우위') || inner.includes('상성 유리')) {
                         return (
                             <span key={i} className="inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded bg-emerald-950/80 text-emerald-300 font-extrabold border border-emerald-500/50 text-[10px] md:text-xs shadow-[0_0_8px_rgba(16,185,129,0.3)]">
-                                <Zap size={11} className="mr-0.5 text-emerald-400 fill-emerald-400 animate-pulse" />
+                                <Zap size={11} className="mr-0.5 text-emerald-400 fill-emerald-400" />
                                 상성 우위
                             </span>
                         );
@@ -162,7 +162,7 @@ export const CombatLogEntry = ({ text }: CombatLogEntryProps) => {
     if (isCrit) {
         return (
             <div className="bg-gradient-to-r from-amber-950/40 via-orange-950/30 to-red-950/40 border-l-4 border-amber-400 px-2 py-1 rounded my-1 animate-in fade-in slide-in-from-left-2 text-[11px] md:text-xs text-amber-100 shadow-sm flex items-start gap-1.5">
-                <Flame size={14} className="mt-0.5 text-amber-400 fill-amber-400 flex-shrink-0 animate-pulse" />
+                <Flame size={14} className="mt-0.5 text-amber-400 fill-amber-400 flex-shrink-0" />
                 <div className="flex-1">
                     <HighlightedCombatText content={currentText} isCrit={true} />
                 </div>
@@ -183,7 +183,7 @@ export const CombatLogEntry = ({ text }: CombatLogEntryProps) => {
     ) {
         return (
             <div className="bg-gradient-to-r from-purple-950/40 via-fuchsia-950/30 to-indigo-950/40 border-l-4 border-fuchsia-400 px-2 py-1 rounded my-1 animate-in fade-in slide-in-from-left-2 text-[11px] md:text-xs text-fuchsia-100 shadow-sm flex items-start gap-1.5">
-                <Sparkles size={14} className="mt-0.5 text-fuchsia-400 flex-shrink-0 animate-pulse" />
+                <Sparkles size={14} className="mt-0.5 text-fuchsia-400 flex-shrink-0" />
                 <div className="flex-1">
                     <HighlightedCombatText content={currentText} />
                 </div>
@@ -238,7 +238,7 @@ export const CombatLogEntry = ({ text }: CombatLogEntryProps) => {
     ) {
         return (
             <div className="bg-rose-950/40 border-l-4 border-rose-500 px-2 py-1 rounded my-1 animate-in fade-in slide-in-from-left-2 text-[11px] md:text-xs text-rose-200 font-bold flex items-start gap-1.5">
-                <Skull size={14} className="mt-0.5 text-rose-400 flex-shrink-0 animate-bounce" />
+                <Skull size={14} className="mt-0.5 text-rose-400 flex-shrink-0" />
                 <div className="flex-1">
                     <HighlightedCombatText content={currentText} />
                 </div>
@@ -250,7 +250,7 @@ export const CombatLogEntry = ({ text }: CombatLogEntryProps) => {
     if (currentText.includes('[포획 성공]')) {
         return (
             <div className="bg-emerald-950/40 border-l-4 border-emerald-400 px-2 py-1 rounded my-1 animate-in fade-in slide-in-from-left-2 text-[11px] md:text-xs text-emerald-200 font-bold flex items-start gap-1.5">
-                <CheckCircle size={14} className="mt-0.5 text-emerald-400 flex-shrink-0 animate-pulse" />
+                <CheckCircle size={14} className="mt-0.5 text-emerald-400 flex-shrink-0" />
                 <div className="flex-1">
                     <HighlightedCombatText content={currentText} />
                 </div>

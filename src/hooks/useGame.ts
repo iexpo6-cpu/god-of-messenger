@@ -440,22 +440,23 @@ export const useGame = () => {
           .replace(/\s+[A-Z]$/, '') // 이름 끝의 공백+대문자 한 글자(예: " A") 제거
           .trim();
       
-      setCharacterSafe(prev => {
-          const next = { ...prev };
-          if (!next.bestiary) next.bestiary = {};
-          
-          const entry = next.bestiary[cleanName] || { encountered: false, defeatedCount: 0 };
-          
-          if (!entry.encountered) {
-              entry.encountered = true;
+      // 도감 갱신은 동료 마이그레이션/레벨업 검사가 불필요하므로 경량 setCharacter 사용 (이미 조우한 몬스터는 상태 변경 생략)
+      setCharacter(prev => {
+          const prevBestiary = prev.bestiary || {};
+          const prevEntry = prevBestiary[cleanName];
+          if (!isDefeated && prevEntry?.encountered) {
+              return prev;
           }
-          
-          if (isDefeated) {
-              entry.defeatedCount += 1;
-          }
-          
-          next.bestiary[cleanName] = entry;
-          return next;
+          const nextEntry = prevEntry
+              ? { ...prevEntry, encountered: true, defeatedCount: prevEntry.defeatedCount + (isDefeated ? 1 : 0) }
+              : { encountered: true, defeatedCount: isDefeated ? 1 : 0 };
+          return {
+              ...prev,
+              bestiary: {
+                  ...prevBestiary,
+                  [cleanName]: nextEntry
+              }
+          };
       });
   };
 
@@ -1059,7 +1060,6 @@ export const useGame = () => {
                 }
                 return e;
             });
-            finalEnemies.forEach(e => updateBestiary(e.name, false));
             battleMsg = `[시스템] ${city || nation}의 ${theme.fieldSuffix}에서 적들과 조우했습니다!`;
         }
         else if (actionText.includes('(대련)') || actionText.includes('(결투)')) {
@@ -1217,8 +1217,25 @@ export const useGame = () => {
             (newCombatState as any).sourceId = relationTargetId; 
         }
 
-        // [NEW] 전투 진입 시 도감에 조우 기록
-        finalEnemies.forEach(e => updateBestiary(e.name, false));
+        // [NEW] 전투 진입 시 도감에 조우 기록 (단일 배치 갱신으로 불필요한 다중 리렌더 방지)
+        if (finalEnemies.length > 0) {
+            const cleanNames = Array.from(new Set(
+                finalEnemies.map(e => e.name.replace(/\[.*?\]/g, '').replace(/\s+[A-Z]$/, '').trim()).filter(Boolean)
+            ));
+            setCharacter(prev => {
+                const prevBestiary = prev.bestiary || {};
+                const missing = cleanNames.filter(name => !prevBestiary[name]?.encountered);
+                if (missing.length === 0) return prev;
+                const nextBestiary = { ...prevBestiary };
+                missing.forEach(name => {
+                    const existing = nextBestiary[name];
+                    nextBestiary[name] = existing
+                        ? { ...existing, encountered: true }
+                        : { encountered: true, defeatedCount: 0 };
+                });
+                return { ...prev, bestiary: nextBestiary };
+            });
+        }
         setCombatState(newCombatState); 
         setSceneType('combat'); 
         setMessages(prev => [...prev, { role: 'ai', text: battleMsg }]); 
@@ -5208,6 +5225,9 @@ let targetIdx = -1;
                 combatType: currentCombat?.type,
                 dungeonId: (currentCombat as any)?.dungeonId || finalChar.dungeonProgress?.dungeonId,
                 suddenEvent,
+                suddenEventType: (currentCombat as any)?.suddenEventType,
+                isSuddenEvent: Boolean((currentCombat as any)?.suddenEventType) || Boolean(suddenEvent) || finalEnemies.some(e => e.name?.includes('[영원의 라이벌]') || e.name?.includes('[영원의 숙적]') || (e as any).isRivalEscort || (e as any).isRiftCrystal),
+                huntingBandId: finalChar.lastHuntingBandId,
                 lastEnemies: finalEnemies,
                 defenseSource: (currentCombat as any)?.defenseSource,
                 targetCity: (currentCombat as any)?.targetCity,

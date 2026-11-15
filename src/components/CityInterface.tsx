@@ -595,7 +595,6 @@ const CityInterface: React.FC<Props> = ({
     const handleEnterField = (bandId: string, minLvl: number, maxLvl: number) => {
         setIsHuntMapOpen(false);
         onClose();
-        onUpdateCharacter({ ...character, lastHuntingBandId: bandId }, '');
         const targetLevel = Math.floor(Math.random() * (maxLvl - minLvl + 1)) + minLvl;
         onAction(`[전투 돌입] 사냥터 탐색 (지역: ${bandId}, 권장레벨: ${targetLevel})`);
     };

@@ -45,11 +45,11 @@ export const AllyTargetQuickSelector: React.FC<AllyTargetQuickSelectorProps> = (
 }) => {
     return (
         <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-lg animate-in fade-in slide-in-from-top-2 duration-150">
-            <div className="bg-slate-900/95 backdrop-blur-md border border-cyan-500/70 rounded-xl p-2 sm:p-2.5 shadow-2xl shadow-cyan-950/60 ring-1 ring-cyan-500/30">
+            <div className="bg-slate-900/95 border border-cyan-500/70 rounded-xl p-2 sm:p-2.5 shadow-2xl shadow-cyan-950/60 ring-1 ring-cyan-500/30">
                 {/* 상단 콤팩트 헤더 */}
                 <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800">
                     <div className="flex items-center gap-1.5 min-w-0">
-                        <Sparkles size={14} className="text-cyan-400 shrink-0 animate-pulse" />
+                        <Sparkles size={14} className="text-cyan-400 shrink-0" />
                         <span className="text-xs font-bold text-cyan-200 truncate">
                             아군 대상 선택
                         </span>
