@@ -1260,10 +1260,13 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
       if (isAttackWithBuff) {
           const buffCap = getAttackSkillBuffCap(customTargetType, finalBonusSteps);
           const buffSummary = buffEffects.map(ef => {
-              const safeVal = Math.min(ef.value, buffCap);
+              const isAllRes = ef.type === 'ELEMENTAL_RES_BOOST' && (ef.targetElement === '모든 속성' || ef.targetElement === '모든속성');
+              const effCap = isAllRes ? Math.floor(buffCap * 0.5) : buffCap;
+              const safeVal = Math.min(ef.value, effCap);
               if (ef.type === 'STAT_BOOST') return `${STAT_DISPLAY_NAMES[ef.targetStat || ''] || ef.targetStat} +${safeVal}%(Lv당+0.5%)`;
               if (ef.type === 'ELEMENTAL_DMG_BOOST') return `${ef.targetElement || '속성'} 피해 +${safeVal}%(Lv당+0.5%)`;
               if (ef.type === 'ELEMENTAL_RES_BOOST') return `${ef.targetElement || '속성'} 저항 +${safeVal}%(Lv당+0.5%)`;
+              if (ef.type === 'MANA_SHIELD') return `마나 쉴드 +${safeVal}%(Lv당+0.5%)`;
               if (ef.type === 'HP_RECOV') return `HP +${safeVal}% 회복(WIS·INT합산x4 비례, 예상: +${Math.max(10, Math.floor(sumWisInt * 4 * safeVal / 100))}, Lv당+0.5%)`;
               if (ef.type === 'MP_RECOV') return `MP +${safeVal}% 회복(WIS·INT합산 비례, 예상: +${Math.max(5, Math.floor(sumWisInt * safeVal / 100))}, Lv당+0.5%)`;
               return '';
@@ -1404,15 +1407,25 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
           const isAttackSkill = (customSkillType === SkillType.PHYSICAL || customSkillType === SkillType.MAGIC) && activeTab === ClassTier.FINAL;
           const isAllElem = value === '모든 속성' || value === '모든속성';
           const otherSum = newEffects.reduce((s, ef, i) => i === idx || ef.type === 'CLEANSE' ? s : s + (ef.value || 0), 0);
-          const maxAllowed = isAttackSkill ? Math.max(0, getAttackSkillBuffCap(customTargetType, isFinalActiveTab ? finalBonusSteps : 0) - otherSum) : getBuffSlotMaxAllowed(activeTab, buffTargetType, newEffects.length, otherSum, false, false, isAllElem, isFinalActiveTab ? finalBonusSteps : 0);
+          const attackBuffCap = getAttackSkillBuffCap(customTargetType, isFinalActiveTab ? finalBonusSteps : 0);
+          const isAllRes = isAllElem && newEffects[idx].type === 'ELEMENTAL_RES_BOOST';
+          const attackCap = isAllRes ? Math.floor(attackBuffCap * 0.5) : attackBuffCap;
+          const maxAllowed = isAttackSkill 
+              ? Math.max(0, Math.min(attackCap, attackBuffCap - otherSum)) 
+              : getBuffSlotMaxAllowed(activeTab, buffTargetType, newEffects.length, otherSum, false, false, isAllElem, isFinalActiveTab ? finalBonusSteps : 0);
           const safeVal = Math.min(newEffects[idx].value || 5, maxAllowed);
           newEffects[idx] = { ...newEffects[idx], targetElement: value, value: safeVal };
       } else if (field === 'value') {
           const isAttackSkill = (customSkillType === SkillType.PHYSICAL || customSkillType === SkillType.MAGIC) && activeTab === ClassTier.FINAL;
           const isStatAccEva = newEffects[idx].type === 'STAT_BOOST' && isAccOrEvaStat(newEffects[idx].targetStat);
           const isAllElem = (newEffects[idx].type === 'ELEMENTAL_DMG_BOOST' || newEffects[idx].type === 'ELEMENTAL_RES_BOOST') && (newEffects[idx].targetElement === '모든 속성' || newEffects[idx].targetElement === '모든속성');
+          const isAllRes = isAllElem && newEffects[idx].type === 'ELEMENTAL_RES_BOOST';
           const otherSum = newEffects.reduce((s, ef, i) => i === idx || ef.type === 'CLEANSE' ? s : s + (ef.value || 0), 0);
-          const maxAllowed = isAttackSkill ? Math.max(0, getAttackSkillBuffCap(customTargetType, isFinalActiveTab ? finalBonusSteps : 0) - otherSum) : getBuffSlotMaxAllowed(activeTab, buffTargetType, newEffects.length, otherSum, isStatAccEva, false, isAllElem, isFinalActiveTab ? finalBonusSteps : 0);
+          const attackBuffCap = getAttackSkillBuffCap(customTargetType, isFinalActiveTab ? finalBonusSteps : 0);
+          const attackCap = isAllRes ? Math.floor(attackBuffCap * 0.5) : attackBuffCap;
+          const maxAllowed = isAttackSkill 
+              ? Math.max(0, Math.min(attackCap, attackBuffCap - otherSum)) 
+              : getBuffSlotMaxAllowed(activeTab, buffTargetType, newEffects.length, otherSum, isStatAccEva, false, isAllElem, isFinalActiveTab ? finalBonusSteps : 0);
           const safeVal = Math.min(Math.max(0, Number(value) || 0), maxAllowed);
           newEffects[idx] = { ...newEffects[idx], value: safeVal };
       } else {
@@ -3354,6 +3367,14 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                          <option value="STAT_BOOST">스탯 증가 (%)</option>
                                                          <option value="ELEMENTAL_DMG_BOOST">속성 피해 증가 (%)</option>
                                                          <option value="ELEMENTAL_RES_BOOST">속성 저항 증가 (%)</option>
+                                                          <option 
+                                                              value="MANA_SHIELD"
+                                                              disabled={getRequiredMinTier(activeTab) > 1 && !hasCombatStyleOfRootAndTier(character, MANA_SHIELD_ROOTS, getRequiredMinTier(activeTab))}
+                                                          >
+                                                              마나 쉴드 {
+                                                                  getRequiredMinTier(activeTab) > 1 && !hasCombatStyleOfRootAndTier(character, MANA_SHIELD_ROOTS, getRequiredMinTier(activeTab)) ? '🔒 (마법사/에너자이저 4차 필요)' : ''
+                                                              }
+                                                          </option>
                                                          <option value="HP_RECOV">HP 회복 (WIS·INT 합산 * 4 비례)</option>
                                                          <option value="MP_RECOV">MP 회복 (WIS·INT 합산 비례)</option>
                                                      </select>
@@ -3400,7 +3421,12 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                                          <div key={idx} className="bg-slate-950 p-2 rounded border border-slate-800 flex flex-col gap-1.5">
                                                                              <div className="flex justify-between items-center">
                                                                                  <span className="text-[10px] text-amber-400 font-bold">
-                                                                                     {ef.type === 'STAT_BOOST' ? (STAT_DISPLAY_NAMES[ef.targetStat || ''] || ef.targetStat || '스탯') : ef.type}
+                                                                                     {ef.type === 'STAT_BOOST' ? (STAT_DISPLAY_NAMES[ef.targetStat || ''] || ef.targetStat || '스탯') : 
+                                                       ef.type === 'MANA_SHIELD' ? '마나 쉴드' :
+                                                       ef.type === 'ELEMENTAL_RES_BOOST' ? `${ef.targetElement || '속성'} 저항` :
+                                                       ef.type === 'ELEMENTAL_DMG_BOOST' ? `${ef.targetElement || '속성'} 피해` :
+                                                       ef.type === 'HP_RECOV' ? 'HP 회복' :
+                                                       ef.type === 'MP_RECOV' ? 'MP 회복' : ef.type}
                                                                                  </span>
                                                                                  <button onClick={() => removeBuffEffect(idx)} className="text-red-400 hover:text-red-300"><Trash2 size={12}/></button>
                                                                              </div>
@@ -3428,28 +3454,54 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                                                  </div>
                                                                              )}
 
-                                                                             {(ef.type === 'ELEMENTAL_DMG_BOOST' || ef.type === 'ELEMENTAL_RES_BOOST') && (
-                                                                                 <div className="flex gap-2 items-center">
-                                                                                     <select 
-                                                                                         value={ef.targetElement || '화염계'} 
-                                                                                         onChange={(e) => updateBuffEffect(idx, 'targetElement', e.target.value)}
-                                                                                         className="bg-slate-900 border border-slate-700 rounded text-[10px] p-1 text-slate-200"
-                                                                                     >
-                                                                                         {SHINRYOKU_TYPES_LIST.map(el => (
-                                                                                             <option key={el} value={el}>{el}</option>
-                                                                                         ))}
-                                                                                     </select>
-                                                                                     <input 
-                                                                                         type="range" 
-                                                                                         min="1" 
-                                                                                         max={Math.max(1, slotCap)} 
-                                                                                         value={Math.min(ef.value, Math.max(1, slotCap))} 
-                                                                                         onChange={(e) => updateBuffEffect(idx, 'value', parseInt(e.target.value))} 
-                                                                                         className="flex-1 accent-amber-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
-                                                                                     />
-                                                                                     <span className="text-[10px] font-mono text-amber-400 font-bold">{Math.min(ef.value, Math.max(1, slotCap))}%</span>
-                                                                                 </div>
-                                                                             )}
+                                                                              {ef.type === 'MANA_SHIELD' && (
+                                                                                  <div className="flex gap-2 items-center bg-cyan-950/20 p-1.5 rounded border border-cyan-800/40">
+                                                                                      <Shield size={14} className="text-cyan-400 shrink-0" />
+                                                                                      <span className="text-[10px] text-cyan-200 font-bold shrink-0">마나 쉴드</span>
+                                                                                      <input 
+                                                                                          type="range" 
+                                                                                          min="1" 
+                                                                                          max={Math.max(1, slotCap)} 
+                                                                                          value={Math.min(ef.value, Math.max(1, slotCap))} 
+                                                                                          onChange={(e) => updateBuffEffect(idx, 'value', parseInt(e.target.value))} 
+                                                                                          className="flex-1 accent-cyan-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                                                                                      />
+                                                                                      <span className="text-[10px] font-mono text-cyan-400 font-bold">{Math.min(ef.value, Math.max(1, slotCap))}%</span>
+                                                                                  </div>
+                                                                              )}
+
+                                                                              {(ef.type === 'ELEMENTAL_DMG_BOOST' || ef.type === 'ELEMENTAL_RES_BOOST') && (() => {
+                                                                                  const isAllRes = ef.type === 'ELEMENTAL_RES_BOOST' && (ef.targetElement === '모든 속성' || ef.targetElement === '모든속성');
+                                                                                  const effectiveSlotCap = isAllRes ? Math.min(Math.floor(attackBuffCap * 0.5), slotCap) : slotCap;
+                                                                                  return (
+                                                                                      <div className="flex gap-2 items-center">
+                                                                                          <select 
+                                                                                              value={ef.targetElement || (ef.type === 'ELEMENTAL_RES_BOOST' ? '모든 속성' : '화염계')} 
+                                                                                              onChange={(e) => updateBuffEffect(idx, 'targetElement', e.target.value)}
+                                                                                              className="bg-slate-900 border border-slate-700 rounded text-[10px] p-1 text-slate-200"
+                                                                                          >
+                                                                                              {ef.type === 'ELEMENTAL_RES_BOOST' && (
+                                                                                                  <option value="모든 속성">모든 속성 (1/2 상한)</option>
+                                                                                              )}
+                                                                                              {SHINRYOKU_TYPES_LIST.map(el => (
+                                                                                                  <option key={el} value={el}>{el}</option>
+                                                                                              ))}
+                                                                                          </select>
+                                                                                          <input 
+                                                                                              type="range" 
+                                                                                              min="1" 
+                                                                                              max={Math.max(1, effectiveSlotCap)} 
+                                                                                              value={Math.min(ef.value, Math.max(1, effectiveSlotCap))} 
+                                                                                              onChange={(e) => updateBuffEffect(idx, 'value', parseInt(e.target.value))} 
+                                                                                              className="flex-1 accent-amber-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
+                                                                                          />
+                                                                                          <span className="text-[10px] font-mono text-amber-400 font-bold">{Math.min(ef.value, Math.max(1, effectiveSlotCap))}%</span>
+                                                                                          {isAllRes && (
+                                                                                              <span className="text-[9px] text-cyan-400 font-semibold bg-cyan-950/60 px-1 py-0.5 rounded border border-cyan-800/40">1/2</span>
+                                                                                          )}
+                                                                                      </div>
+                                                                                  );
+                                                                              })()}
 
                                                                              {(ef.type === 'HP_RECOV' || ef.type === 'MP_RECOV') && (
                                                                                  <div className="flex flex-col gap-1 w-full bg-slate-900/60 p-1.5 rounded border border-amber-900/30">
@@ -4583,7 +4635,12 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                 targetType: customSkillType === SkillType.BUFF ? buffTargetType : customTargetType,
                                                 buffType: isAttackWithBuff ? 'STAT_BOOST' : undefined,
                                                 buffEffects: isAttackWithBuff 
-                                                    ? buffEffects.map(ef => ({ ...ef, value: Math.min(ef.value || 0, getAttackSkillBuffCap(customTargetType, isFinalActiveTab ? finalBonusSteps : 0)) })) 
+                                                    ? buffEffects.map(ef => {
+                                                        const isAllRes = ef.type === 'ELEMENTAL_RES_BOOST' && (ef.targetElement === '모든 속성' || ef.targetElement === '모든속성');
+                                                        const cap = getAttackSkillBuffCap(customTargetType, isFinalActiveTab ? finalBonusSteps : 0);
+                                                        const effectiveCap = isAllRes ? Math.floor(cap * 0.5) : cap;
+                                                        return { ...ef, value: Math.min(ef.value || 0, effectiveCap) };
+                                                    }) 
                                                     : (customSkillType === SkillType.BUFF ? buffEffects.map(ef => ({
                                                         ...ef,
                                                         value: Math.min(ef.value || 0, getBuffValueCap(buffTargetType, false, ef.type === 'STAT_BOOST' && isAccOrEvaStat(ef.targetStat)))
