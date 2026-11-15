@@ -197,7 +197,24 @@ const getCompanionDialogue = (
     return `하앗!`;
 };
 
-const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoading, narrative, onUpdateCharacter }) => {
+const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOnAction, isLoading, narrative, onUpdateCharacter }) => {
+    const isMountedRef = useRef(true);
+    const isCombatEndedRef = useRef(Boolean(combatState.isEnded));
+    isCombatEndedRef.current = Boolean(combatState.isEnded);
+
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => { isMountedRef.current = false; };
+    }, []);
+
+    // [방어 가드] 언마운트 또는 전투 종료 후 지연된 타이머/컷신 콜백에서 onAction이 호출되는 현상 원천 차단
+    const onAction = useCallback((action: string, mpCost?: number) => {
+        if (!isMountedRef.current || isCombatEndedRef.current) {
+            console.warn('[CombatInterface] 종료되었거나 언마운트된 전투에서 액션 전송 차단:', action);
+            return;
+        }
+        rawOnAction(action, mpCost);
+    }, [rawOnAction]);
     const [isSkillModalOpen, setIsSkillModalOpen] = useState(false);
     const [isItemModalOpen, setIsItemModalOpen] = useState(false);
     const [selectedMount, setSelectedMount] = useState<any | null>(null);
@@ -1799,6 +1816,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             const customDuration = 4500;
             setActiveVideo({ url: skill.videoUrl.trim(), duration: customDuration });
             setTimeout(() => {
+                if (!isMountedRef.current || isCombatEndedRef.current) return;
                 setActiveVideo(null);
                 callback();
             }, customDuration);
@@ -1823,6 +1841,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             const videoUrl = gender === 'female' ? videoMap.female : videoMap.male;
             setActiveVideo({ url: videoUrl, duration });
             setTimeout(() => {
+                if (!isMountedRef.current || isCombatEndedRef.current) return;
                 setActiveVideo(null);
                 callback();
             }, duration);

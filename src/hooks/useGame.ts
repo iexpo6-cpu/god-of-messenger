@@ -882,6 +882,26 @@ export const useGame = () => {
   const handleAction = async (actionText: string, mpCost: number = 0, stateOverride?: Character) => {
     if (!actionText.trim()) return;
     if (actionText.trim() === '운영자 모드') { setIsDevModeOpen(true) ; setInput(''); return; }
+
+    // [방어 가드] 전투 종료 후 지연 도착한 전투 명령(동료 지시, 적 행동, 스킬 사용 등)이 채팅창/AI로 새어나가는 현상 원천 차단
+    const isPureCombatCommand =
+        actionText.startsWith('[적 ') ||
+        actionText.startsWith('[동료 지시:') ||
+        actionText.startsWith('[동료 행동:') ||
+        actionText.startsWith('[동료 스킬:') ||
+        actionText.startsWith('[스킬 사용') ||
+        actionText.startsWith('[일반 공격]') ||
+        actionText.startsWith('[방어]') ||
+        actionText === '[라운드 종료]' ||
+        actionText === '[턴 종료]' ||
+        actionText.startsWith('[인연 스킬]') ||
+        actionText.startsWith('[소환수 ') ||
+        actionText.startsWith('[분신 ');
+
+    if (isPureCombatCommand && (sceneType !== 'combat' || combatStateRef.current?.isEnded)) {
+        console.warn('[Combat Guard] 전투 종료/비전투 상태에서 지연 도착한 전투 액션 차단:', actionText);
+        return;
+    }
     
     // [MODIFIED] 장기 휴식(3일 초과) 시 브라우저 렉 및 프리징을 완벽 차단하는 1번 분할 처리 기법(Chunking) 도입
     const isCombatActionPrefix = sceneType === 'combat' || actionText.startsWith('[적 ') || actionText.startsWith('[동료 ') || actionText.startsWith('[스킬 사용]') || actionText.startsWith('[일반 공격]') || actionText.startsWith('[방어]') || actionText.startsWith('[라운드 종료]') || actionText.startsWith('[턴 종료]') || actionText.startsWith('[인연 스킬]') || actionText.startsWith('[소환수 ') || actionText.startsWith('[분신 ');
@@ -1880,6 +1900,11 @@ if (!timeAdvancedChar.divineRelations) {
     let enemiesForReconcile = (sceneType !== 'combat' && currentCombat) ? JSON.parse(JSON.stringify(currentCombat.enemies)) : [];
 
     if (sceneType === 'combat') {
+        if (currentCombat?.isEnded) {
+            console.warn('[Combat Guard] 이미 종료된 전투에서 수신된 액션 무시:', actionText);
+            setIsLoading(false);
+            return;
+        }
         try {
             if (currentCombat && !currentCombat.initialParticipantStates) {
             currentCombat.initialParticipantStates = createInitialParticipantStates(timeAdvancedChar);
