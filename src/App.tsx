@@ -7086,12 +7086,12 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                         drag
                                         dragMomentum={false}
                                         dragElastic={0.05}
-                                        className="w-[92vw] xs:w-[340px] sm:w-[420px] h-[280px] sm:h-[380px] bg-slate-950/95 border border-slate-800 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden select-none cursor-grab active:cursor-grabbing backdrop-blur-md"
+                                        className="w-[92vw] xs:w-[340px] sm:w-[420px] h-[280px] sm:h-[380px] bg-slate-950/95 border border-slate-800 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.95)] flex flex-col overflow-hidden select-none cursor-grab active:cursor-grabbing"
                                     >
                                         {/* Header */}
                                         <div className="bg-slate-900 border-b border-slate-800 px-3 py-2 flex items-center justify-between shrink-0">
                                             <div className="flex items-center gap-1.5 min-w-0">
-                                                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shrink-0"></span>
+                                                <span className="w-2 h-2 bg-emerald-500 rounded-full shrink-0"></span>
                                                 <span className="text-[11px] font-black text-slate-200 truncate">실시간 로그</span>
                                                 <span className="text-[8px] bg-slate-800 border border-slate-700 text-slate-400 px-1.5 py-0.5 rounded-full font-mono shrink-0">
                                                     {messages.length}건

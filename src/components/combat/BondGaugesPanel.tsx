@@ -30,7 +30,7 @@ const BondGaugesPanel: React.FC<Props> = ({ activeBondSkills, player }) => {
       <div className="bg-gradient-to-r from-pink-900/60 to-slate-900/80 px-3 py-2 flex items-center justify-between gap-1 border-b border-pink-500/30 select-none cursor-move">
         <div className="flex items-center gap-1.5 min-w-0">
           <GripHorizontal size={14} className="text-pink-400 shrink-0" />
-          <Heart size={12} className="text-pink-500 animate-pulse shrink-0" />
+          <Heart size={12} className="text-pink-500 shrink-0" />
           <span className="text-[11px] font-bold text-pink-200 truncate">인연 게이지</span>
         </div>
         <button
@@ -77,7 +77,7 @@ const BondGaugesPanel: React.FC<Props> = ({ activeBondSkills, player }) => {
                 <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
                   <div
                     className={`h-full ${
-                      isReady ? 'bg-gradient-to-r from-pink-500 to-rose-400 animate-pulse' : 'bg-pink-600/70'
+                      isReady ? 'bg-gradient-to-r from-pink-500 to-rose-400' : 'bg-pink-600/70'
                     } transition-all duration-500`}
                     style={{ width: `${gauge}%` }}
                   ></div>
@@ -94,7 +94,7 @@ const BondGaugesPanel: React.FC<Props> = ({ activeBondSkills, player }) => {
           onClick={() => setIsCollapsed(false)}
           className="p-2 bg-slate-900/40 text-center cursor-pointer hover:bg-slate-900/80 transition-all border-t border-slate-900"
         >
-          <p className="text-[10px] font-bold text-pink-400 animate-pulse">
+          <p className="text-[10px] font-bold text-pink-400">
             {activeBondSkills.length}개의 인연 활성화 중
           </p>
         </div>

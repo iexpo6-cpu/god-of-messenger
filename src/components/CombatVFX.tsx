@@ -1554,12 +1554,12 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
                 try {
                     (el as HTMLElement).animate(
                         [
-                            { transform: 'translate3d(0, 0, 0) scale(1)', filter: 'brightness(1)' },
-                            { transform: 'translate3d(-6px, -3px, 0) scale(1.04)', filter: 'brightness(1.5)' },
-                            { transform: 'translate3d(6px, 3px, 0) scale(0.98)', filter: 'brightness(1.2)' },
-                            { transform: 'translate3d(0, 0, 0) scale(1)', filter: 'brightness(1)' }
+                            { transform: 'translate3d(0, 0, 0) scale(1)' },
+                            { transform: 'translate3d(-6px, -3px, 0) scale(1.04)' },
+                            { transform: 'translate3d(6px, 3px, 0) scale(0.98)' },
+                            { transform: 'translate3d(0, 0, 0) scale(1)' }
                         ],
-                        { duration: 240, easing: 'ease-out' }
+                        { duration: 200, easing: 'ease-out' }
                     );
                 } catch {
                     // ignore

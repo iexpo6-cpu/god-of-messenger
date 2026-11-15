@@ -85,8 +85,8 @@ export const MountDetailsModal = memo(({
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-3 md:p-4 overflow-hidden">
-            <div className="w-full max-w-md bg-slate-900/95 border border-amber-500/50 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.2)] flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 relative overflow-hidden backdrop-blur-md">
+        <div className="fixed inset-0 bg-slate-950/90 z-[100] flex items-center justify-center p-3 md:p-4 overflow-hidden">
+            <div className="w-full max-w-md bg-slate-900 border border-amber-500/50 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.2)] flex flex-col max-h-[85vh] relative overflow-hidden">
                 
                 {/* Top Glow bar */}
                 <div className="h-1 bg-gradient-to-r from-amber-600 via-amber-400 to-amber-600 shrink-0" />
@@ -94,7 +94,7 @@ export const MountDetailsModal = memo(({
                 {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b border-slate-800 bg-slate-950/80 shrink-0">
                     <div className="flex items-center space-x-2">
-                        <Crown size={18} className="text-amber-500 animate-pulse" />
+                        <Crown size={18} className="text-amber-500" />
                         <h3 className="font-bold text-slate-100 text-sm md:text-base">탈것 상세 정보</h3>
                     </div>
                     <button 

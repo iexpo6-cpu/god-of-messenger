@@ -176,7 +176,7 @@ export const CompanionCommandModal: React.FC<CompanionCommandModalProps> = ({
 
     return (
         <div 
-            className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-2.5 sm:p-4 overflow-hidden animate-in fade-in duration-200"
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-2.5 sm:p-4 overflow-hidden"
             onClick={onClose}
         >
             <div 

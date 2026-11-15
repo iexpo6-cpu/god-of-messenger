@@ -73,7 +73,7 @@ export const HealthBar = ({
 
             {/* Mobile / Desktop Detailed Tooltip */}
             {showTooltip && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-slate-950/95 border border-slate-700 rounded-md shadow-2xl text-[9px] md:text-[10px] text-slate-200 z-[120] pointer-events-none whitespace-nowrap backdrop-blur animate-in fade-in zoom-in-95">
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-slate-950 border border-slate-700 rounded-md shadow-2xl text-[9px] md:text-[10px] text-slate-200 z-[120] pointer-events-none whitespace-nowrap">
                     <div className="flex items-center gap-1 font-mono">
                         <span className="font-bold text-amber-300">{label || (color.includes('blue') ? 'MP' : 'HP')}</span>
                         <span>{fullCurrentStr}</span>

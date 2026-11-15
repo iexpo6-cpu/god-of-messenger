@@ -572,7 +572,7 @@ export const useGame = () => {
                   statusEffects: filterUnknownStatus(migrated.statusEffects)
               };
           });
-          if (next.inactiveCompanions) {
+          if (next.inactiveCompanions && !combatStateRef.current) {
               next.inactiveCompanions = next.inactiveCompanions.map(c => {
                   const migrated = migrateCompanion(c, undefined, undefined, currentYearVal);
                   return {

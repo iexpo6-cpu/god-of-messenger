@@ -307,7 +307,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         const linesToProcess = newLines.length > 6 ? newLines.slice(-6) : newLines;
 
         // 전투 속도에 맞추어 연출 타이머 간격 스케일링
-        const speedScale = (combatSpeed as string) === 'ultra' ? 0.25 : combatSpeed === 'fast' ? 0.5 : 1.0;
+        const speedScale = (combatSpeed as string) === 'ultra' ? 0.15 : combatSpeed === 'fast' ? 0.2 : 1.0;
         let sequenceDelay = 0;
         const STEP_INTERVAL = Math.round(300 * speedScale);
 
@@ -1355,7 +1355,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             return;
         }
 
-        const delay = combatSpeed === 'fast' ? 350 : 750;
+        const delay = combatSpeed === 'fast' ? 120 : 750;
         const currentTurnToken = `${combatState.turn}_${activeTurnIndex}_${activeUnit.id}_${activeUnit.unitType}_${actualActiveIndexRef.current}`;
         turnExecutionTokenRef.current = currentTurnToken;
         let actionTimer: NodeJS.Timeout | null = null;
@@ -1763,7 +1763,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
     // Safety watchdog: if isActingTurn stays true for > 2.2s (and no active video/cutscene is playing), force unlock to prevent combat freezing
     useEffect(() => {
         if (activeVideo || combatState.isEnded || isLoading) return;
-        const checkDelay = combatSpeed === 'fast' ? 1400 : 2200;
+        const checkDelay = combatSpeed === 'fast' ? 1000 : 2200;
         const watchdog = setTimeout(() => {
             if ((isActingTurnRef.current || isActingTurn) && !activeVideo && !combatState.isEnded) {
                 console.warn("[Combat Safety Watchdog] isActingTurn stuck true. Force unlocking and advancing turn!");

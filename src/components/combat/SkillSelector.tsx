@@ -237,7 +237,7 @@ export const SkillSelector = memo(({
 
     return (
         <div 
-            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-3 md:p-4 overflow-hidden"
+            className="fixed inset-0 bg-slate-950/90 z-[100] flex items-center justify-center p-3 md:p-4 overflow-hidden"
             onClick={onClose}
         >
             <div 

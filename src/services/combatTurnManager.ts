@@ -165,8 +165,9 @@ export class CombatTurnManager {
         const baseIdx = typeof fromIndex === 'number' ? fromIndex : fallbackActiveIndex;
         const now = Date.now();
 
-        // 태블릿 렉 환경에서 동일 턴 인덱스에서의 중복 호출 차단 (400ms)
-        if (this.lastAdvancedFromIndex === baseIdx && now - this.lastAdvanceTimestamp < 400) {
+        // 태블릿 렉 환경에서 동일 턴 인덱스에서의 중복 호출 차단 (빠름 모드: 120ms, 보통: 400ms)
+        const advanceCooldown = combatSpeed === 'fast' ? 120 : 400;
+        if (this.lastAdvancedFromIndex === baseIdx && now - this.lastAdvanceTimestamp < advanceCooldown) {
             return false;
         }
 
@@ -182,7 +183,7 @@ export class CombatTurnManager {
                 return false;
             }
 
-            const roundEndDelay = combatSpeed === 'fast' ? 250 : 450;
+            const roundEndDelay = combatSpeed === 'fast' ? 80 : 450;
             setTimeout(() => {
                 onRoundEnd();
             }, roundEndDelay);

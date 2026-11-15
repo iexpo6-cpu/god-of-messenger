@@ -223,7 +223,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
 
     return (
         <>
-            <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-4 overflow-y-auto">
+            <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/90 p-3 sm:p-4 overflow-y-auto">
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -244,7 +244,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                             <div className={`p-2 rounded-xl ${
                                 isVictory ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30' : 'bg-rose-950/80 text-rose-400 border border-rose-500/30'
                             }`}>
-                                <Award size={20} className={isVictory ? "animate-pulse" : ""} />
+                                <Award size={20} className={isVictory ? "" : ""} />
                             </div>
                             <div>
                                 <h2 className="text-lg font-bold text-slate-100 tracking-tight">전투 결과 보고서</h2>
@@ -309,7 +309,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                         </div>
                                         <div className="flex items-center gap-1.5 flex-wrap">
                                             {goldMultiplier > 1.0 && (
-                                                <span className="text-[10px] bg-amber-950/90 border border-amber-500/40 text-amber-300 px-2 py-0.5 rounded font-bold flex items-center gap-1 animate-pulse shadow-sm">
+                                                <span className="text-[10px] bg-amber-950/90 border border-amber-500/40 text-amber-300 px-2 py-0.5 rounded font-bold flex items-center gap-1 shadow-sm">
                                                     <Sparkles size={11} className="text-amber-400" />
                                                     골드 버프 x{goldMultiplier}배
                                                 </span>
@@ -349,7 +349,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                         </div>
                                         <div className="flex items-center gap-1.5 flex-wrap">
                                             {expMultiplier > 1.0 && (
-                                                <span className="text-[10px] bg-purple-950/90 border border-purple-500/40 text-purple-300 px-2 py-0.5 rounded font-bold flex items-center gap-1 animate-pulse shadow-sm">
+                                                <span className="text-[10px] bg-purple-950/90 border border-purple-500/40 text-purple-300 px-2 py-0.5 rounded font-bold flex items-center gap-1 shadow-sm">
                                                     <Sparkles size={11} className="text-purple-400" />
                                                     경험치 버프 x{expMultiplier}배
                                                 </span>
@@ -379,7 +379,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                         <div className="space-y-3">
                             <div className="flex justify-between items-center pl-1">
                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">성장 및 경험치 획득 현황</h4>
-                                <span className="text-[10px] text-indigo-400 flex items-center gap-1 font-semibold animate-pulse">
+                                <span className="text-[10px] text-indigo-400 flex items-center gap-1 font-semibold ">
                                     <Info size={11} /> 캐릭터 클릭 시 스킬/무기 숙련도 변화 확인
                                 </span>
                             </div>
@@ -425,7 +425,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                             <ChevronRight size={12} className="text-slate-600" />
                                                             <span className="text-xs font-black text-amber-400 flex items-center gap-0.5">
                                                                 Lv.{fState.level} 
-                                                                <span className="text-[9px] font-black bg-amber-500 text-slate-950 px-1 rounded animate-bounce">UP</span>
+                                                                <span className="text-[9px] font-black bg-amber-500 text-slate-950 px-1 rounded ">UP</span>
                                                             </span>
                                                         </>
                                                     )}
@@ -449,7 +449,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                             initial={{ width: `${initialPct}%` }}
                                                             animate={{ width: '100%' }}
                                                             transition={{ duration: 0.8, ease: 'easeOut' }}
-                                                            className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse"
+                                                            className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)] "
                                                         />
                                                     ) : (
                                                         <motion.div 
@@ -458,7 +458,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                                 width: `${Math.max(0, (progressValues[fState.id] !== undefined ? progressValues[fState.id] : finalPct) - initialPct)}%` 
                                                             }}
                                                             transition={{ duration: 0.8, ease: 'easeOut' }}
-                                                            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 border-l-2 border-white rounded-r-full shadow-[0_0_10px_rgba(52,211,153,0.8)] animate-pulse shrink-0"
+                                                            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 border-l-2 border-white rounded-r-full shadow-[0_0_10px_rgba(52,211,153,0.8)] shrink-0"
                                                         />
                                                     )}
                                                 </div>
@@ -523,7 +523,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                                     <div className="flex items-center gap-1">
                                                                         <span className={`text-[11px] font-black px-2 py-0.5 rounded flex items-center gap-1 ${
                                                                             expGained > 0 
-                                                                                ? 'bg-amber-500/25 border border-amber-500/50 text-amber-200 shadow-[0_0_8px_rgba(251,191,36,0.3)] animate-pulse' 
+                                                                                ? 'bg-amber-500/25 border border-amber-500/50 text-amber-200 shadow-[0_0_8px_rgba(251,191,36,0.3)] ' 
                                                                                 : 'bg-slate-800/80 border border-slate-700 text-slate-400'
                                                                         }`}>
                                                                             <Sparkles size={11} className={expGained > 0 ? 'text-amber-400' : 'text-slate-500'} />
@@ -556,7 +556,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                                                 initial={{ width: '0%' }}
                                                                                 animate={{ width: `${gainedExpPct}%` }}
                                                                                 transition={{ duration: 0.8, ease: 'easeOut' }}
-                                                                                className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-r-full shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse shrink-0"
+                                                                                className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-r-full shadow-[0_0_10px_rgba(251,191,36,0.8)] shrink-0"
                                                                             />
                                                                         )}
                                                                     </div>
@@ -753,10 +753,10 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
 
                                             {/* 일반 보스 특수 전리품 광원 */}
                                             {!isDetailed && isSpecial && (
-                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/10 to-transparent pointer-events-none animate-pulse" />
+                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/10 to-transparent pointer-events-none " />
                                             )}
                                             {!isDetailed && isSpecial && (
-                                                <div className="absolute -right-0.5 -top-0.5 text-amber-400 animate-pulse z-10">
+                                                <div className="absolute -right-0.5 -top-0.5 text-amber-400 z-10">
                                                     <Sparkles size={13} />
                                                 </div>
                                             )}
@@ -803,13 +803,13 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                             {getTypeName(item.type) || '아이템'}
                                                         </span>
                                                         {isDetailed && (
-                                                            <span className="text-[9px] bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-amber-200 border border-amber-400/60 font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5 shrink-0 shadow-sm animate-pulse">
+                                                            <span className="text-[9px] bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-amber-200 border border-amber-400/60 font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5 shrink-0 shadow-sm ">
                                                                 <Crown size={9} className="text-amber-300" />
                                                                 <span>{bossMeta?.bossName ? `${bossMeta.bossName} 전리품` : '보스 고유 전리품'}</span>
                                                             </span>
                                                         )}
                                                         {isEquipmentItem(item) && item.bossBoost && item.bossBoost.isBoosted && (
-                                                            <span className="text-[9px] bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-amber-300 border border-amber-400/70 font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5 shrink-0 shadow-sm animate-pulse">
+                                                            <span className="text-[9px] bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-amber-300 border border-amber-400/70 font-black px-1.5 py-0.2 rounded-full flex items-center gap-0.5 shrink-0 shadow-sm ">
                                                                 <Sparkles size={9} className="text-amber-300" />
                                                                 <span>부스트 {item.bossBoost.multiplier?.toFixed(item.bossBoost.multiplier % 1 === 0 ? 1 : 2)}배</span>
                                                             </span>
@@ -861,7 +861,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                 className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/90 via-rose-950/80 to-indigo-950/90 border-2 border-amber-400/80 shadow-[0_0_25px_rgba(251,191,36,0.35)] space-y-2"
                             >
                                 <div className="flex items-center justify-between gap-2">
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black animate-pulse">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black ">
                                         <Zap size={12} /> 돌발 이벤트 발생!
                                     </span>
                                     <span className="text-[11px] font-bold text-amber-300">
@@ -884,7 +884,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                         {data.suddenEvent && onTriggerSuddenEvent ? (
                             <button
                                 onClick={() => onTriggerSuddenEvent(data.suddenEvent)}
-                                className="w-full py-3.5 px-4 bg-gradient-to-r from-rose-600 via-amber-500 to-yellow-500 hover:from-rose-500 hover:to-yellow-400 text-slate-950 font-black text-sm rounded-xl transition-all shadow-[0_0_20px_rgba(245,158,11,0.5)] active:scale-98 cursor-pointer flex items-center justify-center gap-2 animate-pulse"
+                                className="w-full py-3.5 px-4 bg-gradient-to-r from-rose-600 via-amber-500 to-yellow-500 hover:from-rose-500 hover:to-yellow-400 text-slate-950 font-black text-sm rounded-xl transition-all shadow-[0_0_20px_rgba(245,158,11,0.5)] active:scale-98 cursor-pointer flex items-center justify-center gap-2 "
                             >
                                 <Zap size={18} className="text-slate-950 shrink-0" />
                                 <span>⚡ 돌발 이벤트 확인하기 ({data.suddenEvent.title})</span>
@@ -940,7 +940,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto"
+                        className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 p-4 overflow-y-auto"
                     >
                         <div className="absolute inset-0" onClick={() => setSelectedItem(null)} />
                         <motion.div
@@ -1000,7 +1000,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                 ? 'bg-amber-500/20 text-amber-300'
                                                 : 'bg-slate-800 text-slate-400'
                                         }`}>
-                                            <Sparkles size={14} className={selectedItem.bossBoost.isBoosted ? 'animate-pulse text-amber-300' : ''} />
+                                            <Sparkles size={14} className={selectedItem.bossBoost.isBoosted ? 'text-amber-300' : ''} />
                                         </div>
                                         <div className="flex flex-col min-w-0">
                                             <span className={`text-[10px] font-extrabold ${
@@ -1103,7 +1103,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                         <div className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2 flex flex-col">
                                             <span className="text-[9px] text-slate-500 font-semibold">신격 등급</span>
                                             <span className="text-emerald-400 font-bold flex items-center gap-1">
-                                                <Sparkles size={12} className="text-emerald-400 animate-pulse" /> {selectedItem.divineLevel}성
+                                                <Sparkles size={12} className="text-emerald-400 " /> {selectedItem.divineLevel}성
                                             </span>
                                         </div>
                                     )}
@@ -1139,7 +1139,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                 {selectedItem.mythicOption && (
                                     <div className="bg-red-950/20 border border-red-500/20 rounded-xl p-3 space-y-1">
                                         <div className="text-[10px] text-red-400 font-bold uppercase tracking-widest flex items-center gap-1">
-                                            <Sparkle size={11} className="animate-pulse" /> 신화 고유 특별 옵션
+                                            <Sparkle size={11} className="" /> 신화 고유 특별 옵션
                                         </div>
                                         <p className="text-xs text-red-200 leading-relaxed font-semibold">
                                             {selectedItem.mythicOption}
@@ -1243,7 +1243,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto"
+                            className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center bg-black/90 p-0 sm:p-4 overflow-y-auto"
                         >
                             {/* Dark translucent backdrop hit area to close */}
                             <div className="absolute inset-0" onClick={() => setSelectedParticipantId(null)} />
@@ -1365,7 +1365,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                             <div className="text-right">
                                                                 <span className={`text-xs font-black px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-sm ${
                                                                     expGained > 0
-                                                                        ? 'bg-amber-500/20 border border-amber-500/50 text-amber-300 animate-pulse'
+                                                                        ? 'bg-amber-500/20 border border-amber-500/50 text-amber-300 '
                                                                         : 'bg-slate-800 text-slate-400 border border-slate-700'
                                                                 }`}>
                                                                     <Sparkles size={13} className={expGained > 0 ? 'text-amber-400' : 'text-slate-500'} />
@@ -1407,7 +1407,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                                                 initial={{ width: '0%' }}
                                                                                 animate={{ width: `${gainedExpPct}%` }}
                                                                                 transition={{ duration: 0.8, ease: 'easeOut' }}
-                                                                                className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-r-full shadow-[0_0_10px_rgba(251,191,36,0.8)] animate-pulse shrink-0"
+                                                                                className="h-full bg-gradient-to-r from-amber-500 to-amber-300 rounded-r-full shadow-[0_0_10px_rgba(251,191,36,0.8)] shrink-0"
                                                                             />
                                                                         )}
                                                                     </div>
@@ -1474,7 +1474,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                                         }`}
                                                                     >
                                                                         <div className="flex items-center gap-2">
-                                                                            <div className={`w-2 h-2 rounded-full ${isCurrent ? 'bg-amber-400 animate-pulse' : 'bg-slate-600'}`} />
+                                                                            <div className={`w-2 h-2 rounded-full ${isCurrent ? 'bg-amber-400 ' : 'bg-slate-600'}`} />
                                                                             <span className="font-bold">{styleName}</span>
                                                                             {isCurrent && (
                                                                                 <span className="text-[9px] bg-amber-500 text-slate-950 font-black px-1.5 py-0.2 rounded">
@@ -1541,7 +1541,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                                             <>
                                                                                 <ChevronRight size={10} className="text-slate-600" />
                                                                                 <span className="font-black text-indigo-400 flex items-center gap-0.5 bg-indigo-950/60 px-1.5 py-0.5 rounded border border-indigo-500/20 text-[10px]">
-                                                                                    Lv.{wm.finalLvl} <span className="text-[8px] bg-indigo-500 text-white px-1 rounded font-black animate-pulse">UP</span>
+                                                                                    Lv.{wm.finalLvl} <span className="text-[8px] bg-indigo-500 text-white px-1 rounded font-black ">UP</span>
                                                                                 </span>
                                                                             </>
                                                                         )}
@@ -1562,7 +1562,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                                         {/* 2) 이번 전투에서 새로 획득한 양 */}
                                                                         {wm.hasExpGained && growthPct > 0 && (
                                                                             <div 
-                                                                                className="h-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-indigo-300 shadow-[0_0_12px_rgba(99,102,241,0.95)] border-l-2 border-white animate-pulse rounded-r-full transition-all shrink-0"
+                                                                                className="h-full bg-gradient-to-r from-indigo-500 via-indigo-400 to-indigo-300 shadow-[0_0_12px_rgba(99,102,241,0.95)] border-l-2 border-white rounded-r-full transition-all shrink-0"
                                                                                 style={{ width: `${growthPct}%` }}
                                                                                 title={`새로 획득: +${wm.expGained}`}
                                                                             />
@@ -1638,7 +1638,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                                             <>
                                                                                 <ChevronRight size={10} className="text-slate-600" />
                                                                                 <span className="font-black text-emerald-400 flex items-center gap-0.5 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/20 text-[10px]">
-                                                                                    Lv.{sk.finalLvl} <span className="text-[8px] bg-emerald-500 text-slate-950 px-1 rounded font-black animate-pulse">UP</span>
+                                                                                    Lv.{sk.finalLvl} <span className="text-[8px] bg-emerald-500 text-slate-950 px-1 rounded font-black ">UP</span>
                                                                                 </span>
                                                                             </>
                                                                         )}
@@ -1659,7 +1659,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                                                                         {/* 2) 이번 전투에서 새로 획득한 양 */}
                                                                         {sk.hasMasteryGained && growthPct > 0 && (
                                                                             <div 
-                                                                                className="h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.95)] border-l-2 border-white animate-pulse rounded-r-full transition-all shrink-0"
+                                                                                className="h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 shadow-[0_0_12px_rgba(52,211,153,0.95)] border-l-2 border-white rounded-r-full transition-all shrink-0"
                                                                                 style={{ width: `${growthPct}%` }}
                                                                                 title={`새로 획득: +${sk.masteryGained}`}
                                                                             />

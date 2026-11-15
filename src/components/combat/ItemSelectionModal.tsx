@@ -60,7 +60,7 @@ export const ItemSelectionModal = memo(({
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+        <div className="fixed inset-0 bg-slate-950/90 z-[100] flex items-center justify-center p-2 sm:p-4 overflow-hidden">
             <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl flex flex-col max-h-[90vh] md:max-h-[85vh] animate-in fade-in zoom-in-95 relative overflow-hidden">
                 
                 {/* 상단 헤더 */}
