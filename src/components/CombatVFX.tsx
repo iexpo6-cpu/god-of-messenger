@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ClassTier, SkillFrameAnimation } from '../types';
 import { Flame, Star, Zap, Snowflake, Droplets, Wind, Mountain, Eclipse, Hammer, Sun, Moon, Leaf, Sword, Activity, Sparkles, Crown, Shield, Heart, Lock, Skull } from 'lucide-react';
@@ -1063,6 +1063,47 @@ export interface RenderCustomVfxShapeProps {
     isAoe?: boolean;
     durationMs?: number;
     loop?: boolean;
+    vfxKey?: string;
+}
+
+// 오프스크린 방사형 글로우 스프라이트 캐시 (매 프레임 createRadialGradient 할당 방지)
+const glowSpriteCache = new Map<string, HTMLCanvasElement>();
+function getCachedGlowSprite(primary: string, secondary: string): HTMLCanvasElement | null {
+    if (typeof document === 'undefined') return null;
+    const key = `${primary}|${secondary}`;
+    const cached = glowSpriteCache.get(key);
+    if (cached) return cached;
+
+    if (glowSpriteCache.size >= 24) {
+        const firstKey = glowSpriteCache.keys().next().value;
+        if (firstKey !== undefined) glowSpriteCache.delete(firstKey);
+    }
+
+    const size = 256;
+    const half = size / 2;
+    const offscreen = document.createElement('canvas');
+    offscreen.width = size;
+    offscreen.height = size;
+    const octx = offscreen.getContext('2d');
+    if (!octx) return null;
+
+    const grad = octx.createRadialGradient(half, half, 2, half, half, half);
+    grad.addColorStop(0, '#ffffff');
+    grad.addColorStop(0.25, primary);
+    grad.addColorStop(0.65, `${secondary}66`);
+    grad.addColorStop(1, 'transparent');
+    octx.fillStyle = grad;
+    octx.beginPath();
+    octx.arc(half, half, half, 0, Math.PI * 2);
+    octx.fill();
+
+    glowSpriteCache.set(key, offscreen);
+    return offscreen;
+}
+
+function isCoarseOrSmallScreen(): boolean {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 1024px), (pointer: coarse)').matches;
 }
 
 export const RenderCustomVfxShape: React.FC<RenderCustomVfxShapeProps> = ({
@@ -1071,7 +1112,8 @@ export const RenderCustomVfxShape: React.FC<RenderCustomVfxShapeProps> = ({
     tier = ClassTier.FIRST,
     isAoe = false,
     durationMs = 950,
-    loop = false
+    loop = false,
+    vfxKey
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -1083,14 +1125,18 @@ export const RenderCustomVfxShape: React.FC<RenderCustomVfxShapeProps> = ({
 
         const w = 360;
         const h = 360;
-        canvas.width = w;
-        canvas.height = h;
+        // 캔버스 백킹 스토어 재할당 방지
+        if (canvas.width !== w) canvas.width = w;
+        if (canvas.height !== h) canvas.height = h;
         const cx = w / 2;
         const cy = h / 2;
 
+        const isCoarse = isCoarseOrSmallScreen();
+        const minFrameInterval = isCoarse ? 32 : 16; // 모바일/태블릿 ~30fps, PC ~60fps 상한
+
         // 초기 물리 파티클 풀 생성
         const isHighTier = tier === ClassTier.FINAL || tier === ClassTier.BOND || tier === ClassTier.LAST || shape === 'SUPERNOVA' || shape === 'DIVINE_DOMAIN' || shape === 'DIMENSION_SHATTER';
-        const pCount = isHighTier ? 48 : 30;
+        const pCount = isCoarse ? (isHighTier ? 20 : 12) : (isHighTier ? 32 : 20);
         const particles: CanvasParticle[] = [];
 
         const spawnParticles = () => {
@@ -1118,7 +1164,9 @@ export const RenderCustomVfxShape: React.FC<RenderCustomVfxShapeProps> = ({
         };
 
         spawnParticles();
+        const glowSprite = getCachedGlowSprite(theme.primary, theme.secondary);
         let startTime = performance.now();
+        let lastDrawTime = 0;
         let rAF: number | null = null;
 
         const renderFrame = (now: number) => {
@@ -1134,6 +1182,12 @@ export const RenderCustomVfxShape: React.FC<RenderCustomVfxShapeProps> = ({
                 }
             }
 
+            if (lastDrawTime !== 0 && now - lastDrawTime < minFrameInterval) {
+                rAF = requestAnimationFrame(renderFrame);
+                return;
+            }
+            lastDrawTime = now;
+
             const p = Math.max(0, Math.min(1, elapsed / durationMs));
             const fadeOut = p < 0.7 ? 1 : Math.max(0, 1 - (p - 0.7) / 0.3);
 
@@ -1141,18 +1195,22 @@ export const RenderCustomVfxShape: React.FC<RenderCustomVfxShapeProps> = ({
             ctx.save();
             ctx.globalCompositeOperation = 'lighter';
 
-            // 1. 배경 코어 앰비언트 플래시
+            // 1. 배경 코어 앰비언트 플래시 (오프스크린 캐시 스프라이트 사용)
             const glowRadius = (55 + Math.sin(p * Math.PI) * 95) * (isAoe ? 1.25 : 1.0);
-            const bgGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, glowRadius);
-            bgGrad.addColorStop(0, '#ffffff');
-            bgGrad.addColorStop(0.25, theme.primary);
-            bgGrad.addColorStop(0.65, `${theme.secondary}66`);
-            bgGrad.addColorStop(1, 'transparent');
             ctx.globalAlpha = Math.sin(p * Math.PI) * 0.75;
-            ctx.fillStyle = bgGrad;
-            ctx.beginPath();
-            ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
-            ctx.fill();
+            if (glowSprite) {
+                ctx.drawImage(glowSprite, cx - glowRadius, cy - glowRadius, glowRadius * 2, glowRadius * 2);
+            } else {
+                const bgGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, glowRadius);
+                bgGrad.addColorStop(0, '#ffffff');
+                bgGrad.addColorStop(0.25, theme.primary);
+                bgGrad.addColorStop(0.65, `${theme.secondary}66`);
+                bgGrad.addColorStop(1, 'transparent');
+                ctx.fillStyle = bgGrad;
+                ctx.beginPath();
+                ctx.arc(cx, cy, glowRadius, 0, Math.PI * 2);
+                ctx.fill();
+            }
 
             // 실제 렌더링할 대표 Shape 결정 (DEFAULT인 경우 등급별 시그니처 연출 매핑)
             let effShape = shape;
@@ -1443,7 +1501,7 @@ export const RenderCustomVfxShape: React.FC<RenderCustomVfxShapeProps> = ({
         return () => {
             if (rAF !== null) cancelAnimationFrame(rAF);
         };
-    }, [shape, theme, tier, isAoe, durationMs, loop]);
+    }, [shape, theme, tier, isAoe, durationMs, loop, vfxKey]);
 
     return (
         <canvas
@@ -1468,7 +1526,7 @@ export const CombatVFXOverlay: React.FC<{ vfx?: CombatVFXData | null }> = ({ vfx
 
     const activeVfx = busVfx || propVfx || null;
     if (!activeVfx) return null;
-    return <CombatVFXContent key={activeVfx.id} vfx={activeVfx} />;
+    return <CombatVFXContent vfx={activeVfx} />;
 };
 
 const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
@@ -1511,11 +1569,48 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
     }, [tier]);
 
     const overlayRef = useRef<HTMLDivElement>(null);
+    const containerRectRef = useRef<DOMRect | null>(null);
+    const targetPosCacheRef = useRef<Map<string, { x: number; y: number; ts: number; el: Element }>>(new Map());
     const [targetPos, setTargetPos] = useState<{ x: number; y: number } | null>(null);
 
-    useLayoutEffect(() => {
+    useEffect(() => {
+        const el = overlayRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') return;
+        const observer = new ResizeObserver(() => {
+            containerRectRef.current = el.getBoundingClientRect();
+            targetPosCacheRef.current.clear();
+        });
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
         if (!overlayRef.current) return;
-        const containerRect = overlayRef.current.getBoundingClientRect();
+        const now = performance.now();
+        const cacheKey = `${isAoe ? 'aoe' : 'single'}:${tier}:${vfx.targetName || ''}:${vfx.attackerName || ''}`;
+        const cached = targetPosCacheRef.current.get(cacheKey);
+        if (cached && cached.el.isConnected && now - cached.ts < 300) {
+            setTargetPos({ x: cached.x, y: cached.y });
+            if (tier !== 'BUFF' && typeof (cached.el as HTMLElement).animate === 'function') {
+                try {
+                    (cached.el as HTMLElement).animate(
+                        [
+                            { transform: 'translate3d(0, 0, 0) scale(1)' },
+                            { transform: 'translate3d(-6px, -3px, 0) scale(1.04)' },
+                            { transform: 'translate3d(6px, 3px, 0) scale(0.98)' },
+                            { transform: 'translate3d(0, 0, 0) scale(1)' }
+                        ],
+                        { duration: 200, easing: 'ease-out' }
+                    );
+                } catch {
+                    // ignore
+                }
+            }
+            return;
+        }
+
+        const containerRect = containerRectRef.current || overlayRef.current.getBoundingClientRect();
+        containerRectRef.current = containerRect;
         if (containerRect.width === 0 || containerRect.height === 0) return;
 
         let el: Element | null = null;
@@ -1544,10 +1639,12 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
 
         if (el) {
             const rect = el.getBoundingClientRect();
-            setTargetPos({
+            const pos = {
                 x: rect.left + rect.width / 2 - containerRect.left,
                 y: rect.top + rect.height / 2 - containerRect.top
-            });
+            };
+            targetPosCacheRef.current.set(cacheKey, { ...pos, ts: now, el });
+            setTargetPos(pos);
 
             // 피격 대상 카드에 React 리렌더링 없이 순수 GPU Web Animation으로 타격 흔들림(Hit Impulse) 부여
             if (tier !== 'BUFF' && typeof (el as HTMLElement).animate === 'function') {
@@ -1652,8 +1749,8 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
                 </motion.div>
             )}
 
-            {/* 4. 안티그래비티 60FPS 하이퍼 캔버스 시그니처 이펙트 */}
-            {vfx.frameAnimation?.renderMode !== 'frame_only' && (
+            {/* 4. 안티그래비티 60FPS 하이퍼 캔버스 시그니처 이펙트 (커스텀 프레임 애니메이션 재생 중엔 이중 캔버스 부하 방지를 위해 생략) */}
+            {vfx.frameAnimation?.renderMode !== 'frame_only' && !(vfx.frameAnimation?.enabled && vfx.frameAnimation.frames?.length > 0) && (
                 <div
                     className={`flex items-center justify-center ${isAoe ? 'w-96 h-96 sm:w-[440px] sm:h-[440px]' : 'w-80 h-80'}`}
                     style={
@@ -1679,6 +1776,7 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
                         isAoe={isAoe}
                         durationMs={vfx.duration || (isFinalOrLast ? 1100 : 750)}
                         loop={false}
+                        vfxKey={vfx.id}
                     />
                 </div>
             )}
@@ -1795,7 +1893,7 @@ export interface SkillFrameAnimationRendererProps {
     onFrameDrag?: (frameId: string, newX: number, newY: number) => void;
 }
 
-const MAX_FRAME_IMAGE_CACHE_SIZE = 60;
+const MAX_FRAME_IMAGE_CACHE_SIZE = 360;
 const frameImageCache = new Map<string, HTMLCanvasElement | HTMLImageElement>();
 
 /**
@@ -1841,9 +1939,9 @@ const getFrameImage = (url: string, onLoad?: () => void): HTMLCanvasElement | HT
             try {
                 const nw = img.naturalWidth || img.width || 0;
                 const nh = img.naturalHeight || img.height || 0;
-                // 모든 프레임을 최대 320px 고속 오프스크린 캔버스 비트맵으로 구워 디코딩 렉 0ms화
+                // 모든 프레임을 고속 오프스크린 캔버스 비트맵으로 구워 디코딩 렉 0ms화 (모바일 220px / PC 260px)
                 if (nw > 0 && nh > 0) {
-                    const maxDim = 320;
+                    const maxDim = isCoarseOrSmallScreen() ? 220 : 260;
                     let targetW = nw;
                     let targetH = nh;
                     if (nw > maxDim || nh > maxDim) {
@@ -1861,7 +1959,7 @@ const getFrameImage = (url: string, onLoad?: () => void): HTMLCanvasElement | HT
                     const offCtx = offCanvas.getContext('2d');
                     if (offCtx) {
                         offCtx.imageSmoothingEnabled = true;
-                        offCtx.imageSmoothingQuality = 'medium';
+                        offCtx.imageSmoothingQuality = 'low';
                         offCtx.drawImage(img, 0, 0, targetW, targetH);
                         frameImageCache.set(url, offCanvas);
                     }
@@ -1940,6 +2038,8 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
     const animFrameReqRef = React.useRef<number | null>(null);
     const lastFrameTimeRef = React.useRef<number>(0);
     const renderScaleRef = React.useRef<number>(1);
+    const resolvedFramesRef = React.useRef<(HTMLCanvasElement | HTMLImageElement | null)[]>([]);
+    const lastDrawnIdxRef = React.useRef<number>(-1);
 
     const onFrameChangeRef = React.useRef(onFrameChange);
     onFrameChangeRef.current = onFrameChange;
@@ -1949,12 +2049,23 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
         activeIdxRef.current = currentFrameIndex;
     }
 
-    // 1. 프레임 사전 캐싱
+    // 1. 프레임 사전 캐싱 및 참조 배열 1회 바인딩 (재생 루프 내 Map 조회/LRU 갱신 제거)
     React.useEffect(() => {
-        if (!frames || frames.length === 0) return;
-        frames.forEach(f => {
-            if (f.imageUrl) getFrameImage(f.imageUrl);
+        if (!frames || frames.length === 0) {
+            resolvedFramesRef.current = [];
+            return;
+        }
+        resolvedFramesRef.current = frames.map((f, idx) => {
+            if (!f.imageUrl) return null;
+            return getFrameImage(f.imageUrl, () => {
+                // 비동기 이미지 로드 완료 시 오프스크린 캔버스 참조 최신화
+                resolvedFramesRef.current[idx] = getFrameImage(f.imageUrl);
+                if (activeIdxRef.current === idx) {
+                    lastDrawnIdxRef.current = -1;
+                }
+            });
         });
+        lastDrawnIdxRef.current = -1;
     }, [frames]);
 
     // 고프레임(예: 8x8=64프레임) 시트가 옛날 기본값(70~100ms)으로 설정되어 5초씩 늘어지는 경우,
@@ -1977,12 +2088,13 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
     const drawSingleFrameObject = (
         ctx: CanvasRenderingContext2D,
         frame: any,
+        frameIdx: number,
         cx: number,
         cy: number,
         alphaMultiplier: number
     ) => {
         if (!frame || !frame.imageUrl || alphaMultiplier <= 0.02) return;
-        const img = getFrameImage(frame.imageUrl);
+        const img = resolvedFramesRef.current[frameIdx] || getFrameImage(frame.imageUrl);
         const isReady =
             (img instanceof HTMLCanvasElement && img.width > 0) ||
             (img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0);
@@ -2004,9 +2116,9 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
         ctx.restore();
     };
 
-    // 2. 서브프레임 크로스페이드 보간 & 모션 잔상 렌더링
+    // 2. 단일 패스 고속 프레임 렌더링 (중복 블렌딩 제거)
     const drawCurrentFrame = React.useCallback(
-        (idx: number, subProgress: number = 0) => {
+        (idx: number) => {
             const canvas = canvasRef.current;
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
@@ -2018,7 +2130,7 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
             if (cw <= 0 || ch <= 0) return;
 
             ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'medium';
+            ctx.imageSmoothingQuality = 'low';
 
             const scale = renderScaleRef.current || 1;
             ctx.save();
@@ -2043,19 +2155,13 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
                 ctx.restore();
             }
 
-            // 재생 중일 때 이전 프레임 잔상(Sub-frame Crossfade)을 부드럽게 블렌딩하여 끊김 현상 완벽 제거
-            if (isPlaying && !isControlled && idx > 0 && subProgress < 0.45) {
-                const prevFrame = frames[idx - 1];
-                const trailAlpha = (0.45 - subProgress) * 0.65;
-                drawSingleFrameObject(ctx, prevFrame, cx, cy, trailAlpha);
-            }
-
             const frame = frames[idx];
-            drawSingleFrameObject(ctx, frame, cx, cy, 1.0);
+            drawSingleFrameObject(ctx, frame, idx, cx, cy, 1.0);
+            lastDrawnIdxRef.current = idx;
 
             ctx.restore();
         },
-        [frames, showCrosshair, isPlaying, isControlled]
+        [frames, showCrosshair]
     );
 
     // 3. 캔버스 해상도 최적화
@@ -2071,7 +2177,7 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
             const rawW = Math.max(1, Math.round(rect.width) || 280);
             const rawH = Math.max(1, Math.round(rect.height) || 280);
 
-            const MAX_CANVAS_DIM = 320;
+            const MAX_CANVAS_DIM = isCoarseOrSmallScreen() ? 220 : 280;
             let targetW = rawW;
             let targetH = rawH;
             let scale = 1;
@@ -2092,7 +2198,7 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
             if (canvas.width !== targetW || canvas.height !== targetH) {
                 canvas.width = targetW;
                 canvas.height = targetH;
-                drawCurrentFrame(activeIdxRef.current, subFrameProgressRef.current);
+                drawCurrentFrame(activeIdxRef.current);
             }
         };
 
@@ -2109,10 +2215,10 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
         };
     }, [drawCurrentFrame]);
 
-    // 4. Delta-Time 기반 60FPS 정밀 루프 (프레임 밀림 및 끊김 100% 방지)
+    // 4. Delta-Time 기반 정밀 루프 (프레임 인덱스 변경 시에만 캔버스 재드로잉)
     React.useEffect(() => {
         if (!isPlaying || frames.length <= 1 || isControlled) {
-            drawCurrentFrame(activeIdxRef.current, 0);
+            drawCurrentFrame(activeIdxRef.current);
             return;
         }
 
@@ -2146,21 +2252,19 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
                 }
             }
 
+            if (lastDrawnIdxRef.current !== currentIdx) {
+                drawCurrentFrame(currentIdx);
+            }
+
             if (reachedEnd) {
-                subFrameProgressRef.current = 1;
-                drawCurrentFrame(currentIdx, 1);
                 animFrameReqRef.current = null;
                 return;
             }
 
-            const subProgress = Math.min(1, elapsed / Math.max(1, currentDuration));
-            subFrameProgressRef.current = subProgress;
-            drawCurrentFrame(currentIdx, subProgress);
-
             animFrameReqRef.current = requestAnimationFrame(tick);
         };
 
-        drawCurrentFrame(activeIdxRef.current, 0);
+        drawCurrentFrame(activeIdxRef.current);
         animFrameReqRef.current = requestAnimationFrame(tick);
 
         return () => {
@@ -2175,7 +2279,7 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
     React.useEffect(() => {
         if (isControlled && currentFrameIndex !== undefined) {
             activeIdxRef.current = currentFrameIndex;
-            drawCurrentFrame(currentFrameIndex, 0);
+            drawCurrentFrame(currentFrameIndex);
         }
     }, [isControlled, currentFrameIndex, drawCurrentFrame]);
 

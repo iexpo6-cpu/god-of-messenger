@@ -238,6 +238,8 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
     const [combatVfx, setCombatVfx] = useState<CombatVFXData | null>(null);
     const [shake, setShake] = useState(false);
     const prevBossHpMapRef = useRef<Record<string, number>>({});
+    const lastVfxEmitTimeRef = useRef<number>(0);
+    const lastShakeTimeRef = useRef<number>(0);
 
     const isShakeDisabled = () => {
         if (typeof window === 'undefined') return false;
@@ -346,25 +348,8 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                 if (comp) {
                     const dialogue = getCompanionDialogue(comp.name, comp.personality, comp.affection, 'skill', skillName);
                     triggerBubble(comp.id, dialogue);
-
-                    const foundSkill = comp.skills?.find(s => s.name === skillName);
-                    const isBuffSkill = foundSkill?.type === SkillType.BUFF || foundSkill?.type === SkillType.HEAL || foundSkill?.type === SkillType.PASSIVE || CompanionTacticsService.isSupportSkill(foundSkill) || skillName.includes('치유') || skillName.includes('버프') || skillName.includes('힐');
-                    const isDebuffSkill = foundSkill?.type === SkillType.DEBUFF || (foundSkill as any)?.ailment !== undefined || skillName.includes('저주');
-                    let tier: any = isBuffSkill ? 'BUFF' : isDebuffSkill ? 'DEBUFF' : (foundSkill?.isBondSkill ? 'BOND' : (foundSkill?.tier || comp.classTier || ClassTier.FIRST));
-                    const isAoe = foundSkill?.targetType === 'aoe' || skillName.includes('광역');
-
-                    combatTimerPool.registerTimeout(() => {
-                        triggerCombatEffect(
-                            comp.shinryokuType || '화염계',
-                            tier,
-                            isAoe,
-                            undefined,
-                            comp.name,
-                            skillName
-                        );
-                    }, sequenceDelay);
-
-                    sequenceDelay += STEP_INTERVAL;
+                    // [동료 지시] 스킬 사용은 턴 실행 시점(자동/수동)에 이미 triggerCombatEffect를 즉시 호출했으므로
+                    // 로그 파서에서 중복으로 지연 VFX를 재발동하지 않음
                 }
                 return;
             }
@@ -1128,13 +1113,15 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
     onActionRef.current = onAction;
     const activeTurnIndexRef = useRef(activeTurnIndex);
     activeTurnIndexRef.current = activeTurnIndex;
+    const turnQueueLengthRef = useRef(turnQueue.length);
+    turnQueueLengthRef.current = turnQueue.length;
 
     // Advance to next turn in queue with concurrency safe-lock
     const advanceTurn = useCallback((fromIndex?: number) => {
         combatTurnManager.safeAdvanceTurn({
             fromIndex,
             fallbackActiveIndex: actualActiveIndexRef.current >= 0 ? actualActiveIndexRef.current : activeTurnIndexRef.current,
-            queueLength: turnQueue.length,
+            queueLength: turnQueueLengthRef.current,
             onNextIndex: (nextIdx) => {
                 setActiveTurnIndex(nextIdx);
             },
@@ -1148,7 +1135,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             combatSpeed,
             currentTurn: currentTurnRef.current
         });
-    }, [turnQueue.length, combatSpeed]);
+    }, [combatSpeed]);
 
     const selectSkillByTactics = useCallback((
         actor: Character | Companion,
@@ -1582,6 +1569,8 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             }, delay);
             return () => {
                 if (actionTimer) clearTimeout(actionTimer);
+                isActingTurnRef.current = false;
+                setIsActingTurn(false);
             };
         }
 
@@ -1996,6 +1985,19 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
             duration = Math.max(duration, animDuration + 180);
         }
 
+        // 빠른 배속(fast) 및 연속 턴 환경에서 하위 등급 이펙트 과다 중첩 스로틀링
+        const now = performance.now();
+        const isFastCombat = combatSpeed === 'fast';
+        const isHighImpactVfx = !!illustrationUrl || tier === ClassTier.FINAL || tier === 'BOND' || tier === ClassTier.LAST;
+        if (isFastCombat && !isHighImpactVfx) {
+            const minGapMs = tier === ClassTier.SECOND ? 140 : 220;
+            if (now - lastVfxEmitTimeRef.current < minGapMs) {
+                return;
+            }
+            duration = Math.min(duration, 450);
+        }
+        lastVfxEmitTimeRef.current = now;
+
         const vfxData: CombatVFXData = {
             id: `vfx_${Date.now()}_${Math.random()}`,
             shinryokuType,
@@ -2016,10 +2018,13 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         // CombatInterface 전체 리렌더링을 유발하지 않고 VFX 오버레이에만 즉시 전달
         combatVfxBus.emit(vfxData);
 
-        // Screen Shake based on tier
+        // Screen Shake based on tier (연속 흔들림으로 인한 상위 리렌더 스로틀링)
         if (!isShakeDisabled() && (tier === ClassTier.FINAL || tier === 'BOND' || tier === ClassTier.LAST || tier === ClassTier.SECOND)) {
-            setShake(true);
-            combatTimerPool.registerTimeout(() => setShake(false), tier === ClassTier.FINAL || tier === 'BOND' ? 650 : 400);
+            if (now - lastShakeTimeRef.current >= 450) {
+                lastShakeTimeRef.current = now;
+                setShake(true);
+                combatTimerPool.registerTimeout(() => setShake(false), tier === ClassTier.FINAL || tier === 'BOND' ? 650 : 400);
+            }
         }
     };
 
