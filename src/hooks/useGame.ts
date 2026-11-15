@@ -853,7 +853,7 @@ export const useGame = () => {
             inactiveCompanions: updatedInactive
         };
     });
-  }, [character.job, JSON.stringify(character.companions.map(c => c.job)), JSON.stringify(character.inactiveCompanions?.map(c => c.job))]);
+  }, [character.job, character.companions.length, character.inactiveCompanions?.length]);
 
   // 이미 사망한 상태로 남아있는 동료를 이관하기 위한 처리
   useEffect(() => {
@@ -1026,13 +1026,13 @@ export const useGame = () => {
              battleMsg = `[긴급 상황] 당신을 체포하기 위한 추격대가 앞을 가로막습니다!`;
         }
 
+        let pendingHuntingBandId: string | undefined = undefined;
         if (actionText.includes('사냥터 탐색')) {
             const bandIdMatch = actionText.match(/지역:\s*(\w+)/);
             const lvlMatch = actionText.match(/권장레벨:\s*(\d+)/);
             const bandId = bandIdMatch ? bandIdMatch[1] : 'beginner';
             const targetLevel = lvlMatch ? parseInt(lvlMatch[1]) : character.level;
-            
-            setCharacter(prev => ({ ...prev, lastHuntingBandId: bandId }));
+            pendingHuntingBandId = bandId;
             
             const nation = character.currentLocation?.nation || character.nation;
             const city = character.currentLocation?.city || "";
@@ -1219,23 +1219,28 @@ export const useGame = () => {
             (newCombatState as any).sourceId = relationTargetId; 
         }
 
-        // [NEW] 전투 진입 시 도감에 조우 기록 (단일 배치 갱신으로 불필요한 다중 리렌더 방지)
-        if (finalEnemies.length > 0) {
+        // [NEW] 전투 진입 시 도감에 조우 기록 + 사냥터 ID 단일 배치 갱신 (이중 리렌더 방지)
+        if (finalEnemies.length > 0 || pendingHuntingBandId) {
             const cleanNames = Array.from(new Set(
                 finalEnemies.map(e => e.name.replace(/\[.*?\]/g, '').replace(/\s+[A-Z]$/, '').trim()).filter(Boolean)
             ));
             setCharacter(prev => {
                 const prevBestiary = prev.bestiary || {};
                 const missing = cleanNames.filter(name => !prevBestiary[name]?.encountered);
-                if (missing.length === 0) return prev;
-                const nextBestiary = { ...prevBestiary };
+                const needsBandUpdate = Boolean(pendingHuntingBandId && prev.lastHuntingBandId !== pendingHuntingBandId);
+                if (missing.length === 0 && !needsBandUpdate) return prev;
+                const nextBestiary = missing.length > 0 ? { ...prevBestiary } : prevBestiary;
                 missing.forEach(name => {
                     const existing = nextBestiary[name];
                     nextBestiary[name] = existing
                         ? { ...existing, encountered: true }
                         : { encountered: true, defeatedCount: 0 };
                 });
-                return { ...prev, bestiary: nextBestiary };
+                return {
+                    ...prev,
+                    ...(needsBandUpdate ? { lastHuntingBandId: pendingHuntingBandId } : {}),
+                    bestiary: nextBestiary
+                };
             });
         }
         setCombatState(newCombatState); 
@@ -4909,19 +4914,23 @@ let targetIdx = -1;
             }
         } catch (e) { console.error("Combat simulation error:", e); }
 
-        // [NEW] Mythic Option: UNDEAD (사망 방지)
-        const playerDerived = getActorDerivedStats(nextCharState);
-        if (nextCharState.stats.hp <= 0 && (playerDerived.mythicOptions.includes(MythicOptionType.UNDEAD) || playerDerived.mythicOptions.includes(MagyeOptionType.UNDEAD)) && !(nextCharState as any)._undeadUsed) {
-            nextCharState.stats.hp = calculateFinalStats(nextCharState).finalStats.maxHp;
-            (nextCharState as any)._undeadUsed = true;
-            totalLog += `\n[시스템] ${nextCharState.name}의 사망 방지 옵션 발동! 죽음의 문턱에서 부활했습니다!`;
+        // [NEW] Mythic Option: UNDEAD (사망 방지) — HP가 0 이하인 유닛에 대해서만 파생 스탯 조회
+        if (nextCharState.stats.hp <= 0 && !(nextCharState as any)._undeadUsed) {
+            const playerDerived = getActorDerivedStats(nextCharState);
+            if (playerDerived.mythicOptions.includes(MythicOptionType.UNDEAD) || playerDerived.mythicOptions.includes(MagyeOptionType.UNDEAD)) {
+                nextCharState.stats.hp = calculateFinalStats(nextCharState).finalStats.maxHp;
+                (nextCharState as any)._undeadUsed = true;
+                totalLog += `\n[시스템] ${nextCharState.name}의 사망 방지 옵션 발동! 죽음의 문턱에서 부활했습니다!`;
+            }
         }
         nextCharState.companions.forEach(comp => {
-            const compDerived = getActorDerivedStats(comp);
-            if (comp.stats.hp <= 0 && (compDerived.mythicOptions.includes(MythicOptionType.UNDEAD) || compDerived.mythicOptions.includes(MagyeOptionType.UNDEAD)) && !(comp as any)._undeadUsed) {
-                comp.stats.hp = calculateFinalStats(comp).finalStats.maxHp;
-                (comp as any)._undeadUsed = true;
-                totalLog += `\n[시스템] ${comp.name}의 사망 방지 옵션 발동! 죽음의 문턱에서 부활했습니다!`;
+            if (comp.stats.hp <= 0 && !(comp as any)._undeadUsed) {
+                const compDerived = getActorDerivedStats(comp);
+                if (compDerived.mythicOptions.includes(MythicOptionType.UNDEAD) || compDerived.mythicOptions.includes(MagyeOptionType.UNDEAD)) {
+                    comp.stats.hp = calculateFinalStats(comp).finalStats.maxHp;
+                    (comp as any)._undeadUsed = true;
+                    totalLog += `\n[시스템] ${comp.name}의 사망 방지 옵션 발동! 죽음의 문턱에서 부활했습니다!`;
+                }
             }
         });
 
@@ -4947,7 +4956,18 @@ let targetIdx = -1;
 
         systemInjectedNarrative += totalLog;
 
-        let { updatedChar: finalChar, leveledUp, oldLevel, leveledUpCompanions } = checkAndApplyLevelUp(nextCharState);
+        const hasExpGainThisTurn = accumulatedExp !== (currentCombat?.accumulatedExp || 0);
+        let finalChar = nextCharState;
+        let leveledUp = false;
+        let oldLevel = nextCharState.level;
+        let leveledUpCompanions: { companion: Companion, oldLevel: number }[] = [];
+        if (hasExpGainThisTurn) {
+            const lvlRes = checkAndApplyLevelUp(nextCharState, { skipInactive: true });
+            finalChar = lvlRes.updatedChar;
+            leveledUp = lvlRes.leveledUp;
+            oldLevel = lvlRes.oldLevel;
+            leveledUpCompanions = lvlRes.leveledUpCompanions;
+        }
         let finalEnemies = simulationEnemies;
         
         const challengerComp = challengerCompanionId ? finalChar.companions.find(c => c.id === challengerCompanionId) : null;

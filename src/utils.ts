@@ -6111,7 +6111,7 @@ export const checkAndApplySkillLevelUp = (char: Character): { updatedChar: Chara
     return { updatedChar, notifications };
 };
 
-export const checkAndApplyLevelUp = (char: Character): { updatedChar: Character, leveledUp: boolean, oldLevel: number, leveledUpCompanions: { companion: Companion, oldLevel: number }[] } => {
+export const checkAndApplyLevelUp = (char: Character, options?: { skipInactive?: boolean }): { updatedChar: Character, leveledUp: boolean, oldLevel: number, leveledUpCompanions: { companion: Companion, oldLevel: number }[] } => {
     let updatedChar = { ...char };
     let leveledUp = false;
     let oldLevel = char.level;
@@ -6182,7 +6182,7 @@ export const checkAndApplyLevelUp = (char: Character): { updatedChar: Character,
     updatedChar.companions = compResult.updatedComps;
     const leveledUpCompanions = [...compResult.leveledUpCompanions];
 
-    if (updatedChar.inactiveCompanions) {
+    if (!options?.skipInactive && updatedChar.inactiveCompanions) {
         const inactiveCompResult = applyLevelUpToCompanions(updatedChar.inactiveCompanions);
         updatedChar.inactiveCompanions = inactiveCompResult.updatedComps;
         leveledUpCompanions.push(...inactiveCompResult.leveledUpCompanions);
@@ -6205,7 +6205,7 @@ export const checkAndApplyLevelUp = (char: Character): { updatedChar: Character,
         });
     }
 
-    if (updatedChar.base?.capturedMonsters) {
+    if (!options?.skipInactive && updatedChar.base?.capturedMonsters) {
         updatedChar.base.capturedMonsters = updatedChar.base.capturedMonsters.map(monster => {
             let m = { ...monster };
             if (!m.maxExp) m.maxExp = (m.level || 1) * 100;

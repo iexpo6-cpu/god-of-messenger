@@ -1870,9 +1870,13 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         return { isSkip: false, name: '' };
     };
 
-    // [최적화] 전투 시작 시 또는 보유 스킬/동료 목록 변경 시에만 1회 백그라운드 캐싱 (매 턴 HP 피격 시 수십 번 중복 재호출 차단)
+    // [최적화] 전투 진입 첫 프레임 지연 방지를 위해 프레임 애니메이션 프리로드는 비활성화 옵션 확인 후 지연 실행
     useEffect(() => {
-        preloadSkillFrameAnimations(player);
+        if (localStorage.getItem('game_disable_skill_effects') === 'true') return;
+        const timer = setTimeout(() => {
+            preloadSkillFrameAnimations(player);
+        }, 150);
+        return () => clearTimeout(timer);
     }, [player.id, player.skills?.length, player.companions?.length]);
 
     const triggerCombatEffect = (
