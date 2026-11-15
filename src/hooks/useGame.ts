@@ -552,16 +552,17 @@ export const useGame = () => {
   const setCharacterSafe = (update: React.SetStateAction<Character>) => {
       setCharacter(prev => {
           let next = typeof update === 'function' ? update(prev) : update;
+          const isDuringCombat = combatStateRef.current && combatStateRef.current.turn > 0 && !combatStateRef.current.isEnded;
+          if (isDuringCombat) {
+              characterRef.current = next;
+              combatStateBridge.saveLatestCombatCharacter(next);
+              return next;
+          }
+
           next = trimCharacterMessages(next);
           next = cleanseCharacterMemories(next);
           characterRef.current = next;
           combatStateBridge.saveLatestCombatCharacter(next);
-          
-          // [성능 최적화] 전투 진행 중일 때는 수십 명의 대기 동료 마이그레이션 및 무거운 검사를 생략하고 즉시 반환
-          const isDuringCombat = combatStateRef.current && combatStateRef.current.turn > 0 && !combatStateRef.current.isEnded;
-          if (isDuringCombat) {
-              return next;
-          }
 
           next.statusEffects = filterUnknownStatus(next.statusEffects);
           const currentYearVal = getYear(next.currentDate || '2000-01-01');
@@ -883,7 +884,8 @@ export const useGame = () => {
     if (actionText.trim() === '운영자 모드') { setIsDevModeOpen(true) ; setInput(''); return; }
     
     // [MODIFIED] 장기 휴식(3일 초과) 시 브라우저 렉 및 프리징을 완벽 차단하는 1번 분할 처리 기법(Chunking) 도입
-    const checkSystemMessage = actionText.startsWith('[시스템]') || actionText.startsWith('[FAST_RESPONSE]') || actionText.startsWith('[기지 활동]') || actionText.startsWith('[전투 아이템 사용]') || actionText.startsWith('[아이템 사용]') || actionText.startsWith('[동료 영입]') || actionText.startsWith('[학교 생활]') || actionText.startsWith('[토너먼트]') || actionText.startsWith('[전투 돌입]') || actionText.startsWith('[SYSTEM_PASS_DAY_SPLIT]');
+    const isCombatActionPrefix = sceneType === 'combat' || actionText.startsWith('[적 ') || actionText.startsWith('[동료 ') || actionText.startsWith('[스킬 사용]') || actionText.startsWith('[일반 공격]') || actionText.startsWith('[방어]') || actionText.startsWith('[라운드 종료]') || actionText.startsWith('[턴 종료]') || actionText.startsWith('[인연 스킬]') || actionText.startsWith('[소환수 ') || actionText.startsWith('[분신 ');
+    const checkSystemMessage = isCombatActionPrefix || actionText.startsWith('[시스템]') || actionText.startsWith('[FAST_RESPONSE]') || actionText.startsWith('[기지 활동]') || actionText.startsWith('[전투 아이템 사용]') || actionText.startsWith('[아이템 사용]') || actionText.startsWith('[동료 영입]') || actionText.startsWith('[학교 생활]') || actionText.startsWith('[토너먼트]') || actionText.startsWith('[전투 돌입]') || actionText.startsWith('[SYSTEM_PASS_DAY_SPLIT]');
     if (!checkSystemMessage) {
         const potentialDays = determineTimePassage(actionText);
         if (potentialDays > 3) {
@@ -1863,7 +1865,13 @@ if (!timeAdvancedChar.divineRelations) {
     nextCharState.companions = baseCharState.companions.map(c => ({...c, stats: {...c.stats}, skills: [...c.skills]}));
     
     const charForReconcile: Character = sceneType === 'combat' ? baseCharState : JSON.parse(JSON.stringify(baseCharState));
-    let simulationEnemies = currentCombat ? JSON.parse(JSON.stringify(currentCombat.enemies)) : [];
+    let simulationEnemies = currentCombat
+        ? currentCombat.enemies.map(e => ({
+            ...e,
+            stats: e.stats ? { ...e.stats } : undefined,
+            statusEffects: e.statusEffects ? e.statusEffects.map(s => ({ ...s })) : []
+        }))
+        : [];
     let enemiesForReconcile = (sceneType !== 'combat' && currentCombat) ? JSON.parse(JSON.stringify(currentCombat.enemies)) : [];
 
     if (sceneType === 'combat') {

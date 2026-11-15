@@ -7,20 +7,24 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface Props {
     character: Character;
     onToggleTrack: (questId: string) => void;
+    isCombat?: boolean;
 }
 
-const QuestTracker: React.FC<Props> = ({ character, onToggleTrack }) => {
-    // [스마트 상태 기억] 사용자가 접어두면 접힌 상태, 펼쳐두면 펼친 상태를 localStorage에 유지 (모바일은 기본 접힘)
+const QuestTracker: React.FC<Props> = React.memo(({ character, onToggleTrack, isCombat = false }) => {
+    // [스마트 상태 기억] 사용자가 접어두면 접힌 상태, 펼쳐두면 펼친 상태를 localStorage에 유지 (태블릿/모바일은 기본 접힘)
     const [isCollapsed, setIsCollapsed] = React.useState(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('quest_tracker_collapsed');
             if (saved !== null) return saved === 'true';
-            return window.innerWidth < 768;
+            return window.innerWidth < 1024;
         }
         return false;
     });
 
+    const effectiveCollapsed = isCombat ? true : isCollapsed;
+
     const handleToggleCollapse = () => {
+        if (isCombat) return;
         setIsCollapsed(prev => {
             const next = !prev;
             if (typeof window !== 'undefined') {
@@ -34,34 +38,37 @@ const QuestTracker: React.FC<Props> = ({ character, onToggleTrack }) => {
         });
     };
 
-    const trackedQuestIds = character?.trackedQuestIds || [];
-    if (trackedQuestIds.length === 0) return null;
+    const trackedQuestIds = character?.trackedQuestIds;
+    const mercenaryQuestsRaw = character?.mercenaryData?.activeQuests;
+    const militaryMissionsRaw = character?.militaryData?.activeMissions;
 
-    const mercenaryQuests = Array.isArray(character?.mercenaryData?.activeQuests) ? character.mercenaryData.activeQuests : [];
-    const militaryMissions = Array.isArray(character?.militaryData?.activeMissions) ? character.militaryData.activeMissions : [];
-    
-    const allActiveQuests = [
-        ...mercenaryQuests.map(q => ({ ...q, category: 'Mercenary' })),
-        ...militaryMissions.map(m => ({ ...m, category: 'Military' }))
-    ];
+    const trackedQuests = React.useMemo(() => {
+        if (!trackedQuestIds || trackedQuestIds.length === 0) return [];
+        const mercenaryQuests = Array.isArray(mercenaryQuestsRaw) ? mercenaryQuestsRaw : [];
+        const militaryMissions = Array.isArray(militaryMissionsRaw) ? militaryMissionsRaw : [];
+        return [
+            ...mercenaryQuests.map(q => ({ ...q, category: 'Mercenary' })),
+            ...militaryMissions.map(m => ({ ...m, category: 'Military' }))
+        ].filter(q => q && trackedQuestIds.includes(q.id));
+    }, [trackedQuestIds, mercenaryQuestsRaw, militaryMissionsRaw]);
 
-    const trackedQuests = allActiveQuests.filter(q => q && trackedQuestIds.includes(q.id));
+    const hasCompletedQuest = React.useMemo(() => {
+        if (trackedQuests.length === 0) return false;
+        return trackedQuests.some(quest => {
+            let current = quest.currentAmount || 0;
+            const target = quest.targetAmount || 1;
+            const targetName = quest.targetName || "대상";
+            if ((quest.type === 'Collection' || quest.type === 'MilitarySupply') && targetName) {
+                current = (character?.inventory || []).reduce((acc, item) => {
+                    if (item && item.name === targetName) return acc + (item.stock || 1);
+                    return acc;
+                }, 0);
+            }
+            return current >= target;
+        });
+    }, [trackedQuests, character?.inventory]);
 
-    if (trackedQuests.length === 0) return null;
-
-    // 완료 가능한 퀘스트가 있는지 확인
-    const hasCompletedQuest = trackedQuests.some(quest => {
-        let current = quest.currentAmount || 0;
-        const target = quest.targetAmount || 1;
-        const targetName = quest.targetName || "대상";
-        if ((quest.type === 'Collection' || quest.type === 'MilitarySupply') && targetName) {
-            current = (character?.inventory || []).reduce((acc, item) => {
-                if (item && item.name === targetName) return acc + (item.stock || 1);
-                return acc;
-            }, 0);
-        }
-        return current >= target;
-    });
+    if (!trackedQuestIds || trackedQuestIds.length === 0 || trackedQuests.length === 0) return null;
 
     const getQuestIcon = (type: string, category: string) => {
         if (category === 'Military') {
@@ -95,10 +102,10 @@ const QuestTracker: React.FC<Props> = ({ character, onToggleTrack }) => {
             animate={{ opacity: 1, x: 0 }}
             className="fixed top-28 right-2 md:top-20 md:right-4 z-[60] w-auto max-w-[220px] sm:max-w-[240px] md:w-64 pointer-events-none"
         >
-            <div className="bg-slate-950/80 backdrop-blur-md border border-slate-800/80 rounded-xl shadow-2xl overflow-hidden pointer-events-auto">
+            <div className="bg-slate-950/90 border border-slate-800/80 rounded-xl shadow-2xl overflow-hidden pointer-events-auto">
                 {/* Header */}
                 <div 
-                    className={`p-2.5 md:p-3 ${!isCollapsed ? 'border-b border-slate-800/80' : ''} flex justify-between items-center cursor-pointer hover:bg-slate-900/60 transition-colors gap-2 select-none`}
+                    className={`p-2.5 md:p-3 ${!effectiveCollapsed ? 'border-b border-slate-800/80' : ''} flex justify-between items-center ${isCombat ? 'cursor-default' : 'cursor-pointer hover:bg-slate-900/60'} transition-colors gap-2 select-none`}
                     onClick={handleToggleCollapse}
                 >
                     <div className="flex items-center gap-1.5 md:gap-2 min-w-0">
@@ -109,16 +116,15 @@ const QuestTracker: React.FC<Props> = ({ character, onToggleTrack }) => {
                         </span>
                         {hasCompletedQuest && (
                             <span className="flex h-2 w-2 relative shrink-0" title="완료 가능한 의뢰 있음">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                             </span>
                         )}
                     </div>
-                    {isCollapsed ? <ChevronRight size={15} className="text-slate-500 shrink-0" /> : <ChevronDown size={15} className="text-slate-500 shrink-0" />}
+                    {!isCombat && (effectiveCollapsed ? <ChevronRight size={15} className="text-slate-500 shrink-0" /> : <ChevronDown size={15} className="text-slate-500 shrink-0" />)}
                 </div>
 
                 <AnimatePresence>
-                    {!isCollapsed && (
+                    {!effectiveCollapsed && (
                         <motion.div 
                             initial={{ height: 0 }}
                             animate={{ height: 'auto' }}
@@ -203,6 +209,6 @@ const QuestTracker: React.FC<Props> = ({ character, onToggleTrack }) => {
             </div>
         </motion.div>
     );
-};
+});
 
 export default QuestTracker;

@@ -1,6 +1,7 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { throttleFloatingItems } from '../../services/combatLagOptimizer';
+import { combatFloatingTextBatcher } from '../../services/combatFloatingTextBatcher';
 
 export interface FloatingFeedbackItem {
     id: string;
@@ -11,13 +12,27 @@ export interface FloatingFeedbackItem {
 
 interface FloatingFeedbackOverlayProps {
     items?: FloatingFeedbackItem[];
+    targetName?: string;
 }
 
-export const FloatingFeedbackOverlay: React.FC<FloatingFeedbackOverlayProps> = memo(({ items }) => {
+export const FloatingFeedbackOverlay: React.FC<FloatingFeedbackOverlayProps> = memo(({ items, targetName }) => {
+    const [localItems, setLocalItems] = useState<FloatingFeedbackItem[]>([]);
+
+    useEffect(() => {
+        if (!targetName) return;
+        const unsub = combatFloatingTextBatcher.subscribeTarget(targetName, setLocalItems);
+        return () => {
+            unsub();
+            setLocalItems([]);
+        };
+    }, [targetName]);
+
+    const activeSource = targetName ? localItems : items;
+
     // 동시 애니메이션 노드를 최대 4~5개로 엄격히 제한하여 GPU/CPU 프레임 드랍 원천 방지
     const optimizedItems = useMemo(() => {
-        return throttleFloatingItems(items, 4);
-    }, [items]);
+        return throttleFloatingItems(activeSource, 4);
+    }, [activeSource]);
 
     if (!optimizedItems || optimizedItems.length === 0) return null;
 

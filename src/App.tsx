@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
 import { useGame } from './hooks/useGame';
 import { useElixirTimer } from './hooks/useElixirTimer';
 import { GameProvider } from './context/GameContext';
@@ -5969,22 +5969,26 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
     }
   };
 
-  const handleActionWithTime = (actionText: string, ...rest: any[]) => {
+  const handleActionDepsRef = useRef({ handleAction, character, triggerDayChangeToast, addToLog });
+  handleActionDepsRef.current = { handleAction, character, triggerDayChangeToast, addToLog };
+
+  const handleActionWithTime = useCallback((actionText: string, ...rest: any[]) => {
+    const deps = handleActionDepsRef.current;
     if (actionText === "[라운드 종료]") {
-      const baseChar = combatStateBridge.getLatestCombatCharacter() || character;
+      const baseChar = combatStateBridge.getLatestCombatCharacter() || deps.character;
       const res = advanceGameTime(baseChar, 1, { isDungeonOrCombat: true, activityName: "전투 1라운드 경과" });
       if (res.toastNotice) {
-        triggerDayChangeToast(res.toastNotice);
+        deps.triggerDayChangeToast(res.toastNotice);
       }
       if (res.systemLogs && res.systemLogs.length > 0) {
-        res.systemLogs.forEach(l => addToLog(l));
+        res.systemLogs.forEach(l => deps.addToLog(l));
       }
       const reconciled = combatStateBridge.reconcileWithLatestCombatState(res.updatedCharacter);
-      setCharacter(reconciled);
-      return handleAction(actionText, rest[0], reconciled);
+      combatStateBridge.saveLatestCombatCharacter(reconciled);
+      return deps.handleAction(actionText, rest[0], reconciled);
     }
-    return handleAction(actionText, ...rest);
-  };
+    return deps.handleAction(actionText, ...rest);
+  }, []);
 
   return (
     <GameProvider character={character} combatState={combatState} setCharacter={setCharacter} setCombatState={setCombatState} handleAction={handleActionWithTime}>
@@ -7044,7 +7048,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                     )}
 
                     {/* [상시 퀘스트 트래커] 전투 중(combat)이나 도시 시설(CityInterface) 진입 시에도 최상단 플로팅으로 상시 표시 */}
-                    <QuestTracker character={character} onToggleTrack={handleToggleTrack} />
+                    <QuestTracker character={character} onToggleTrack={handleToggleTrack} isCombat={sceneType === 'combat'} />
                     {sceneType === 'combat' ? (
                         <Suspense fallback={<SceneLoadingFallback mode="combat" title="전투 전장 진입 중..." fullScreen={false} />}>
                             <IsolatedCombatContainer 

@@ -11,7 +11,7 @@ interface CombatAlliesGridProps {
     isPureResurrectionPending?: boolean;
     isResurrectionModeActive?: boolean;
     bubbles: Record<string, { text: string }>;
-    floatingTexts: Record<string, FloatingFeedbackItem[]>;
+    floatingTexts?: Record<string, FloatingFeedbackItem[]>;
     combatVfx: any;
     allCombatSkills: Skill[];
     enemies?: any[];
@@ -125,7 +125,7 @@ export const CombatAlliesGrid = memo(({
                                                     const m = (member.entity as any)?.mountedMonster;
                                                     if (m) onSelectMount({ mount: m, riderShinryokuType: member.shinryokuType });
                                                 }}
-                                                floatingTexts={floatingTexts[member.name]}
+                                                floatingTexts={floatingTexts ? floatingTexts[member.name] : undefined}
                                                 isHit={isHit}
                                             />
                                         </div>

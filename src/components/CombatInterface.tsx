@@ -54,6 +54,7 @@ import { CombatLogEntry } from './combat/CombatLogEntry';
 import { CombatLogList } from './combat/CombatLogList';
 import { CombatEnemiesArea } from './combat/CombatEnemiesArea';
 import { CombatAlliesGrid } from './combat/CombatAlliesGrid';
+import { CombatQuickSlots } from './combat/CombatQuickSlots';
 import BondGaugesPanel from './combat/BondGaugesPanel';
 import { AllyTargetQuickSelector } from './combat/AllyTargetQuickSelector';
 import { requiresDualTargetSelection } from '../utils/finalClassSkillHelper';
@@ -248,20 +249,11 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
 
     // Dialogue bubble state and trackers
     const [bubbles, setBubbles] = useState<Record<string, { text: string; id: number }>>({});
-    const [floatingTexts, setFloatingTexts] = useState<Record<string, FloatingFeedbackItem[]>>({});
     const [prevLogLength, setPrevLogLength] = useState(0);
 
     const triggerBubble = (_compId: string, _text: string) => {
         // 전투 중 대사 출력 비활성화
     };
-
-    // 부동 피해 텍스트 묶음 처리기(Batcher) 구독: 매 타격마다 거대 컴포넌트가 수십 번 리렌더링되는 렉을 방지
-    useEffect(() => {
-        const unsubscribe = combatFloatingTextBatcher.subscribe(setFloatingTexts);
-        return () => {
-            unsubscribe();
-        };
-    }, []);
 
     const triggerFloatingText = (targetName: string, text: string, type: 'damage' | 'heal' | 'crit' | 'buff' | 'debuff' | 'miss', delay = 0, rawText?: string) => {
         combatFloatingTextBatcher.add(targetName, text, type, delay, rawText);
@@ -1132,11 +1124,16 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         };
     }, []);
 
+    const onActionRef = useRef(onAction);
+    onActionRef.current = onAction;
+    const activeTurnIndexRef = useRef(activeTurnIndex);
+    activeTurnIndexRef.current = activeTurnIndex;
+
     // Advance to next turn in queue with concurrency safe-lock
     const advanceTurn = useCallback((fromIndex?: number) => {
         combatTurnManager.safeAdvanceTurn({
             fromIndex,
-            fallbackActiveIndex: actualActiveIndexRef.current >= 0 ? actualActiveIndexRef.current : activeTurnIndex,
+            fallbackActiveIndex: actualActiveIndexRef.current >= 0 ? actualActiveIndexRef.current : activeTurnIndexRef.current,
             queueLength: turnQueue.length,
             onNextIndex: (nextIdx) => {
                 setActiveTurnIndex(nextIdx);
@@ -1146,12 +1143,12 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                 setTimeout(() => {
                     isEndingRoundRef.current = false;
                 }, 1500);
-                onAction('[라운드 종료]');
+                onActionRef.current('[라운드 종료]');
             },
             combatSpeed,
-            currentTurn: combatState.turn
+            currentTurn: currentTurnRef.current
         });
-    }, [turnQueue.length, onAction, combatSpeed, activeTurnIndex, combatState.turn]);
+    }, [turnQueue.length, combatSpeed]);
 
     const selectSkillByTactics = useCallback((
         actor: Character | Companion,
@@ -1724,7 +1721,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                 setIsActingTurn(false);
             };
         }
-    }, [activeUnit, isLoading, isCompanionAuto, isAutoBattle, combatSpeed, combatState.enemies, player, advanceTurn, onAction]);
+    }, [activeUnit?.id, activeUnit?.unitType, activeTurnIndex, combatState.turn, combatState.isEnded, isLoading, isCompanionAuto, isAutoBattle, combatSpeed, advanceTurn]);
 
     // Safety check to prevent deadlocks when activeUnit becomes null or queue runs out unexpectedly mid-round
     useEffect(() => {
@@ -2263,7 +2260,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
         });
         (readyBondSkills || []).forEach(bs => list.push(bs));
         return list;
-    }, [player, readyBondSkills]);
+    }, [player.skills, player.equippedWeapon, player.companions, readyBondSkills]);
 
     // 퀵 슬롯 클릭 및 키보드 단축키 실행 공통 함수
     const handleTriggerShortcutSlot = useCallback((slotIdx: number) => {
@@ -2555,10 +2552,8 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                 </div>
             </div>
 
-        <motion.div 
-            animate={shake && !isShakeDisabled() ? { x: [-6, 6, -5, 5, -2, 2, 0], y: [-4, 4, -3, 3, 0] } : { x: 0, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex-1 p-1 md:p-4 flex flex-col md:flex-row gap-1.5 md:gap-4 justify-between relative bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')] overflow-hidden items-stretch"
+        <div 
+            className={`flex-1 p-1 md:p-4 flex flex-col md:flex-row gap-1.5 md:gap-4 justify-between relative bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')] overflow-hidden items-stretch ${shake && !isShakeDisabled() ? 'animate-shake' : ''}`}
         >
             <div className={`absolute inset-0 transition-opacity duration-1000 ${isResurrectionModeActive ? 'bg-amber-500/10' : 'bg-transparent'} pointer-events-none`}></div>
             <div className="absolute inset-0 bg-gradient-to-b from-slate-900/50 via-transparent to-slate-900/80 pointer-events-none text-center"></div>
@@ -2580,7 +2575,6 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                 <CombatEnemiesArea 
                     enemies={combatState.enemies}
                     selectionMode={selectionMode}
-                    floatingTexts={floatingTexts}
                     playerType={(() => {
                         if (hoveredShortcutSkill) {
                             return hoveredShortcutSkill.shinryokuType || (activeUnit?.unitType === 'companion' && activeCompanion ? activeCompanion.shinryokuType : player.shinryokuType);
@@ -2616,7 +2610,6 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                 isPureResurrectionPending={isPureResurrectionPending}
                 isResurrectionModeActive={isResurrectionModeActive}
                 bubbles={bubbles}
-                floatingTexts={floatingTexts}
                 combatVfx={combatVfx}
                 allCombatSkills={allCombatSkills}
                 enemies={combatState.enemies}
@@ -2624,7 +2617,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                 onTargetSelect={handleTargetSelection}
                 onSelectMount={setSelectedMount}
             />
-        </motion.div>
+        </div>
 
             {/* Action Bar (Turn-based Player/Companion controls) */}
             <div className="p-1.5 sm:p-2 md:p-3 bg-slate-900 border-t border-slate-800 z-20 shrink-0 shadow-[0_-5px_15px_rgba(0,0,0,0.3)]">
@@ -2633,7 +2626,6 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                     const isPlayerTurn = activeUnit?.unitType === 'player';
                     const isCompanionTurn = activeUnit?.unitType === 'companion';
 
-                    // 적 턴이거나 조작 가능한 아군 턴이 아닐 때는 숏컷 패널을 숨김
                     if (!isPlayerTurn && !isCompanionTurn) return null;
                     if (activeUnit?.unitType === 'enemy') return null;
                     if (isCompanionTurn && isCompanionAuto) return null;
@@ -2642,213 +2634,30 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction, isLoa
                     const currentCompanion = isCompanionTurn ? (activeCompanion || (activeUnit.id ? player.companions.find(c => c.id === activeUnit.id) : null) || (activeUnit.companionIndex !== undefined ? player.companions[activeUnit.companionIndex] : null)) : null;
                     const currentUnit = isCompanionTurn && currentCompanion ? currentCompanion : player;
                     const shortcuts = currentUnit?.skillShortcuts || [];
-                    
                     const isClassTrial = !!combatState.trialTier || combatState.type === 'final_trial_battle';
                     const activeBondSkillsList = isClassTrial ? [] : readyBondSkills;
-                    const availableSkillList = !isCompanionTurn 
+                    const availableSkillList = !isCompanionTurn
                         ? getEntityAllCombatSkills(player, activeBondSkillsList.filter(bs => !bs.sourceId))
                         : getEntityAllCombatSkills(currentCompanion!, activeBondSkillsList.filter(bs => bs.sourceId === currentCompanion?.id || bs.companionId === currentCompanion?.id));
-                        
-                    const isPlayerOrManualCompanionTurn = (isPlayerTurn && !isAutoBattle) || 
-                                                          (isCompanionTurn && currentCompanion && !isCompanionAuto && !isAutoBattle);
+                    const isPlayerOrManualCompanionTurn = (isPlayerTurn && !isAutoBattle) ||
+                                                          (isCompanionTurn && !!currentCompanion && !isCompanionAuto && !isAutoBattle);
 
                     return (
-                        <div className="max-w-4xl mx-auto mb-1 bg-slate-950/90 p-1 rounded-lg border border-amber-500/30 shadow-md relative">
-                            <div className="flex items-center justify-between mb-0.5 px-0.5">
-                                <div className="flex items-center gap-1 text-[8px] md:text-xs font-bold text-slate-300">
-                                    <Zap size={10} className="text-amber-400 fill-amber-400 shrink-0" />
-                                    <span className="text-amber-300 truncate">[{currentUnit.name}] 퀵 슬롯</span>
-                                    <span className="text-[7.5px] text-slate-500 font-mono">({shortcuts.filter(Boolean).length}/10)</span>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowKeybindModal(true)}
-                                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] md:text-[10px] font-bold bg-slate-900 hover:bg-slate-850 text-amber-300 hover:text-amber-200 border border-amber-500/40 hover:border-amber-400 transition-all active:scale-95 shadow-sm"
-                                    title="전투 단축키 설정"
-                                >
-                                    <Keyboard size={11} className="text-amber-400 shrink-0" />
-                                    <span>단축키 설정</span>
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-10 gap-0.5 sm:gap-1">
-                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(slotIdx => {
-                                    const shortcutName = shortcuts[slotIdx];
-                                    const isItem = shortcutName ? (shortcutName.startsWith('[ITEM]') || player.inventory.some(i => i.name === shortcutName && !availableSkillList.some(s => s.name === shortcutName))) : false;
-                                    const rawShortcutName = shortcutName ? shortcutName.replace(/^\[ITEM\]\s*/, '') : '';
-                                    
-                                    const skill = !isItem && shortcutName ? availableSkillList.find(s => s.name === shortcutName || s.id === shortcutName) : null;
-                                    const item = isItem && shortcutName ? player.inventory.find(i => i.name === rawShortcutName || i.name === shortcutName) : null;
-                                    
-                                    const itemQty = item ? player.inventory.filter(i => i.name === item.name).length : 0;
-                                    
-                                    const isMpEnough = skill ? checkSkillParticipantsMp(skill, player, currentUnit).isAllowed : false;
-                                     const isWeaponAllowed = skill ? checkSkillWeaponRequirement(currentUnit, skill).isAllowed : true;
-                                    const isUsable = skill && isPlayerOrManualCompanionTurn && !isLoading && isMpEnough && isWeaponAllowed && skill.type !== SkillType.PASSIVE;
-                                    const isItemUsable = item && item.type === 'Consumable' && !item.name.includes('차원주문서') && !item.name.includes('차원 주문서') && activeUnit?.unitType === 'player' && !isAutoBattle && !isLoading && itemQty > 0;
-                                    
-                                    const isHovered = (skill && hoveredShortcutSkill?.name === skill.name) || (item && hoveredShortcutItem?.name === item.name);
-
-                                    return (
-                                        <div key={slotIdx} className="relative group">
-                                            {/* Hover / Touch Info Tooltip */}
-                                            {isHovered && skill && (
-                                                <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 w-44 md:w-52 bg-slate-950 border border-amber-500/60 p-1.5 rounded-lg shadow-2xl z-50 pointer-events-none text-left">
-                                                    <div className="flex justify-between items-start mb-0.5 border-b border-slate-800 pb-0.5">
-                                                        <h5 className="font-bold text-[10px] text-amber-300 flex items-center gap-1">
-                                                            <span>{skill.name}</span>
-                                                            {skill.tier && <span className="text-[7px] px-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">{skill.tier}</span>}
-                                                        </h5>
-                                                        <span className="text-[7.5px] font-mono font-bold text-cyan-300 bg-cyan-950 px-1 rounded border border-cyan-800">
-                                                            MP {skill.mpCost || 0}
-                                                        </span>
-                                                    </div>
-                                                    {(() => {
-                                                        const sElem = skill.shinryokuType || (currentUnit as any)?.shinryokuType || '무속성';
-                                                        const sElemCfg = SHINRYOKU_UI_CONFIG[sElem] || SHINRYOKU_UI_CONFIG.default;
-                                                        return (
-                                                            <>
-                                                                <div className="text-[7.5px] font-mono mb-0.5 flex items-center justify-between">
-                                                                    <span className="text-slate-400">종류: {skill.type}</span>
-                                                                    {skill.type !== SkillType.BUFF && skill.type !== SkillType.DEBUFF && skill.type !== SkillType.PASSIVE && (
-                                                                    <span className={`px-1 py-0.2 rounded border font-bold ${sElemCfg.bg} ${sElemCfg.text} ${sElemCfg.border}`}>
-                                                                        속성: {sElem}
-                                                                    </span>
-                                                                    )}
-                                                                    <span className="text-slate-400">대상: {skill.targetType === 'aoe' ? '광역' : skill.targetType === 'ally' ? '아군' : '단일'}</span>
-                                                                </div>
-                                                                <p className="text-[8px] text-slate-200 leading-tight line-clamp-2 italic bg-slate-900/60 p-1 rounded border border-slate-800 mb-0.5">
-                                                                    "{skill.description}"
-                                                                </p>
-                                                                {skill.powerRatio && (
-                                                                    <div className="text-[7.5px] text-amber-400 font-mono font-bold flex justify-between items-center">
-                                                                        <span>위력: {skill.powerRatio}%</span>
-                                                                        {skill.type !== SkillType.BUFF && skill.type !== SkillType.DEBUFF && skill.type !== SkillType.PASSIVE && <span className={sElemCfg.text}>[속성: {sElem}]</span>}
-                                                                    </div>
-                                                                )}
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            )}
-
-                                            {isHovered && item && (
-                                                <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 w-44 md:w-52 bg-slate-950 border border-emerald-500/60 p-1.5 rounded-lg shadow-2xl z-50 pointer-events-none text-left">
-                                                    <div className="flex justify-between items-start mb-0.5 border-b border-slate-800 pb-0.5">
-                                                        <h5 className="font-bold text-[10px] text-emerald-300 flex items-center gap-1">
-                                                            <span>{item.name}</span>
-                                                            {item.rarity && <span className="text-[7px] px-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">{item.rarity}</span>}
-                                                        </h5>
-                                                        <span className="text-[7.5px] font-mono font-bold text-amber-300 bg-amber-950 px-1 rounded border border-amber-800">
-                                                            보유 {itemQty}개
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-[7.5px] text-slate-400 font-mono mb-0.5">
-                                                        종류: {item.type}
-                                                    </div>
-                                                    <p className="text-[8px] text-slate-200 leading-tight line-clamp-2 italic bg-slate-900/60 p-1 rounded border border-slate-800 mb-0.5">
-                                                        "{item.description}"
-                                                    </p>
-                                                </div>
-                                            )}
-
-                                             {skill || item ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleTriggerShortcutSlot(slotIdx)}
-                                                    onMouseEnter={() => {
-                                                        if (skill) setHoveredShortcutSkill(skill);
-                                                        if (item) setHoveredShortcutItem(item);
-                                                    }}
-                                                    onMouseLeave={() => {
-                                                        setHoveredShortcutSkill(null);
-                                                        setHoveredShortcutItem(null);
-                                                    }}
-                                                    onTouchStart={() => {
-                                                        if (skill) setHoveredShortcutSkill(skill);
-                                                        if (item) setHoveredShortcutItem(item);
-                                                    }}
-                                                    onTouchEnd={() => setTimeout(() => {
-                                                        setHoveredShortcutSkill(null);
-                                                        setHoveredShortcutItem(null);
-                                                    }, 2500)}
-                                                    disabled={skill ? !isUsable : !isItemUsable}
-                                                    className={`w-full h-8 sm:h-10 p-0.5 rounded border flex flex-col items-center justify-center gap-0 transition-all relative overflow-hidden group ${
-                                                        skill
-                                                            ? isUsable
-                                                                ? 'bg-gradient-to-b from-indigo-950/80 to-slate-950 border-indigo-500/60 hover:border-amber-400 hover:from-indigo-900/90 text-slate-100 shadow-sm active:scale-95 cursor-pointer'
-                                                                : 'bg-slate-950/60 border-slate-800/80 text-slate-600 opacity-50 cursor-not-allowed'
-                                                            : isItemUsable
-                                                                ? 'bg-gradient-to-b from-emerald-950/80 to-slate-950 border-emerald-500/60 hover:border-amber-400 hover:from-emerald-900/90 text-slate-100 shadow-sm active:scale-95 cursor-pointer'
-                                                                : 'bg-slate-950/60 border-slate-800/80 text-slate-600 opacity-50 cursor-not-allowed'
-                                                    }`}
-                                                >
-                                                    {/* Slot index badge & Keybind badge */}
-                                                    <span className="absolute top-0.5 left-0.5 text-[5px] sm:text-[6.5px] font-mono font-bold text-amber-400/90 z-10 leading-none flex items-center gap-0.5 bg-slate-950/80 px-0.5 rounded border border-amber-500/20" title={`단축키: ${formatKeyDisplay(combatKeybinds[slotIdx])}`}>
-                                                        <span>#{slotIdx + 1}</span>
-                                                        <span className="text-amber-300 font-black">[{formatKeyDisplay(combatKeybinds[slotIdx])}]</span>
-                                                    </span>
-
-                                                    {/* Cost / Qty badge */}
-                                                    {skill ? (
-                                                        <span className={`absolute top-0.5 right-0.5 text-[5px] sm:text-[7px] font-mono font-bold px-0.5 rounded border z-10 leading-none ${
-                                                            isMpEnough ? 'bg-cyan-950/90 text-cyan-300 border-cyan-800/60' : 'bg-red-950/90 text-red-400 border-red-800/60'
-                                                        }`}>
-                                                            {skill.mpCost || 0}M
-                                                        </span>
-                                                    ) : (
-                                                        <span className={`absolute top-0.5 right-0.5 text-[5px] sm:text-[7px] font-mono font-bold px-0.5 rounded border z-10 leading-none bg-emerald-950/90 text-emerald-300 border-emerald-800/60`}>
-                                                            {itemQty}
-                                                        </span>
-                                                    )}
-
-                                                    {/* Thumbnail Icon/Image */}
-                                                    <div className={`w-3 h-3 sm:w-4 sm:h-4 rounded border ${skill ? 'border-indigo-400/30' : 'border-emerald-400/30'} overflow-hidden bg-slate-950 flex items-center justify-center shrink-0 mt-0.5 shadow-inner group-hover:scale-105 transition-transform`}>
-                                                        {skill ? (
-                                                            (skill.imageUrl || getRegisteredSkillImage(skill.id) || getRegisteredSkillImage(skill.name)) ? (
-                                                                <FastImage src={skill.imageUrl || getRegisteredSkillImage(skill.id) || getRegisteredSkillImage(skill.name)} alt={skill.name} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                (() => {
-                                                                    const IconComp = getSkillIconComponent(skill);
-                                                                    return <IconComp size={8} className={isUsable ? 'text-indigo-300 group-hover:text-amber-300' : 'text-slate-600'} />;
-                                                                })()
-                                                            )
-                                                        ) : (
-                                                            item ? (
-                                                                <FastImage src={getItemImage(item)} alt={item.name} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <Package size={8} className={isItemUsable ? 'text-emerald-300 group-hover:text-amber-300' : 'text-slate-600'} />
-                                                            )
-                                                        )}
-                                                    </div>
-
-                                                    {/* Skill / Item Name */}
-                                                    <span className="text-[5.5px] sm:text-[7.5px] font-bold truncate w-full text-center leading-none mt-0.5 px-0.5">
-                                                        {item ? item.name : skill?.name}
-                                                    </span>
-                                                    {skill && skill.type !== SkillType.BUFF && skill.type !== SkillType.DEBUFF && skill.type !== SkillType.PASSIVE && (() => {
-                                                        const sElem = skill.shinryokuType || (currentUnit as any)?.shinryokuType || '무속성';
-                                                        const sElemCfg = SHINRYOKU_UI_CONFIG[sElem] || SHINRYOKU_UI_CONFIG.default;
-                                                        return (
-                                                            <span className={`text-[4.5px] sm:text-[6.5px] font-bold px-0.5 sm:px-1 py-0.2 rounded border ${sElemCfg.bg} ${sElemCfg.text} ${sElemCfg.border} leading-none truncate max-w-full mt-0.5 shadow-sm`}>
-                                                                속성: {sElem}
-                                                            </span>
-                                                        );
-                                                    })()}
-                                                </button>
-                                            ) : (
-                                                <div className="w-full h-8 sm:h-10 p-0.5 rounded border border-dashed border-slate-800/80 bg-slate-950/40 flex flex-col items-center justify-center text-slate-600">
-                                                    <span className="text-[5px] sm:text-[6.5px] font-mono leading-none text-slate-500">
-                                                        #{slotIdx + 1} [{formatKeyDisplay(combatKeybinds[slotIdx])}]
-                                                    </span>
-                                                    <span className="text-[5px] text-slate-600 leading-none mt-0.5">빈 슬롯</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
+                        <CombatQuickSlots
+                            currentUnit={currentUnit}
+                            player={player}
+                            availableSkillList={availableSkillList}
+                            shortcuts={shortcuts}
+                            combatKeybinds={combatKeybinds}
+                            isPlayerOrManualCompanionTurn={isPlayerOrManualCompanionTurn}
+                            isPlayerUnit={activeUnit?.unitType === 'player'}
+                            isAutoBattle={isAutoBattle}
+                            isLoading={isLoading}
+                            formatKeyDisplay={formatKeyDisplay}
+                            onTriggerSlot={handleTriggerShortcutSlot}
+                            onOpenKeybindModal={() => setShowKeybindModal(true)}
+                            onHoverSkillChange={setHoveredShortcutSkill}
+                        />
                     );
                 })()}
 

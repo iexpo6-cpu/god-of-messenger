@@ -80,7 +80,7 @@ const PartyCardComponent = ({
     return (
         <div 
             onClick={!unusableLabel ? onClick : undefined}
-            className={`bg-slate-900/90 border p-1.5 sm:p-2 rounded-lg md:rounded-xl flex flex-col justify-between relative transition-all shadow-md group w-full ${
+            className={`bg-slate-900/90 border p-1.5 sm:p-2 rounded-lg md:rounded-xl flex flex-col justify-between relative transition-colors duration-150 [contain:layout_style] shadow-md group w-full ${
                 isDead 
                     ? 'border-slate-800 opacity-60 grayscale' 
                     : isActive
@@ -92,7 +92,7 @@ const PartyCardComponent = ({
                     : 'border-slate-700/60 hover:border-cyan-500/50 shadow-cyan-950/10'
             } ${selectable && !unusableLabel ? 'cursor-pointer ring-2 ring-emerald-400 scale-[1.02]' : ''} ${unusableLabel ? 'opacity-50 grayscale' : ''} ${selectable && isDead && !unusableLabel ? 'ring-2 ring-amber-400' : ''} ${isHit && !isDead ? 'animate-shake !bg-red-950/70 !border-red-500' : ''}`}
         >
-            <FloatingFeedbackOverlay items={floatingTexts} />
+            <FloatingFeedbackOverlay targetName={name} items={floatingTexts} />
 
             {/* Top-Right Badge: Turn Active or Player Role */}
             {isActive && !isDead ? (

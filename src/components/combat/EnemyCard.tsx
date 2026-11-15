@@ -72,7 +72,7 @@ const EnemyCardComponent = ({
     return (
         <div 
             onClick={enemy.hp > 0 ? onClick : undefined}
-            className={`bg-slate-900/90 border p-1 sm:p-1.5 md:p-2 rounded-lg md:rounded-xl flex flex-col items-center justify-between relative transition-all shadow-md group ${
+            className={`bg-slate-900/90 border p-1 sm:p-1.5 md:p-2 rounded-lg md:rounded-xl flex flex-col items-center justify-between relative transition-colors duration-150 [contain:layout_style] shadow-md group ${
                 enemy.hp <= 0 
                     ? 'border-slate-800 opacity-50 grayscale' 
                     : isBossEnraged
@@ -82,7 +82,7 @@ const EnemyCardComponent = ({
                     : 'border-red-900/40 hover:border-red-500/50'
             } ${selectable ? 'cursor-pointer ring-2 ring-amber-400 scale-[1.02]' : ''} ${isHit && enemy.hp > 0 ? 'animate-shake !bg-red-950/60 !border-red-500' : ''}`}
         >
-            <FloatingFeedbackOverlay items={floatingTexts} />
+            <FloatingFeedbackOverlay targetName={enemy.name} items={floatingTexts} />
             {affinityBadge}
             {isBoss && enemy.hp > 0 && (
                 <span className={`absolute top-0 right-0 ${isBossEnraged ? 'bg-red-600 text-white' : 'bg-amber-600 text-slate-900'} text-[7px] sm:text-[8px] md:text-[10px] px-1.5 py-0.2 md:px-2 md:py-0.5 rounded-bl font-black z-20 shadow-md`}>

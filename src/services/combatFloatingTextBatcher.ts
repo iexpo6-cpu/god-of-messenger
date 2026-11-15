@@ -17,11 +17,16 @@ export class CombatFloatingTextBatcher {
     private currentTexts: Record<string, FloatingFeedbackItem[]> = {};
     private pendingAdditions: { targetName: string; item: FloatingFeedbackItem; showAt: number }[] = [];
     private listener: ((texts: Record<string, FloatingFeedbackItem[]>) => void) | null = null;
+    private targetListeners: Map<string, Set<(items: FloatingFeedbackItem[]) => void>> = new Map();
     private timerId: number | null = null;
     private isRunning = false;
 
+    private normalizeTarget(targetName: string): string {
+        return targetName.replace(/\[BOSS\]|\[WANTED\]|\[정예\]|\[침략군\]/g, '').trim();
+    }
+
     /**
-     * 리액트 컴포넌트 상태 갱신 함수 구독
+     * 리액트 컴포넌트 상태 갱신 함수 구독 (글로벌 - 레거시 호환용)
      */
     public subscribe(listener: (texts: Record<string, FloatingFeedbackItem[]>) => void): () => void {
         this.listener = listener;
@@ -29,6 +34,39 @@ export class CombatFloatingTextBatcher {
             this.listener = null;
             this.clear();
         };
+    }
+
+    /**
+     * 특정 타겟 카드 전용 로컬 구독 (전투 화면 전체 리렌더 원천 차단)
+     */
+    public subscribeTarget(targetName: string, listener: (items: FloatingFeedbackItem[]) => void): () => void {
+        const key = this.normalizeTarget(targetName);
+        let set = this.targetListeners.get(key);
+        if (!set) {
+            set = new Set();
+            this.targetListeners.set(key, set);
+        }
+        set.add(listener);
+        const initial = this.currentTexts[key];
+        if (initial && initial.length > 0) {
+            listener(initial);
+        }
+        return () => {
+            const existingSet = this.targetListeners.get(key);
+            if (existingSet) {
+                existingSet.delete(listener);
+                if (existingSet.size === 0) {
+                    this.targetListeners.delete(key);
+                }
+            }
+        };
+    }
+
+    private notifyTarget(targetKey: string, items: FloatingFeedbackItem[]): void {
+        const set = this.targetListeners.get(targetKey);
+        if (set) {
+            set.forEach(fn => fn(items));
+        }
     }
 
     /**
@@ -42,7 +80,7 @@ export class CombatFloatingTextBatcher {
         rawText?: string
     ): void {
         const id = `flt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-        const cleanTarget = targetName.replace(/\[BOSS\]|\[WANTED\]|\[정예\]|\[침략군\]/g, '').trim();
+        const cleanTarget = this.normalizeTarget(targetName);
         const now = Date.now();
         const showAt = now + Math.max(0, delay);
         const expiresAt = showAt + 1000;
@@ -68,6 +106,7 @@ export class CombatFloatingTextBatcher {
     private tick = (): void => {
         const now = Date.now();
         let changed = false;
+        const changedTargets = new Set<string>();
 
         // 1. 대기 항목 중 표시 시간이 된 항목들 일괄 투입
         if (this.pendingAdditions.length > 0) {
@@ -92,6 +131,7 @@ export class CombatFloatingTextBatcher {
                     // 다단 히트 시 대상당 최대 2~3개까지만 유지하여 DOM 부하 차단
                     const trimmed = existing.length >= 3 ? existing.slice(existing.length - 2) : existing;
                     nextTexts[targetName] = [...trimmed, item];
+                    changedTargets.add(targetName);
                 }
                 this.currentTexts = nextTexts;
             }
@@ -104,19 +144,24 @@ export class CombatFloatingTextBatcher {
             const active = (nextTexts[target] || []).filter(item => (item.expiresAt || 0) > now);
             if (active.length !== (nextTexts[target] || []).length) {
                 changed = true;
+                changedTargets.add(target);
                 if (active.length === 0) {
                     delete nextTexts[target];
                 } else {
                     nextTexts[target] = active;
+                    hasActiveTexts = true;
                 }
             } else if (active.length > 0) {
                 hasActiveTexts = true;
             }
         }
 
-        // 3. 실질적인 변경이 있을 때만 단 1회 상태 갱신 통지
+        // 3. 실질적인 변경이 있을 때만 해당 타겟 리스너 및 글로벌 리스너에 통지
         if (changed) {
             this.currentTexts = nextTexts;
+            changedTargets.forEach(target => {
+                this.notifyTarget(target, this.currentTexts[target] || []);
+            });
             if (this.listener) {
                 this.listener(this.currentTexts);
             }
@@ -142,6 +187,9 @@ export class CombatFloatingTextBatcher {
         this.isRunning = false;
         this.pendingAdditions = [];
         this.currentTexts = {};
+        this.targetListeners.forEach(set => {
+            set.forEach(fn => fn([]));
+        });
         if (this.listener) {
             this.listener({});
         }

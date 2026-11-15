@@ -6,7 +6,7 @@ import { FloatingFeedbackItem } from './FloatingFeedbackOverlay';
 interface CombatEnemiesAreaProps {
     enemies?: Enemy[];
     selectionMode: 'enemy' | 'ally' | 'none';
-    floatingTexts: Record<string, FloatingFeedbackItem[]>;
+    floatingTexts?: Record<string, FloatingFeedbackItem[]>;
     playerType?: string;
     skills?: Skill[];
     combatVfx?: any;
@@ -40,7 +40,7 @@ export const CombatEnemiesArea = memo(({
         >
             {enemies.map((enemy, idx) => {
                 const cleanName = enemy.name.replace(/\[BOSS\]|\[WANTED\]|\[정예\]|\[침략군\]/g, '').trim();
-                const enemyFloating = floatingTexts[cleanName] || floatingTexts[enemy.name];
+                const enemyFloating = floatingTexts ? (floatingTexts[cleanName] || floatingTexts[enemy.name]) : undefined;
                 const isHit = combatVfx?.targetName === enemy.name || 
                     (combatVfx?.isAoe && combatVfx?.tier !== 'BUFF' && !enemies.some(e => e.name === combatVfx?.attackerName)) || 
                     (combatVfx?.isAoe && combatVfx?.tier === 'BUFF' && enemies.some(e => e.name === combatVfx?.attackerName));
