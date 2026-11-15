@@ -23,6 +23,7 @@ export const LOCAL_VISUAL_MANIFEST: Record<string, string> = {
 
     // 판타지 대륙 및 지역 배경 에셋
     "신계_배경": "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+    "신계_무의_궁궐_배경": "assets/visuals/backgrounds/shingye/shingye_void_palace.jpg",
     "마계_배경": "assets/visuals/backgrounds/magye_imperial_citadel.jpg",
     "실바나르_배경": "assets/visuals/backgrounds/silvanar_myrtal_forest.jpg",
     "페랄디아_배경": "assets/visuals/backgrounds/feraldia_leonis_colosseum.jpg",

@@ -338,23 +338,23 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
         matchedNations: ["신계", "음의 기운의 성전"]
     },
 
-    // 1-14. 무의 궁궐
+    // 1-14. 무의 궁궐 (태허의 성역)
     shingye_void_palace: {
         id: "shingye_void_palace",
         name: "무의 궁궐",
         region: "신계",
-        concept: "모든 것이 비어 있으나 모든 것을 잉태하는 초월의 무",
-        prompt: "Transcendental void palace beyond space and time, monochrome minimalist ethereal architecture dissolving into pure emptiness, sacred silver geometry, eternal silence and ultimate truth, 8k masterpiece",
+        concept: "시공간을 초월한 태허(太虛)와 절대 무(Void)의 궁궐",
+        prompt: "Breathtaking 16:9 wide panoramic dark fantasy RPG masterpiece, the transcendental Void Palace of Supreme Emptiness (무의 궁궐, 태허의 성역). Far removed from golden skies, set in a sublime realm of absolute monochrome cosmic void, profound black infinity and brilliant ethereal silver starlight. Monumental geometric minimalist palace structures of polished obsidian and translucent silver crystal, reflecting endless dimensions. Floating silver Moebius rings, sacred cosmic sacred geometry rings, and ethereal yin-yang taiji energy vortexes rotating silently in midair. A realm of profound transcendental stillness where all existence begins and dissolves into pure void, glowing pale silver and starlight rim lighting, subtle cosmic dust, 8k resolution, cinematic concept art masterpiece.",
         localPath: "assets/visuals/backgrounds/shingye/shingye_void_palace.jpg",
-        fallbackUrl: "assets/visuals/backgrounds/shingye_celestial_sanctuary.jpg",
+        fallbackUrl: "assets/visuals/backgrounds/shingye/shingye_void_palace.jpg",
         theme: {
-            overlayGradient: "linear-gradient(to bottom, rgba(15, 15, 20, 0.8) 0%, rgba(30, 30, 40, 0.5) 50%, rgba(2, 6, 23, 0.95) 100%)",
-            accentColor: "text-zinc-300",
-            borderColor: "border-zinc-400/70",
-            glowColor: "rgba(212, 212, 216, 0.35)",
+            overlayGradient: "linear-gradient(to bottom, rgba(10, 10, 16, 0.8) 0%, rgba(24, 24, 32, 0.5) 50%, rgba(2, 6, 23, 0.95) 100%)",
+            accentColor: "text-zinc-200",
+            borderColor: "border-zinc-400/80",
+            glowColor: "rgba(228, 228, 231, 0.4)",
             badgeText: "☯️ 무의 궁궐 (Transcendental Void)",
-            badgeClass: "bg-zinc-900/85 text-zinc-200 border-zinc-500/70 shadow-[0_0_20px_rgba(212,212,216,0.25)]",
-            description: "형상도 시작도 끝도 없는 태허의 정적 속에서 시공간을 초월하여 고요히 존재하는 궁궐입니다."
+            badgeClass: "bg-zinc-950/90 text-zinc-100 border-zinc-400/80 shadow-[0_0_25px_rgba(228,228,231,0.3)]",
+            description: "황금빛 구름을 벗어나 시공간을 초월한 흑백의 태허(太虛) 속에서, 회전하는 은빛 뫼비우스 고리와 태극의 침묵이 흐르는 절대 무의 궁궐입니다."
         },
         matchedNations: ["신계", "무의 궁"]
     },
