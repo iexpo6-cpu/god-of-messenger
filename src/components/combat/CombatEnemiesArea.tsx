@@ -39,7 +39,7 @@ export const CombatEnemiesArea = memo(({
             className="flex justify-center gap-1 sm:gap-2 md:gap-3 flex-nowrap md:flex-wrap overflow-x-auto md:overflow-y-auto max-h-[30vh] md:max-h-[45vh] py-0.5 relative z-10 content-start custom-scrollbar"
         >
             {enemies.map((enemy, idx) => {
-                const cleanName = enemy.name.replace(/\[BOSS\]|\[WANTED\]|\[정예\]|\[침략군\]/g, '').trim();
+                const cleanName = enemy.name.replace(/[\[\(]?(BOSS|WANTED|정예|침략군|보스|\d+)[\]\)]?/gi, '').trim();
                 const enemyFloating = floatingTexts ? (floatingTexts[cleanName] || floatingTexts[enemy.name]) : undefined;
                 const isHit = combatVfx?.targetName === enemy.name || 
                     (combatVfx?.isAoe && combatVfx?.tier !== 'BUFF' && !enemies.some(e => e.name === combatVfx?.attackerName)) || 

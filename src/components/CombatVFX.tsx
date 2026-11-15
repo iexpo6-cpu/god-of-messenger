@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ClassTier, SkillFrameAnimation } from '../types';
 import { Flame, Star, Zap, Snowflake, Droplets, Wind, Mountain, Eclipse, Hammer, Sun, Moon, Leaf, Sword, Activity, Sparkles, Crown, Shield, Heart, Lock, Skull } from 'lucide-react';
@@ -1584,7 +1584,68 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
         return () => observer.disconnect();
     }, []);
 
-    useEffect(() => {
+    // 피격 대상 DOM 엘리먼트 안전 검색 (CSS 셀렉터 특수문자/대괄호 문법 오류 100% 방지)
+    const findCombatTargetElement = useCallback((): Element | null => {
+        if (typeof document === 'undefined') return null;
+
+        if (isAoe) {
+            const isBuffOrHeal = tier === 'BUFF' || vfx.targetName === 'party' || vfx.targetName === 'ally' || vfx.targetName === 'allies';
+            let isAttackerEnemy = false;
+            if (vfx.attackerName) {
+                const cleanAttacker = vfx.attackerName.replace(/[\[\(]?(BOSS|WANTED|정예|침략군|보스)[\]\)]?/gi, '').trim();
+                const enemyUnits = Array.from(document.querySelectorAll('[data-combat-area="enemies"] [data-combat-unit]'));
+                isAttackerEnemy = enemyUnits.some(u => {
+                    const unitName = u.getAttribute('data-combat-unit') || '';
+                    const cleanUnit = u.getAttribute('data-clean-name') || '';
+                    return unitName === vfx.attackerName || (cleanAttacker && (unitName.includes(cleanAttacker) || cleanUnit.includes(cleanAttacker)));
+                });
+            }
+            const targetAreaSelector = isBuffOrHeal
+                ? (isAttackerEnemy ? '[data-combat-area="enemies"]' : '[data-combat-area="allies"]')
+                : (isAttackerEnemy ? '[data-combat-area="allies"]' : '[data-combat-area="enemies"]');
+            return document.querySelector(targetAreaSelector) || document.querySelector('[data-combat-area="enemies"]');
+        }
+
+        const targetName = vfx.targetName;
+        if (targetName && targetName !== '적군' && targetName !== 'aoe' && targetName !== 'allies' && targetName !== '전체 대상') {
+            const cleanTarget = targetName.replace(/[\[\(]?(BOSS|WANTED|정예|침략군|보스)[\]\)]?/gi, '').trim();
+            const units = Array.from(document.querySelectorAll('[data-combat-unit]'));
+
+            // 1) data-combat-unit 속성 완전 일치
+            let matched = units.find(u => u.getAttribute('data-combat-unit') === targetName);
+            if (matched) return matched;
+
+            // 2) data-clean-name 속성 일치
+            if (cleanTarget) {
+                matched = units.find(u => {
+                    const cn = u.getAttribute('data-clean-name');
+                    return cn === cleanTarget || cn === targetName;
+                });
+                if (matched) return matched;
+            }
+
+            // 3) 부분 문자열 포함 일치
+            matched = units.find(u => {
+                const unitName = u.getAttribute('data-combat-unit') || '';
+                const cleanUnit = u.getAttribute('data-clean-name') || '';
+                return (cleanTarget && (unitName.includes(cleanTarget) || cleanUnit.includes(cleanTarget))) ||
+                       unitName.includes(targetName);
+            });
+            if (matched) return matched;
+        }
+
+        // 공격 스킬인 경우 적 영역 내 첫 번째 활성 적 유닛 우선 폴백
+        if (tier !== 'BUFF') {
+            return document.querySelector('[data-combat-area="enemies"] [data-combat-unit]') ||
+                   document.querySelector('[data-combat-area="enemies"]') ||
+                   document.querySelector('[data-combat-unit]');
+        }
+
+        return null;
+    }, [isAoe, tier, vfx.targetName, vfx.attackerName]);
+
+    // 브라우저 렌더링 페인트 전에 좌표를 동기적으로 산출하여 깜빡임 없이 즉시 타겟 카드로 정확히 배치
+    useLayoutEffect(() => {
         if (!overlayRef.current) return;
         const now = performance.now();
         const cacheKey = `${isAoe ? 'aoe' : 'single'}:${tier}:${vfx.targetName || ''}:${vfx.attackerName || ''}`;
@@ -1613,29 +1674,7 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
         containerRectRef.current = containerRect;
         if (containerRect.width === 0 || containerRect.height === 0) return;
 
-        let el: Element | null = null;
-        if (isAoe) {
-            const isBuffOrHeal = tier === 'BUFF' || vfx.targetName === 'party' || vfx.targetName === 'ally' || vfx.targetName === 'allies';
-            let isAttackerEnemy = false;
-            if (vfx.attackerName) {
-                isAttackerEnemy =
-                    document.querySelector(`[data-combat-area="enemies"] [data-combat-unit="${vfx.attackerName}"]`) !== null ||
-                    document.querySelector(`[data-combat-area="enemies"] [data-clean-name="${vfx.attackerName}"]`) !== null;
-            }
-            const targetAreaSelector = isBuffOrHeal
-                ? (isAttackerEnemy ? '[data-combat-area="enemies"]' : '[data-combat-area="allies"]')
-                : (isAttackerEnemy ? '[data-combat-area="allies"]' : '[data-combat-area="enemies"]');
-            el = document.querySelector(targetAreaSelector);
-        } else {
-            const targetName = vfx.targetName;
-            if (targetName && targetName !== '적군' && targetName !== 'aoe' && targetName !== 'allies' && targetName !== '전체 대상') {
-                el = document.querySelector(`[data-combat-unit="${targetName}"]`) ||
-                     document.querySelector(`[data-clean-name="${targetName}"]`);
-            }
-            if (!el && tier !== 'BUFF') {
-                el = document.querySelector('[data-combat-area="enemies"] [data-combat-unit]');
-            }
-        }
+        const el = findCombatTargetElement();
 
         if (el) {
             const rect = el.getBoundingClientRect();
@@ -1663,7 +1702,7 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
                 }
             }
         }
-    }, [vfx.id, vfx.targetName, vfx.attackerName, isAoe, tier]);
+    }, [vfx.id, vfx.targetName, vfx.attackerName, isAoe, tier, findCombatTargetElement]);
 
     const isFinalOrLast = tier === ClassTier.FINAL || tier === 'BOND' || tier === ClassTier.LAST;
 
@@ -1685,11 +1724,15 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
                     className="pointer-events-none z-35"
                     style={{
                         position: 'absolute',
-                        left: targetPos ? `${targetPos.x}px` : '50%',
-                        top: targetPos ? `${targetPos.y}px` : '50%',
+                        left: (vfx.frameAnimation.playMode === 'screen_center')
+                            ? '50%'
+                            : (targetPos ? `${targetPos.x}px` : '50%'),
+                        top: (vfx.frameAnimation.playMode === 'screen_center')
+                            ? '50%'
+                            : (targetPos ? `${targetPos.y}px` : '50%'),
                         transform: 'translate(-50%, -50%)',
-                        width: isAoe ? '420px' : '300px',
-                        height: isAoe ? '420px' : '300px',
+                        width: vfx.frameAnimation.playMode === 'fullscreen' ? '100%' : (isAoe ? '420px' : '300px'),
+                        height: vfx.frameAnimation.playMode === 'fullscreen' ? '100%' : (isAoe ? '420px' : '300px'),
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'

@@ -634,9 +634,15 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors">
-                        <X size={20} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 text-xs font-bold font-mono text-amber-300 bg-amber-950/60 border border-amber-800/70 px-3 py-1.5 rounded-xl shadow-sm">
+                            <Clock size={14} className="text-amber-400" />
+                            <span>{character.currentTime || '12:00'}</span>
+                        </div>
+                        <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer" title="던전 나가기">
+                            <X size={20} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* 오늘 이미 클리어한 경우 */}
@@ -896,22 +902,40 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                             </div>
 
                             {/* 하단 파티 상태 및 퇴각 버튼 */}
-                            <div className="pt-4 border-t border-slate-800 space-y-3 mt-4">
-                                <div className="flex items-center justify-between text-xs font-bold text-slate-300 bg-slate-950/80 px-3.5 py-2 rounded-xl border border-slate-800">
-                                    <span className="flex items-center text-red-400">
-                                        <Heart size={14} className="mr-1" /> {character.stats.hp}/{playerFinalStats.maxHp}
-                                    </span>
-                                    <span className="flex items-center text-blue-400">
-                                        <Zap size={14} className="mr-1" /> {character.stats.mp}/{playerFinalStats.maxMp}
-                                    </span>
-                                    <span className="flex items-center text-slate-400">
-                                        <Clock size={14} className="mr-1 text-amber-400" /> {character.currentTime || '12:00'}
-                                    </span>
+                            <div className="pt-4 border-t border-slate-800 space-y-2.5 mt-4">
+                                {/* 1. 파티 자원 바 (HP & MP를 2열 분리하여 숫자가 커져도 절대 짤리지 않음) */}
+                                <div className="grid grid-cols-2 gap-2 text-xs font-bold bg-slate-950/80 p-2 rounded-xl border border-slate-800">
+                                    <div className="flex items-center text-red-400 bg-red-950/30 px-2.5 py-1.5 rounded-lg border border-red-900/40">
+                                        <Heart size={14} className="mr-1.5 shrink-0" />
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[10px] text-slate-500 font-semibold leading-none">체력 (HP)</span>
+                                            <span className="truncate font-mono">{character.stats.hp} / {playerFinalStats.maxHp}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center text-blue-400 bg-blue-950/30 px-2.5 py-1.5 rounded-lg border border-blue-900/40">
+                                        <Zap size={14} className="mr-1.5 shrink-0" />
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="text-[10px] text-slate-500 font-semibold leading-none">마나 (MP)</span>
+                                            <span className="truncate font-mono">{character.stats.mp} / {playerFinalStats.maxMp}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 2. 미궁 탐험 시간 & 일자 전용 독립 패널 */}
+                                <div className="flex items-center justify-between text-xs font-bold bg-slate-950/90 px-3.5 py-2 rounded-xl border border-amber-950/50 shadow-sm">
+                                    <div className="flex items-center gap-1.5 text-slate-300">
+                                        <Calendar size={13} className="text-slate-500 shrink-0" />
+                                        <span className="text-[11px] text-slate-400 font-semibold">{character.currentDate || '1일차'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-amber-300 bg-amber-950/60 px-2.5 py-0.5 rounded-lg border border-amber-800/60 font-mono">
+                                        <Clock size={13} className="text-amber-400 shrink-0" />
+                                        <span>현재 시각 {character.currentTime || '12:00'}</span>
+                                    </div>
                                 </div>
 
                                 <button
                                     onClick={handleExitDungeon}
-                                    className="w-full py-2.5 bg-slate-800/80 hover:bg-red-950/60 hover:border-red-800 hover:text-red-300 text-slate-400 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-700/60"
+                                    className="w-full py-2.5 bg-slate-800/80 hover:bg-red-950/60 hover:border-red-800 hover:text-red-300 text-slate-400 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-700/60 cursor-pointer"
                                 >
                                     <LogOut size={14} /> 던전 탐험 중단 및 지상 퇴각
                                 </button>
