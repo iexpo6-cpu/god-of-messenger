@@ -1683,27 +1683,17 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
             {vfx.frameAnimation?.enabled && vfx.frameAnimation.frames?.length > 0 && vfx.frameAnimation.renderMode !== 'vfx_only' && (
                 <div
                     className="pointer-events-none z-35"
-                    style={
-                        targetPos
-                            ? {
-                                  position: 'absolute',
-                                  left: `${targetPos.x}px`,
-                                  top: `${targetPos.y}px`,
-                                  transform: 'translate(-50%, -50%)',
-                                  width: isAoe ? '420px' : '300px',
-                                  height: isAoe ? '420px' : '300px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center'
-                              }
-                            : {
-                                  position: 'absolute',
-                                  inset: 0,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center'
-                              }
-                    }
+                    style={{
+                        position: 'absolute',
+                        left: targetPos ? `${targetPos.x}px` : '50%',
+                        top: targetPos ? `${targetPos.y}px` : '50%',
+                        transform: 'translate(-50%, -50%)',
+                        width: isAoe ? '420px' : '300px',
+                        height: isAoe ? '420px' : '300px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}
                 >
                     <SkillFrameAnimationRenderer
                         anim={vfx.frameAnimation}
