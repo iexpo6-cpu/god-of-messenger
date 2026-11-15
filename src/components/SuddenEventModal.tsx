@@ -4,13 +4,14 @@ import {
     Sparkles, Swords, Hammer, Flame, Shield, Zap, Award, X,
     ChevronRight, User, Users, AlertTriangle, BookOpen
 } from 'lucide-react';
-import { Character, Companion, Item, WeaponType } from '../types';
+import { Character, Companion, Item, SkillType, WeaponType } from '../types';
 import { WEAPON_TYPE_KOREAN } from '../constants';
 import {
     SuddenEventData,
     applyAncientBlacksmithEnhance,
     applyAncientBlacksmithMasteryLevelUp
 } from '../services/suddenEventService';
+import { getReducedMpCostOnLevelUp, isPassiveSkill } from '../services/skillMpService';
 import { ResultData } from './ActionResultModal';
 
 interface SuddenEventModalProps {
@@ -149,10 +150,15 @@ export const SuddenEventModal: React.FC<SuddenEventModalProps> = ({
 
             const oldLv = targetSkill.level || 1;
             const newLv = oldLv + 1;
+            const oldMpCost = targetSkill.mpCost ?? 0;
             targetSkill.level = newLv;
             if ((targetSkill.maxLevel || 10) < newLv) {
                 targetSkill.maxLevel = newLv;
             }
+            if (!isPassiveSkill(targetSkill) && targetSkill.type !== SkillType.DEBUFF) {
+                targetSkill.mpCost = getReducedMpCostOnLevelUp(targetSkill);
+            }
+            const newMpCost = targetSkill.mpCost ?? 0;
 
             const logMsg = `[고대 대장장이의 비전 전수] ${target.name}의 스킬 [${targetSkill.name}] 레벨이 즉시 +1 상승(Lv.${oldLv} ➔ Lv.${newLv})했습니다!`;
             onUpdateCharacter(newChar, logMsg);
@@ -165,7 +171,10 @@ export const SuddenEventModal: React.FC<SuddenEventModalProps> = ({
                 items: [
                     { label: '전수 대상', after: target.name },
                     { label: '전수 스킬', after: targetSkill.name },
-                    { label: '스킬 레벨', before: `Lv.${oldLv}`, after: `Lv.${newLv} (+1 UP!)` }
+                    { label: '스킬 레벨', before: `Lv.${oldLv}`, after: `Lv.${newLv} (+1 UP!)` },
+                    ...(newMpCost < oldMpCost
+                        ? [{ label: 'MP 소모량 감소', before: `${oldMpCost} MP`, after: `${newMpCost} MP (-${oldMpCost - newMpCost})` }]
+                        : [])
                 ]
             });
         } else {
