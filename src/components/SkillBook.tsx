@@ -3444,13 +3444,13 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                                                      </select>
                                                                                      <input 
                                                                                          type="range" 
-                                                                                         min="1" 
-                                                                                         max={Math.max(1, slotCap)} 
-                                                                                         value={Math.min(ef.value, Math.max(1, slotCap))} 
+                                                                                         min={slotCap > 0 ? 1 : 0} 
+                                                                                         max={Math.max(0, slotCap)} 
+                                                                                         value={Math.min(ef.value, Math.max(0, slotCap))} 
                                                                                          onChange={(e) => updateBuffEffect(idx, 'value', parseInt(e.target.value))} 
                                                                                          className="flex-1 accent-amber-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                                                                                      />
-                                                                                     <span className="text-[10px] font-mono text-amber-400 font-bold">{Math.min(ef.value, Math.max(1, slotCap))}%</span>
+                                                                                     <span className="text-[10px] font-mono text-amber-400 font-bold">{Math.min(ef.value, Math.max(0, slotCap))}%</span>
                                                                                  </div>
                                                                              )}
 
@@ -3460,13 +3460,13 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                                                       <span className="text-[10px] text-cyan-200 font-bold shrink-0">마나 쉴드</span>
                                                                                       <input 
                                                                                           type="range" 
-                                                                                          min="1" 
-                                                                                          max={Math.max(1, slotCap)} 
-                                                                                          value={Math.min(ef.value, Math.max(1, slotCap))} 
+                                                                                          min={slotCap > 0 ? 1 : 0} 
+                                                                                          max={Math.max(0, slotCap)} 
+                                                                                          value={Math.min(ef.value, Math.max(0, slotCap))} 
                                                                                           onChange={(e) => updateBuffEffect(idx, 'value', parseInt(e.target.value))} 
                                                                                           className="flex-1 accent-cyan-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                                                                                       />
-                                                                                      <span className="text-[10px] font-mono text-cyan-400 font-bold">{Math.min(ef.value, Math.max(1, slotCap))}%</span>
+                                                                                      <span className="text-[10px] font-mono text-cyan-400 font-bold">{Math.min(ef.value, Math.max(0, slotCap))}%</span>
                                                                                   </div>
                                                                               )}
 
@@ -3489,13 +3489,13 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                                                           </select>
                                                                                           <input 
                                                                                               type="range" 
-                                                                                              min="1" 
-                                                                                              max={Math.max(1, effectiveSlotCap)} 
-                                                                                              value={Math.min(ef.value, Math.max(1, effectiveSlotCap))} 
+                                                                                              min={effectiveSlotCap > 0 ? 1 : 0} 
+                                                                                              max={Math.max(0, effectiveSlotCap)} 
+                                                                                              value={Math.min(ef.value, Math.max(0, effectiveSlotCap))} 
                                                                                               onChange={(e) => updateBuffEffect(idx, 'value', parseInt(e.target.value))} 
                                                                                               className="flex-1 accent-amber-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                                                                                           />
-                                                                                          <span className="text-[10px] font-mono text-amber-400 font-bold">{Math.min(ef.value, Math.max(1, effectiveSlotCap))}%</span>
+                                                                                          <span className="text-[10px] font-mono text-amber-400 font-bold">{Math.min(ef.value, Math.max(0, effectiveSlotCap))}%</span>
                                                                                           {isAllRes && (
                                                                                               <span className="text-[9px] text-cyan-400 font-semibold bg-cyan-950/60 px-1 py-0.5 rounded border border-cyan-800/40">1/2</span>
                                                                                           )}
@@ -3508,17 +3508,17 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                                                      <div className="flex gap-2 items-center">
                                                                                          <input 
                                                                                              type="range" 
-                                                                                             min="1" 
-                                                                                             max={Math.max(1, slotCap)} 
-                                                                                             value={Math.min(ef.value, Math.max(1, slotCap))} 
+                                                                                             min={slotCap > 0 ? 1 : 0} 
+                                                                                             max={Math.max(0, slotCap)} 
+                                                                                             value={Math.min(ef.value, Math.max(0, slotCap))} 
                                                                                              onChange={(e) => updateBuffEffect(idx, 'value', parseInt(e.target.value))} 
                                                                                              className="flex-1 accent-amber-500 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer"
                                                                                          />
-                                                                                         <span className="text-[10px] font-mono text-amber-400 font-bold">{Math.min(ef.value, Math.max(1, slotCap))}%</span>
+                                                                                         <span className="text-[10px] font-mono text-amber-400 font-bold">{Math.min(ef.value, Math.max(0, slotCap))}%</span>
                                                                                      </div>
                                                                                      <div className="flex justify-between items-center text-[9px] text-slate-400">
                                                                                          <span className="text-cyan-300 font-medium">
-                                                                                             예상 회복량: <strong className="text-emerald-400 font-mono">+{Math.max(ef.type === 'HP_RECOV' ? 10 : 5, Math.floor((ef.type === 'HP_RECOV' ? sumWisInt * 4 : sumWisInt) * Math.min(ef.value || 0, Math.max(1, slotCap)) / 100))}</strong> {ef.type === 'HP_RECOV' ? 'HP' : 'MP'}
+                                                                                             예상 회복량: <strong className="text-emerald-400 font-mono">+{Math.max(ef.type === 'HP_RECOV' ? 10 : 5, Math.floor((ef.type === 'HP_RECOV' ? sumWisInt * 4 : sumWisInt) * Math.min(ef.value || 0, Math.max(0, slotCap)) / 100))}</strong> {ef.type === 'HP_RECOV' ? 'HP' : 'MP'}
                                                                                          </span>
                                                                                          <span className="text-slate-500 font-mono">
                                                                                              (시전자 WIS·INT 합산: {sumWisInt}{ef.type === 'HP_RECOV' ? ' [기준x4]' : ''})
@@ -4499,20 +4499,20 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                     <button 
                                         onClick={() => {
                                             let finalPower = customPowerRatio;
-                                            if (customSkillType === SkillType.BUFF) {
+                                            const validateBuffEffectsForLearn = (): boolean => {
                                                 const hasRestricted = buffEffects.some(ef => ['HP_RECOV', 'MP_RECOV', 'CLEANSE', 'RESURRECTION'].includes(ef.type));
                                                 if (hasRestricted) {
                                                     if (activeTab === ClassTier.SECOND && !hasCombatStyle(character, CombatStyle.CLERIC)) {
                                                         alert("세컨드 클래스에서 회복/치유/부활 계열 버프 스킬을 배우려면 '클레릭' 전투계열 습득이 필요합니다.");
-                                                        return;
+                                                        return false;
                                                     }
                                                     if (activeTab === ClassTier.LAST && !hasCombatStyle(character, CombatStyle.PRIEST)) {
                                                         alert("라스트 클래스에서 회복/치유/부활 계열 버프 스킬을 배우려면 '프리스트' 전투계열 습득이 필요합니다.");
-                                                        return;
+                                                        return false;
                                                     }
                                                     if (activeTab === ClassTier.FINAL && !hasCombatStyle(character, CombatStyle.SAINT)) {
                                                         alert("파이널 클래스에서 회복/치유/부활 계열 버프 스킬을 배우려면 '세인트' 전투계열 습득이 필요합니다.");
-                                                        return;
+                                                        return false;
                                                     }
                                                 }
 
@@ -4521,20 +4521,25 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                 if (hasManaShield && minTier > 1 && !hasCombatStyleOfRootAndTier(character, MANA_SHIELD_ROOTS, minTier)) {
                                                     const tierName = activeTab === ClassTier.SECOND ? "세컨드" : activeTab === ClassTier.LAST ? "라스트" : "파이널";
                                                     alert(`${tierName} 클래스에서 마나 쉴드 버프 스킬을 배우려면 '마법사' 또는 '에너자이저' 계열의 ${minTier}차 이상 전투계열 습득이 필요합니다.`);
-                                                    return;
+                                                    return false;
                                                 }
 
                                                 for (const ef of buffEffects) {
                                                     if (ef.type === 'STAT_BOOST' && isStatLocked(character, ef.targetStat || '', activeTab)) {
                                                         const statName = STAT_DISPLAY_NAMES[ef.targetStat || ''] || ef.targetStat;
                                                         alert(`${activeTab} 클래스에서 ${statName} 버프 스킬을 배우려면 해당 계열의 상위 전투계열 습득이 필요합니다.`);
-                                                        return;
+                                                        return false;
                                                     }
                                                     if ((ef.type === 'ELEMENTAL_DMG_BOOST' || ef.type === 'ELEMENTAL_RES_BOOST') && ef.targetElement === '모든 속성' && activeTab !== ClassTier.FINAL) {
                                                         alert("모든 속성 피해/저항 버프 스킬은 파이널 클래스(4차 전직)부터 연구할 수 있습니다.");
-                                                        return;
+                                                        return false;
                                                     }
                                                 }
+                                                return true;
+                                            };
+
+                                            if (customSkillType === SkillType.BUFF) {
+                                                if (!validateBuffEffectsForLearn()) return;
 
                                                 finalPower = buffEffects.length > 0 
                                                     ? buffEffects.reduce((s, ef) => s + (ef.type === 'CLEANSE' ? 0 : (ef.value || 0)), 0)
@@ -4616,6 +4621,7 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                             const isAttackWithBuff = (customSkillType === SkillType.PHYSICAL || customSkillType === SkillType.MAGIC) &&
                                                 attackSkillEffectType === 'buff' &&
                                                 buffEffects.length > 0;
+                                            if (isAttackWithBuff && !validateBuffEffectsForLearn()) return;
 
                                             const isAttackWithDebuff = (customSkillType === SkillType.PHYSICAL || customSkillType === SkillType.MAGIC) &&
                                                 attackSkillEffectType === 'debuff' &&

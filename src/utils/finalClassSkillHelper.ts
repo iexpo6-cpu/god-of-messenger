@@ -89,7 +89,9 @@ export const isAttackSkillWithBuff = (skill?: Partial<Skill> | null): boolean =>
                                  formulaStr.includes('MEva') || 
                                  formulaStr.includes('피해') || 
                                  formulaStr.includes('저항') || 
-                                 formulaStr.includes('회복')
+                                 formulaStr.includes('회복') ||
+                                 formulaStr.includes('마나 쉴드') ||
+                                 formulaStr.includes('MANA_SHIELD')
                              ));
 
     return hasBuffEffects || isExplicitBuffAttack || hasBuffInFormula;
@@ -160,6 +162,14 @@ export const extractAttackSkillBuffEffectsFromFormula = (formulaStr?: string, sk
             const elResMatch = cleanPart.match(/(.+?)\s*저항\s*\+?\s*(\d+(?:\.\d+)?)%/i);
             if (elResMatch) {
                 results.push({ type: 'ELEMENTAL_RES_BOOST', targetElement: elResMatch[1].trim(), value: parseFloat(elResMatch[2]) });
+                continue;
+            }
+            // 4.5. 마나 쉴드
+            const manaShieldMatch = cleanPart.match(/(?:마나\s*쉴드|MANA_SHIELD)\s*\+?\s*(\d+(?:\.\d+)?)%/i);
+            if (manaShieldMatch) {
+                if (!results.some(r => r.type === 'MANA_SHIELD')) {
+                    results.push({ type: 'MANA_SHIELD', value: parseFloat(manaShieldMatch[1]) });
+                }
                 continue;
             }
             // 5. 일반 스탯 상승
@@ -241,6 +251,8 @@ export const formatAttackSkillBuffSummary = (buffEffects: any[]): string => {
             parts.push(`HP +${ef.value}% 회복(WIS·INT합산x4 비례, Lv당+0.5%)`);
         } else if (ef.type === 'MP_RECOV') {
             parts.push(`MP +${ef.value}% 회복(WIS·INT합산 비례, Lv당+0.5%)`);
+        } else if (ef.type === 'MANA_SHIELD') {
+            parts.push(`마나 쉴드 +${ef.value}%(Lv당+0.5%)`);
         }
     });
 

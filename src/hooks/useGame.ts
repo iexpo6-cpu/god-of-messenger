@@ -332,7 +332,7 @@ export const useGame = () => {
   // [AUTO SAVE SYSTEM] (전투 진행 중에는 매 턴 저장을 건너뛰고 렉을 원천 차단)
   useEffect(() => {
     // 전투 진행 중(combatState 활성화 및 종료 전, 혹은 sceneType이 combat)일 때는 자동 저장을 유예
-    const isActivelyInCombat = sceneType === 'combat' || (combatState && !combatState.isEnded);
+    const isActivelyInCombat = sceneType === 'combat' || (combatState && combatState.turn > 0 && !combatState.isEnded);
     if (view !== 'game' || !autoSaveEnabled || messages.length === 0 || isActivelyInCombat) {
       return;
     }
