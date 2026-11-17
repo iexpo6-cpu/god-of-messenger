@@ -4631,6 +4631,27 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                 ? 0 
                                                 : customMpCost;
 
+                                            let sanitizedAttackBuffEffects: any[] | undefined = undefined;
+                                            if (isAttackWithBuff) {
+                                                const totalCap = getAttackSkillBuffCap(customTargetType, isFinalActiveTab ? finalBonusSteps : 0);
+                                                let remainingCap = totalCap;
+                                                const list: any[] = [];
+                                                for (const ef of buffEffects) {
+                                                    const isAllRes = ef.type === 'ELEMENTAL_RES_BOOST' && (ef.targetElement === '모든 속성' || ef.targetElement === '모든속성');
+                                                    const slotMax = isAllRes ? Math.min(Math.floor(totalCap * 0.5), remainingCap) : remainingCap;
+                                                    const clampedVal = Math.min(ef.value || 0, Math.max(0, slotMax));
+                                                    if (clampedVal > 0) {
+                                                        list.push({ ...ef, value: clampedVal });
+                                                        remainingCap = Math.max(0, remainingCap - (isAllRes ? clampedVal * 2 : clampedVal));
+                                                    }
+                                                }
+                                                if (list.length === 0) {
+                                                    alert('유효한 버프 효과(1% 이상)를 최소 1개 이상 설정해 주세요.');
+                                                    return;
+                                                }
+                                                sanitizedAttackBuffEffects = list;
+                                            }
+
                                             handleLearn({
                                                 name: customSkillName,
                                                 type: customSkillType,
@@ -4641,12 +4662,7 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                 targetType: customSkillType === SkillType.BUFF ? buffTargetType : customTargetType,
                                                 buffType: isAttackWithBuff ? 'STAT_BOOST' : undefined,
                                                 buffEffects: isAttackWithBuff 
-                                                    ? buffEffects.map(ef => {
-                                                        const isAllRes = ef.type === 'ELEMENTAL_RES_BOOST' && (ef.targetElement === '모든 속성' || ef.targetElement === '모든속성');
-                                                        const cap = getAttackSkillBuffCap(customTargetType, isFinalActiveTab ? finalBonusSteps : 0);
-                                                        const effectiveCap = isAllRes ? Math.floor(cap * 0.5) : cap;
-                                                        return { ...ef, value: Math.min(ef.value || 0, effectiveCap) };
-                                                    }) 
+                                                    ? sanitizedAttackBuffEffects
                                                     : (customSkillType === SkillType.BUFF ? buffEffects.map(ef => ({
                                                         ...ef,
                                                         value: Math.min(ef.value || 0, getBuffValueCap(buffTargetType, false, ef.type === 'STAT_BOOST' && isAccOrEvaStat(ef.targetStat)))

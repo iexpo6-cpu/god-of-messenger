@@ -709,7 +709,227 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
             badgeClass: "bg-slate-900/80 text-cyan-300 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.25)]",
             description: "운무가 굽이치는 신선봉 위로 주홍빛 기둥과 옥기와 누각이 웅장하게 솟아있고, 청룡과 도술 부적이 수호하는 동양의 영험한 궁궐입니다."
         },
-        matchedNations: ["아시아", "대한민국", "북한", "일본", "중국", "인도", "태국", "베트남", "필리핀", "몽골", "인도네시아", "말레이시아", "싱가포르"]
+        matchedNations: ["아시아", "대한민국"]
+    },
+
+    // 6-1. 북한 (설산과 흑요석 비술이 깃든 백두 영봉의 신비 요새)
+    asia_north_korea_mystic_fortress: {
+        id: "asia_north_korea_mystic_fortress",
+        name: "백두 영봉 비술 요새",
+        region: "아시아",
+        concept: "설산과 천지 수호가 깃든 북방의 신비 요새",
+        prompt: "Epic East Asian high-mountain fantasy fortress built around a sacred volcanic crater lake atop snow-capped jagged peaks, ancient granite ramparts glowing with pale frost-blue runes, swirling mist and aurora sky, 8k resolution, cinematic digital art.",
+        localPath: "assets/visuals/backgrounds/asia_north_korea_mystic_fortress.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.78) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-sky-300",
+            borderColor: "border-sky-500/60",
+            glowColor: "rgba(56, 189, 248, 0.35)",
+            badgeText: "🏔️ 백두 영봉 요새 (Mystic Fortress)",
+            badgeClass: "bg-slate-900/80 text-sky-300 border-sky-500/50 shadow-[0_0_15px_rgba(56,189,248,0.25)]",
+            description: "만년설이 덮인 험준한 영봉과 신비로운 천지를 등지고 선, 차가운 비술 결계가 감도는 북방의 고대 요새입니다."
+        },
+        matchedNations: ["북한"]
+    },
+
+    // 6-2. 일본 (만개한 벚꽃과 붉은 도리이가 이어지는 신사)
+    asia_japan_sakura_shrine: {
+        id: "asia_japan_sakura_shrine",
+        name: "만개한 벚꽃 신사",
+        region: "아시아",
+        concept: "벚꽃과 영험한 여우불이 수놓는 신사의 성역",
+        prompt: "Breathtaking Japanese fantasy RPG panoramic view, majestic vermilion torii gates and traditional wooden shrines nestled among ancient weeping cherry blossom trees in full bloom, glowing golden spirit lanterns and floating sakura petals over tranquil reflection ponds at twilight, 8k resolution, masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_japan_sakura_shrine.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(76, 5, 25, 0.72) 0%, rgba(136, 19, 55, 0.42) 50%, rgba(2, 6, 23, 0.93) 100%)",
+            accentColor: "text-rose-300",
+            borderColor: "border-rose-400/60",
+            glowColor: "rgba(251, 113, 133, 0.35)",
+            badgeText: "🌸 벚꽃 신사 (Sakura Shrine)",
+            badgeClass: "bg-rose-950/75 text-rose-300 border-rose-500/60 shadow-[0_0_15px_rgba(251,113,133,0.25)]",
+            description: "붉은 도리이 너머로 흩날리는 벚꽃잎과 은은한 영혼의 등불이 밤하늘을 수놓는 영험한 신사의 수도입니다."
+        },
+        matchedNations: ["일본"]
+    },
+
+    // 6-3. 중국 (황금 용의 위엄이 서린 대륙의 황성)
+    asia_china_imperial_dragon_citadel: {
+        id: "asia_china_imperial_dragon_citadel",
+        name: "황룡 제국 성채",
+        region: "아시아",
+        concept: "황금빛 기와와 수호룡이 깃든 웅장한 대륙의 황성",
+        prompt: "Grand Chinese imperial fantasy citadel, towering crimson walls and golden-tiled tiered pagodas winding across misty karst mountain peaks, colossal golden dragon statues and glowing red silk lanterns illuminating vast marble courtyards, 8k resolution, cinematic masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_china_imperial_dragon_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(69, 10, 10, 0.76) 0%, rgba(127, 29, 29, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-amber-300",
+            borderColor: "border-red-500/60",
+            glowColor: "rgba(245, 158, 11, 0.35)",
+            badgeText: "🐉 황룡 성채 (Dragon Citadel)",
+            badgeClass: "bg-red-950/75 text-amber-300 border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.25)]",
+            description: "웅장한 주홍빛 성벽과 황금 기와 위로 천년의 기운을 품은 황룡의 비호가 깃든 대륙의 황실 성채입니다."
+        },
+        matchedNations: ["중국"]
+    },
+
+    // 6-4. 인도 (찬란한 연꽃과 황금빛 신비가 피어나는 천상 궁전)
+    asia_india_celestial_lotus_palace: {
+        id: "asia_india_celestial_lotus_palace",
+        name: "천상 연꽃 궁전",
+        region: "아시아",
+        concept: "연꽃 사원과 찬란한 마나 만다라가 빛나는 신비의 왕국",
+        prompt: "Resplendent Indian fantasy RPG wide panoramic palace, intricately carved sandstone and white marble lotus domes floating above sacred reflection pools, glowing golden mandala runes in the sky, vibrant saffron and turquoise twilight, 8k resolution, masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_india_celestial_lotus_palace.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(67, 20, 7, 0.72) 0%, rgba(146, 64, 14, 0.45) 50%, rgba(2, 6, 23, 0.93) 100%)",
+            accentColor: "text-amber-300",
+            borderColor: "border-amber-400/60",
+            glowColor: "rgba(251, 191, 36, 0.35)",
+            badgeText: "🪷 천상 연꽃 궁전 (Lotus Palace)",
+            badgeClass: "bg-amber-950/75 text-amber-300 border-amber-500/60 shadow-[0_0_15px_rgba(251,191,36,0.25)]",
+            description: "거대한 연꽃 돔과 찬란한 황금 만다라의 빛이 성스러운 호수 위에 반사되는 고대 지혜의 성역입니다."
+        },
+        matchedNations: ["인도"]
+    },
+
+    // 6-5. 베트남 / 태국 (비취빛 석회암 절벽과 수상 성채)
+    asia_vietnam_jade_bay_citadel: {
+        id: "asia_vietnam_jade_bay_citadel",
+        name: "비취만 해상 성채",
+        region: "아시아",
+        concept: "비취빛 기암괴석과 수상 누각이 어우러진 열대 성채",
+        prompt: "Enchanting Southeast Asian fantasy citadel built among towering emerald karst limestone islands rising from calm jade bay waters, ornate tiered wooden pavilions connected by lantern-lit stone bridges, misty golden dawn, 8k resolution, cinematic digital art.",
+        localPath: "assets/visuals/backgrounds/asia_vietnam_jade_bay_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(6, 78, 59, 0.74) 0%, rgba(15, 118, 110, 0.44) 50%, rgba(2, 6, 23, 0.93) 100%)",
+            accentColor: "text-teal-300",
+            borderColor: "border-teal-400/60",
+            glowColor: "rgba(45, 212, 191, 0.35)",
+            badgeText: "🎋 비취만 성채 (Jade Bay Citadel)",
+            badgeClass: "bg-teal-950/75 text-teal-300 border-teal-500/60 shadow-[0_0_15px_rgba(45,212,191,0.25)]",
+            description: "에메랄드빛 해수면 위로 솟아오른 기암괴석과 등불이 어우러진 동남아의 신비로운 수상 성채입니다."
+        },
+        matchedNations: ["베트남", "태국"]
+    },
+
+    // 6-6. 필리핀 (푸른 군도와 하늘 항구가 맞닿은 천공 항구도시)
+    asia_philippines_archipelago_sky_harbor: {
+        id: "asia_philippines_archipelago_sky_harbor",
+        name: "군도 천공 항구",
+        region: "아시아",
+        concept: "산호 군도와 에테르 범선이 오가는 열대 하늘 항구",
+        prompt: "Vibrant tropical archipelago fantasy sky harbor, tiered coral-stone citadels perched atop lush emerald sea cliffs overlooking crystal-clear turquoise lagoons, arcane winged galleons moored at floating docks under sunlit clouds, 8k resolution, masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_philippines_archipelago_sky_harbor.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(12, 74, 110, 0.74) 0%, rgba(14, 116, 144, 0.44) 50%, rgba(2, 6, 23, 0.93) 100%)",
+            accentColor: "text-cyan-300",
+            borderColor: "border-cyan-400/60",
+            glowColor: "rgba(34, 211, 238, 0.35)",
+            badgeText: "⛵ 군도 천공 항구 (Sky Harbor)",
+            badgeClass: "bg-cyan-950/75 text-cyan-300 border-cyan-500/60 shadow-[0_0_15px_rgba(34,211,238,0.25)]",
+            description: "에메랄드빛 산호 해협과 하늘을 가르는 마도 범선들이 어우러진 역동적인 열대 군도의 관문입니다."
+        },
+        matchedNations: ["필리핀"]
+    },
+
+    // 6-7. 몽골 (끝없는 푸른 초원과 천막 성채가 펼쳐진 영원의 초원)
+    asia_mongolia_eternal_steppe_citadel: {
+        id: "asia_mongolia_eternal_steppe_citadel",
+        name: "영원 초원 성채",
+        region: "아시아",
+        concept: "광활한 스텝 초원과 창공의 깃발이 휘날리는 기마 제국",
+        prompt: "Sweeping Mongolian steppe fantasy citadel, monumental circular stone-and-gold nomadic fortress surrounded by ornate white yurts across endless golden-green grasslands under a vast dramatic sky with soaring eagles and wind banners, 8k resolution, cinematic digital art.",
+        localPath: "assets/visuals/backgrounds/asia_mongolia_eternal_steppe_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(30, 58, 138, 0.72) 0%, rgba(120, 53, 15, 0.42) 50%, rgba(2, 6, 23, 0.93) 100%)",
+            accentColor: "text-amber-300",
+            borderColor: "border-sky-400/60",
+            glowColor: "rgba(56, 189, 248, 0.35)",
+            badgeText: "🐎 영원 초원 성채 (Steppe Citadel)",
+            badgeClass: "bg-slate-900/80 text-amber-300 border-sky-500/60 shadow-[0_0_15px_rgba(56,189,248,0.25)]",
+            description: "끝없는 초원의 바람과 푸른 늑대의 기상이 깃든, 자유와 정복의 기마 제국 대성채입니다."
+        },
+        matchedNations: ["몽골"]
+    },
+
+    // 6-8. 인도네시아 / 말레이시아 (화산섬의 열대 밀림과 고대 석조 사원)
+    asia_indonesia_volcanic_temple_island: {
+        id: "asia_indonesia_volcanic_temple_island",
+        name: "화산섬 고대 사원",
+        region: "아시아",
+        concept: "신성한 화산과 열대 밀림 속에 우뚝 선 고대 석조 사원",
+        prompt: "Mystical Indonesian volcanic island fantasy temple city, colossal ancient stepped stone candi temples overgrown with lush tropical jungle vines overlooking a glowing volcanic caldera and misty ocean at sunset, 8k resolution, masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_indonesia_volcanic_temple_island.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(67, 20, 7, 0.74) 0%, rgba(6, 78, 59, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-emerald-300",
+            borderColor: "border-emerald-500/60",
+            glowColor: "rgba(16, 185, 129, 0.35)",
+            badgeText: "🌋 화산섬 사원 (Volcanic Temple)",
+            badgeClass: "bg-emerald-950/75 text-emerald-300 border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.25)]",
+            description: "원시 밀림의 생명력과 붉은 화산의 대지 마력이 교차하는 남방 열대 군도의 고대 신전 도시입니다."
+        },
+        matchedNations: ["인도네시아", "말레이시아"]
+    },
+
+    // 6-9. 싱가포르 (수정 거목과 성좌 마법이 공존하는 미래형 정원 도시)
+    asia_singapore_astral_garden_nexus: {
+        id: "asia_singapore_astral_garden_nexus",
+        name: "성좌 정원 넥서스",
+        region: "아시아",
+        concept: "거대 마력 수목과 수정 첨탑이 어우러진 해상 마도 정원",
+        prompt: "Futuristic high-fantasy garden metropolis of Singapore, colossal bioluminescent crystal supertrees intertwined with sleek white-and-gold arcane skyscrapers beside a starlit harbor, glowing emerald and violet mana bridges, 8k resolution, masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_singapore_astral_garden_nexus.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.74) 0%, rgba(16, 185, 129, 0.35) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-emerald-300",
+            borderColor: "border-teal-400/60",
+            glowColor: "rgba(20, 184, 166, 0.35)",
+            badgeText: "🌿 성좌 정원 넥서스 (Astral Nexus)",
+            badgeClass: "bg-teal-950/75 text-emerald-300 border-teal-400/60 shadow-[0_0_15px_rgba(20,184,166,0.25)]",
+            description: "생명의 빛을 발하는 거대 마력 수목과 찬란한 수정 마천루가 조화를 이루는 동서 교역의 중심지입니다."
+        },
+        matchedNations: ["싱가포르"]
+    },
+
+    // 6-10. 사우디아라비아 (붉은 사막의 협곡과 태양의 마법 성채)
+    asia_saudi_arabia_crimson_dune_citadel: {
+        id: "asia_saudi_arabia_crimson_dune_citadel",
+        name: "붉은 사구 성채",
+        region: "아시아",
+        concept: "붉은 사막 협곡에 새겨진 태양과 성유(聖油)의 왕국",
+        prompt: "Majestic Arabian crimson desert fantasy citadel carved into towering red sandstone canyons, ornate gilded domes and towering minarets glowing under a fiery desert sunset, swirling golden sand magic, 8k resolution, cinematic masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_saudi_arabia_crimson_dune_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(69, 10, 10, 0.74) 0%, rgba(180, 83, 9, 0.44) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-amber-300",
+            borderColor: "border-orange-500/60",
+            glowColor: "rgba(249, 115, 22, 0.35)",
+            badgeText: "🏜️ 붉은 사구 성채 (Crimson Citadel)",
+            badgeClass: "bg-orange-950/75 text-amber-300 border-orange-500/60 shadow-[0_0_15px_rgba(249,115,22,0.25)]",
+            description: "타오르는 붉은 사암 협곡과 황금빛 첨탑이 사막의 태양 아래 위엄을 드러내는 서아시아의 대제국입니다."
+        },
+        matchedNations: ["사우디아라비아"]
+    },
+
+    // 6-11. UAE (신기루처럼 빛나는 황금 첨탑과 공중 마도 궁전)
+    asia_uae_golden_mirage_spires: {
+        id: "asia_uae_golden_mirage_spires",
+        name: "황금 신기루 첨탑",
+        region: "아시아",
+        concept: "사막 해안 위로 솟아오른 황금과 수정의 초고층 마도 첨탑",
+        prompt: "Dazzling Arabian magitech desert metropolis, impossibly tall needle-like golden and crystal spires piercing the twilight clouds above artificial palm-shaped emerald islands, floating arcane sky-yachts and warm amber lights, 8k resolution, masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_uae_golden_mirage_spires.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(69, 26, 3, 0.74) 0%, rgba(217, 119, 6, 0.4) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-yellow-300",
+            borderColor: "border-yellow-400/60",
+            glowColor: "rgba(250, 204, 21, 0.35)",
+            badgeText: "✨ 황금 신기루 첨탑 (Mirage Spires)",
+            badgeClass: "bg-amber-950/75 text-yellow-300 border-yellow-500/60 shadow-[0_0_15px_rgba(250,204,21,0.25)]",
+            description: "사막과 푸른 바다의 경계에 황금과 수정의 초고층 첨탑이 신기루처럼 솟아오른 찬란한 마도 교역국입니다."
+        },
+        matchedNations: ["UAE"]
     },
 
     // 7. 유럽 (고딕 판타지 대성당과 마법 성벽)
@@ -749,7 +969,7 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
             badgeClass: "bg-amber-950/70 text-amber-300 border-amber-600/60 shadow-[0_0_15px_rgba(245,158,11,0.25)]",
             description: "황금빛 사막의 모래언덕과 영롱한 에메랄드빛 오아시스, 태양신의 고대 피라미드와 황금빛 돔이 석양에 빛나는 신비로운 사막의 성도입니다."
         },
-        matchedNations: ["아프리카", "이집트", "남아공", "나이지리아", "케냐", "모로코", "사우디아라비아", "UAE", "이스라엘", "이란"]
+        matchedNations: ["아프리카", "이집트", "남아공", "나이지리아", "케냐", "모로코", "이스라엘", "이란"]
     },
 
     // 9. 아메리카 / 오세아니아 (마도 공학과 마천루 신대륙)
@@ -881,8 +1101,29 @@ export function getCityBackgroundConfig(region?: string, nation?: string, city?:
         return CITY_BACKGROUND_MANIFEST.abyssalon_necrodium;
     }
 
-    // 6. 중동/아프리카 판정 (사우디, UAE, 이스라엘, 이란 등 아시아 내 중동 국가 포함)
-    const middleEastNations = ['사우디아라비아', 'UAE', '이스라엘', '이란', '이집트', '남아공', '나이지리아', '케냐', '모로코'];
+    // 5-1. 아시아 및 중동(사우디아라비아, UAE) 국가별 전용 배경 우선 매칭
+    const ASIA_NATION_TO_MANIFEST_KEY: Record<string, string> = {
+        '대한민국': 'asia_korea_celestial_palace',
+        '북한': 'asia_north_korea_mystic_fortress',
+        '일본': 'asia_japan_sakura_shrine',
+        '중국': 'asia_china_imperial_dragon_citadel',
+        '인도': 'asia_india_celestial_lotus_palace',
+        '베트남': 'asia_vietnam_jade_bay_citadel',
+        '태국': 'asia_vietnam_jade_bay_citadel', // 임시 폴백 매칭
+        '필리핀': 'asia_philippines_archipelago_sky_harbor',
+        '몽골': 'asia_mongolia_eternal_steppe_citadel',
+        '인도네시아': 'asia_indonesia_volcanic_temple_island',
+        '말레이시아': 'asia_indonesia_volcanic_temple_island', // 임시 폴백 매칭
+        '싱가포르': 'asia_singapore_astral_garden_nexus',
+        '사우디아라비아': 'asia_saudi_arabia_crimson_dune_citadel',
+        'UAE': 'asia_uae_golden_mirage_spires',
+    };
+    if (n && ASIA_NATION_TO_MANIFEST_KEY[n] && CITY_BACKGROUND_MANIFEST[ASIA_NATION_TO_MANIFEST_KEY[n]]) {
+        return CITY_BACKGROUND_MANIFEST[ASIA_NATION_TO_MANIFEST_KEY[n]];
+    }
+
+    // 6. 중동/아프리카 판정 (이스라엘, 이란 및 아프리카 국가 유지; 사우디/UAE는 위에서 우선 매칭됨)
+    const middleEastNations = ['이스라엘', '이란', '이집트', '남아공', '나이지리아', '케냐', '모로코'];
     if (r === '아프리카' || middleEastNations.includes(n)) {
         return CITY_BACKGROUND_MANIFEST.africa_middle_east_oasis_temple;
     }

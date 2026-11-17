@@ -70,6 +70,7 @@ const CityMapBoard: React.FC<Props> = ({
     const isDemonNation = loc.region === '아비살론' || loc.nation === '네크로디움 제국'; 
     const isKorea = loc.nation === '대한민국';
     const isEastAsia = ['일본', '중국', '북한', '몽골', '대만'].includes(loc.nation);
+    const isSouthOrSoutheastAsia = ['인도', '태국', '베트남', '필리핀', '인도네시아', '말레이시아', '싱가포르'].includes(loc.nation);
     const isEurope = loc.region === '유럽' || ['영국', '프랑스', '독일', '이탈리아', '스페인', '러시아', '스위스', '그리스', '체코', '오스트리아'].includes(loc.nation);
     const isMiddleEastOrAfrica = loc.region === '아프리카' || ['사우디아라비아', 'UAE', '이집트', '이란', '이스라엘', '모로코'].includes(loc.nation);
     const isAmericasOrOceania = ['북아메리카', '남아메리카', '오세아니아'].includes(loc.region) || ['미국', '캐나다', '호주', '뉴질랜드', '브라질'].includes(loc.nation);
@@ -361,6 +362,33 @@ const CityMapBoard: React.FC<Props> = ({
                 accentColor: 'text-rose-300',
                 orbGradient1: 'bg-rose-600/15',
                 orbGradient2: 'bg-amber-500/10'
+            };
+        }
+        if (isSouthOrSoutheastAsia) {
+            return {
+                bgGradient: timeAtmosphere.bgGradient,
+                borderColor: isCapital ? 'border-teal-400/80 hover:border-emerald-300' : 'border-teal-800/50 hover:border-teal-400',
+                accentColor: 'text-teal-300',
+                orbGradient1: 'bg-teal-500/15',
+                orbGradient2: 'bg-emerald-500/10'
+            };
+        }
+        if (isMiddleEastOrAfrica) {
+            return {
+                bgGradient: timeAtmosphere.bgGradient,
+                borderColor: isCapital ? 'border-amber-400/80 hover:border-orange-300' : 'border-amber-800/50 hover:border-amber-400',
+                accentColor: 'text-amber-300',
+                orbGradient1: 'bg-amber-500/15',
+                orbGradient2: 'bg-orange-500/10'
+            };
+        }
+        if (isAmericasOrOceania) {
+            return {
+                bgGradient: timeAtmosphere.bgGradient,
+                borderColor: isCapital ? 'border-sky-400/80 hover:border-cyan-300' : 'border-cyan-800/50 hover:border-sky-400',
+                accentColor: 'text-sky-300',
+                orbGradient1: 'bg-sky-500/15',
+                orbGradient2: 'bg-teal-500/10'
             };
         }
         if (isEurope) {

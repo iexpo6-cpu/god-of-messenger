@@ -895,6 +895,7 @@ export const useGame = () => {
         actionText === '[라운드 종료]' ||
         actionText === '[턴 종료]' ||
         actionText.startsWith('[인연 스킬]') ||
+        actionText.startsWith('[전투 아이템 사용') ||
         actionText.startsWith('[소환수 ') ||
         actionText.startsWith('[분신 ');
 
@@ -1334,6 +1335,7 @@ export const useGame = () => {
         const clearAilmentsOnly = (effects: ActiveStatus[] = []) => {
             const ailments = ['중독', '화상', '출혈', '빙결', '감전', '속박', '혼란', '기절', '마비', '침묵', '소멸', '흡정', '마나 쉴드'];
             return (effects || []).filter((e: any) => {
+                if (e?.isPassive || e?.name === '마나 쉴드 (패시브)') return true;
                 const isAilment = ailments.includes(e.name) || ailments.some(a => e.name?.includes(a));
                 return !isAilment;
             });

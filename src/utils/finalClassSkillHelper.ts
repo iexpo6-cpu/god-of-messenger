@@ -127,26 +127,29 @@ export const extractAttackSkillBuffEffectsFromFormula = (formulaStr?: string, sk
 
     const buffMatches = Array.from(formulaStr.matchAll(/\[(?:버프|추가 버프):\s*([^\]]+)\]/gi));
     for (const match of buffMatches) {
-        const content = match[1].trim();
-        const parts = content.split(/,\s*/);
+        const sanitizedContent = match[1]
+            .replace(/\(Lv당\+[^\)]*\)/gi, '')
+            .replace(/\([^\)]*비례[^\)]*\)/gi, '')
+            .trim();
+        const parts = sanitizedContent.split(/,\s*/);
 
         for (const part of parts) {
-            const cleanPart = part.replace(/\(Lv당\+[^\)]*\)/gi, '').replace(/\([^\)]*비례[^\)]*\)/gi, '').trim();
+            const cleanPart = part.trim();
             if (!cleanPart) continue;
 
             // 1. HP / 체력 회복
-            const hpMatch = cleanPart.match(/(?:HP|체력)\s*(?:회복|\+?\s*(\d+(?:\.\d+)?)%\s*회복|\s*(\d+(?:\.\d+)?)%)/i);
+            const hpMatch = cleanPart.match(/(?:HP|체력)\s*(?:회복\s*\+?\s*(\d+(?:\.\d+)?)%|\+?\s*(\d+(?:\.\d+)?)%\s*회복|회복|\+?\s*(\d+(?:\.\d+)?)%)/i);
             if (hpMatch) {
-                const val = parseFloat(hpMatch[1] || hpMatch[2] || '15');
+                const val = parseFloat(hpMatch[1] || hpMatch[2] || hpMatch[3] || '15');
                 if (!results.some(r => r.type === 'HP_RECOV')) {
                     results.push({ type: 'HP_RECOV', value: isNaN(val) ? 15 : val });
                 }
                 continue;
             }
             // 2. MP / 마나 회복
-            const mpMatch = cleanPart.match(/(?:MP|마나)\s*(?:회복|\+?\s*(\d+(?:\.\d+)?)%\s*회복|\s*(\d+(?:\.\d+)?)%)/i);
+            const mpMatch = cleanPart.match(/(?:MP|마나)\s*(?:회복\s*\+?\s*(\d+(?:\.\d+)?)%|\+?\s*(\d+(?:\.\d+)?)%\s*회복|회복|\+?\s*(\d+(?:\.\d+)?)%)/i);
             if (mpMatch) {
-                const val = parseFloat(mpMatch[1] || mpMatch[2] || '15');
+                const val = parseFloat(mpMatch[1] || mpMatch[2] || mpMatch[3] || '15');
                 if (!results.some(r => r.type === 'MP_RECOV')) {
                     results.push({ type: 'MP_RECOV', value: isNaN(val) ? 15 : val });
                 }
