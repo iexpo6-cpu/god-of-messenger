@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Character, Companion, Item, Skill, SkillType, ItemRarity, WeaponType, Stats, BaseResources, ClassTier, MonsterStage, JobType, CombatStyle, TrainerRank, TRAINER_RANK_CONFIG, BaseDefenseReportData, FacilityInstance } from '../types';
 import { BASE_LEVEL_CONFIG, FACILITIES_INFO, ENHANCEMENT_CAPS, MAX_STORAGE_SIZE, FACILITY_UPGRADE_CONFIG, BASE_UPGRADE_COSTS, SHINRYOKU_TYPES_LIST, FACILITY_CONSTRUCTION_COSTS, BASE_GRID_EXPANSION_COSTS, COMBAT_STYLE_CONFIG, COMBAT_STYLE_CHANGE_COST, WEAPON_TYPE_KOREAN } from '../constants';
-import { calculateInventorySize, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalLabLevel, getFacilityTrainingLimit } from '../utils';
+import { calculateInventorySize, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalLabLevel, getFacilityTrainingLimit, getCharacterMaxLevel, getMonsterMaxLevel, getTranscendenceUnlockCost } from '../utils';
 import { checkAndInitializeLiberationEligibility, getCompanionCP, getCompanionPureCP } from '../services/companionGrowthService';
 import { advanceGameTime, getTimeOfDay } from '../services/gameTimeService';
 import { getCompanionRoutine } from '../services/npcRoutineService';
@@ -220,6 +220,10 @@ const BaseModal: React.FC<Props> = ({
     const [labMode, setLabMode] = useState<'research' | 'break'>('research');
     const [labTargetId, setLabTargetId] = useState<string | null>(null); 
     const [skillFilter, setSkillFilter] = useState<string>('전체');
+    const [sanctuaryCategory, setSanctuaryCategory] = useState<'player' | 'companion' | 'monster'>('player');
+    const [sanctuaryTargetId, setSanctuaryTargetId] = useState<string>('player');
+    const [sanctuarySort, setSanctuarySort] = useState<'party' | 'level' | 'name' | 'custom'>('party');
+    const [sanctuarySearch, setSanctuarySearch] = useState<string>('');
 
     // [기지 창고] 골드 입출금 모달 상태
     const [goldTransferModal, setGoldTransferModal] = useState<{
@@ -4208,6 +4212,418 @@ const BaseModal: React.FC<Props> = ({
                         <span className="text-lg font-black text-amber-200">기지 잠재력 돌파소 진입</span>
                         <span className="text-xs text-slate-400 mt-1">대원 돌파 • 플레이어 돌파 • 최후의 시련(Lv.5)</span>
                     </button>
+                </div>
+            );
+        }
+
+        if (selectedFacility === 'transcendence_sanctuary') {
+            type SanctuaryUnitEntry = {
+                key: string;
+                category: 'player' | 'companion' | 'monster';
+                source: 'player' | 'active_companion' | 'inactive_companion' | 'player_mount' | 'companion_mount' | 'captured_monster';
+                ownerCompId?: string;
+                id: string;
+                name: string;
+                level: number;
+                subLabel: string;
+                badge?: string;
+                isCustom?: boolean;
+                unlockCount: number;
+                maxLevel: number;
+            };
+
+            const playerEntry: SanctuaryUnitEntry = {
+                key: 'player',
+                category: 'player',
+                source: 'player',
+                id: character.id || 'player',
+                name: character.name,
+                level: character.level,
+                subLabel: String(character.classTier || ClassTier.FIRST),
+                badge: '주인공',
+                unlockCount: character.levelCapUnlockCount || 0,
+                maxLevel: getCharacterMaxLevel(character, character.base)
+            };
+
+            const companionEntries: SanctuaryUnitEntry[] = [
+                ...(character.companions || []).map((c): SanctuaryUnitEntry => ({
+                    key: `comp:${c.id}`,
+                    category: 'companion',
+                    source: 'active_companion',
+                    id: c.id,
+                    name: c.name,
+                    level: c.level,
+                    subLabel: String(c.classTier || ClassTier.FIRST),
+                    badge: '파티',
+                    isCustom: Boolean((c as any).isCustom || (c as any).isCustomModified),
+                    unlockCount: c.levelCapUnlockCount || 0,
+                    maxLevel: getCharacterMaxLevel(c, character.base)
+                })),
+                ...(character.inactiveCompanions || []).map((c): SanctuaryUnitEntry => ({
+                    key: `comp:${c.id}`,
+                    category: 'companion',
+                    source: 'inactive_companion',
+                    id: c.id,
+                    name: c.name,
+                    level: c.level,
+                    subLabel: String(c.classTier || ClassTier.FIRST),
+                    badge: '대기',
+                    isCustom: Boolean((c as any).isCustom || (c as any).isCustomModified),
+                    unlockCount: c.levelCapUnlockCount || 0,
+                    maxLevel: getCharacterMaxLevel(c, character.base)
+                }))
+            ];
+
+            const monsterEntries: SanctuaryUnitEntry[] = [];
+            if (character.mountedMonster) {
+                const m: any = character.mountedMonster;
+                monsterEntries.push({
+                    key: `pmount:${m.id}`,
+                    category: 'monster',
+                    source: 'player_mount',
+                    id: m.id,
+                    name: m.name,
+                    level: m.level || 1,
+                    subLabel: String(m.evolutionStage || m.stage || '성장기'),
+                    badge: '주인공 탈것',
+                    unlockCount: m.levelCapUnlockCount || 0,
+                    maxLevel: getMonsterMaxLevel(m, character.base)
+                });
+            }
+            (character.companions || []).forEach(c => {
+                if (c.mountedMonster) {
+                    const m: any = c.mountedMonster;
+                    monsterEntries.push({
+                        key: `cmount:${c.id}:${m.id}`,
+                        category: 'monster',
+                        source: 'companion_mount',
+                        ownerCompId: c.id,
+                        id: m.id,
+                        name: m.name,
+                        level: m.level || 1,
+                        subLabel: String(m.evolutionStage || m.stage || '성장기'),
+                        badge: `${c.name} 탈것`,
+                        unlockCount: m.levelCapUnlockCount || 0,
+                        maxLevel: getMonsterMaxLevel(m, character.base)
+                    });
+                }
+            });
+            (character.base?.capturedMonsters || []).forEach(m => {
+                monsterEntries.push({
+                    key: `cap:${m.id}`,
+                    category: 'monster',
+                    source: 'captured_monster',
+                    id: m.id,
+                    name: m.name,
+                    level: m.level || 1,
+                    subLabel: String((m as any).evolutionStage || m.stage || '성장기'),
+                    badge: '사육소',
+                    unlockCount: m.levelCapUnlockCount || 0,
+                    maxLevel: getMonsterMaxLevel(m, character.base)
+                });
+            });
+            const sortUnits = (list: SanctuaryUnitEntry[]) => {
+                const q = sanctuarySearch.trim().toLowerCase();
+                const filtered = q
+                    ? list.filter(u =>
+                          u.name.toLowerCase().includes(q) ||
+                          u.subLabel.toLowerCase().includes(q) ||
+                          (u.badge || '').toLowerCase().includes(q)
+                      )
+                    : [...list];
+
+                return filtered.sort((a, b) => {
+                    if (sanctuarySort === 'name') {
+                        return a.name.localeCompare(b.name, 'ko');
+                    }
+                    if (sanctuarySort === 'level') {
+                        if (b.level !== a.level) return b.level - a.level;
+                        return a.name.localeCompare(b.name, 'ko');
+                    }
+                    if (sanctuarySort === 'custom') {
+                        const aCustom = a.isCustom ? 0 : 1;
+                        const bCustom = b.isCustom ? 0 : 1;
+                        if (aCustom !== bCustom) return aCustom - bCustom;
+                        if (b.level !== a.level) return b.level - a.level;
+                        return a.name.localeCompare(b.name, 'ko');
+                    }
+                    // 'party' (기본: 파티/탈것 우선 -> 레벨 -> 이름)
+                    const rank = (s: SanctuaryUnitEntry['source']) =>
+                        s === 'active_companion' || s === 'player_mount' ? 0 : s === 'companion_mount' ? 1 : 2;
+                    if (rank(a.source) !== rank(b.source)) return rank(a.source) - rank(b.source);
+                    if (b.level !== a.level) return b.level - a.level;
+                    return a.name.localeCompare(b.name, 'ko');
+                });
+            };
+
+            const sortedCompanions = sortUnits(companionEntries);
+            const sortedMonsters = sortUnits(monsterEntries);
+
+            const categoryList = sanctuaryCategory === 'player'
+                ? [playerEntry]
+                : sanctuaryCategory === 'companion'
+                    ? sortedCompanions
+                    : sortedMonsters;
+
+            const selectedTarget: SanctuaryUnitEntry =
+                categoryList.find(u => u.key === sanctuaryTargetId) ||
+                categoryList[0] ||
+                playerEntry;
+
+            const unlockCount = selectedTarget.unlockCount;
+            const currentMaxLv = selectedTarget.maxLevel;
+            const classBaseCap = currentMaxLv - unlockCount * 100;
+            const cost = getTranscendenceUnlockCost(unlockCount, currentMaxLv);
+            const res = character.base?.resources || ({} as BaseResources);
+            const hasGold = (character.money || 0) >= cost.gold;
+            const hasMana = (res.manaCrystal || 0) >= cost.manaCrystal;
+            const hasWood = (res.wood || 0) >= cost.wood;
+            const hasStone = (res.stone || 0) >= cost.stone;
+            const hasIron = (res.iron || 0) >= cost.iron;
+            const ownedCrystal = (res as any)[cost.crystalType] || 0;
+            const hasCrystal = ownedCrystal >= cost.crystalCount;
+            const extraChecks = cost.extraRequirements.map(req => {
+                const owned = Number((res as any)[req.key] || 0);
+                return { ...req, owned, hasEnough: owned >= req.amount };
+            });
+            const hasAllExtras = extraChecks.every(e => e.hasEnough);
+            const canUnlock = hasGold && hasMana && hasWood && hasStone && hasIron && hasCrystal && hasAllExtras;
+
+            const handleTranscendenceUnlock = () => {
+                if (!canUnlock) return;
+                const newChar: Character = JSON.parse(JSON.stringify(character));
+                if (!newChar.base) return;
+
+                newChar.money = (newChar.money || 0) - cost.gold;
+                newChar.base.resources.manaCrystal = Math.max(0, (newChar.base.resources.manaCrystal || 0) - cost.manaCrystal);
+                newChar.base.resources.wood = Math.max(0, (newChar.base.resources.wood || 0) - cost.wood);
+                newChar.base.resources.stone = Math.max(0, (newChar.base.resources.stone || 0) - cost.stone);
+                newChar.base.resources.iron = Math.max(0, (newChar.base.resources.iron || 0) - cost.iron);
+                (newChar.base.resources as any)[cost.crystalType] = Math.max(0, ((newChar.base.resources as any)[cost.crystalType] || 0) - cost.crystalCount);
+                cost.extraRequirements.forEach(req => {
+                    (newChar.base!.resources as any)[req.key] = Math.max(0, Number((newChar.base!.resources as any)[req.key] || 0) - req.amount);
+                });
+
+                let nextMaxLv = currentMaxLv + 100;
+                if (selectedTarget.source === 'player') {
+                    newChar.levelCapUnlockCount = unlockCount + 1;
+                    nextMaxLv = getCharacterMaxLevel(newChar, newChar.base);
+                } else if (selectedTarget.source === 'active_companion') {
+                    const comp = newChar.companions.find(c => c.id === selectedTarget.id);
+                    if (comp) {
+                        comp.levelCapUnlockCount = unlockCount + 1;
+                        nextMaxLv = getCharacterMaxLevel(comp, newChar.base);
+                    }
+                } else if (selectedTarget.source === 'inactive_companion') {
+                    const comp = (newChar.inactiveCompanions || []).find(c => c.id === selectedTarget.id);
+                    if (comp) {
+                        comp.levelCapUnlockCount = unlockCount + 1;
+                        nextMaxLv = getCharacterMaxLevel(comp, newChar.base);
+                    }
+                } else if (selectedTarget.source === 'player_mount' && newChar.mountedMonster) {
+                    (newChar.mountedMonster as any).levelCapUnlockCount = unlockCount + 1;
+                    nextMaxLv = getMonsterMaxLevel(newChar.mountedMonster as any, newChar.base);
+                } else if (selectedTarget.source === 'companion_mount') {
+                    const owner = newChar.companions.find(c => c.id === selectedTarget.ownerCompId);
+                    if (owner?.mountedMonster) {
+                        (owner.mountedMonster as any).levelCapUnlockCount = unlockCount + 1;
+                        nextMaxLv = getMonsterMaxLevel(owner.mountedMonster as any, newChar.base);
+                    }
+                } else if (selectedTarget.source === 'captured_monster') {
+                    const mon = (newChar.base.capturedMonsters || []).find(m => m.id === selectedTarget.id);
+                    if (mon) {
+                        mon.levelCapUnlockCount = unlockCount + 1;
+                        nextMaxLv = getMonsterMaxLevel(mon, newChar.base);
+                    }
+                }
+
+                onUpdateCharacter(
+                    newChar,
+                    `[초월의 성소] [${selectedTarget.name}]의 최대 레벨 상한을 +100 해방했습니다! (누적 해방: +${(unlockCount + 1) * 100} Lv, 현재 최대 레벨: Lv.${nextMaxLv.toLocaleString()})`
+                );
+            };
+
+            return (
+                <div className="flex flex-col items-center h-full space-y-3.5 p-3 sm:p-4 overflow-y-auto">
+                    {renderHeader()}
+
+                    {/* 대상 분류 탭 (주인공 / 동료 / 몬스터·탈것) */}
+                    <div className="w-full max-w-md grid grid-cols-3 gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSanctuaryCategory('player');
+                                setSanctuaryTargetId('player');
+                            }}
+                            className={`py-2 px-2 rounded-lg text-xs font-black transition-all cursor-pointer ${sanctuaryCategory === 'player' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                        >
+                            주인공
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSanctuaryCategory('companion');
+                                if (companionEntries[0]) setSanctuaryTargetId(companionEntries[0].key);
+                            }}
+                            className={`py-2 px-2 rounded-lg text-xs font-black transition-all cursor-pointer ${sanctuaryCategory === 'companion' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                        >
+                            동료 ({companionEntries.length})
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSanctuaryCategory('monster');
+                                if (monsterEntries[0]) setSanctuaryTargetId(monsterEntries[0].key);
+                            }}
+                            className={`py-2 px-2 rounded-lg text-xs font-black transition-all cursor-pointer ${sanctuaryCategory === 'monster' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                        >
+                            몬스터 ({monsterEntries.length})
+                        </button>
+                    </div>
+
+                    {/* 정렬/검색 바 및 대상 선택 리스트 (동료/몬스터 다수 시) */}
+                    {sanctuaryCategory !== 'player' && (
+                        <div className="w-full max-w-md space-y-2">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <div className="relative flex-1 min-w-[120px]">
+                                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        value={sanctuarySearch}
+                                        onChange={(e) => setSanctuarySearch(e.target.value)}
+                                        placeholder="이름/클래스 검색..."
+                                        className="w-full bg-slate-900/90 border border-slate-700 rounded-lg pl-7 pr-2 py-1 text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-400"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-1 bg-slate-900/90 p-0.5 rounded-lg border border-slate-800">
+                                    {([
+                                        { id: 'party', label: '파티순' },
+                                        { id: 'level', label: '레벨순' },
+                                        { id: 'name', label: '이름순' },
+                                        { id: 'custom', label: '커스텀순' },
+                                    ] as const).map(opt => (
+                                        <button
+                                            key={opt.id}
+                                            type="button"
+                                            onClick={() => setSanctuarySort(opt.id)}
+                                            className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                                                sanctuarySort === opt.id
+                                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                                    : 'text-slate-400 hover:text-slate-200'
+                                            }`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+                                {categoryList.length === 0 ? (
+                                    <div className="p-4 text-center text-xs text-slate-500 bg-slate-900/50 rounded-xl border border-slate-800">
+                                        {sanctuarySearch.trim() ? '검색 결과가 없습니다.' : '해방 가능한 대상이 없습니다.'}
+                                    </div>
+                                ) : (
+                                    categoryList.map(u => {
+                                        const active = selectedTarget.key === u.key;
+                                        return (
+                                            <button
+                                                key={u.key}
+                                                type="button"
+                                                onClick={() => setSanctuaryTargetId(u.key)}
+                                                className={`w-full px-3 py-2 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                                                    active
+                                                        ? 'bg-indigo-950/70 border-indigo-400 text-white shadow-sm'
+                                                        : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    {u.badge && (
+                                                        <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-cyan-300 shrink-0">
+                                                            {u.badge}
+                                                        </span>
+                                                    )}
+                                                    {u.isCustom && (
+                                                        <span className="px-1 py-0.5 rounded bg-pink-950/80 border border-pink-500/40 text-[9px] font-bold text-pink-300 shrink-0">
+                                                            커스텀
+                                                        </span>
+                                                    )}
+                                                    <span className="text-xs font-black truncate">{u.name}</span>
+                                                    <span className="text-[10px] text-slate-400 shrink-0">{u.subLabel}</span>
+                                                </div>
+                                                <span className="text-xs font-mono font-bold text-amber-300 shrink-0 ml-2">
+                                                    Lv.{u.level}/{u.maxLevel}
+                                                </span>
+                                            </button>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 선택된 대상 정보 */}
+                    <div className="w-full max-w-md bg-slate-900/90 border border-indigo-500/40 rounded-2xl p-3.5 space-y-2 shadow-lg">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-black text-white">
+                                {selectedTarget.name} <span className="text-xs font-normal text-slate-400">({selectedTarget.subLabel})</span>
+                            </span>
+                            <span className="text-xs font-mono text-slate-300">현재 Lv.{selectedTarget.level}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-300">
+                            <span>기본 최대 레벨</span>
+                            <span className="font-bold text-white">Lv.{classBaseCap.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-300">
+                            <span>개별 해방 보너스 ({unlockCount}회)</span>
+                            <span className="font-bold text-cyan-300">+{(unlockCount * 100).toLocaleString()} Lv</span>
+                        </div>
+                        <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
+                            <span className="text-sm font-black text-amber-200">최종 최대 레벨</span>
+                            <span className="text-lg font-black text-amber-400">Lv.{currentMaxLv.toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    {/* 해방 비용 및 실행 */}
+                    <div className="w-full max-w-md bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
+                        <div className="text-xs font-black text-indigo-300 flex items-center justify-between">
+                            <span>✨ {cost.step}단계 개별 해방 (+100 Lv) 필요 자원</span>
+                            <span className="text-emerald-400">➔ Lv.{(currentMaxLv + 100).toLocaleString()}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className={`p-2 rounded-lg border ${hasGold ? 'border-slate-700 bg-slate-900/60 text-slate-200' : 'border-red-500/40 bg-red-950/30 text-red-300'}`}>
+                                골드: {cost.gold.toLocaleString()} <span className="text-[10px] opacity-75">({(character.money || 0).toLocaleString()})</span>
+                            </div>
+                            <div className={`p-2 rounded-lg border ${hasMana ? 'border-slate-700 bg-slate-900/60 text-slate-200' : 'border-red-500/40 bg-red-950/30 text-red-300'}`}>
+                                마정석: {cost.manaCrystal.toLocaleString()} <span className="text-[10px] opacity-75">({(res.manaCrystal || 0).toLocaleString()})</span>
+                            </div>
+                            <div className={`p-2 rounded-lg border ${hasWood ? 'border-slate-700 bg-slate-900/60 text-slate-200' : 'border-red-500/40 bg-red-950/30 text-red-300'}`}>
+                                목재: {cost.wood.toLocaleString()} <span className="text-[10px] opacity-75">({(res.wood || 0).toLocaleString()})</span>
+                            </div>
+                            <div className={`p-2 rounded-lg border ${hasStone ? 'border-slate-700 bg-slate-900/60 text-slate-200' : 'border-red-500/40 bg-red-950/30 text-red-300'}`}>
+                                석재: {cost.stone.toLocaleString()} <span className="text-[10px] opacity-75">({(res.stone || 0).toLocaleString()})</span>
+                            </div>
+                            <div className={`p-2 rounded-lg border ${hasIron ? 'border-slate-700 bg-slate-900/60 text-slate-200' : 'border-red-500/40 bg-red-950/30 text-red-300'}`}>
+                                철광석: {cost.iron.toLocaleString()} <span className="text-[10px] opacity-75">({(res.iron || 0).toLocaleString()})</span>
+                            </div>
+                            <div className={`p-2 rounded-lg border ${hasCrystal ? 'border-slate-700 bg-slate-900/60 text-slate-200' : 'border-red-500/40 bg-red-950/30 text-red-300'}`}>
+                                {cost.crystalLabel}: {cost.crystalCount.toLocaleString()} <span className="text-[10px] opacity-75">({ownedCrystal.toLocaleString()})</span>
+                            </div>
+                            {extraChecks.map(ex => (
+                                <div key={String(ex.key)} className={`p-2 rounded-lg border ${ex.hasEnough ? 'border-emerald-700/50 bg-emerald-950/25 text-emerald-200' : 'border-red-500/40 bg-red-950/30 text-red-300'}`}>
+                                    {ex.icon} {ex.label}: {ex.amount.toLocaleString()} <span className="text-[10px] opacity-75">({ex.owned.toLocaleString()})</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <button
+                            onClick={handleTranscendenceUnlock}
+                            disabled={!canUnlock || (sanctuaryCategory !== 'player' && categoryList.length === 0)}
+                            className="w-full mt-1 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-sm shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
+                        >
+                            <ChevronsUp size={18} />
+                            <span>[{selectedTarget.name}] 최대 레벨 +100 해방 실행</span>
+                        </button>
+                    </div>
                 </div>
             );
         }

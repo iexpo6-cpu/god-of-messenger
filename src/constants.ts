@@ -1,5 +1,5 @@
 
-import { Character, ClassTier, Base, ItemRarity, Enemy, SkillType, Skill, WeaponCategory, WeaponType, DistrictType, CityTier, NationConf, SchoolTier, ActiveStatus, Stats, JobType, MercenaryRank, MilitaryRank, WantedRank, CombatStyle } from "./types";
+import { Character, ClassTier, Base, ItemRarity, Enemy, SkillType, Skill, WeaponCategory, WeaponType, DistrictType, CityTier, NationConf, SchoolTier, ActiveStatus, Stats, JobType, MercenaryRank, MilitaryRank, WantedRank, CombatStyle, MonsterStage } from "./types";
 // [FIX] Added missing 'NonHuman' district configuration to satisfy DistrictType requirement
 export const DISTRICT_CONFIG: Record<DistrictType, { label: string, desc: string, icon: string, color: string }> = {
     'Gate': { label: '성문/관문', desc: '입국 심사 및 통행료 납부', icon: 'Gate', color: 'text-slate-400' },
@@ -2765,6 +2765,28 @@ export const ROOT_COMBAT_STYLES: CombatStyle[] = [
 ];
 
 export const WEAPON_MASTERY_MAX_LEVEL = 100;
+
+export const TRANSCENDENCE_SANCTUARY_UNLOCK_STEP = 100;
+
+export const CLASS_BASE_MAX_LEVEL: Record<ClassTier, number> = {
+    [ClassTier.NONE]: 100,
+    [ClassTier.F]: 100,
+    [ClassTier.FIRST]: 100,
+    [ClassTier.SECOND]: 300,
+    [ClassTier.LAST]: 1000,
+    [ClassTier.FINAL]: 3000,
+    [ClassTier.BOND]: 3000,
+};
+
+export const MONSTER_STAGE_MAX_LEVEL: Record<MonsterStage, number> = {
+    [MonsterStage.EGG]: 30,
+    [MonsterStage.BABY]: 40,
+    [MonsterStage.CHILD]: 50,
+    [MonsterStage.ADULT]: 100,
+    [MonsterStage.PERFECT]: 300,
+    [MonsterStage.ULTIMATE]: 1000,
+    [MonsterStage.SUPER_ULTIMATE]: 3000,
+};
 export const WEAPON_MASTERY_INITIAL_EXP = 0;
 
 // [무기숙련도 확장] 숙련 레벨당, 해당 무기 '자체 능력치'에 곱해지는 배율 증가분 (Lv100 → x1.5)
@@ -4629,6 +4651,7 @@ export const FACILITIES_INFO = [
     { id: 'skill_vfx_lab', name: '스킬 커스텀 개조실', desc: '스킬 이펙트 테마, 아이콘, 스킬 컷신, 프레임 이펙트 제작, 이펙트 영상을 개조하는 고유 시설입니다.', minLevel: 2, isUnique: true },
     { id: 'child_academy', name: '유년 서당', desc: '기지에서 태어난 아이들이나 어린 견습생들이 성인식 전까지 기본 소양을 배우는 시설입니다. (교육 담당 동료의 직업과 전투력에 따라 아이들의 초기 능력치 육성)', minLevel: 2, isUnique: false },
     { id: 'monster_arena', name: '몬스터 수련 투기장', desc: '사육소의 몬스터들끼리 모의 대전을 치르며 야성을 일깨우는 시설입니다. (사육사의 지도 아래 몬스터의 능력 증가)', minLevel: 3, isUnique: false },
+    { id: 'transcendence_sanctuary', name: '초월의 성소', desc: '각종 자원과 결정을 봉헌하여 주인공과 동료·몬스터의 최대 레벨 상한을 +100씩 영구 해방하는 고유 성소입니다.', minLevel: 2, isUnique: true },
 ];
 
 export const RESOURCE_SELL_PRICES: Record<string, number> = {
@@ -4708,6 +4731,7 @@ export const FACILITY_CONSTRUCTION_COSTS: Record<string, { gold?: number, food?:
     'skill_vfx_lab': { gold: 50000, wood: 30, stone: 20, iron: 30, manaCrystal: 10 },
     'child_academy': { gold: 30000, wood: 40, stone: 20, iron: 20 },
     'monster_arena': { gold: 40000, wood: 50, stone: 40, iron: 30, manaCrystal: 5 },
+    'transcendence_sanctuary': { gold: 100000, wood: 60, stone: 60, iron: 50, manaCrystal: 20 },
 };
 
 export const BASE_UPGRADE_COSTS: Record<number, { food: number, wood: number, stone: number, iron: number, manaCrystal: number, time: number }> = {
@@ -4748,6 +4772,7 @@ export const FACILITY_UPGRADE_CONFIG: Record<string, { maxLevel: number, woodCos
     'skill_vfx_lab': { maxLevel: 5, woodCost: 20, stoneCost: 20, goldCost: 40000, foodCost: 10, manaCost: 10 },
     'child_academy': { maxLevel: 5, woodCost: 20, stoneCost: 15, goldCost: 30000, foodCost: 10, manaCost: 0 },
     'monster_arena': { maxLevel: 5, woodCost: 25, stoneCost: 20, goldCost: 40000, foodCost: 20, manaCost: 5 },
+    'transcendence_sanctuary': { maxLevel: 5, woodCost: 30, stoneCost: 30, goldCost: 100000, foodCost: 20, manaCost: 20 },
 };
 
 

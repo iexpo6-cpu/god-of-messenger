@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Character, Companion, ItemRarity, MythicOptionType, ClassTier, Item, Stats, ActiveStatus, JobType, MilitaryRank, WantedRank, CombatStyle, WeaponType, BattleRole, SecondaryBattleRole } from '../types';
 import { Shield, Sword, Zap, Brain, Activity, User, Users, Heart, BookOpen, Coins, Backpack, Info, Box, Trash2, DollarSign, UserMinus, UserPlus, Skull, Flame, Snowflake, Droplets, Mountain, Moon, Sun, Hammer, Wind, Eclipse, EyeOff, Link, Ghost, HelpCircle, MicOff, AlertCircle, Filter, LogOut, CheckCircle, BarChart2, Star, Target, Briefcase, GraduationCap, Medal, Award, Clock, X, Lock, Gavel, Award as TitleIcon, Play, Sparkles, ChevronRight, GitBranch, ArrowUpRight, Leaf, Scroll, HeartHandshake, Wrench, Edit2 } from 'lucide-react';
 import { STAT_DESCRIPTIONS, SELL_PRICES, WEAPON_TYPE_KOREAN, SHINRYOKU_UI_CONFIG, INFAMY_CONFIG, MAX_PARTY_SIZE, COMBAT_STYLE_CONFIG } from '../constants';
-import { calculateTotalStats, calculateItemPrice, getEnhancedStatValue, calculateFinalStats, calculateDerivedStats, getWeaponTypeFromItem, getYear, generateDefaultVisualUrl, calculateInventorySize, getBondBonus, getSpecialOptionDescription, getCombatStyleBonusPercent, getCombatStyleBonusDetails, calculateCombatPower, calculateItemCombatPowerContribution } from '../utils';
+import { calculateTotalStats, calculateItemPrice, getEnhancedStatValue, calculateFinalStats, calculateDerivedStats, getWeaponTypeFromItem, getYear, generateDefaultVisualUrl, calculateInventorySize, getBondBonus, getSpecialOptionDescription, getCombatStyleBonusPercent, getCombatStyleBonusDetails, calculateCombatPower, calculateItemCombatPowerContribution, getCharacterMaxLevel } from '../utils';
 import { SECONDARY_ROLE_INFOS } from '../services/roleBonusService';
 import { TITLES } from '../titles';
 import DetailedStatsModal from './DetailedStatsModal';
@@ -1351,19 +1351,24 @@ const CharacterSheet: React.FC<Props> = ({
                 <img src={finalPlayerVisualUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform" alt="Avatar" />
               </div>
             )}
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className={`text-lg font-bold ${shinryokuTheme.nameColor} font-cinzel tracking-wider flex items-center gap-1.5`}>
-                  <span>{character.name}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h2 className={`text-base sm:text-lg font-bold ${shinryokuTheme.nameColor} font-cinzel tracking-wider flex items-center gap-1.5 flex-wrap min-w-0`}>
+                  <span className="truncate max-w-[140px] sm:max-w-none">{character.name}</span>
                   <button
                     type="button"
                     onClick={() => setShowRenameModal(true)}
-                    className="p-1 text-slate-400 hover:text-amber-400 hover:bg-slate-800/80 rounded-lg transition-all border border-transparent hover:border-amber-500/30"
+                    className="p-1 text-slate-400 hover:text-amber-400 hover:bg-slate-800/80 rounded-lg transition-all border border-transparent hover:border-amber-500/30 shrink-0"
                     title="이름 변경"
                   >
                     <Edit2 size={13} />
                   </button>
-                  <span className="ml-1 text-xs font-sans bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-700 font-mono">Lv.{character.level}</span>
+                  <span className="inline-flex items-center whitespace-nowrap shrink-0 text-[10px] sm:text-xs font-sans bg-slate-900 text-slate-300 px-1.5 sm:px-2 py-0.5 rounded border border-slate-700 font-mono">
+                    Lv.{character.level}/{getCharacterMaxLevel(character, character.base)}
+                    {character.level >= getCharacterMaxLevel(character, character.base) && (
+                      <span className="ml-1 text-[9px] sm:text-[10px] font-black text-amber-400">MAX</span>
+                    )}
+                  </span>
                 </h2>
                 {/* Class Name Badge */}
                 <div className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-lg border ${tierBadgeBg} ${tierColor} shadow-sm`}>

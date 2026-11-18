@@ -1,7 +1,7 @@
 
 import LZString from 'lz-string';
-import { Character, Companion, Stats, Item, ItemRarity, MythicOptionType, MagyeOptionType, Skill, BondSkill, SkillType, Enemy, DerivedStats, ClassTier, ActiveStatus, WeaponType, SimpleStudent,BlacksmithRank, AlchemistRank, TrainerRank, TrainerBranch, TRAINER_RANK_CONFIG, CapturedMonster, MonsterStage, SchoolTier, TournamentMatch, MercenaryRank, JobType, MilitaryRank, RelationType, BattlePosition, CombatStyle, BattleRole, SecondaryBattleRole, CombatStyleProgressData, HousekeeperRank, HOUSEKEEPER_RANK_CONFIG, HouseType, HouseBuilding, ChefRank, CHEF_RANK_CONFIG, Location, GameLocation } from './types';
-import { SELL_PRICES, SHINRYOKU_AFFINITY, BASE_MONSTERS,MILITARY_RANK_ORDER, MONSTER_PREFIXES, SHINRYOKU_TYPES_LIST, NATION_NAMES, HUMANOID_CLASSES, ENEMY_SKILL_POOL, WEAPON_KEYWORDS, WEAPON_MASTERY_CONFIG, WEAPON_MASTERY_MAX_LEVEL, NATION_DATA, WORLD_GEOGRAPHY, MILITARY_RANK_THRESHOLD, STATUS_AILMENTS_DATA, STATUS_AILMENTS_LIST, COMBAT_STYLE_SPECIALTIES, COMBAT_STYLE_CONFIG, COMBAT_STYLE_TIER_REQUIREMENTS, CombatStyleTrainingReq, WEAPON_TYPE_KOREAN, getHumanoidClassByTier } from './constants';
+import { Character, Companion, Stats, Item, ItemRarity, MythicOptionType, MagyeOptionType, Skill, BondSkill, SkillType, Enemy, DerivedStats, ClassTier, ActiveStatus, WeaponType, SimpleStudent,BlacksmithRank, AlchemistRank, TrainerRank, TrainerBranch, TRAINER_RANK_CONFIG, CapturedMonster, MonsterStage, Base, BaseResources, SchoolTier, TournamentMatch, MercenaryRank, JobType, MilitaryRank, RelationType, BattlePosition, CombatStyle, BattleRole, SecondaryBattleRole, CombatStyleProgressData, HousekeeperRank, HOUSEKEEPER_RANK_CONFIG, HouseType, HouseBuilding, ChefRank, CHEF_RANK_CONFIG, Location, GameLocation } from './types';
+import { SELL_PRICES, SHINRYOKU_AFFINITY, BASE_MONSTERS,MILITARY_RANK_ORDER, MONSTER_PREFIXES, SHINRYOKU_TYPES_LIST, NATION_NAMES, HUMANOID_CLASSES, ENEMY_SKILL_POOL, WEAPON_KEYWORDS, WEAPON_MASTERY_CONFIG, WEAPON_MASTERY_MAX_LEVEL, NATION_DATA, WORLD_GEOGRAPHY, MILITARY_RANK_THRESHOLD, STATUS_AILMENTS_DATA, STATUS_AILMENTS_LIST, COMBAT_STYLE_SPECIALTIES, COMBAT_STYLE_CONFIG, COMBAT_STYLE_TIER_REQUIREMENTS, CombatStyleTrainingReq, WEAPON_TYPE_KOREAN, getHumanoidClassByTier, CLASS_BASE_MAX_LEVEL, MONSTER_STAGE_MAX_LEVEL, TRANSCENDENCE_SANCTUARY_UNLOCK_STEP } from './constants';
 import { getCombatStyleSkillSet, COMBAT_STYLE_SKILL_DATA } from './combatStyleSkills';
 import { WEAPON_MASTERY_WEAPON_STAT_PER_LEVEL, WEAPON_MASTERY_ACCURACY_PER_LEVEL, WEAPON_MASTERY_EQUIP_REQUIREMENT } from './constants';
 import { WORLD_LOOT_TABLES, findItemDataInWorldTables, getChanceByRarity } from './monsterLootTable';
@@ -6111,6 +6111,115 @@ export const checkAndApplySkillLevelUp = (char: Character): { updatedChar: Chara
     return { updatedChar, notifications };
 };
 
+export const getCharacterMaxLevel = (
+    actor?: { classTier?: ClassTier | string; currentClass?: ClassTier | string; levelCapUnlockCount?: number } | null,
+    _base?: Base | null
+): number => {
+    const tier = (actor?.classTier || actor?.currentClass || ClassTier.NONE) as ClassTier;
+    const baseCap = CLASS_BASE_MAX_LEVEL[tier] ?? 100;
+    const unlockBonus = Math.max(0, actor?.levelCapUnlockCount || 0) * TRANSCENDENCE_SANCTUARY_UNLOCK_STEP;
+    return baseCap + unlockBonus;
+};
+
+export const getMonsterMaxLevel = (
+    monster?: { evolutionStage?: MonsterStage | string; stage?: MonsterStage | string; levelCapUnlockCount?: number } | null,
+    _base?: Base | null
+): number => {
+    const stage = (monster?.evolutionStage || monster?.stage || MonsterStage.CHILD) as MonsterStage;
+    const stageCap = MONSTER_STAGE_MAX_LEVEL[stage] ?? 50;
+    const unlockBonus = Math.max(0, monster?.levelCapUnlockCount || 0) * TRANSCENDENCE_SANCTUARY_UNLOCK_STEP;
+    return stageCap + unlockBonus;
+};
+
+export interface TranscendenceResourceItem {
+    key: keyof BaseResources;
+    label: string;
+    amount: number;
+    icon: string;
+}
+
+export const getTranscendenceUnlockCost = (currentUnlockCount: number, currentMaxLevel: number = 100) => {
+    const step = Math.max(1, (currentUnlockCount || 0) + 1);
+    const gold = Math.round(500000 * Math.pow(1.5, Math.min(step - 1, 20)));
+    const manaCrystal = 30 * step;
+    const wood = 100 * step;
+    const stone = 100 * step;
+    const iron = 100 * step;
+    let crystalType: 'rareCrystal' | 'epicCrystal' | 'legendaryCrystal' = 'rareCrystal';
+    let crystalLabel = '희귀 결정';
+    let crystalCount = 10 * step;
+    if (step > 15) {
+        crystalType = 'legendaryCrystal';
+        crystalLabel = '전설 결정';
+        crystalCount = 2 * (step - 15);
+    } else if (step > 5) {
+        crystalType = 'epicCrystal';
+        crystalLabel = '영웅 결정';
+        crystalCount = 5 * (step - 5);
+    }
+
+    // 다양한 작물·광물 순환 요구 (단일 작물 의존 방지)
+    const baseCrops: Array<{ key: keyof BaseResources; label: string; icon: string; unit: number }> = [
+        { key: 'mana_fruit', label: '마력 열매', icon: '🫐', unit: 3 },
+        { key: 'ginseng', label: '인삼', icon: '🌿', unit: 2 },
+        { key: 'mandrake', label: '만드라고라', icon: '🪴', unit: 2 },
+    ];
+    const pickedBaseCrop = baseCrops[(step - 1) % baseCrops.length];
+    const baseCropReq: TranscendenceResourceItem = {
+        key: pickedBaseCrop.key,
+        label: pickedBaseCrop.label,
+        icon: pickedBaseCrop.icon,
+        amount: pickedBaseCrop.unit * Math.min(step, 10)
+    };
+
+    const baseMinerals: Array<{ key: keyof BaseResources; label: string; icon: string; unit: number }> = [
+        { key: 'silver_ore', label: '은광석', icon: '🪨', unit: 3 },
+        { key: 'gold_ore', label: '금광석', icon: '🪙', unit: 2 },
+    ];
+    const pickedBaseMineral = baseMinerals[(step - 1) % baseMinerals.length];
+    const baseMineralReq: TranscendenceResourceItem = {
+        key: pickedBaseMineral.key,
+        label: pickedBaseMineral.label,
+        icon: pickedBaseMineral.icon,
+        amount: pickedBaseMineral.unit * Math.min(step, 10)
+    };
+
+    const extraRequirements: TranscendenceResourceItem[] = [baseCropReq, baseMineralReq];
+
+    if (currentMaxLevel >= 1000) {
+        const tierAmt = Math.max(1, 1 + Math.floor((currentMaxLevel - 1000) / 300));
+        const highCrops: Array<{ key: keyof BaseResources; label: string; icon: string }> = [
+            { key: 'shinryoku_flower', label: '신력꽃', icon: '🌸' },
+            { key: 'golden_apple', label: '황금 사과', icon: '🍎' },
+            { key: 'world_tree_branch', label: '세계수의 가지', icon: '🌳' },
+        ];
+        const pickedHighCrop = highCrops[(step - 1) % highCrops.length];
+        extraRequirements.push({
+            key: pickedHighCrop.key,
+            label: `${pickedHighCrop.label} (Lv.1,000+)`,
+            icon: pickedHighCrop.icon,
+            amount: tierAmt
+        });
+
+        const highMinerals: Array<{ key: keyof BaseResources; label: string; icon: string }> = [
+            { key: 'ruby', label: '루비', icon: '♦️' },
+            { key: 'sapphire', label: '사파이어', icon: '🔷' },
+            { key: 'emerald', label: '에메랄드', icon: '❇️' },
+            { key: 'diamond', label: '다이아몬드', icon: '💎' },
+            { key: 'holy_stone', label: '신성석', icon: '✨' },
+        ];
+        const pickedHighMineral = highMinerals[(step - 1) % highMinerals.length];
+        extraRequirements.push({
+            key: pickedHighMineral.key,
+            label: `${pickedHighMineral.label} (Lv.1,000+)`,
+            icon: pickedHighMineral.icon,
+            amount: tierAmt
+        });
+    }
+
+    return { step, gold, manaCrystal, wood, stone, iron, crystalType, crystalLabel, crystalCount, extraRequirements };
+};
+
 export const checkAndApplyLevelUp = (char: Character, options?: { skipInactive?: boolean }): { updatedChar: Character, leveledUp: boolean, oldLevel: number, leveledUpCompanions: { companion: Companion, oldLevel: number }[] } => {
     let updatedChar = { ...char };
     let leveledUp = false;
@@ -6120,9 +6229,10 @@ export const checkAndApplyLevelUp = (char: Character, options?: { skipInactive?:
     if (!updatedChar.stats.maxHp) updatedChar.stats.maxHp = updatedChar.level * 20;
     if (!updatedChar.stats.maxMp) updatedChar.stats.maxMp = updatedChar.level * 20;
 
+    const playerMaxLevel = getCharacterMaxLevel(updatedChar, updatedChar.base);
     updatedChar.maxExp = getRequiredExp(updatedChar.level);
 
-    while (updatedChar.currentExp >= updatedChar.maxExp) {
+    while (updatedChar.currentExp >= updatedChar.maxExp && updatedChar.level < playerMaxLevel) {
         leveledUp = true;
         updatedChar.currentExp -= updatedChar.maxExp;
         updatedChar.level += 1;
@@ -6136,7 +6246,11 @@ export const checkAndApplyLevelUp = (char: Character, options?: { skipInactive?:
         updatedChar.stats.mp = finalStats.maxMp;
     }
 
-    const applyLevelUpToCompanions = (comps: Companion[]) => {
+    if (updatedChar.level >= playerMaxLevel) {
+        updatedChar.currentExp = Math.min(updatedChar.currentExp, Math.max(0, updatedChar.maxExp - 1));
+    }
+
+    const applyLevelUpToCompanions = (comps: Companion[], isMonsterUnit = false) => {
         const leveledUpCompanions: { companion: Companion, oldLevel: number }[] = [];
         const updatedComps = comps.map(comp => {
             let c = { ...comp };
@@ -6145,10 +6259,13 @@ export const checkAndApplyLevelUp = (char: Character, options?: { skipInactive?:
             if (!c.stats.maxHp) c.stats.maxHp = c.level * 20;
             if (!c.stats.maxMp) c.stats.maxMp = c.level * 20;
             
+            const unitMaxLevel = isMonsterUnit
+                ? getMonsterMaxLevel(c as any, updatedChar.base)
+                : getCharacterMaxLevel(c, updatedChar.base);
             c.maxExp = getRequiredExp(c.level);
 
             let leveled = false;
-            while (c.currentExp >= c.maxExp) {
+            while (c.currentExp >= c.maxExp && c.level < unitMaxLevel) {
                 leveled = true;
                 c.currentExp -= c.maxExp;
                 c.level += 1;
@@ -6166,6 +6283,10 @@ export const checkAndApplyLevelUp = (char: Character, options?: { skipInactive?:
                 delete (c as any).maxHp;
                 delete (c as any).mp;
                 delete (c as any).maxMp;
+            }
+
+            if (c.level >= unitMaxLevel) {
+                c.currentExp = Math.min(c.currentExp, Math.max(0, c.maxExp - 1));
             }
             
             if (leveled) leveledUpCompanions.push({ companion: c, oldLevel });
@@ -6188,16 +6309,16 @@ export const checkAndApplyLevelUp = (char: Character, options?: { skipInactive?:
         leveledUpCompanions.push(...inactiveCompResult.leveledUpCompanions);
     }
 
-    // [NEW] 장착된 탈것 몬스터 레벨업 체크
+    // [NEW] 장착된 탈것 몬스터 레벨업 체크 (진화 단계별 상한 적용)
     if (updatedChar.mountedMonster) {
-        const mountResult = applyLevelUpToCompanions([updatedChar.mountedMonster]);
+        const mountResult = applyLevelUpToCompanions([updatedChar.mountedMonster], true);
         updatedChar.mountedMonster = mountResult.updatedComps[0];
         leveledUpCompanions.push(...mountResult.leveledUpCompanions);
     }
     if (updatedChar.companions) {
         updatedChar.companions = updatedChar.companions.map(c => {
             if (c.mountedMonster) {
-                const cMountResult = applyLevelUpToCompanions([c.mountedMonster]);
+                const cMountResult = applyLevelUpToCompanions([c.mountedMonster], true);
                 leveledUpCompanions.push(...cMountResult.leveledUpCompanions);
                 return { ...c, mountedMonster: cMountResult.updatedComps[0] };
             }
@@ -6209,13 +6330,17 @@ export const checkAndApplyLevelUp = (char: Character, options?: { skipInactive?:
         updatedChar.base.capturedMonsters = updatedChar.base.capturedMonsters.map(monster => {
             let m = { ...monster };
             if (!m.maxExp) m.maxExp = (m.level || 1) * 100;
+            const monsterMaxLevel = getMonsterMaxLevel(m, updatedChar.base);
             let monsterLeveled = false;
-            while ((m.currentExp || 0) >= (m.maxExp || 100)) {
+            while ((m.currentExp || 0) >= (m.maxExp || 100) && (m.level || 1) < monsterMaxLevel) {
                 monsterLeveled = true;
                 m.currentExp = (m.currentExp || 0) - (m.maxExp || 100);
                 m.level = (m.level || 1) + 1;
                 m.maxExp = (m.level || 1) * 100;
                 m.statPoints = (m.statPoints || 0) + getStatPointsPerLevel({ ...m, level: m.level || 1 });
+            }
+            if ((m.level || 1) >= monsterMaxLevel) {
+                m.currentExp = Math.min(m.currentExp || 0, Math.max(0, (m.maxExp || 100) - 1));
             }
             if (monsterLeveled) {
                 const currentMaxHp = m.stats?.maxHp || m.maxHp || 100;

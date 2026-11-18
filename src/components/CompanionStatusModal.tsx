@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Companion, ClassTier, Item, ActiveStatus, Character, JobType, MilitaryRank, Stats, BlacksmithRank, AlchemistRank, RelationType, SkillType, ItemRarity, MonsterStage, CombatStyle, HousekeeperRank, HOUSEKEEPER_RANK_CONFIG, Enemy, CombatState, BattleRole, SecondaryBattleRole } from '../types';
 import { X, Heart, MessageCircle, Moon, Coffee, Home, Sparkles, Send, LogOut, Baby, Shield, Smile, GitBranch, UserPlus, Zap, Trash2,Edit, Box, BookOpen, Crown, Loader2, Flame, Snowflake, Droplets, Eclipse, Sun, Hammer, FlaskConical, Leaf, Activity, User, AlertCircle, BarChart2, Target, PawPrint, Gem, HeartCrack, MapPin, Globe, Sword, Brain, Briefcase, GraduationCap, Medal, Award, UserCheck, Landmark, TrendingUp, Lock, Unlock, Gavel, Award as TitleIcon, Check, Play, User as UserIcon, Users as UsersIcon, Skull, Waves, Wind, Crosshair, Gift, Handshake } from 'lucide-react';
-import { calculateFinalStats, calculateTotalStats, getWeaponTypeFromItem, generateDefaultVisualUrl, getBondBonus, getCombatStyleBonusPercent, assignRandomCombatStyle, getCombatStyleBonusDetails, getCombatStyleActiveSkill, getUnlockedCombatStylesList, getEntityAllCombatSkills, addDays, diffDays, getYear } from '../utils';
+import { calculateFinalStats, calculateTotalStats, getWeaponTypeFromItem, generateDefaultVisualUrl, getBondBonus, getCombatStyleBonusPercent, assignRandomCombatStyle, getCombatStyleBonusDetails, getCombatStyleActiveSkill, getUnlockedCombatStylesList, getEntityAllCombatSkills, addDays, diffDays, getYear, getCharacterMaxLevel, getMonsterMaxLevel } from '../utils';
 import { SECONDARY_ROLE_INFOS } from '../services/roleBonusService';
 import { getCombatStyleSkillSet, COMBAT_STYLE_SKILL_DATA } from '../combatStyleSkills';
 import { getTierBuffScale } from '../services/skillBuffScaleService';
@@ -1878,7 +1878,19 @@ const groupedPlayerInventory = groupItemsInModal(playerInventory);
                                 )}
                             </div>
                             <div className="flex items-center space-x-2 text-xs text-slate-500 mt-1 flex-wrap gap-y-1">
-                                <span>Lv.{companion.level}</span><span>•</span><span>{companion.race}</span><span>•</span>
+                                {(() => {
+                                    const compMaxLv = isMonster
+                                        ? getMonsterMaxLevel(companion as any, character?.base)
+                                        : getCharacterMaxLevel(companion, character?.base);
+                                    return (
+                                        <span>
+                                            Lv.{companion.level} / {compMaxLv}
+                                            {companion.level >= compMaxLv && (
+                                                <span className="ml-1 text-[10px] font-black text-amber-400">MAX</span>
+                                            )}
+                                        </span>
+                                    );
+                                })()}<span>•</span><span>{companion.race}</span><span>•</span>
                                 {!isMonster && <span>{companion.age} •</span>}
                                 <span className={`font-bold border px-1 rounded ${isMonster ? 'text-green-400 border-green-900/50 bg-green-950/30' : 'text-amber-600 border-amber-900/50 bg-amber-950/30'}`}>{tierDisplay}</span>
                                 {companion.combatStyle && COMBAT_STYLE_CONFIG[companion.combatStyle] && (
