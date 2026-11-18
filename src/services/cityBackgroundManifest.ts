@@ -809,7 +809,7 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
             badgeClass: "bg-teal-950/75 text-teal-300 border-teal-500/60 shadow-[0_0_15px_rgba(45,212,191,0.25)]",
             description: "에메랄드빛 해수면 위로 솟아오른 기암괴석과 등불이 어우러진 동남아의 신비로운 수상 성채입니다."
         },
-        matchedNations: ["베트남", "태국"]
+        matchedNations: ["베트남"]
     },
 
     // 6-6. 필리핀 (푸른 군도와 하늘 항구가 맞닿은 천공 항구도시)
@@ -869,7 +869,7 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
             badgeClass: "bg-emerald-950/75 text-emerald-300 border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.25)]",
             description: "원시 밀림의 생명력과 붉은 화산의 대지 마력이 교차하는 남방 열대 군도의 고대 신전 도시입니다."
         },
-        matchedNations: ["인도네시아", "말레이시아"]
+        matchedNations: ["인도네시아"]
     },
 
     // 6-9. 싱가포르 (수정 거목과 성좌 마법이 공존하는 미래형 정원 도시)
@@ -930,6 +930,86 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
             description: "사막과 푸른 바다의 경계에 황금과 수정의 초고층 첨탑이 신기루처럼 솟아오른 찬란한 마도 교역국입니다."
         },
         matchedNations: ["UAE"]
+    },
+
+    // 6-12. 태국 (황금 첨탑 왓 사원과 에메랄드 운하의 황금 왕도)
+    asia_thailand_golden_wat_sanctuary: {
+        id: "asia_thailand_golden_wat_sanctuary",
+        name: "황금 왓 성역",
+        region: "아시아",
+        concept: "황금 첨탑 사원과 수상 등불이 어우러진 열대 황금 왕도",
+        prompt: "Radiant Thai fantasy kingdom at golden sunset featuring towering gilded Wat spires, emerald canals with ornate royal barges, floating sky lanterns, tropical palms, and misty limestone cliffs, 8k resolution, masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_thailand_golden_wat_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(69, 26, 3, 0.72) 0%, rgba(16, 185, 129, 0.35) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-amber-300",
+            borderColor: "border-amber-400/60",
+            glowColor: "rgba(251, 191, 36, 0.35)",
+            badgeText: "🛕 황금 왓 성역 (Golden Wat)",
+            badgeClass: "bg-amber-950/75 text-amber-300 border-amber-500/60 shadow-[0_0_15px_rgba(251,191,36,0.25)]",
+            description: "비취빛 운하와 황금 첨탑 사원, 밤하늘로 떠오르는 수많은 풍등이 축복을 내리는 동남아의 황금 왕국입니다."
+        },
+        matchedNations: ["태국"]
+    },
+
+    // 6-13. 말레이시아 (열대 우림 캐노피와 쌍둥이 수정 첨탑)
+    asia_malaysia_emerald_canopy_spire: {
+        id: "asia_malaysia_emerald_canopy_spire",
+        name: "비취 캐노피 첨탑",
+        region: "아시아",
+        concept: "열대 밀림 캐노피 위로 솟은 쌍둥이 수정·비취 첨탑 도시",
+        prompt: "Lush Malaysian rainforest canopy city with twin glowing crystal-and-jade spires above sandstone archways, misty waterfalls, bioluminescent flora, and golden lantern-lit suspension bridges, 8k resolution, masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_malaysia_emerald_canopy_spire.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(6, 78, 59, 0.74) 0%, rgba(16, 185, 129, 0.42) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-emerald-300",
+            borderColor: "border-emerald-400/60",
+            glowColor: "rgba(52, 211, 153, 0.35)",
+            badgeText: "🌴 비취 캐노피 첨탑 (Canopy Spire)",
+            badgeClass: "bg-emerald-950/75 text-emerald-300 border-emerald-500/60 shadow-[0_0_15px_rgba(52,211,153,0.25)]",
+            description: "울창한 열대 우림과 폭포 위로 수정과 비취로 빚어진 쌍둥이 첨탑이 우뚝 솟은 상업·자연 조화 도시입니다."
+        },
+        matchedNations: ["말레이시아"]
+    },
+
+    // 6-14. 이스라엘 (성스러운 빛기둥과 하얀 석조 성도)
+    asia_israel_ancient_radiant_jerusalem: {
+        id: "asia_israel_ancient_radiant_jerusalem",
+        name: "성광의 고대 성도",
+        region: "아시아",
+        concept: "하얀 석조 성벽과 황금 성소 위로 성광이 내리는 신성 도시",
+        prompt: "Sacred ancient white limestone walled city atop rocky hills with a radiant golden sanctuary dome bathed in divine sunbeams, surrounded by terraced olive groves, 8k resolution, masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_israel_ancient_radiant_jerusalem.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(30, 41, 59, 0.72) 0%, rgba(217, 119, 6, 0.35) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-amber-200",
+            borderColor: "border-amber-300/60",
+            glowColor: "rgba(252, 211, 77, 0.35)",
+            badgeText: "🕍 성광의 고대 성도 (Radiant Citadel)",
+            badgeClass: "bg-amber-950/75 text-amber-200 border-amber-400/60 shadow-[0_0_15px_rgba(252,211,77,0.25)]",
+            description: "천년의 백색 성벽과 황금 돔 위로 찬란한 신성 빛기둥이 내려앉는 중동의 성스러운 고대 성도입니다."
+        },
+        matchedNations: ["이스라엘"]
+    },
+
+    // 6-15. 이란 (청록 페르시아 타일 돔과 별빛 천문대 궁전)
+    asia_iran_persian_azure_palace: {
+        id: "asia_iran_persian_azure_palace",
+        name: "청록 페르시아 별빛 궁전",
+        region: "아시아",
+        concept: "청록빛 모자이크 돔과 장미·사이프러스 공중정원의 천문 궁전",
+        prompt: "Enchanting Persian celestial palace at starlit twilight with turquoise-and-gold mosaic domes, glowing iwans, mirror reflecting pools, cypress trees, rose gardens, and observatory towers, 8k resolution, masterpiece.",
+        localPath: "assets/visuals/backgrounds/asia_iran_persian_azure_palace.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.74) 0%, rgba(14, 116, 144, 0.42) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-cyan-300",
+            borderColor: "border-cyan-400/60",
+            glowColor: "rgba(34, 211, 238, 0.35)",
+            badgeText: "🌙 청록 페르시아 궁전 (Azure Palace)",
+            badgeClass: "bg-cyan-950/75 text-cyan-300 border-cyan-500/60 shadow-[0_0_15px_rgba(34,211,238,0.25)]",
+            description: "청록빛 페르시아 타일 돔과 거울 연못, 별빛을 관측하는 고대 천문대가 어우러진 신비로운 페르시아 왕궁입니다."
+        },
+        matchedNations: ["이란"]
     },
 
     // 7. 유럽 (고딕 판타지 대성당과 마법 성벽)
@@ -1109,21 +1189,23 @@ export function getCityBackgroundConfig(region?: string, nation?: string, city?:
         '중국': 'asia_china_imperial_dragon_citadel',
         '인도': 'asia_india_celestial_lotus_palace',
         '베트남': 'asia_vietnam_jade_bay_citadel',
-        '태국': 'asia_vietnam_jade_bay_citadel', // 임시 폴백 매칭
+        '태국': 'asia_thailand_golden_wat_sanctuary',
         '필리핀': 'asia_philippines_archipelago_sky_harbor',
         '몽골': 'asia_mongolia_eternal_steppe_citadel',
         '인도네시아': 'asia_indonesia_volcanic_temple_island',
-        '말레이시아': 'asia_indonesia_volcanic_temple_island', // 임시 폴백 매칭
+        '말레이시아': 'asia_malaysia_emerald_canopy_spire',
         '싱가포르': 'asia_singapore_astral_garden_nexus',
         '사우디아라비아': 'asia_saudi_arabia_crimson_dune_citadel',
         'UAE': 'asia_uae_golden_mirage_spires',
+        '이스라엘': 'asia_israel_ancient_radiant_jerusalem',
+        '이란': 'asia_iran_persian_azure_palace',
     };
     if (n && ASIA_NATION_TO_MANIFEST_KEY[n] && CITY_BACKGROUND_MANIFEST[ASIA_NATION_TO_MANIFEST_KEY[n]]) {
         return CITY_BACKGROUND_MANIFEST[ASIA_NATION_TO_MANIFEST_KEY[n]];
     }
 
-    // 6. 중동/아프리카 판정 (이스라엘, 이란 및 아프리카 국가 유지; 사우디/UAE는 위에서 우선 매칭됨)
-    const middleEastNations = ['이스라엘', '이란', '이집트', '남아공', '나이지리아', '케냐', '모로코'];
+    // 6. 중동/아프리카 판정 (아프리카 국가 유지; 아시아 중동 4개국은 위에서 전용 매칭됨)
+    const middleEastNations = ['이집트', '남아공', '나이지리아', '케냐', '모로코'];
     if (r === '아프리카' || middleEastNations.includes(n)) {
         return CITY_BACKGROUND_MANIFEST.africa_middle_east_oasis_temple;
     }
