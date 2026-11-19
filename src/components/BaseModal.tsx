@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Character, Companion, Item, Skill, SkillType, ItemRarity, WeaponType, Stats, BaseResources, ClassTier, MonsterStage, JobType, CombatStyle, TrainerRank, TRAINER_RANK_CONFIG, BaseDefenseReportData, FacilityInstance } from '../types';
-import { BASE_LEVEL_CONFIG, FACILITIES_INFO, ENHANCEMENT_CAPS, MAX_STORAGE_SIZE, FACILITY_UPGRADE_CONFIG, BASE_UPGRADE_COSTS, SHINRYOKU_TYPES_LIST, FACILITY_CONSTRUCTION_COSTS, BASE_GRID_EXPANSION_COSTS, COMBAT_STYLE_CONFIG, COMBAT_STYLE_CHANGE_COST, WEAPON_TYPE_KOREAN } from '../constants';
+import { BASE_LEVEL_CONFIG, FACILITIES_INFO, ENHANCEMENT_CAPS, MAX_STORAGE_SIZE, FACILITY_UPGRADE_CONFIG, BASE_UPGRADE_COSTS, SHINRYOKU_TYPES_LIST, FACILITY_CONSTRUCTION_COSTS, BASE_GRID_EXPANSION_COSTS, COMBAT_STYLE_CONFIG, COMBAT_STYLE_CHANGE_COST, WEAPON_TYPE_KOREAN, TRANSCENDENCE_SANCTUARY_UNLOCK_STEP } from '../constants';
 import { calculateInventorySize, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalLabLevel, getFacilityTrainingLimit, getCharacterMaxLevel, getMonsterMaxLevel, getTranscendenceUnlockCost, getTranscendenceSanctuaryLevel, getTranscendenceUnlockStep } from '../utils';
 import { checkAndInitializeLiberationEligibility, getCompanionCP, getCompanionPureCP } from '../services/companionGrowthService';
 import { advanceGameTime, getTimeOfDay } from '../services/gameTimeService';
@@ -4222,7 +4222,7 @@ const BaseModal: React.FC<Props> = ({
             const resolveUnlockBonus = (unit: { levelCapUnlockCount?: number; levelCapUnlockBonus?: number }) =>
                 unit.levelCapUnlockBonus !== undefined
                     ? Math.max(0, unit.levelCapUnlockBonus)
-                    : Math.max(0, unit.levelCapUnlockCount || 0) * 100;
+                    : Math.max(0, unit.levelCapUnlockCount || 0) * TRANSCENDENCE_SANCTUARY_UNLOCK_STEP;
 
             type SanctuaryUnitEntry = {
                 key: string;
@@ -4387,7 +4387,7 @@ const BaseModal: React.FC<Props> = ({
             const unlockCount = selectedTarget.unlockCount;
             const currentMaxLv = selectedTarget.maxLevel;
             const classBaseCap = currentMaxLv - selectedTarget.unlockBonus;
-            const cost = getTranscendenceUnlockCost(unlockCount, currentMaxLv);
+            const cost = getTranscendenceUnlockCost(unlockCount, currentMaxLv, sanctuaryLevel, selectedTarget.unlockBonus);
             const res = character.base?.resources || ({} as BaseResources);
             const hasGold = (character.money || 0) >= cost.gold;
             const hasMana = (res.manaCrystal || 0) >= cost.manaCrystal;
@@ -4582,7 +4582,9 @@ const BaseModal: React.FC<Props> = ({
                         </div>
                     )}
 
-                    {/* 선택된 대상 정보 */}
+                    {/* 선택된 대상 정보 및 해방 비용 (대상이 있을 때만 표시) */}
+                    {(sanctuaryCategory === 'player' || categoryList.length > 0) && (
+                    <>
                     <div className="w-full max-w-md bg-slate-900/90 border border-indigo-500/40 rounded-2xl p-3.5 space-y-2 shadow-lg">
                         <div className="flex items-center justify-between">
                             <span className="text-sm font-black text-white">
@@ -4611,7 +4613,7 @@ const BaseModal: React.FC<Props> = ({
                     {/* 해방 비용 및 실행 */}
                     <div className="w-full max-w-md bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
                         <div className="text-xs font-black text-indigo-300 flex items-center justify-between">
-                            <span>✨ {cost.step}단계 개별 해방 (+{unlockStep} Lv · 성소 Lv.{sanctuaryLevel}) 필요 자원</span>
+                            <span>✨ {cost.step}단계 개별 해방 (+{unlockStep} Lv · {Math.round(cost.costRatio * 100)}% 비용)</span>
                             <span className="text-emerald-400">➔ Lv.{(currentMaxLv + unlockStep).toLocaleString()}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs">
@@ -4649,6 +4651,8 @@ const BaseModal: React.FC<Props> = ({
                             <span>[{selectedTarget.name}] 최대 레벨 +{unlockStep} 해방 실행</span>
                         </button>
                     </div>
+                    </>
+                    )}
                 </div>
             );
         }

@@ -19,6 +19,8 @@ import type { ResultData } from './components/ActionResultModal';
 import type { TrainingReportData } from './components/TrainingReportModal';
 import { SuddenEventData } from './services/suddenEventService';
 import { BestiaryEntry, DailyReportData } from './types';
+import TranscendentArenaModal from './components/TranscendentArenaModal';
+import AbyssTowerModal from './components/AbyssTowerModal';
 
 // Lazy Loaded Modals for Bundle Code-Splitting & Memory Optimization
 import {
@@ -121,6 +123,8 @@ const App: React.FC = () => {
   const [isMobileFunctionsOpen, setIsMobileFunctionsOpen] = useState(false);
   const [cityInitialConfig, setCityInitialConfig] = useState<{ district?: any; openHuntMap?: boolean; initialBandId?: string; openInstantDungeonId?: string } | null>(null); 
   const [isDungeonOpen, setIsDungeonOpen] = useState(false); 
+  const [isTranscendentArenaOpen, setIsTranscendentArenaOpen] = useState(false);
+  const [isAbyssTowerOpen, setIsAbyssTowerOpen] = useState(false);
   const [isQuestLogOpen, setIsQuestLogOpen] = useState(false); 
   const [isAppointmentListOpen, setIsAppointmentListOpen] = useState(false); 
   const [isTempleManagementOpen, setIsTempleManagementOpen] = useState(false);
@@ -7078,6 +7082,8 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                 onOpenElfCity={() => setIsElfCityOpen(true)}
                                 onOpenDemonCity={() => setIsDemonCityOpen(true)}
                                 onOpenBeastCity={() => setIsBeastCityOpen(true)}
+                                onOpenTranscendentArena={() => setIsTranscendentArenaOpen(true)}
+                                onOpenAbyssTower={() => setIsAbyssTowerOpen(true)}
                                 onTravel={handleTravel}
                                 onUpdateCharacter={handleUpdateCharacter}
                                 onStartBattle={(enemies, type, source) => handleBattleTrigger(enemies, type as any, source)}
@@ -7300,6 +7306,25 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                         character={character}
                         onClose={() => setIsCondolenceModalOpen(false)}
                         onUpdateCharacter={handleUpdateCharacter}
+                    />
+                )}
+                {isTranscendentArenaOpen && (
+                    <TranscendentArenaModal
+                        key="transcendent-arena-modal-main"
+                        character={character}
+                        onClose={() => setIsTranscendentArenaOpen(false)}
+                        onUpdateCharacter={handleUpdateCharacter}
+                        onBattle={(enemies, type) => handleBattleTrigger(enemies, (type || 'transcendent_arena') as any)}
+                    />
+                )}
+                {isAbyssTowerOpen && sceneType === 'normal' && (
+                    <AbyssTowerModal
+                        key="abyss-tower-modal-main"
+                        isOpen={isAbyssTowerOpen && sceneType === 'normal'}
+                        character={character}
+                        onClose={() => setIsAbyssTowerOpen(false)}
+                        onUpdateCharacter={handleUpdateCharacter}
+                        onBattle={(enemies, type) => handleBattleTrigger(enemies, (type || 'abyss_tower_mob') as any)}
                     />
                 )}
                 <MailboxModal

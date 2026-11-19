@@ -6152,25 +6152,36 @@ export interface TranscendenceResourceItem {
     icon: string;
 }
 
-export const getTranscendenceUnlockCost = (currentUnlockCount: number, currentMaxLevel: number = 100) => {
-    const step = Math.max(1, (currentUnlockCount || 0) + 1);
-    const gold = Math.round(500000 * Math.pow(1.5, Math.min(step - 1, 20)));
-    const manaCrystal = 30 * step;
-    const wood = 100 * step;
-    const stone = 100 * step;
-    const iron = 100 * step;
+export const getTranscendenceUnlockCost = (
+    currentUnlockCount: number,
+    currentMaxLevel: number = 100,
+    sanctuaryLevel: number = 5,
+    currentUnlockBonus?: number
+) => {
+    const step = currentUnlockBonus !== undefined
+        ? Math.floor(Math.max(0, currentUnlockBonus) / TRANSCENDENCE_SANCTUARY_UNLOCK_STEP) + 1
+        : Math.max(1, (currentUnlockCount || 0) + 1);
+    const costRatio = Math.min(1, Math.max(0.2, (sanctuaryLevel || 1) * 0.2));
+    const scaleCost = (amount: number) => (amount <= 0 ? 0 : Math.max(1, Math.round(amount * costRatio)));
+
+    const gold = scaleCost(Math.round(500000 * Math.pow(1.5, Math.min(step - 1, 20))));
+    const manaCrystal = scaleCost(30 * step);
+    const wood = scaleCost(100 * step);
+    const stone = scaleCost(100 * step);
+    const iron = scaleCost(100 * step);
     let crystalType: 'rareCrystal' | 'epicCrystal' | 'legendaryCrystal' = 'rareCrystal';
     let crystalLabel = '희귀 결정';
-    let crystalCount = 10 * step;
+    let rawCrystalCount = 10 * step;
     if (step > 15) {
         crystalType = 'legendaryCrystal';
         crystalLabel = '전설 결정';
-        crystalCount = 2 * (step - 15);
+        rawCrystalCount = 2 * (step - 15);
     } else if (step > 5) {
         crystalType = 'epicCrystal';
         crystalLabel = '영웅 결정';
-        crystalCount = 5 * (step - 5);
+        rawCrystalCount = 5 * (step - 5);
     }
+    const crystalCount = scaleCost(rawCrystalCount);
 
     // 다양한 작물·광물 순환 요구 (단일 작물 의존 방지)
     const baseCrops: Array<{ key: keyof BaseResources; label: string; icon: string; unit: number }> = [
@@ -6183,7 +6194,7 @@ export const getTranscendenceUnlockCost = (currentUnlockCount: number, currentMa
         key: pickedBaseCrop.key,
         label: pickedBaseCrop.label,
         icon: pickedBaseCrop.icon,
-        amount: pickedBaseCrop.unit * Math.min(step, 10)
+        amount: scaleCost(pickedBaseCrop.unit * Math.min(step, 10))
     };
 
     const baseMinerals: Array<{ key: keyof BaseResources; label: string; icon: string; unit: number }> = [
@@ -6195,13 +6206,13 @@ export const getTranscendenceUnlockCost = (currentUnlockCount: number, currentMa
         key: pickedBaseMineral.key,
         label: pickedBaseMineral.label,
         icon: pickedBaseMineral.icon,
-        amount: pickedBaseMineral.unit * Math.min(step, 10)
+        amount: scaleCost(pickedBaseMineral.unit * Math.min(step, 10))
     };
 
     const extraRequirements: TranscendenceResourceItem[] = [baseCropReq, baseMineralReq];
 
     if (currentMaxLevel >= 1000) {
-        const tierAmt = Math.max(1, 1 + Math.floor((currentMaxLevel - 1000) / 300));
+        const tierAmt = scaleCost(Math.max(1, 1 + Math.floor((currentMaxLevel - 1000) / 300)));
         const highCrops: Array<{ key: keyof BaseResources; label: string; icon: string }> = [
             { key: 'shinryoku_flower', label: '신력꽃', icon: '🌸' },
             { key: 'golden_apple', label: '황금 사과', icon: '🍎' },
@@ -6231,7 +6242,7 @@ export const getTranscendenceUnlockCost = (currentUnlockCount: number, currentMa
         });
     }
 
-    return { step, gold, manaCrystal, wood, stone, iron, crystalType, crystalLabel, crystalCount, extraRequirements };
+    return { step, costRatio, gold, manaCrystal, wood, stone, iron, crystalType, crystalLabel, crystalCount, extraRequirements };
 };
 
 export const checkAndApplyLevelUp = (char: Character, options?: { skipInactive?: boolean }): { updatedChar: Character, leveledUp: boolean, oldLevel: number, leveledUpCompanions: { companion: Companion, oldLevel: number }[] } => {

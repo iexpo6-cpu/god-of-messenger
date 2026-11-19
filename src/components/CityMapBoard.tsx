@@ -15,7 +15,7 @@ import {
     Building2, Store, Users2, Clock, Shield, Tent, Crown, Home, Sword, 
     MapPin, BookOpen, Map, ShieldAlert, Compass, ChevronRight, HelpCircle, Calendar,
     Sparkles, Flame, TreePine, Moon, Sun, Sunrise, Sunset, Landmark, Zap, Trees, PawPrint, Gavel,
-    AlertTriangle, Gem, Skull, Eye
+    AlertTriangle, Gem, Skull, Eye, Trophy, Layers
 } from 'lucide-react';
 
 interface Props {
@@ -27,6 +27,8 @@ interface Props {
     onOpenElfCity?: () => void;
     onOpenDemonCity?: () => void;
     onOpenBeastCity?: () => void;
+    onOpenTranscendentArena?: () => void;
+    onOpenAbyssTower?: () => void;
     onTravel?: (destination: any, cost: number, days: number) => void;
     onUpdateCharacter?: (updatedChar: Character, logMessage: string) => void;
     onStartBattle?: (enemies: any[], battleType: string, sourceId?: string) => void;
@@ -41,6 +43,8 @@ const CityMapBoard: React.FC<Props> = ({
     onOpenElfCity,
     onOpenDemonCity,
     onOpenBeastCity,
+    onOpenTranscendentArena,
+    onOpenAbyssTower,
     onTravel,
     onUpdateCharacter,
     onStartBattle
@@ -452,6 +456,7 @@ const CityMapBoard: React.FC<Props> = ({
             <div className="absolute inset-0 z-0 pointer-events-none select-none overflow-hidden" aria-hidden="true">
                 {/* 1. 고화질 판타지 배경 이미지 (선명한 불투명도 75~90% + 신계 전용 광휘 보존/시간대별 필터 + 자동 상대/절대 경로 폴백) */}
                 <img 
+                    key={cityBg.url}
                     src={getResolvedBackgroundUrl(cityBg.url)} 
                     alt={cityBg.title}
                     onError={(e) => {
@@ -459,7 +464,8 @@ const CityMapBoard: React.FC<Props> = ({
                         if (!target.dataset.triedRelative) {
                             target.dataset.triedRelative = 'true';
                             target.src = `./${cityBg.url.replace(/^\.?\//, '')}`;
-                        } else if (cityBg.fallbackUrl && target.src !== cityBg.fallbackUrl) {
+                        } else if (cityBg.fallbackUrl && !target.dataset.triedFallback) {
+                            target.dataset.triedFallback = 'true';
                             target.src = getResolvedBackgroundUrl(cityBg.fallbackUrl);
                         }
                     }}
@@ -870,6 +876,28 @@ const CityMapBoard: React.FC<Props> = ({
                                 </span>
                             </button>
                         </div>
+
+                        {/* 초월 그랜드 아레나 (신의 거처 전용, 좌측 하단) */}
+                        {loc.city === '신의 거처' && onOpenTranscendentArena && (
+                            <div className="absolute left-[4%] sm:left-[16%] bottom-[22%] sm:bottom-[18%] z-10">
+                                <button
+                                    onClick={onOpenTranscendentArena}
+                                    className="w-[62px] xs:w-[74px] sm:w-[86px] flex flex-col items-center group cursor-pointer"
+                                >
+                                    <div className="w-8 h-8 xs:w-10 xs:h-10 sm:w-11 sm:h-11 rounded-full bg-slate-950 hover:bg-amber-950/80 border-2 border-amber-400/90 hover:border-amber-300 flex items-center justify-center transition-all duration-300 relative shadow-[0_0_20px_rgba(251,191,36,0.45)] group-hover:scale-105 active:scale-95">
+                                        <Trophy size={15} className="text-amber-300 animate-pulse" />
+                                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 border border-slate-950 rounded-full animate-ping opacity-75"></span>
+                                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 border border-slate-950 rounded-full"></span>
+                                    </div>
+                                    <span className="text-[7.5px] xs:text-[8.5px] sm:text-[9.5px] font-black text-amber-300 mt-0.5 xs:mt-1 text-center truncate w-full group-hover:text-amber-100 transition-colors leading-tight">
+                                        초월 아레나
+                                    </span>
+                                    <span className="text-[6.5px] sm:text-[7.5px] text-amber-400 font-bold px-1.5 py-0.2 rounded-full bg-amber-950/80 border border-amber-600/50 mt-0.5">
+                                        Lv.2,000+
+                                    </span>
+                                </button>
+                            </div>
+                        )}
                     </>
                 )}
 
@@ -934,6 +962,28 @@ const CityMapBoard: React.FC<Props> = ({
                                 </span>
                             </button>
                         </div>
+
+                        {/* 무한 심연 탑 (마계 임페리얼, 좌측 하단) */}
+                        {onOpenAbyssTower && (
+                            <div className="absolute left-[4%] sm:left-[16%] bottom-[22%] sm:bottom-[18%] z-10">
+                                <button
+                                    onClick={onOpenAbyssTower}
+                                    className="w-[62px] xs:w-[74px] sm:w-[86px] flex flex-col items-center group cursor-pointer"
+                                >
+                                    <div className="w-8 h-8 xs:w-10 xs:h-10 sm:w-11 sm:h-11 rounded-full bg-slate-950 hover:bg-purple-950/80 border-2 border-purple-500/90 hover:border-red-400 flex items-center justify-center transition-all duration-300 relative shadow-[0_0_20px_rgba(168,85,247,0.45)] group-hover:scale-105 active:scale-95">
+                                        <Layers size={15} className="text-purple-300 animate-pulse" />
+                                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 border border-slate-950 rounded-full animate-ping opacity-75"></span>
+                                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-purple-400 border border-slate-950 rounded-full"></span>
+                                    </div>
+                                    <span className="text-[7.5px] xs:text-[8.5px] sm:text-[9.5px] font-black text-purple-300 mt-0.5 xs:mt-1 text-center truncate w-full group-hover:text-purple-100 transition-colors leading-tight">
+                                        무한 심연 탑
+                                    </span>
+                                    <span className="text-[6.5px] sm:text-[7.5px] text-purple-300 font-bold px-1.5 py-0.2 rounded-full bg-purple-950/80 border border-purple-600/50 mt-0.5">
+                                        Lv.2,000+
+                                    </span>
+                                </button>
+                            </div>
+                        )}
                     </>
                 )}
 

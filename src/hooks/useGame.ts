@@ -5340,6 +5340,18 @@ let targetIdx = -1;
                         items: [{ label: '상태', after: '탈락' }]
                      });
                  }
+                 if (contextType === 'transcendent_arena' && finalChar.transcendentArenaState) {
+                     finalChar.transcendentArenaState = {
+                         ...finalChar.transcendentArenaState,
+                         isEliminated: true
+                     };
+                     setResultModalData({
+                        type: 'failure',
+                        title: '초월 그랜드 아레나 패배',
+                        message: '만신전 초월자들의 벽을 실감하며 패배했습니다.\n다음 달 새 시즌에 다시 도전하세요.',
+                        items: [{ label: '상태', after: '이번 달 시즌 탈락' }]
+                     });
+                 }
 
                 if (contextType === 'divine_invasion') {
                     
@@ -5643,8 +5655,8 @@ dom.corruption += 10000;
                
 
  
-                // [NEW] 토너먼트 및 아레나 승리 시 로컬 처리 및 모달 호출 (AI 미개입)
-                if (contextType === 'tournament' || contextType === 'arena') {
+                // [NEW] 토너먼트 / 아레나 / 초월 아레나 / 무한 심연 탑 승리 시 로컬 처리 (AI 미개입)
+                if (contextType === 'tournament' || contextType === 'arena' || contextType === 'transcendent_arena' || contextType === 'abyss_tower_mob' || contextType === 'abyss_tower_boss') {
                     setSceneType('normal');
                     
                     let resultTitle = "";
@@ -5745,33 +5757,140 @@ dom.corruption += 10000;
                             resultItems = [{ label: '명성 상승', after: '+100 RP' }];
                         }
                     }
-
-                    // 토너먼트/아레나 경기 후 상대와의 인연 선택 모달 데이터 등록
-                    const defeatedOpponent = finalEnemies[0] || {};
-                    const opponentName = (defeatedOpponent.name || '상대 선수').replace(/^\[아레나\]\s*/, '');
-                    const postMatchData: TournamentPostMatchData = {
-                        tournamentType: contextType === 'tournament' ? 'school' : 'arena',
-                        tournamentName: contextType === 'tournament' 
-                            ? (finalChar.schoolData?.currentTournament?.name || '학교 토너먼트')
-                            : '그랜드 아레나',
-                        roundLabel: currentRoundLabel,
-                        opponent: {
-                            id: defeatedOpponent.id || `opponent_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                            name: opponentName,
-                            level: defeatedOpponent.level || 10,
-                            gender: (defeatedOpponent as any).gender || 'male',
-                            race: (defeatedOpponent as any).race || '인간',
-                            nation: (defeatedOpponent as any).nation || finalChar.currentLocation?.nation || finalChar.nation || '대한민국',
-                            stats: defeatedOpponent.stats,
-                            shinryokuType: defeatedOpponent.shinryokuType || '무속성',
-                            combatStyle: (defeatedOpponent as any).combatStyle,
-                            job: (defeatedOpponent as any).job || (contextType === 'tournament' ? JobType.STUDENT : JobType.MERCENARY),
-                            mercenaryRank: (defeatedOpponent as any).mercenaryRank,
-                            visualUrl: (defeatedOpponent as any).visualUrl,
-                            description: defeatedOpponent.description
+                    else if (contextType === 'transcendent_arena' && finalChar.transcendentArenaState) {
+                        const tArena = { ...finalChar.transcendentArenaState };
+                        const curRound = tArena.currentRound;
+                        const prevWins = tArena.winCount || 0;
+                        const rewardScale = 1 + prevWins * 0.5;
+                        if (curRound <= 2) {
+                            tArena.currentRound = 0;
+                            tArena.winCount = prevWins + 1;
+                            tArena.defendingChampionSnapshot = {
+                                name: finalChar.name,
+                                level: finalChar.level,
+                                stats: { ...finalChar.stats },
+                                shinryokuType: finalChar.shinryokuType || '빛'
+                            };
+                            const bonuses = calculateRewardBonuses(finalChar);
+                            const prizeGold = Math.floor(15000000 * rewardScale * (1 + bonuses.goldBonus / 100) * (bonuses.goldMultiplier || 1.0));
+                            const manaGain = Math.round(250 * rewardScale);
+                            const legCrystalGain = Math.round(15 * rewardScale);
+                            const flowerGain = Math.round(5 * rewardScale);
+                            const diamondGain = Math.round(5 * rewardScale);
+                            finalChar.money = (finalChar.money || 0) + prizeGold;
+                            if (finalChar.base?.resources) {
+                                finalChar.base.resources.manaCrystal = (finalChar.base.resources.manaCrystal || 0) + manaGain;
+                                finalChar.base.resources.legendaryCrystal = (finalChar.base.resources.legendaryCrystal || 0) + legCrystalGain;
+                                finalChar.base.resources.shinryoku_flower = (finalChar.base.resources.shinryoku_flower || 0) + flowerGain;
+                                finalChar.base.resources.diamond = (finalChar.base.resources.diamond || 0) + diamondGain;
+                            }
+                            if (!finalChar.titles) finalChar.titles = [];
+                            if (!finalChar.titles.includes('만신전의 패자')) {
+                                finalChar.titles.push('만신전의 패자');
+                            }
+                            resultTitle = `초월 그랜드 아레나 우승! (누적 ${tArena.winCount}회)`;
+                            resultMsg = `신의 거처 만신전의 정점에 등극했습니다! 다음 시즌부터 적들이 더욱 강해지고 보상도 ${Math.round((1 + tArena.winCount * 0.5) * 100)}%로 상승합니다.`;
+                            resultItems = [
+                                { label: '칭호 / 누적 우승', after: `만신전의 패자 (${tArena.winCount}회)` },
+                                { label: '우승 상금', after: `+${prizeGold.toLocaleString()} G` },
+                                { label: '전설 결정 / 마정석', after: `+${legCrystalGain}개 / +${manaGain}개` },
+                                { label: '신력꽃 / 다이아', after: `+${flowerGain}개 / +${diamondGain}개` }
+                            ];
+                        } else {
+                            const nextRound = Math.max(2, curRound / 2);
+                            tArena.currentRound = nextRound;
+                            const stepGold = Math.round(2500000 * rewardScale);
+                            const stepMana = Math.round(30 * rewardScale);
+                            finalChar.money = (finalChar.money || 0) + stepGold;
+                            if (finalChar.base?.resources) {
+                                finalChar.base.resources.manaCrystal = (finalChar.base.resources.manaCrystal || 0) + stepMana;
+                            }
+                            resultTitle = '만신전 결투 승리!';
+                            resultMsg = `${nextRound <= 2 ? '결승전' : `${nextRound}강전`} 진출에 성공했습니다!`;
+                            resultItems = [
+                                { label: '다음 라운드', after: nextRound <= 2 ? '결승전' : `${nextRound}강전` },
+                                { label: '승리 상금 / 마정석', after: `+${stepGold.toLocaleString()} G / +${stepMana}개` }
+                            ];
                         }
-                    };
-                    setPendingTournamentPostMatch(postMatchData);
+                        finalChar.transcendentArenaState = tArena;
+                    }
+                    else if ((contextType === 'abyss_tower_mob' || contextType === 'abyss_tower_boss') && finalChar.abyssTowerState) {
+                        const tower = { ...finalChar.abyssTowerState };
+                        const curFloor = tower.currentFloor || 1;
+                        tower.highestFloor = Math.max(tower.highestFloor || 0, curFloor);
+                        if (contextType === 'abyss_tower_boss') {
+                            tower.totalClearedBosses = (tower.totalClearedBosses || 0) + 1;
+                            if (curFloor % 10 === 0) {
+                                tower.unlockedCheckpointFloor = Math.max(tower.unlockedCheckpointFloor || 1, curFloor + 1);
+                            }
+                            if (tower.activeGridState?.tiles) {
+                                tower.activeGridState = {
+                                    ...tower.activeGridState,
+                                    bossDefeated: true,
+                                    tiles: tower.activeGridState.tiles.map((row: any[]) =>
+                                        row.map((t: any) =>
+                                            t.content === 'boss' || t.type === 'boss_door'
+                                                ? { ...t, isCleared: true, type: 'stairs', name: `${curFloor + 1}층으로 향하는 심연 계단` }
+                                                : t
+                                        )
+                                    )
+                                };
+                            }
+                            if (finalChar.base?.resources) {
+                                finalChar.base.resources.manaCrystal = (finalChar.base.resources.manaCrystal || 0) + 80;
+                                finalChar.base.resources.epicCrystal = (finalChar.base.resources.epicCrystal || 0) + 15;
+                                finalChar.base.resources.legendaryCrystal = (finalChar.base.resources.legendaryCrystal || 0) + 5;
+                                finalChar.base.resources.shinryoku_flower = (finalChar.base.resources.shinryoku_flower || 0) + 3;
+                                finalChar.base.resources.diamond = (finalChar.base.resources.diamond || 0) + 3;
+                            }
+                            resultTitle = `심연 탑 ${curFloor}F 차원 수호자 격파!`;
+                            resultMsg = curFloor % 10 === 0
+                                ? `체크포인트 ${curFloor + 1}층이 영구 해금되었으며 초월 재료를 획득했습니다!`
+                                : `심연의 수호자를 물리치고 풍성한 초월 재료를 획득했습니다!`;
+                            resultItems = [
+                                { label: '최고 도달', after: `${tower.highestFloor}층` },
+                                ...(curFloor % 10 === 0 ? [{ label: '체크포인트 해금', after: `${curFloor + 1}층` }] : []),
+                                { label: '초월 재료', after: '마정석+80, 결정/신력꽃/다이아' }
+                            ];
+                        } else {
+                            if (finalChar.base?.resources) {
+                                finalChar.base.resources.manaCrystal = (finalChar.base.resources.manaCrystal || 0) + 15;
+                            }
+                            resultTitle = `심연 탑 ${curFloor}F 교전 승리`;
+                            resultMsg = '심연의 적을 격퇴했습니다. 모달을 다시 열어 다음 타일로 이동하세요.';
+                            resultItems = [{ label: '전리품', after: '마정석 +15' }];
+                        }
+                        finalChar.abyssTowerState = tower;
+                    }
+
+                    // 토너먼트/아레나 경기 후 상대와의 인연 선택 모달 데이터 등록 (일반 토너먼트/아레나 전용)
+                    if (contextType === 'tournament' || contextType === 'arena') {
+                        const defeatedOpponent = finalEnemies[0] || {};
+                        const opponentName = (defeatedOpponent.name || '상대 선수').replace(/^\[아레나\]\s*/, '');
+                        const postMatchData: TournamentPostMatchData = {
+                            tournamentType: contextType === 'tournament' ? 'school' : 'arena',
+                            tournamentName: contextType === 'tournament' 
+                                ? (finalChar.schoolData?.currentTournament?.name || '학교 토너먼트')
+                                : '그랜드 아레나',
+                            roundLabel: currentRoundLabel,
+                            opponent: {
+                                id: defeatedOpponent.id || `opponent_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                                name: opponentName,
+                                level: defeatedOpponent.level || 10,
+                                gender: (defeatedOpponent as any).gender || 'male',
+                                race: (defeatedOpponent as any).race || '인간',
+                                nation: (defeatedOpponent as any).nation || finalChar.currentLocation?.nation || finalChar.nation || '대한민국',
+                                stats: defeatedOpponent.stats,
+                                shinryokuType: defeatedOpponent.shinryokuType || '무속성',
+                                combatStyle: (defeatedOpponent as any).combatStyle,
+                                job: (defeatedOpponent as any).job || (contextType === 'tournament' ? JobType.STUDENT : JobType.MERCENARY),
+                                mercenaryRank: (defeatedOpponent as any).mercenaryRank,
+                                visualUrl: (defeatedOpponent as any).visualUrl,
+                                description: defeatedOpponent.description
+                            }
+                        };
+                        setPendingTournamentPostMatch(postMatchData);
+                    }
 
                     setResultModalData({
                         type: 'success',
@@ -6569,6 +6688,14 @@ dom.corruption += 10000;
             if (combatState.type === 'arena' && updatedChar.stats.hp <= 0 && updatedChar.mercenaryData?.arenaState) {
                 updatedChar.mercenaryData.arenaState.isEliminated = true;
                 finalNarrative += "\n\n[시스템] 패배하여 그랜드 아레나 토너먼트에서 탈락했습니다.";
+                playerUpdated = true;
+            }
+            if (combatState.type === 'transcendent_arena' && updatedChar.stats.hp <= 0 && updatedChar.transcendentArenaState) {
+                updatedChar.transcendentArenaState = {
+                    ...updatedChar.transcendentArenaState,
+                    isEliminated: true
+                };
+                finalNarrative += "\n\n[시스템] 패배하여 이번 달 초월 그랜드 아레나 시즌에서 탈락했습니다.";
                 playerUpdated = true;
             }
 

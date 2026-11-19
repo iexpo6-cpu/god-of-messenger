@@ -9,7 +9,7 @@ import {
     MapPin, AlertTriangle, Coins, Key, BookOpen, Skull, Sparkles, CloudSun, Ghost, 
     ScrollText, Medal, Sun, Landmark, Trees, PawPrint, Gavel, Trophy, Flame, 
     CheckCircle, Ghost as GhostIcon, ShieldAlert, TrendingUp, UserCheck, ChevronRight, 
-    Compass, Award, ShieldCheck, Sparkle, Globe, Eye, Truck, ShoppingBag, Calendar, Heart, Moon, Clock
+    Compass, Award, ShieldCheck, Sparkle, Globe, Eye, Truck, ShoppingBag, Calendar, Heart, Moon, Clock, Layers
 } from 'lucide-react';
 import ShopModal from './ShopModal';
 import SchoolModal from './SchoolModal';
@@ -26,7 +26,9 @@ import MagyeDominionModal from './MagyeDominionModal';
 import ElfCityModal from './ElfCityModal'; 
 import BeastCityModal from './BeastCityModal'; 
 import DemonCityModal from './DemonCityModal'; 
-import GrandArenaModal from './GrandArenaModal'; 
+import GrandArenaModal from './GrandArenaModal';
+import TranscendentArenaModal from './TranscendentArenaModal';
+import AbyssTowerModal from './AbyssTowerModal'; 
 import FrontlineModal from './FrontlineModal';
 import BackAlleyModal from './BackAlleyModal';
 import WarTacticsModal from './WarTacticsModal';
@@ -61,6 +63,8 @@ interface Props {
     onUpdateCharacter: (newChar: Character, logMsg: string) => void;
     onBattle?: (enemy: Enemy | Enemy[], type?: string, source?: string, targetCity?: string, targetNation?: string) => void;
     onOpenDungeon?: () => void;
+    onOpenTranscendentArena?: () => void;
+    onOpenAbyssTower?: () => void;
     initialDistrict?: DistrictType | 'Gate';
     initialOpenHuntMap?: boolean;
     initialBandId?: string;
@@ -74,6 +78,8 @@ const CityInterface: React.FC<Props> = ({
     onUpdateCharacter, 
     onBattle, 
     onOpenDungeon,
+    onOpenTranscendentArena,
+    onOpenAbyssTower,
     initialDistrict,
     initialOpenHuntMap,
     initialBandId,
@@ -133,7 +139,9 @@ const CityInterface: React.FC<Props> = ({
     const [isElfCityOpen, setIsElfCityOpen] = useState(false); 
     const [isBeastCityOpen, setIsBeastCityOpen] = useState(false);
     const [isDemonCityOpen, setIsDemonCityOpen] = useState(false);
-    const [isGrandArenaOpen, setIsGrandArenaOpen] = useState(false); 
+    const [isGrandArenaOpen, setIsGrandArenaOpen] = useState(false);
+    const [isTranscendentArenaOpen, setIsTranscendentArenaOpen] = useState(false);
+    const [isAbyssTowerOpen, setIsAbyssTowerOpen] = useState(false); 
     const [isFrontlineOpen, setIsFrontlineOpen] = useState(false);
     const [isWarTacticsOpen, setIsWarTacticsOpen] = useState(false);
     const [isBackAlleyOpen, setIsBackAlleyOpen] = useState(false);
@@ -914,6 +922,25 @@ const CityInterface: React.FC<Props> = ({
                     onClose={() => setIsGrandArenaOpen(false)}
                     onUpdateCharacter={onUpdateCharacter}
                     onBattle={(enemy) => onBattle!(enemy, 'arena')}
+                />
+            )}
+            {isTranscendentArenaOpen && (
+                <TranscendentArenaModal
+                    key="transcendent-arena-modal"
+                    character={character}
+                    onClose={() => setIsTranscendentArenaOpen(false)}
+                    onUpdateCharacter={onUpdateCharacter}
+                    onBattle={(enemy, type) => onBattle!(enemy, type || 'transcendent_arena')}
+                />
+            )}
+            {isAbyssTowerOpen && (
+                <AbyssTowerModal
+                    key="abyss-tower-modal"
+                    isOpen={isAbyssTowerOpen}
+                    character={character}
+                    onClose={() => setIsAbyssTowerOpen(false)}
+                    onUpdateCharacter={onUpdateCharacter}
+                    onBattle={(enemy, type) => onBattle!(enemy, type || 'abyss_tower_mob')}
                 />
             )}
             {isFrontlineOpen && loc.nation && (
@@ -1997,6 +2024,38 @@ const CityInterface: React.FC<Props> = ({
                                             </div>
                                             <h4 className="text-xl font-black text-amber-100 mb-1 font-cinzel">신의 사자 임명 의식</h4>
                                             <p className="text-xs sm:text-sm text-amber-200/80 leading-relaxed font-medium">신의 사자의 권능을 완벽히 다루는 자를 위한 신성한 의식입니다. 자격을 갖춘 자만이 신의 사자로 거듭날 수 있습니다.</p>
+                                        </button>
+                                    )}
+
+                                    {isShingye && isAtAbode && currentDistrict === 'Imperial' && (
+                                        <button
+                                            onClick={() => onOpenTranscendentArena ? onOpenTranscendentArena() : setIsTranscendentArenaOpen(true)}
+                                            className="bg-gradient-to-br from-indigo-950 via-purple-950 to-amber-950/60 border-2 border-amber-400 p-5 rounded-2xl text-left transition-all group col-span-1 md:col-span-2 shadow-[0_0_30px_rgba(251,191,36,0.3)] hover:border-amber-300 active:scale-[0.99]"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <div className="p-3 bg-amber-900/70 rounded-xl border border-amber-400/50 mb-3 group-hover:scale-105 transition-transform shadow-lg">
+                                                    <Trophy size={24} className="text-amber-300 animate-pulse" />
+                                                </div>
+                                                <span className="text-xs font-bold text-amber-200 px-2.5 py-1 rounded-full bg-amber-950 border border-amber-600">월 1회 시즌제 · Lv.2,000+</span>
+                                            </div>
+                                            <h4 className="text-xl font-black text-amber-100 mb-1 font-cinzel">초월 그랜드 아레나 (만신전)</h4>
+                                            <p className="text-xs sm:text-sm text-indigo-200/80 leading-relaxed font-medium">신의 거처 만신전에서 열리는 Lv.2,000~3,200 초월자 토너먼트입니다. 월 1회 시즌제로 만신전 3인 편성과 격돌하세요.</p>
+                                        </button>
+                                    )}
+
+                                    {isMagye && currentDistrict === 'Imperial' && (
+                                        <button
+                                            onClick={() => onOpenAbyssTower ? onOpenAbyssTower() : setIsAbyssTowerOpen(true)}
+                                            className="bg-gradient-to-br from-red-950 via-purple-950 to-slate-950 border-2 border-purple-500/80 p-5 rounded-2xl text-left transition-all group col-span-1 md:col-span-2 shadow-[0_0_30px_rgba(168,85,247,0.35)] hover:border-red-400 active:scale-[0.99]"
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <div className="p-3 bg-purple-950/80 rounded-xl border border-purple-400/50 mb-3 group-hover:scale-105 transition-transform shadow-lg">
+                                                    <Layers size={24} className="text-purple-300 animate-pulse" />
+                                                </div>
+                                                <span className="text-xs font-bold text-purple-200 px-2.5 py-1 rounded-full bg-purple-950 border border-purple-600">무한 도전 · Lv.2,000+</span>
+                                            </div>
+                                            <h4 className="text-xl font-black text-purple-100 mb-1 font-cinzel">무한 심연 탑 (차원 미궁)</h4>
+                                            <p className="text-xs sm:text-sm text-red-200/80 leading-relaxed font-medium">마계 임페리얼의 균열에 솟은 무한 등반 탑입니다. 1층(Lv.2,000)부터 10층 단위 체크포인트와 차원 수호자를 정복하세요.</p>
                                         </button>
                                     )}
 

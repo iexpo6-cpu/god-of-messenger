@@ -936,6 +936,28 @@ export interface GrandArenaState {
     lastParticipationYear?: number;
 }
 
+export interface TranscendentArenaState {
+    seasonMonth: string; // 'YYYY-MM' (월 1회 시즌제)
+    currentRound: number; // 16 -> 8 -> 4 -> 2(결승) -> 0(우승 완료)
+    isEliminated: boolean;
+    lastParticipationMonth?: string;
+    winCount: number;
+    defendingChampionSnapshot?: {
+        name: string;
+        level: number;
+        stats: Stats;
+        shinryokuType: string;
+    };
+}
+
+export interface AbyssTowerState {
+    highestFloor: number;
+    unlockedCheckpointFloor: number; // 1, 11, 21, ...
+    totalClearedBosses: number;
+    currentFloor?: number;
+    activeGridState?: any; // 진행 중인 심연 탑 층 격자 상태 유지
+}
+
 export interface Criminal {
     id: string;
     name: string;
@@ -1951,6 +1973,8 @@ export interface Character {
     lastTollPaidDate?: string; // [NEW] 마지막으로 통행료를 지불한 날짜 (YYYY-MM-DD)
     activeBlackMarket?: BlackMarketData; // [NEW] 월간 암시장 정보
     tacticalPresets?: TacticalPreset[]; // [NEW] 전술 슬롯 리스트
+    transcendentArenaState?: TranscendentArenaState; // [NEW] 신의 거처 초월 그랜드 아레나 (월 1회 시즌제)
+    abyssTowerState?: AbyssTowerState; // [NEW] 마계 임페리얼 무한 심연 탑 진행 상태
   dungeonProgress?: {
         currentIndex: number;
         currentNodeId?: string;
@@ -2053,7 +2077,7 @@ export interface CombatState {
   isOneOnOne?: boolean;
   trialTier?: ClassTier;
   challengerCompanionId?: string;
-  type?: 'normal' | 'exam_mid' | 'exam_final' | 'tournament' | 'dungeon' | 'arena' | 'war_raid' | 'war_defend' | 'bounty_hunt' | 'temple_defense' | 'wanted_battle' | 'divine_invasion' | 'relation_battle' | 'god_rebellion' | 'temple_invasion' | 'PVP_battle' | 'magye_revolt' | 'magye_divine_war' | 'magye_rebellion' | 'relation_ambush' | 'instant_dungeon' | 'magye_temple_invasion' | 'magye_god_slaying' | 'regional_uprising' | 'Coup' | 'emergency_rescue' | 'school_demo' | 'military_regional_defense' | 'military_defense' | 'base_defense' | 'final_trial_battle' | 'eternal_rival_duel' | 'sparring_arena';
+  type?: 'normal' | 'exam_mid' | 'exam_final' | 'tournament' | 'dungeon' | 'arena' | 'transcendent_arena' | 'abyss_tower_mob' | 'abyss_tower_boss' | 'war_raid' | 'war_defend' | 'bounty_hunt' | 'temple_defense' | 'wanted_battle' | 'divine_invasion' | 'relation_battle' | 'god_rebellion' | 'temple_invasion' | 'PVP_battle' | 'magye_revolt' | 'magye_divine_war' | 'magye_rebellion' | 'relation_ambush' | 'instant_dungeon' | 'magye_temple_invasion' | 'magye_god_slaying' | 'regional_uprising' | 'Coup' | 'emergency_rescue' | 'school_demo' | 'military_regional_defense' | 'military_defense' | 'base_defense' | 'final_trial_battle' | 'eternal_rival_duel' | 'sparring_arena';
   rewards?: { exp: number, gold: number };
   rebelRankIdx?: number;
   passivesApplied?: boolean;
@@ -2258,7 +2282,7 @@ export interface Base {
   labels?: Record<string, string>;
   urgentAlarms?: string[]; // [NEW] 긴급 알람 로그
   storage: Item[];
-  levelCapUnlockCount?: number; // 초월의 성소에서 +100레벨씩 해방한 누적 횟수
+  levelCapUnlockCount?: number; // 초월의 성소에서 해방한 누적 횟수 (레거시 호환용)
   lastTrainingDate?: string; 
   lastStatTrainingDate?: string; 
   lastWeaponTrainingDate?: string; 
