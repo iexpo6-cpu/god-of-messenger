@@ -71,7 +71,11 @@ const CityMapBoard: React.FC<Props> = ({
     const isKorea = loc.nation === '대한민국';
     const isEastAsia = ['일본', '중국', '북한', '몽골', '대만'].includes(loc.nation);
     const isSouthOrSoutheastAsia = ['인도', '태국', '베트남', '필리핀', '인도네시아', '말레이시아', '싱가포르'].includes(loc.nation);
-    const isEurope = loc.region === '유럽' || ['영국', '프랑스', '독일', '이탈리아', '스페인', '러시아', '스위스', '그리스', '체코', '오스트리아'].includes(loc.nation);
+    const isEurope = loc.region === '유럽' || [
+        '영국', '프랑스', '독일', '이탈리아', '스페인', '러시아', '스웨덴', '노르웨이',
+        '덴마크', '핀란드', '폴란드', '우크라이나', '네덜란드', '벨기에', '스위스', '오스트리아',
+        '포르투갈', '그리스', '아일랜드', '헝가리', '체코', '루마니아', '터키', '스코틀랜드'
+    ].includes(loc.nation);
     const isMiddleEastOrAfrica = loc.region === '아프리카' || ['사우디아라비아', 'UAE', '이집트', '이란', '이스라엘', '모로코'].includes(loc.nation);
     const isAmericasOrOceania = ['북아메리카', '남아메리카', '오세아니아'].includes(loc.region) || ['미국', '캐나다', '호주', '뉴질랜드', '브라질'].includes(loc.nation);
 

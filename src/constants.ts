@@ -2767,6 +2767,7 @@ export const ROOT_COMBAT_STYLES: CombatStyle[] = [
 export const WEAPON_MASTERY_MAX_LEVEL = 100;
 
 export const TRANSCENDENCE_SANCTUARY_UNLOCK_STEP = 100;
+export const TRANSCENDENCE_SANCTUARY_STEP_PER_FACILITY_LEVEL = 20;
 
 export const CLASS_BASE_MAX_LEVEL: Record<ClassTier, number> = {
     [ClassTier.NONE]: 100,
@@ -4651,7 +4652,7 @@ export const FACILITIES_INFO = [
     { id: 'skill_vfx_lab', name: '스킬 커스텀 개조실', desc: '스킬 이펙트 테마, 아이콘, 스킬 컷신, 프레임 이펙트 제작, 이펙트 영상을 개조하는 고유 시설입니다.', minLevel: 2, isUnique: true },
     { id: 'child_academy', name: '유년 서당', desc: '기지에서 태어난 아이들이나 어린 견습생들이 성인식 전까지 기본 소양을 배우는 시설입니다. (교육 담당 동료의 직업과 전투력에 따라 아이들의 초기 능력치 육성)', minLevel: 2, isUnique: false },
     { id: 'monster_arena', name: '몬스터 수련 투기장', desc: '사육소의 몬스터들끼리 모의 대전을 치르며 야성을 일깨우는 시설입니다. (사육사의 지도 아래 몬스터의 능력 증가)', minLevel: 3, isUnique: false },
-    { id: 'transcendence_sanctuary', name: '초월의 성소', desc: '각종 자원과 결정을 봉헌하여 주인공과 동료·몬스터의 최대 레벨 상한을 +100씩 영구 해방하는 고유 성소입니다.', minLevel: 2, isUnique: true },
+    { id: 'transcendence_sanctuary', name: '초월의 성소', desc: '각종 자원과 결정을 봉헌하여 주인공과 동료·몬스터의 최대 레벨 상한을 영구 해방하는 고유 성소입니다. (시설 레벨 × 20만큼 최대 레벨 해방)', minLevel: 2, isUnique: true },
 ];
 
 export const RESOURCE_SELL_PRICES: Record<string, number> = {

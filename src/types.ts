@@ -1097,7 +1097,8 @@ export interface BestiaryEntry {
 export interface Companion {
   id: string;
   name: string;
-  levelCapUnlockCount?: number; // 초월의 성소에서 개별 해방한 +100레벨 누적 횟수
+  levelCapUnlockCount?: number; // 초월의 성소에서 개별 해방한 누적 횟수
+  levelCapUnlockBonus?: number; // 초월의 성소에서 개별 해방한 누적 최대 레벨 보너스
   skillShortcuts?: string[];
   age: string;
   birthYear?: number;
@@ -1374,7 +1375,8 @@ export interface CapturedMonster extends Enemy {
     currentExp?: number;
     maxExp?: number;
     statPoints?: number;
-    levelCapUnlockCount?: number; // 초월의 성소에서 개별 해방한 +100레벨 누적 횟수
+    levelCapUnlockCount?: number; // 초월의 성소에서 개별 해방한 누적 횟수
+  levelCapUnlockBonus?: number; // 초월의 성소에서 개별 해방한 누적 최대 레벨 보너스
     height?: number;
     weight?: number;
     appearance?: string;
@@ -1711,7 +1713,8 @@ export interface TacticalPreset {
 export interface Character {
   id?: string;
   name: string;
-  levelCapUnlockCount?: number; // 초월의 성소에서 개별 해방한 +100레벨 누적 횟수
+  levelCapUnlockCount?: number; // 초월의 성소에서 개별 해방한 누적 횟수
+  levelCapUnlockBonus?: number; // 초월의 성소에서 개별 해방한 누적 최대 레벨 보너스
   age: string;
   birthYear?: number;
   gender: string;

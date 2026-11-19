@@ -1029,7 +1029,425 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
             badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
             description: "신비로운 푸른 비전 방어막 룬이 새겨진 거대한 성벽과 장엄한 스테인드글라스 장미창이 밤하늘을 수놓는 기사도의 고딕 수도입니다."
         },
-        matchedNations: ["유럽", "영국", "프랑스", "독일", "이탈리아", "스페인", "러시아", "스웨덴", "노르웨이", "덴마크", "핀란드", "폴란드", "우크라이나", "네덜란드", "벨기에", "스위스", "오스트리아", "포르투갈", "그리스", "헝가리", "체코", "루마니아", "터키", "스코틀랜드"]
+        matchedNations: ["유럽", "아일랜드", "스코틀랜드"]
+    },
+
+    europe_uk_arcane_london: {
+        id: "europe_uk_arcane_london",
+        name: "영국 비전 시계탑 런던",
+        region: "유럽",
+        concept: "안개 낀 템스강과 마도 시계탑·고딕 성채",
+        prompt: "Epic fantasy panoramic illustration of London, towering arcane clock tower glowing with sapphire and golden runes, mist-shrouded Thames river, gothic stone bridges and victorian spires, twilight atmosphere, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_uk_arcane_london.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🕰️ 비전 시계탑 (Arcane London)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "짙은 안개 속 템스강 위로 푸른 마력 룬이 빛나는 거대 시계탑과 고딕 첨탑이 솟아오른 브리타니아의 마도 수도입니다."
+        },
+        matchedNations: ["영국"]
+    },
+
+    europe_france_lumiere_paris: {
+        id: "europe_france_lumiere_paris",
+        name: "프랑스 뤼미에르 마도 파리",
+        region: "유럽",
+        concept: "빛의 대성당과 성간 아케인 첨탑",
+        prompt: "Epic fantasy panoramic illustration of Paris, ornate gothic cathedral and glowing arcane spire above the Seine river, golden streetlamps, starry twilight sky, romantic chivalric atmosphere, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_france_lumiere_paris.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "✨ 빛의 마도 파리 (Lumiere Paris)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "황금빛 가로등과 장엄한 대성당, 별빛을 품은 비전 첨탑이 센강 수면 위로 찬란하게 빛나는 낭만과 마법의 수도입니다."
+        },
+        matchedNations: ["프랑스"]
+    },
+
+    europe_germany_neuschwanstein_fortress: {
+        id: "europe_germany_neuschwanstein_fortress",
+        name: "독일 알프스 백조 요새",
+        region: "유럽",
+        concept: "산악 절벽 위의 웅장한 기사단 성채",
+        prompt: "Epic fantasy panoramic illustration of a soaring Bavarian alpine fortress castle perched on misty craggy cliffs, gothic turrets glowing with warm golden banners and arcane wards, dramatic twilight, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_germany_neuschwanstein_fortress.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🛡️ 라인 백조 요새 (Alpine Fortress)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "구름 걸린 가파른 암벽 위에 웅장한 첨탑과 기사단의 수호 결계가 겹겹이 세워진 난공불락의 산악 성채입니다."
+        },
+        matchedNations: ["독일"]
+    },
+
+    europe_russia_frost_kremlin: {
+        id: "europe_russia_frost_kremlin",
+        name: "러시아 빙설 크렘린 궁전",
+        region: "유럽",
+        concept: "눈보라 속 황금·사파이어 양파 돔 성채",
+        prompt: "Epic fantasy panoramic illustration of a frost-bound imperial Kremlin citadel with ornate golden and sapphire onion domes, swirling snow, glowing ice crystal magic wards, aurora twilight sky, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_russia_frost_kremlin.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "❄️ 빙설 크렘린 (Frost Kremlin)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "끝없는 만년설과 오로라 아래, 황금과 사파이어 돔을 두른 거대한 북방 황실 성채가 위엄을 드러냅니다."
+        },
+        matchedNations: ["러시아"]
+    },
+
+    europe_norway_fjord_aurora: {
+        id: "europe_norway_fjord_aurora",
+        name: "노르웨이 오로라 피오르 요새",
+        region: "유럽",
+        concept: "에메랄드 오로라와 룬이 깃든 북유럽 해안 성채",
+        prompt: "Epic fantasy panoramic illustration of dramatic Norwegian fjords beneath shimmering emerald and violet aurora borealis, ancient stone Norse runic hall overlooking icy sea cliffs, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_norway_fjord_aurora.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🌌 오로라 피오르 (Fjord Aurora)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "깎아지른 빙하 협곡과 에메랄드빛 오로라 아래, 고대 북유럽 룬 문자가 새겨진 전사들의 해안 요새가 자리합니다."
+        },
+        matchedNations: ["노르웨이"]
+    },
+
+    europe_sweden_nordic_archipelago: {
+        id: "europe_sweden_nordic_archipelago",
+        name: "스웨덴 북방 왕실 군도",
+        region: "유럽",
+        concept: "설산과 군도 위의 황금 왕궁과 항구",
+        prompt: "Epic fantasy panoramic illustration of a regal Nordic archipelago capital spanning snowy islands, grand royal palace with copper spires, lantern-lit harbor and icy twilight waters, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_sweden_nordic_archipelago.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "👑 북방 왕실 군도 (Nordic Crown)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "얼어붙은 해협과 여러 섬을 잇는 석조 다리 너머, 푸른 첨탑을 지닌 북방 왕실의 웅장한 궁전이 빛납니다."
+        },
+        matchedNations: ["스웨덴"]
+    },
+
+    europe_switzerland_alps_citadel: {
+        id: "europe_switzerland_alps_citadel",
+        name: "스위스 천공 알프스 성채",
+        region: "유럽",
+        concept: "만년설 봉우리 사이의 천공 석조 성채와 수정 호수",
+        prompt: "Epic fantasy panoramic illustration of a pristine Swiss alpine citadel nestled beside a crystal glacial lake beneath towering snow-capped Matterhorn peaks, glowing arcane clockwork towers, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_switzerland_alps_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🏔️ 알프스 성채 (Alps Citadel)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "거울처럼 맑은 빙하 호수와 만년설 봉우리 사이로 정교한 마도 시계탑과 천공의 성채가 솟아 있습니다."
+        },
+        matchedNations: ["스위스"]
+    },
+
+    europe_austria_imperial_vienna: {
+        id: "europe_austria_imperial_vienna",
+        name: "오스트리아 제국 오페라 궁전",
+        region: "유럽",
+        concept: "바로크 대리석 궁전과 황금빛 선율의 마법 분수",
+        prompt: "Epic fantasy panoramic illustration of imperial Vienna, baroque marble palaces and grand opera spire glowing with golden harmonic magic, moonlit plazas and classical statues, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_austria_imperial_vienna.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🎼 황실 오페라 궁전 (Imperial Vienna)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "하얀 대리석 바로크 궁전과 공명의 마법이 서린 황실 오페라 광장이 우아한 기품을 뽐내는 예술의 수도입니다."
+        },
+        matchedNations: ["오스트리아"]
+    },
+
+    europe_greece_acropolis_aegean: {
+        id: "europe_greece_acropolis_aegean",
+        name: "그리스 아크로폴리스 신전",
+        region: "유럽",
+        concept: "에게해를 내려다보는 대리석 신전과 태양의 결계",
+        prompt: "Epic fantasy panoramic illustration of the Acropolis crowning a sunlit cliff above the sapphire Aegean Sea, gleaming white marble Parthenon temples with golden celestial magic, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_greece_acropolis_aegean.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🏛️ 아크로폴리스 신전 (Aegean Temple)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "푸른 에게해를 굽어보는 거대한 대리석 언덕 위, 올림포스의 찬란한 신탁이 깃든 고대 신전이 서 있습니다."
+        },
+        matchedNations: ["그리스"]
+    },
+
+    europe_italy_venice_arcane_canal: {
+        id: "europe_italy_venice_arcane_canal",
+        name: "이탈리아 베네치아 비전 운하 도시",
+        region: "유럽",
+        concept: "대리석 궁전과 푸른 마력 운하의 수상 수도",
+        prompt: "Epic fantasy panoramic illustration of Venice-inspired Renaissance arcane canal city, grand marble palazzos, ornate arched bridges over glowing sapphire canals with magical gondolas, twilight golden lantern light, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_italy_venice_arcane_canal.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🚤 비전 운하 도시 (Venice Canal)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "황금 등불이 비추는 푸른 마력 운하 위로 르네상스 대리석 궁전과 아치형 다리가 이어진 아름다운 수상 도시입니다."
+        },
+        matchedNations: ["이탈리아"]
+    },
+
+    europe_spain_alhambra_sun_citadel: {
+        id: "europe_spain_alhambra_sun_citadel",
+        name: "스페인 알람브라 태양 성채",
+        region: "유럽",
+        concept: "적갈색 아치 궁전과 태양 마법의 정원 요새",
+        prompt: "Epic fantasy panoramic illustration of Moorish-Spanish Alhambra-inspired sun citadel on a warm terracotta plateau, intricate red-stone arches, golden courtyard fountains, dramatic sunset sky with warm solar magic runes, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_spain_alhambra_sun_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "☀️ 태양 성채 (Alhambra Citadel)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "타오르는 노을 아래 붉은 석조 아치와 황금 분수, 고대 태양 마법의 룬이 빛나는 이베리아의 열정적인 성채입니다."
+        },
+        matchedNations: ["스페인"]
+    },
+
+    europe_denmark_nyhavn_harbor_spires: {
+        id: "europe_denmark_nyhavn_harbor_spires",
+        name: "덴마크 뉘하운 해협 요새",
+        region: "유럽",
+        concept: "다채로운 길드 항구와 청동 첨탑의 등대 요새",
+        prompt: "Epic fantasy panoramic illustration of Nordic-Danish harbor city inspired by Nyhavn and Kronborg, colorful gabled guild houses beside calm twilight sea, tall copper-spired sea fortress with glowing runic lighthouse, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_denmark_nyhavn_harbor_spires.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "⚓ 해협 등대 요새 (Nyhavn Harbor)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "박공지붕 항구 상점가 너머로 룬 문자가 깃든 등대와 청동 첨탑 요새가 북해의 관문을 지킵니다."
+        },
+        matchedNations: ["덴마크"]
+    },
+
+    europe_finland_lapland_crystal_fortress: {
+        id: "europe_finland_lapland_crystal_fortress",
+        name: "핀란드 라플란드 수정 궁전",
+        region: "유럽",
+        concept: "오로라와 빙하 수정으로 빚은 북극권 요새",
+        prompt: "Epic fantasy panoramic illustration of Lapland winter wonderland citadel, snow-laden pine forests, crystal ice palace glowing with frost-blue and aurora borealis magic, frozen starlit lake, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_finland_lapland_crystal_fortress.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "💎 라플란드 수정궁 (Crystal Palace)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "별빛 빙하 호수와 침엽수 설원 위, 오로라의 마력을 머금은 투명한 얼음 수정 궁전이 찬란히 빛납니다."
+        },
+        matchedNations: ["핀란드"]
+    },
+
+    europe_poland_krakow_dragon_citadel: {
+        id: "europe_poland_krakow_dragon_citadel",
+        name: "폴란드 크라쿠프 용의 성채",
+        region: "유럽",
+        concept: "비스와 강변의 붉은 벽돌 고딕 왕성과 용 문장",
+        prompt: "Epic fantasy panoramic illustration of Wawel Krakow-inspired royal medieval brick-and-limestone citadel overlooking a winding river, towering gothic spires, subtle dragon-crest banners and arcane wards at twilight, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_poland_krakow_dragon_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🐉 용의 왕성 (Krakow Citadel)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "안개 낀 강굽이 언덕 위, 전설의 용 문장과 붉은 벽돌 첨탑이 우뚝 솟은 중부 유럽 왕실의 요새입니다."
+        },
+        matchedNations: ["폴란드"]
+    },
+
+    europe_ukraine_golden_dome_steppe: {
+        id: "europe_ukraine_golden_dome_steppe",
+        name: "우크라이나 황금 돔 초원 수도",
+        region: "유럽",
+        concept: "드넓은 황금 밀밭과 비전 황금 돔 대성당",
+        prompt: "Epic fantasy panoramic illustration of Kyiv-inspired Slavic golden-domed cathedral city overlooking vast emerald-and-wheat steppes and a broad river, gleaming gold domes catching twilight sunbeams, arcane protective sigils, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_ukraine_golden_dome_steppe.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🌾 황금 돔 대성당 (Golden Dome)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "드넓은 초원과 강물을 굽어보며 황금빛 돔과 수호 결계가 햇살을 반사하는 대초원의 고대 수도입니다."
+        },
+        matchedNations: ["우크라이나"]
+    },
+
+    europe_netherlands_windmill_canal_city: {
+        id: "europe_netherlands_windmill_canal_city",
+        name: "네덜란드 마도 풍차 운하 도시",
+        region: "유럽",
+        concept: "튤립 운하와 마력 풍차가 돌아가는 무역 도시",
+        prompt: "Epic fantasy panoramic illustration of Dutch canal and windmill city, grand arcane-powered wooden windmills along tulip-lined waterways, stepped-gable brick guild halls, warm sunset reflections on water, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_netherlands_windmill_canal_city.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🌷 마도 풍차 도시 (Windmill Canal)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "다채로운 튤립 꽃밭과 운하를 따라 룬이 새겨진 거대한 마력 풍차들이 쉼 없이 돌아가는 풍요로운 상업 수도입니다."
+        },
+        matchedNations: ["네덜란드"]
+    },
+
+    europe_belgium_bruges_gothic_guild: {
+        id: "europe_belgium_bruges_gothic_guild",
+        name: "벨기에 브뤼헤 고딕 종루 광장",
+        region: "유럽",
+        concept: "중세 길드 회관과 운하가 어우러진 고딕 종루 도시",
+        prompt: "Epic fantasy panoramic illustration of Bruges-inspired gothic belfry and medieval merchant guild plaza, cobblestone bridges over tranquil canals, glowing golden stained-glass windows at twilight, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_belgium_bruges_gothic_guild.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🔔 고딕 종루 광장 (Bruges Guild)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "황금 스테인드글라스와 유서 깊은 고딕 종루가 고요한 운하 수면 위로 웅장하게 비치는 길드 장인들의 수도입니다."
+        },
+        matchedNations: ["벨기에"]
+    },
+
+    europe_portugal_atlantic_cliff_citadel: {
+        id: "europe_portugal_atlantic_cliff_citadel",
+        name: "포르투갈 대서양 절벽 항해 성채",
+        region: "유럽",
+        concept: "대서양 파도를 마주한 백색 테라코타 해안 성채",
+        prompt: "Epic fantasy panoramic illustration of Portuguese oceanic cliffside citadel overlooking dramatic Atlantic waves, whitewashed terracotta rooftops, ornate maritime stone watchtowers and glowing compass runes at sunset, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_portugal_atlantic_cliff_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🧭 대서양 항해 성채 (Atlantic Cliff)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "부서지는 대서양 파도 위 해안 절벽에서 항해 나침반 룬이 빛나는 대항해 시대의 개척 성채입니다."
+        },
+        matchedNations: ["포르투갈"]
+    },
+
+    europe_hungary_danube_parliament_citadel: {
+        id: "europe_hungary_danube_parliament_citadel",
+        name: "헝가리 도나우 황금 의사당 성채",
+        region: "유럽",
+        concept: "도나우강변의 웅장한 네오고딕 황금 궁전과 현수교",
+        prompt: "Epic fantasy panoramic illustration of Budapest-inspired neo-gothic riverside grand citadel overlooking the Danube river, ornate golden spires and arched stone bridges glowing with warm amber magic at twilight, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_hungary_danube_parliament_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🌉 도나우 대성채 (Danube Citadel)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "도나우강을 가로지르는 석조 대교와 황금빛 네오고딕 첨탑이 황혼 속에서 장엄하게 빛나는 중유럽의 심장입니다."
+        },
+        matchedNations: ["헝가리"]
+    },
+
+    europe_czech_prague_astronomical_spires: {
+        id: "europe_czech_prague_astronomical_spires",
+        name: "체코 프라하 천문 시계탑 첨탑 도시",
+        region: "유럽",
+        concept: "백 개의 첨탑과 황금 천문 시계탑, 별빛 석교",
+        prompt: "Epic fantasy panoramic illustration of Prague-inspired city of a hundred spires, ancient stone bridge with statues, glowing golden astronomical clocktower and gothic cathedral under starry indigo sky, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_czech_prague_astronomical_spires.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🪐 천문 시계탑 (Prague Spires)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "수백 개의 고딕 첨탑과 별의 궤도를 품은 황금 천문 시계탑이 밤하늘의 마력을 끌어모으는 연금술의 도시입니다."
+        },
+        matchedNations: ["체코"]
+    },
+
+    europe_romania_transylvania_dracula_castle: {
+        id: "europe_romania_transylvania_dracula_castle",
+        name: "루마니아 트란실바니아 월광 고성",
+        region: "유럽",
+        concept: "붉은 보랏빛 달빛 아래 험준한 절벽 위의 흡혈귀 고성",
+        prompt: "Epic fantasy panoramic illustration of dramatic Transylvanian gothic castle perched atop a jagged misty mountain crag, crimson-and-violet moonlight, ancient pine forests and arcane spires, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_romania_transylvania_dracula_castle.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🦇 트란실바니아 고성 (Dracula Keep)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "짙은 안개와 전나무 숲을 뚫고 솟은 날카로운 암벽 위, 신비로운 월광을 받는 전설의 고딕 성채가 자리합니다."
+        },
+        matchedNations: ["루마니아"]
+    },
+
+    europe_turkey_bosphorus_dome_citadel: {
+        id: "europe_turkey_bosphorus_dome_citadel",
+        name: "터키 보스포루스 대성당 해협",
+        region: "유럽",
+        concept: "동서양이 교차하는 황금 돔과 해협 성채",
+        prompt: "Epic fantasy panoramic illustration of Bosphorus strait citadel inspired by Istanbul, grand cascading domes and slender minarets glowing with golden-turquoise twilight magic, ships crossing shimmering strait waters, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_turkey_bosphorus_dome_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🌙 보스포루스 성채 (Bosphorus Dome)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "황금과 청록빛 마력이 교차하는 해협 위로 웅장한 대돔과 첨탑들이 파노라마처럼 펼쳐진 두 대륙의 관문입니다."
+        },
+        matchedNations: ["터키"]
     },
 
     // 8. 아프리카 / 중동 (황금빛 모래 언덕과 오아시스 신전)
@@ -1215,8 +1633,36 @@ export function getCityBackgroundConfig(region?: string, nation?: string, city?:
         return CITY_BACKGROUND_MANIFEST.america_oceania_magitech_city;
     }
 
-    // 8. 유럽 판정
-    if (r === '유럽' || ['영국', '프랑스', '독일', '이탈리아', '스페인', '러시아', '스위스', '오스트리아', '네덜란드', '그리스', '폴란드'].includes(n)) {
+    // 8. 유럽 판정 (22개국 전용 배경 우선 매칭, 나머지 2개국 아일랜드/스코틀랜드는 고딕 대성당 폴백)
+    const EUROPE_NATION_TO_MANIFEST_KEY: Record<string, string> = {
+        '영국': 'europe_uk_arcane_london',
+        '프랑스': 'europe_france_lumiere_paris',
+        '독일': 'europe_germany_neuschwanstein_fortress',
+        '러시아': 'europe_russia_frost_kremlin',
+        '노르웨이': 'europe_norway_fjord_aurora',
+        '스웨덴': 'europe_sweden_nordic_archipelago',
+        '스위스': 'europe_switzerland_alps_citadel',
+        '오스트리아': 'europe_austria_imperial_vienna',
+        '그리스': 'europe_greece_acropolis_aegean',
+        '이탈리아': 'europe_italy_venice_arcane_canal',
+        '스페인': 'europe_spain_alhambra_sun_citadel',
+        '덴마크': 'europe_denmark_nyhavn_harbor_spires',
+        '핀란드': 'europe_finland_lapland_crystal_fortress',
+        '폴란드': 'europe_poland_krakow_dragon_citadel',
+        '우크라이나': 'europe_ukraine_golden_dome_steppe',
+        '네덜란드': 'europe_netherlands_windmill_canal_city',
+        '벨기에': 'europe_belgium_bruges_gothic_guild',
+        '포르투갈': 'europe_portugal_atlantic_cliff_citadel',
+        '헝가리': 'europe_hungary_danube_parliament_citadel',
+        '체코': 'europe_czech_prague_astronomical_spires',
+        '루마니아': 'europe_romania_transylvania_dracula_castle',
+        '터키': 'europe_turkey_bosphorus_dome_citadel',
+    };
+    const europeMatchKey = EUROPE_NATION_TO_MANIFEST_KEY[n];
+    if (europeMatchKey && CITY_BACKGROUND_MANIFEST[europeMatchKey]) {
+        return CITY_BACKGROUND_MANIFEST[europeMatchKey];
+    }
+    if (r === '유럽' || ['아일랜드', '스코틀랜드'].includes(n)) {
         return CITY_BACKGROUND_MANIFEST.europe_gothic_cathedral;
     }
 

@@ -1,7 +1,7 @@
 
 import LZString from 'lz-string';
 import { Character, Companion, Stats, Item, ItemRarity, MythicOptionType, MagyeOptionType, Skill, BondSkill, SkillType, Enemy, DerivedStats, ClassTier, ActiveStatus, WeaponType, SimpleStudent,BlacksmithRank, AlchemistRank, TrainerRank, TrainerBranch, TRAINER_RANK_CONFIG, CapturedMonster, MonsterStage, Base, BaseResources, SchoolTier, TournamentMatch, MercenaryRank, JobType, MilitaryRank, RelationType, BattlePosition, CombatStyle, BattleRole, SecondaryBattleRole, CombatStyleProgressData, HousekeeperRank, HOUSEKEEPER_RANK_CONFIG, HouseType, HouseBuilding, ChefRank, CHEF_RANK_CONFIG, Location, GameLocation } from './types';
-import { SELL_PRICES, SHINRYOKU_AFFINITY, BASE_MONSTERS,MILITARY_RANK_ORDER, MONSTER_PREFIXES, SHINRYOKU_TYPES_LIST, NATION_NAMES, HUMANOID_CLASSES, ENEMY_SKILL_POOL, WEAPON_KEYWORDS, WEAPON_MASTERY_CONFIG, WEAPON_MASTERY_MAX_LEVEL, NATION_DATA, WORLD_GEOGRAPHY, MILITARY_RANK_THRESHOLD, STATUS_AILMENTS_DATA, STATUS_AILMENTS_LIST, COMBAT_STYLE_SPECIALTIES, COMBAT_STYLE_CONFIG, COMBAT_STYLE_TIER_REQUIREMENTS, CombatStyleTrainingReq, WEAPON_TYPE_KOREAN, getHumanoidClassByTier, CLASS_BASE_MAX_LEVEL, MONSTER_STAGE_MAX_LEVEL, TRANSCENDENCE_SANCTUARY_UNLOCK_STEP } from './constants';
+import { SELL_PRICES, SHINRYOKU_AFFINITY, BASE_MONSTERS,MILITARY_RANK_ORDER, MONSTER_PREFIXES, SHINRYOKU_TYPES_LIST, NATION_NAMES, HUMANOID_CLASSES, ENEMY_SKILL_POOL, WEAPON_KEYWORDS, WEAPON_MASTERY_CONFIG, WEAPON_MASTERY_MAX_LEVEL, NATION_DATA, WORLD_GEOGRAPHY, MILITARY_RANK_THRESHOLD, STATUS_AILMENTS_DATA, STATUS_AILMENTS_LIST, COMBAT_STYLE_SPECIALTIES, COMBAT_STYLE_CONFIG, COMBAT_STYLE_TIER_REQUIREMENTS, CombatStyleTrainingReq, WEAPON_TYPE_KOREAN, getHumanoidClassByTier, CLASS_BASE_MAX_LEVEL, MONSTER_STAGE_MAX_LEVEL, TRANSCENDENCE_SANCTUARY_UNLOCK_STEP, TRANSCENDENCE_SANCTUARY_STEP_PER_FACILITY_LEVEL } from './constants';
 import { getCombatStyleSkillSet, COMBAT_STYLE_SKILL_DATA } from './combatStyleSkills';
 import { WEAPON_MASTERY_WEAPON_STAT_PER_LEVEL, WEAPON_MASTERY_ACCURACY_PER_LEVEL, WEAPON_MASTERY_EQUIP_REQUIREMENT } from './constants';
 import { WORLD_LOOT_TABLES, findItemDataInWorldTables, getChanceByRarity } from './monsterLootTable';
@@ -6111,23 +6111,37 @@ export const checkAndApplySkillLevelUp = (char: Character): { updatedChar: Chara
     return { updatedChar, notifications };
 };
 
+export const getTranscendenceSanctuaryLevel = (base?: Base | null): number => {
+    const inst = base?.layout?.find(f => f.type === 'transcendence_sanctuary');
+    const rawLevel = inst ? (inst.level || 1) : ((base as any)?.facilityLevels?.['transcendence_sanctuary'] || 1);
+    return Math.max(1, rawLevel);
+};
+
+export const getTranscendenceUnlockStep = (base?: Base | null): number => {
+    return getTranscendenceSanctuaryLevel(base) * TRANSCENDENCE_SANCTUARY_STEP_PER_FACILITY_LEVEL;
+};
+
 export const getCharacterMaxLevel = (
-    actor?: { classTier?: ClassTier | string; currentClass?: ClassTier | string; levelCapUnlockCount?: number } | null,
+    actor?: { classTier?: ClassTier | string; currentClass?: ClassTier | string; levelCapUnlockCount?: number; levelCapUnlockBonus?: number } | null,
     _base?: Base | null
 ): number => {
     const tier = (actor?.classTier || actor?.currentClass || ClassTier.NONE) as ClassTier;
     const baseCap = CLASS_BASE_MAX_LEVEL[tier] ?? 100;
-    const unlockBonus = Math.max(0, actor?.levelCapUnlockCount || 0) * TRANSCENDENCE_SANCTUARY_UNLOCK_STEP;
+    const unlockBonus = actor?.levelCapUnlockBonus !== undefined
+        ? Math.max(0, actor.levelCapUnlockBonus)
+        : Math.max(0, actor?.levelCapUnlockCount || 0) * TRANSCENDENCE_SANCTUARY_UNLOCK_STEP;
     return baseCap + unlockBonus;
 };
 
 export const getMonsterMaxLevel = (
-    monster?: { evolutionStage?: MonsterStage | string; stage?: MonsterStage | string; levelCapUnlockCount?: number } | null,
+    monster?: { evolutionStage?: MonsterStage | string; stage?: MonsterStage | string; levelCapUnlockCount?: number; levelCapUnlockBonus?: number } | null,
     _base?: Base | null
 ): number => {
     const stage = (monster?.evolutionStage || monster?.stage || MonsterStage.CHILD) as MonsterStage;
     const stageCap = MONSTER_STAGE_MAX_LEVEL[stage] ?? 50;
-    const unlockBonus = Math.max(0, monster?.levelCapUnlockCount || 0) * TRANSCENDENCE_SANCTUARY_UNLOCK_STEP;
+    const unlockBonus = monster?.levelCapUnlockBonus !== undefined
+        ? Math.max(0, monster.levelCapUnlockBonus)
+        : Math.max(0, monster?.levelCapUnlockCount || 0) * TRANSCENDENCE_SANCTUARY_UNLOCK_STEP;
     return stageCap + unlockBonus;
 };
 

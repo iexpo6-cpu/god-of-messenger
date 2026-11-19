@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Character, Companion, Item, Skill, SkillType, ItemRarity, WeaponType, Stats, BaseResources, ClassTier, MonsterStage, JobType, CombatStyle, TrainerRank, TRAINER_RANK_CONFIG, BaseDefenseReportData, FacilityInstance } from '../types';
 import { BASE_LEVEL_CONFIG, FACILITIES_INFO, ENHANCEMENT_CAPS, MAX_STORAGE_SIZE, FACILITY_UPGRADE_CONFIG, BASE_UPGRADE_COSTS, SHINRYOKU_TYPES_LIST, FACILITY_CONSTRUCTION_COSTS, BASE_GRID_EXPANSION_COSTS, COMBAT_STYLE_CONFIG, COMBAT_STYLE_CHANGE_COST, WEAPON_TYPE_KOREAN } from '../constants';
-import { calculateInventorySize, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalLabLevel, getFacilityTrainingLimit, getCharacterMaxLevel, getMonsterMaxLevel, getTranscendenceUnlockCost } from '../utils';
+import { calculateInventorySize, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalLabLevel, getFacilityTrainingLimit, getCharacterMaxLevel, getMonsterMaxLevel, getTranscendenceUnlockCost, getTranscendenceSanctuaryLevel, getTranscendenceUnlockStep } from '../utils';
 import { checkAndInitializeLiberationEligibility, getCompanionCP, getCompanionPureCP } from '../services/companionGrowthService';
 import { advanceGameTime, getTimeOfDay } from '../services/gameTimeService';
 import { getCompanionRoutine } from '../services/npcRoutineService';
@@ -4217,6 +4217,13 @@ const BaseModal: React.FC<Props> = ({
         }
 
         if (selectedFacility === 'transcendence_sanctuary') {
+            const sanctuaryLevel = getTranscendenceSanctuaryLevel(character.base);
+            const unlockStep = getTranscendenceUnlockStep(character.base);
+            const resolveUnlockBonus = (unit: { levelCapUnlockCount?: number; levelCapUnlockBonus?: number }) =>
+                unit.levelCapUnlockBonus !== undefined
+                    ? Math.max(0, unit.levelCapUnlockBonus)
+                    : Math.max(0, unit.levelCapUnlockCount || 0) * 100;
+
             type SanctuaryUnitEntry = {
                 key: string;
                 category: 'player' | 'companion' | 'monster';
@@ -4229,6 +4236,7 @@ const BaseModal: React.FC<Props> = ({
                 badge?: string;
                 isCustom?: boolean;
                 unlockCount: number;
+                unlockBonus: number;
                 maxLevel: number;
             };
 
@@ -4242,6 +4250,7 @@ const BaseModal: React.FC<Props> = ({
                 subLabel: String(character.classTier || ClassTier.FIRST),
                 badge: '주인공',
                 unlockCount: character.levelCapUnlockCount || 0,
+                unlockBonus: resolveUnlockBonus(character),
                 maxLevel: getCharacterMaxLevel(character, character.base)
             };
 
@@ -4257,6 +4266,7 @@ const BaseModal: React.FC<Props> = ({
                     badge: '파티',
                     isCustom: Boolean((c as any).isCustom || (c as any).isCustomModified),
                     unlockCount: c.levelCapUnlockCount || 0,
+                    unlockBonus: resolveUnlockBonus(c),
                     maxLevel: getCharacterMaxLevel(c, character.base)
                 })),
                 ...(character.inactiveCompanions || []).map((c): SanctuaryUnitEntry => ({
@@ -4270,6 +4280,7 @@ const BaseModal: React.FC<Props> = ({
                     badge: '대기',
                     isCustom: Boolean((c as any).isCustom || (c as any).isCustomModified),
                     unlockCount: c.levelCapUnlockCount || 0,
+                    unlockBonus: resolveUnlockBonus(c),
                     maxLevel: getCharacterMaxLevel(c, character.base)
                 }))
             ];
@@ -4287,6 +4298,7 @@ const BaseModal: React.FC<Props> = ({
                     subLabel: String(m.evolutionStage || m.stage || '성장기'),
                     badge: '주인공 탈것',
                     unlockCount: m.levelCapUnlockCount || 0,
+                    unlockBonus: resolveUnlockBonus(m),
                     maxLevel: getMonsterMaxLevel(m, character.base)
                 });
             }
@@ -4304,6 +4316,7 @@ const BaseModal: React.FC<Props> = ({
                         subLabel: String(m.evolutionStage || m.stage || '성장기'),
                         badge: `${c.name} 탈것`,
                         unlockCount: m.levelCapUnlockCount || 0,
+                        unlockBonus: resolveUnlockBonus(m),
                         maxLevel: getMonsterMaxLevel(m, character.base)
                     });
                 }
@@ -4319,6 +4332,7 @@ const BaseModal: React.FC<Props> = ({
                     subLabel: String((m as any).evolutionStage || m.stage || '성장기'),
                     badge: '사육소',
                     unlockCount: m.levelCapUnlockCount || 0,
+                    unlockBonus: resolveUnlockBonus(m),
                     maxLevel: getMonsterMaxLevel(m, character.base)
                 });
             });
@@ -4372,7 +4386,7 @@ const BaseModal: React.FC<Props> = ({
 
             const unlockCount = selectedTarget.unlockCount;
             const currentMaxLv = selectedTarget.maxLevel;
-            const classBaseCap = currentMaxLv - unlockCount * 100;
+            const classBaseCap = currentMaxLv - selectedTarget.unlockBonus;
             const cost = getTranscendenceUnlockCost(unlockCount, currentMaxLv);
             const res = character.base?.resources || ({} as BaseResources);
             const hasGold = (character.money || 0) >= cost.gold;
@@ -4404,42 +4418,49 @@ const BaseModal: React.FC<Props> = ({
                     (newChar.base!.resources as any)[req.key] = Math.max(0, Number((newChar.base!.resources as any)[req.key] || 0) - req.amount);
                 });
 
-                let nextMaxLv = currentMaxLv + 100;
+                const nextUnlockBonus = selectedTarget.unlockBonus + unlockStep;
+                let nextMaxLv = currentMaxLv + unlockStep;
                 if (selectedTarget.source === 'player') {
                     newChar.levelCapUnlockCount = unlockCount + 1;
+                    newChar.levelCapUnlockBonus = nextUnlockBonus;
                     nextMaxLv = getCharacterMaxLevel(newChar, newChar.base);
                 } else if (selectedTarget.source === 'active_companion') {
                     const comp = newChar.companions.find(c => c.id === selectedTarget.id);
                     if (comp) {
                         comp.levelCapUnlockCount = unlockCount + 1;
+                        comp.levelCapUnlockBonus = nextUnlockBonus;
                         nextMaxLv = getCharacterMaxLevel(comp, newChar.base);
                     }
                 } else if (selectedTarget.source === 'inactive_companion') {
                     const comp = (newChar.inactiveCompanions || []).find(c => c.id === selectedTarget.id);
                     if (comp) {
                         comp.levelCapUnlockCount = unlockCount + 1;
+                        comp.levelCapUnlockBonus = nextUnlockBonus;
                         nextMaxLv = getCharacterMaxLevel(comp, newChar.base);
                     }
                 } else if (selectedTarget.source === 'player_mount' && newChar.mountedMonster) {
                     (newChar.mountedMonster as any).levelCapUnlockCount = unlockCount + 1;
+                    (newChar.mountedMonster as any).levelCapUnlockBonus = nextUnlockBonus;
                     nextMaxLv = getMonsterMaxLevel(newChar.mountedMonster as any, newChar.base);
                 } else if (selectedTarget.source === 'companion_mount') {
                     const owner = newChar.companions.find(c => c.id === selectedTarget.ownerCompId);
                     if (owner?.mountedMonster) {
                         (owner.mountedMonster as any).levelCapUnlockCount = unlockCount + 1;
+                        (owner.mountedMonster as any).levelCapUnlockBonus = nextUnlockBonus;
                         nextMaxLv = getMonsterMaxLevel(owner.mountedMonster as any, newChar.base);
                     }
                 } else if (selectedTarget.source === 'captured_monster') {
                     const mon = (newChar.base.capturedMonsters || []).find(m => m.id === selectedTarget.id);
                     if (mon) {
                         mon.levelCapUnlockCount = unlockCount + 1;
+                        mon.levelCapUnlockBonus = nextUnlockBonus;
                         nextMaxLv = getMonsterMaxLevel(mon, newChar.base);
                     }
                 }
 
                 onUpdateCharacter(
                     newChar,
-                    `[초월의 성소] [${selectedTarget.name}]의 최대 레벨 상한을 +100 해방했습니다! (누적 해방: +${(unlockCount + 1) * 100} Lv, 현재 최대 레벨: Lv.${nextMaxLv.toLocaleString()})`
+                    `[초월의 성소 Lv.${sanctuaryLevel}] [${selectedTarget.name}]의 최대 레벨 상한을 +${unlockStep} 해방했습니다! (누적 해방: +${nextUnlockBonus.toLocaleString()} Lv, 현재 최대 레벨: Lv.${nextMaxLv.toLocaleString()})`
                 );
             };
 
@@ -4575,7 +4596,11 @@ const BaseModal: React.FC<Props> = ({
                         </div>
                         <div className="flex items-center justify-between text-xs text-slate-300">
                             <span>개별 해방 보너스 ({unlockCount}회)</span>
-                            <span className="font-bold text-cyan-300">+{(unlockCount * 100).toLocaleString()} Lv</span>
+                            <span className="font-bold text-cyan-300">+{selectedTarget.unlockBonus.toLocaleString()} Lv</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-400">
+                            <span>초월의 성소 Lv.{sanctuaryLevel} 해방량</span>
+                            <span className="font-bold text-indigo-300">1회당 +{unlockStep} Lv (시설 Lv × 20)</span>
                         </div>
                         <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
                             <span className="text-sm font-black text-amber-200">최종 최대 레벨</span>
@@ -4586,8 +4611,8 @@ const BaseModal: React.FC<Props> = ({
                     {/* 해방 비용 및 실행 */}
                     <div className="w-full max-w-md bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
                         <div className="text-xs font-black text-indigo-300 flex items-center justify-between">
-                            <span>✨ {cost.step}단계 개별 해방 (+100 Lv) 필요 자원</span>
-                            <span className="text-emerald-400">➔ Lv.{(currentMaxLv + 100).toLocaleString()}</span>
+                            <span>✨ {cost.step}단계 개별 해방 (+{unlockStep} Lv · 성소 Lv.{sanctuaryLevel}) 필요 자원</span>
+                            <span className="text-emerald-400">➔ Lv.{(currentMaxLv + unlockStep).toLocaleString()}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                             <div className={`p-2 rounded-lg border ${hasGold ? 'border-slate-700 bg-slate-900/60 text-slate-200' : 'border-red-500/40 bg-red-950/30 text-red-300'}`}>
@@ -4621,7 +4646,7 @@ const BaseModal: React.FC<Props> = ({
                             className="w-full mt-1 py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-sm shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
                         >
                             <ChevronsUp size={18} />
-                            <span>[{selectedTarget.name}] 최대 레벨 +100 해방 실행</span>
+                            <span>[{selectedTarget.name}] 최대 레벨 +{unlockStep} 해방 실행</span>
                         </button>
                     </div>
                 </div>
