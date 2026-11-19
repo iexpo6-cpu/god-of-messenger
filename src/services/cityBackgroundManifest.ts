@@ -1029,7 +1029,7 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
             badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
             description: "신비로운 푸른 비전 방어막 룬이 새겨진 거대한 성벽과 장엄한 스테인드글라스 장미창이 밤하늘을 수놓는 기사도의 고딕 수도입니다."
         },
-        matchedNations: ["유럽", "아일랜드", "스코틀랜드"]
+        matchedNations: ["유럽"]
     },
 
     europe_uk_arcane_london: {
@@ -1450,6 +1450,44 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
         matchedNations: ["터키"]
     },
 
+    europe_ireland_emerald_druid_keep: {
+        id: "europe_ireland_emerald_druid_keep",
+        name: "아일랜드 에메랄드 드루이드 성채",
+        region: "유럽",
+        concept: "안개 낀 에메랄드 해안 절벽과 켈트 드루이드 거석 유적",
+        prompt: "Epic fantasy panoramic illustration of ancient Irish emerald cliffside stone keep surrounded by misty green valleys, glowing Celtic druid standing stones and mossy arcane ruins overlooking the sea, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_ireland_emerald_druid_keep.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🍀 드루이드 성채 (Emerald Keep)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "에메랄드빛 해안 절벽과 고대 켈트 드루이드의 녹색 룬 거석이 안개 속에서 신비로운 자연의 마력을 뿜어내는 아일랜드 성채입니다."
+        },
+        matchedNations: ["아일랜드"]
+    },
+
+    europe_scotland_highland_mist_castle: {
+        id: "europe_scotland_highland_mist_castle",
+        name: "스코틀랜드 하이랜드 안개 고성",
+        region: "유럽",
+        concept: "안개 호수와 아치 석교, 푸른 룬이 깃든 하이랜드 고성",
+        prompt: "Epic fantasy panoramic illustration of Scottish Highland stone fortress overlooking a misty loch and heather-covered mountains, arched stone viaduct and ancient blue runic wards under dramatic twilight clouds, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/europe_scotland_highland_mist_castle.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.8) 0%, rgba(30, 58, 138, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-blue-300",
+            borderColor: "border-blue-500/60",
+            glowColor: "rgba(59, 130, 246, 0.35)",
+            badgeText: "🏰 하이랜드 고성 (Highland Castle)",
+            badgeClass: "bg-blue-950/70 text-blue-300 border-blue-600/60 shadow-[0_0_15px_rgba(59,130,246,0.25)]",
+            description: "보랏빛 헤더 산맥과 깊은 안개 호수를 가로지르는 아치 석교 너머, 고대 수호 룬이 빛나는 스코틀랜드 하이랜드의 강건한 요새입니다."
+        },
+        matchedNations: ["스코틀랜드"]
+    },
+
     // 8. 아프리카 / 중동 (황금빛 모래 언덕과 오아시스 신전)
     africa_middle_east_oasis_temple: {
         id: "africa_middle_east_oasis_temple",
@@ -1633,7 +1671,7 @@ export function getCityBackgroundConfig(region?: string, nation?: string, city?:
         return CITY_BACKGROUND_MANIFEST.america_oceania_magitech_city;
     }
 
-    // 8. 유럽 판정 (22개국 전용 배경 우선 매칭, 나머지 2개국 아일랜드/스코틀랜드는 고딕 대성당 폴백)
+    // 8. 유럽 판정 (24개국 전 국가 전용 배경 매칭, 기타 유럽 지역은 고딕 대성당 폴백)
     const EUROPE_NATION_TO_MANIFEST_KEY: Record<string, string> = {
         '영국': 'europe_uk_arcane_london',
         '프랑스': 'europe_france_lumiere_paris',
@@ -1657,12 +1695,14 @@ export function getCityBackgroundConfig(region?: string, nation?: string, city?:
         '체코': 'europe_czech_prague_astronomical_spires',
         '루마니아': 'europe_romania_transylvania_dracula_castle',
         '터키': 'europe_turkey_bosphorus_dome_citadel',
+        '아일랜드': 'europe_ireland_emerald_druid_keep',
+        '스코틀랜드': 'europe_scotland_highland_mist_castle',
     };
     const europeMatchKey = EUROPE_NATION_TO_MANIFEST_KEY[n];
     if (europeMatchKey && CITY_BACKGROUND_MANIFEST[europeMatchKey]) {
         return CITY_BACKGROUND_MANIFEST[europeMatchKey];
     }
-    if (r === '유럽' || ['아일랜드', '스코틀랜드'].includes(n)) {
+    if (r === '유럽') {
         return CITY_BACKGROUND_MANIFEST.europe_gothic_cathedral;
     }
 

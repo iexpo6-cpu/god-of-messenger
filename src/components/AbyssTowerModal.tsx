@@ -5,6 +5,7 @@ import {
     ChevronUp, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, Layers, Zap
 } from 'lucide-react';
 import { GridDungeonState, GridTile, revealFogOfWar, updateTileIdentifications } from '../services/gridDungeonEngine';
+import { calculateFinalStats } from '../utils';
 import {
     generateAbyssTowerFloor,
     generateAbyssTowerEnemies,
@@ -135,9 +136,27 @@ const AbyssTowerModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle
         // 2. 제단
         if (target.content === 'shrine' && !target.isCleared) {
             target.isCleared = true;
+            const playerFinal = calculateFinalStats(character);
+            const healedCompanions = (character.companions || []).map((c) => {
+                if (c.isDead || c.stats.hp <= 0) return c;
+                const cFinal = calculateFinalStats(c as any);
+                return {
+                    ...c,
+                    stats: {
+                        ...c.stats,
+                        hp: Math.max(c.stats.hp, cFinal.maxHp),
+                        mp: Math.max(c.stats.mp, cFinal.maxMp)
+                    }
+                };
+            });
             const newChar: Character = {
                 ...character,
-                stats: { ...character.stats, hp: character.stats.maxHp, mp: character.stats.maxMp },
+                stats: {
+                    ...character.stats,
+                    hp: Math.max(character.stats.hp, playerFinal.maxHp),
+                    mp: Math.max(character.stats.mp, playerFinal.maxMp)
+                },
+                companions: healedCompanions,
                 abyssTowerState: {
                     highestFloor: Math.max(highestFloor, nextState.currentFloor),
                     unlockedCheckpointFloor: unlockedCheckpoint,
@@ -147,8 +166,8 @@ const AbyssTowerModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle
                 }
             };
             setGridState(nextState);
-            setNotice({ title: '심연 공명 제단', desc: '주인공의 HP/MP가 100% 회복되었습니다!' });
-            onUpdateCharacter(newChar, `[무한 심연 탑 ${nextState.currentFloor}F] 제단의 기운으로 체력과 마력을 회복했습니다.`);
+            setNotice({ title: '심연 공명 제단', desc: `최종 능력치 기준 HP/MP가 100% 회복되었습니다! (HP ${playerFinal.maxHp.toLocaleString()})` });
+            onUpdateCharacter(newChar, `[무한 심연 탑 ${nextState.currentFloor}F] 제단의 기운으로 최종 능력치 기준 체력과 마력을 100% 회복했습니다.`);
             return;
         }
 

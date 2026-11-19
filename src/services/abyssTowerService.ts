@@ -54,6 +54,20 @@ const ABYSS_BOSS_NAMES = [
     '공허의 대제 타나토스'
 ];
 
+export const ABYSS_MONSTER_IMAGE_MAP: Record<string, string> = {
+    '심연 균열 감시자': 'assets/visuals/monsters/abyss_rift_watcher.jpg',
+    '차원의 악몽 기사': 'assets/visuals/monsters/abyss_nightmare_knight.jpg',
+    '공허의 마신 장군': 'assets/visuals/monsters/abyss_void_demon_general.jpg',
+    '태초의 핏빛 집행관': 'assets/visuals/monsters/abyss_crimson_executioner.jpg',
+    '망각의 심연 사신': 'assets/visuals/monsters/abyss_oblivion_reaper.jpg',
+    '혼돈의 마도 골렘': 'assets/visuals/monsters/abyss_chaos_arcane_golem.jpg',
+    '차원 수호자 아바돈': 'assets/visuals/monsters/abyss_boss_abaddon.jpg',
+    '심연 군주 벨리알': 'assets/visuals/monsters/abyss_boss_belial.jpg',
+    '균열의 패왕 말레우스': 'assets/visuals/monsters/abyss_boss_malleus.jpg',
+    '태초 마신 바알제불': 'assets/visuals/monsters/abyss_boss_baalzebul.jpg',
+    '공허의 대제 타나토스': 'assets/visuals/monsters/abyss_boss_thanatos.jpg'
+};
+
 /**
  * 1층 = Lv.2,000, 10층마다 +100 Lv 상승 (100층 = Lv.3,000)
  */
@@ -119,6 +133,7 @@ export const generateAbyssTowerEnemies = (floor: number, isBossEncounter: boolea
                 hp: maxHp,
                 maxHp,
                 shinryokuType: shinryoku,
+                visualUrl: ABYSS_MONSTER_IMAGE_MAP[bossName] || baseEnemy.visualUrl,
                 description: `무한 심연 탑 ${floor}층을 수호하는 차원 수호자입니다. (${modifier.name})`,
                 stats: {
                     ...baseEnemy.stats,
@@ -166,6 +181,7 @@ export const generateAbyssTowerEnemies = (floor: number, isBossEncounter: boolea
             ...enemy,
             hp: maxHp,
             maxHp,
+            visualUrl: ABYSS_MONSTER_IMAGE_MAP[mobName] || enemy.visualUrl,
             stats: {
                 ...enemy.stats,
                 hp: maxHp,

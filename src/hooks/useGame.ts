@@ -5762,6 +5762,18 @@ dom.corruption += 10000;
                         const curRound = tArena.currentRound;
                         const prevWins = tArena.winCount || 0;
                         const rewardScale = 1 + prevWins * 0.5;
+                        const enemyAvgLv = finalEnemies.length > 0
+                            ? Math.round(finalEnemies.reduce((acc: number, e: any) => acc + (e.level || 2000), 0) / finalEnemies.length)
+                            : 2200;
+                        const bonusExp = Math.round((curRound <= 2 ? 18000000 : 4500000) * (1 + (enemyAvgLv - 2000) / 1000) * rewardScale);
+
+                        finalChar.currentExp = (finalChar.currentExp || 0) + bonusExp;
+                        finalChar.companions = (finalChar.companions || []).map(c =>
+                            c.stats.hp > 0 && !c.isDead ? { ...c, currentExp: (c.currentExp || 0) + bonusExp } : c
+                        );
+                        const lvRes = checkAndApplyLevelUp(finalChar, { skipInactive: true });
+                        finalChar = lvRes.updatedChar;
+
                         if (curRound <= 2) {
                             tArena.currentRound = 0;
                             tArena.winCount = prevWins + 1;
@@ -5792,6 +5804,7 @@ dom.corruption += 10000;
                             resultMsg = `신의 거처 만신전의 정점에 등극했습니다! 다음 시즌부터 적들이 더욱 강해지고 보상도 ${Math.round((1 + tArena.winCount * 0.5) * 100)}%로 상승합니다.`;
                             resultItems = [
                                 { label: '칭호 / 누적 우승', after: `만신전의 패자 (${tArena.winCount}회)` },
+                                { label: '초월 경험치', after: `+${bonusExp.toLocaleString()} EXP` },
                                 { label: '우승 상금', after: `+${prizeGold.toLocaleString()} G` },
                                 { label: '전설 결정 / 마정석', after: `+${legCrystalGain}개 / +${manaGain}개` },
                                 { label: '신력꽃 / 다이아', after: `+${flowerGain}개 / +${diamondGain}개` }
@@ -5809,6 +5822,7 @@ dom.corruption += 10000;
                             resultMsg = `${nextRound <= 2 ? '결승전' : `${nextRound}강전`} 진출에 성공했습니다!`;
                             resultItems = [
                                 { label: '다음 라운드', after: nextRound <= 2 ? '결승전' : `${nextRound}강전` },
+                                { label: '초월 경험치', after: `+${bonusExp.toLocaleString()} EXP` },
                                 { label: '승리 상금 / 마정석', after: `+${stepGold.toLocaleString()} G / +${stepMana}개` }
                             ];
                         }
@@ -5818,6 +5832,16 @@ dom.corruption += 10000;
                         const tower = { ...finalChar.abyssTowerState };
                         const curFloor = tower.currentFloor || 1;
                         tower.highestFloor = Math.max(tower.highestFloor || 0, curFloor);
+                        const floorBaseLv = 2000 + Math.floor(Math.max(0, curFloor - 1) / 10) * 100;
+                        const abyssExp = Math.round(floorBaseLv * (contextType === 'abyss_tower_boss' ? 7500 : 1800));
+
+                        finalChar.currentExp = (finalChar.currentExp || 0) + abyssExp;
+                        finalChar.companions = (finalChar.companions || []).map(c =>
+                            c.stats.hp > 0 && !c.isDead ? { ...c, currentExp: (c.currentExp || 0) + abyssExp } : c
+                        );
+                        const lvRes = checkAndApplyLevelUp(finalChar, { skipInactive: true });
+                        finalChar = lvRes.updatedChar;
+
                         if (contextType === 'abyss_tower_boss') {
                             tower.totalClearedBosses = (tower.totalClearedBosses || 0) + 1;
                             if (curFloor % 10 === 0) {
@@ -5845,10 +5869,11 @@ dom.corruption += 10000;
                             }
                             resultTitle = `심연 탑 ${curFloor}F 차원 수호자 격파!`;
                             resultMsg = curFloor % 10 === 0
-                                ? `체크포인트 ${curFloor + 1}층이 영구 해금되었으며 초월 재료를 획득했습니다!`
-                                : `심연의 수호자를 물리치고 풍성한 초월 재료를 획득했습니다!`;
+                                ? `체크포인트 ${curFloor + 1}층이 영구 해금되었으며 초월 재료와 막대한 경험치를 획득했습니다!`
+                                : `심연의 수호자를 물리치고 풍성한 초월 재료와 경험치를 획득했습니다!`;
                             resultItems = [
                                 { label: '최고 도달', after: `${tower.highestFloor}층` },
+                                { label: '심연 경험치', after: `+${abyssExp.toLocaleString()} EXP` },
                                 ...(curFloor % 10 === 0 ? [{ label: '체크포인트 해금', after: `${curFloor + 1}층` }] : []),
                                 { label: '초월 재료', after: '마정석+80, 결정/신력꽃/다이아' }
                             ];
@@ -5858,7 +5883,10 @@ dom.corruption += 10000;
                             }
                             resultTitle = `심연 탑 ${curFloor}F 교전 승리`;
                             resultMsg = '심연의 적을 격퇴했습니다. 모달을 다시 열어 다음 타일로 이동하세요.';
-                            resultItems = [{ label: '전리품', after: '마정석 +15' }];
+                            resultItems = [
+                                { label: '심연 경험치', after: `+${abyssExp.toLocaleString()} EXP` },
+                                { label: '전리품', after: '마정석 +15' }
+                            ];
                         }
                         finalChar.abyssTowerState = tower;
                     }
