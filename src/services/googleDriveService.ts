@@ -597,16 +597,47 @@ export const listCustomImageFilesInDrive = async (accessToken: string): Promise<
   return fileMap;
 };
 
+const UPLOADED_HASHES_CACHE_KEY = 'shinryoku_gdrive_uploaded_hashes';
+
+const getUploadedHashesCache = (): Set<string> => {
+  try {
+    const raw = localStorage.getItem(UPLOADED_HASHES_CACHE_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+const saveUploadedHashesCache = (hashes: Set<string>) => {
+  try {
+    localStorage.setItem(UPLOADED_HASHES_CACHE_KEY, JSON.stringify(Array.from(hashes)));
+  } catch {}
+};
+
 export const uploadMissingImagesToDrive = async (
   images: Array<{ hash: string; dataUrl: string }>,
   accessToken: string,
   onProgress?: (done: number, total: number) => void
 ): Promise<{ uploaded: number; skipped: number }> => {
   if (!images.length) return { uploaded: 0, skipped: 0 };
+
+  // 1. 로컬 업로드 완료 캐시 확인: 변동된 신규 이미지가 없으면 Google Drive API 호출 자체를 생략
+  const localUploaded = getUploadedHashesCache();
+  const candidates = images.filter(img => !localUploaded.has(img.hash));
+  if (candidates.length === 0) {
+    return { uploaded: 0, skipped: images.length };
+  }
+
   const folderId = await findOrCreateCustomImagesFolder(accessToken);
   const existingMap = await listCustomImageFilesInDrive(accessToken);
-  const missing = images.filter(img => !existingMap[img.hash]);
+  Object.keys(existingMap).forEach(h => localUploaded.add(h));
+
+  const missing = candidates.filter(img => !existingMap[img.hash]);
   const skipped = images.length - missing.length;
+  if (missing.length === 0) {
+    saveUploadedHashesCache(localUploaded);
+    return { uploaded: 0, skipped };
+  }
 
   let uploaded = 0;
   const BATCH_SIZE = 4;
@@ -639,12 +670,14 @@ export const uploadMissingImagesToDrive = async (
         if (!res.ok) {
           throw new Error(`이미지(${item.hash.slice(0, 8)}) 드라이브 업로드 실패`);
         }
+        localUploaded.add(item.hash);
         uploaded++;
         onProgress?.(uploaded, missing.length);
       })
     );
   }
 
+  saveUploadedHashesCache(localUploaded);
   return { uploaded, skipped };
 };
 

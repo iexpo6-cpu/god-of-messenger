@@ -93,6 +93,8 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
   
   // 용량 다이어트 압축 상태
   const [compressingSlot, setCompressingSlot] = useState<number | null>(null);
+  const [accountSyncMsg, setAccountSyncMsg] = useState<string>('');
+  const autoSyncInProgressRef = useRef<boolean>(false);
   const [compressionProgress, setCompressionProgress] = useState<{ total: number; current: number; label: string } | null>(null);
   const [compressionResult, setCompressionResult] = useState<{ originalSize: number; compressedSize: number; ratio: number; slotNum: number } | null>(null);
   
@@ -212,6 +214,71 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
     }
   };
 
+  const performAccountAutoSync = async (uid: string) => {
+    if (!isSupabaseConfigured() || !uid || autoSyncInProgressRef.current) return;
+    autoSyncInProgressRef.current = true;
+    const token = getCachedAccessToken() || googleToken;
+    setAccountSyncMsg('계정 클라우드와 자동 동기화 중...');
+
+    try {
+      const sbMeta = await getSupabaseSavesMetaList(uid);
+      let updatedLocalCount = 0;
+      let uploadedCloudCount = 0;
+
+      for (let slotNum = 1; slotNum <= 10; slotNum++) {
+        const key = getSaveSlotKey(slotNum);
+        const rawLocal = await GameStorage.get(key);
+        let localData: any = null;
+        if (rawLocal) {
+          try {
+            localData = typeof rawLocal === 'string' ? await decompressData(rawLocal) : rawLocal;
+          } catch {}
+        }
+
+        const cloudMeta = sbMeta[String(slotNum)];
+        const localTimeMs = localData?.timestamp ? new Date(localData.timestamp).getTime() : 0;
+        const cloudTimeMs = cloudMeta?.updatedAt ? new Date(cloudMeta.updatedAt).getTime() : 0;
+
+        if (cloudMeta && (!localData || cloudTimeMs > localTimeMs + 3000)) {
+          // 클라우드가 더 최신이거나 로컬에 없음 -> 경량 데이터 다운로드 + 변동 이미지만 Google Drive 복원
+          const compressed = await downloadLightSaveFromSupabase(uid, slotNum);
+          if (compressed) {
+            const parsedLight = await decompressData(compressed);
+            const { restoredData } = await restoreImagesToSaveData(parsedLight, token);
+            await GameStorage.set(key, restoredData);
+            updatedLocalCount++;
+          }
+        } else if (localData && (!cloudMeta || localTimeMs > cloudTimeMs + 3000)) {
+          // 로컬이 더 최신이거나 클라우드에 없음 -> 이미지 변동분만 Google Drive 업로드 + 경량 세이브 Supabase 업로드
+          const sanitized = optimizeSaveData(localData);
+          const { lightData, images } = await extractImagesFromSaveData(sanitized);
+          if (images.length > 0 && token) {
+            await uploadMissingImagesToDrive(images, token).catch(() => {});
+          }
+          const compressedLight = await compressData(lightData);
+          await uploadLightSaveToSupabase(uid, slotNum, compressedLight, {
+            characterName: localData.character?.name || '이름 없음',
+            level: localData.character?.level || 1
+          });
+          uploadedCloudCount++;
+        }
+      }
+
+      if (updatedLocalCount > 0 || uploadedCloudCount > 0) {
+        await refreshSlots();
+        await fetchCloudSlotsInfo(true);
+        setAccountSyncMsg(`계정 자동 동기화 완료 (수신 ${updatedLocalCount} / 업로드 ${uploadedCloudCount})`);
+      } else {
+        setAccountSyncMsg('계정 클라우드와 최신 상태 동기화됨');
+      }
+    } catch (err) {
+      console.warn('[AutoSync] 계정 자동 동기화 실패:', err);
+      setAccountSyncMsg('');
+    } finally {
+      autoSyncInProgressRef.current = false;
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       refreshSlots();
@@ -220,8 +287,16 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
       setImportCode('');
       setCopyFeedback(false);
       setAuthError('');
-      if (currentUser && (getCachedAccessToken() || googleToken)) {
-        performLightweightAutoSyncCheck({ silent: true });
+      if (currentUser) {
+        fetchCloudSlotsInfo(false);
+        if (isSupabaseConfigured()) {
+          performAccountAutoSync(currentUser.uid);
+        }
+        if (getCachedAccessToken() || googleToken) {
+          performLightweightAutoSyncCheck({ silent: true });
+        }
+      } else {
+        setAccountSyncMsg('');
       }
     }
   }, [isOpen, currentUser, googleToken]);
@@ -865,6 +940,20 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
                 >
                   <span>▶ Firebase 콘솔에서 쿼터 확인 및 업그레이드하기 ↗</span>
                 </a>
+              </div>
+            )}
+
+            {accountSyncMsg && (
+              <div className="mb-3 px-3 py-2 bg-cyan-950/30 border border-cyan-500/30 rounded-xl flex items-center justify-between text-[11px] text-cyan-200">
+                <div className="flex items-center gap-2">
+                  {accountSyncMsg.includes('중') ? (
+                    <Loader2 size={13} className="animate-spin text-cyan-400 shrink-0" />
+                  ) : (
+                    <CheckCircle size={13} className="text-emerald-400 shrink-0" />
+                  )}
+                  <span className="font-bold">{accountSyncMsg}</span>
+                </div>
+                <span className="text-[10px] text-slate-400">이미지는 변동 시에만 Drive 동기화</span>
               </div>
             )}
 

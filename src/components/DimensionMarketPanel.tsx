@@ -2,6 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Character, Item, Companion, ItemRarity } from '../types';
 import { auth } from '../services/firebase';
 import { isSupabaseConfigured } from '../services/supabaseClient';
+import { GameStorage } from '../storage';
+import { getSaveSlotKey, optimizeSaveData, compressData } from '../utils';
+import { extractImagesFromSaveData } from '../services/imageAssetSplitService';
+import { uploadLightSaveToSupabase } from '../services/supabaseSaveService';
 import {
     DimensionMarketListing,
     DimensionSettlement,
@@ -54,6 +58,46 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
         if (onNotify) onNotify(type, title, msg);
         else alert(`[${title}] ${msg}`);
     };
+
+    // [리세마라/복사 방지] 경매장 출품·구매·취소·정산 직후 즉시 로컬 세이브 및 Supabase 클라우드 강제 동기화
+    const syncCharacterImmediately = useCallback(async (updatedChar: Character) => {
+        try {
+            const payload = {
+                timestamp: new Date().toISOString(),
+                character: updatedChar,
+                sceneType: 'normal'
+            };
+            const sanitized = optimizeSaveData(payload);
+            await GameStorage.set(getSaveSlotKey(0), sanitized);
+
+            // 동일 캐릭터가 저장된 로컬 슬롯이 있으면 함께 즉시 덮어쓰기
+            const targetSlots: number[] = [];
+            for (let s = 1; s <= 10; s++) {
+                try {
+                    const raw = await GameStorage.get(getSaveSlotKey(s));
+                    if (raw && ((typeof raw === 'string' && raw.includes(updatedChar.name)) || (typeof raw === 'object' && raw?.character?.name === updatedChar.name))) {
+                        targetSlots.push(s);
+                    }
+                } catch {}
+            }
+            if (targetSlots.length === 0) targetSlots.push(1);
+
+            const { lightData } = await extractImagesFromSaveData(sanitized);
+            const compressedLight = await compressData(lightData);
+
+            for (const slotNum of targetSlots) {
+                await GameStorage.set(getSaveSlotKey(slotNum), sanitized);
+                if (supabaseReady && auth.currentUser?.uid) {
+                    await uploadLightSaveToSupabase(auth.currentUser.uid, slotNum, compressedLight, {
+                        characterName: updatedChar.name || '이름 없음',
+                        level: updatedChar.level || 1
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn('[DimensionMarket] 즉시 세이브 동기화 중 오류 (무시 가능):', err);
+        }
+    }, [supabaseReady]);
 
     const loadMarketData = useCallback(async () => {
         if (!supabaseReady) return;
@@ -126,10 +170,12 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
                 });
 
                 const nextInv = character.inventory.filter((_, idx) => idx !== selectedItemIdx);
+                const updatedChar = { ...character, inventory: nextInv };
                 onUpdateCharacter(
-                    { ...character, inventory: nextInv },
+                    updatedChar,
                     `[차원 경매장] '${targetItem.name}'을(를) 출품했습니다. (${goldVal.toLocaleString()}G / 마정석 ${crystalVal}개)`
                 );
+                await syncCharacterImmediately(updatedChar);
                 setSelectedItemIdx(null);
             } else {
                 const activeComp = (character.companions || []).find(c => c.id === selectedCompId);
@@ -154,10 +200,12 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
 
                 const nextActive = (character.companions || []).filter(c => c.id !== selectedCompId);
                 const nextInactive = (character.inactiveCompanions || []).filter(c => c.id !== selectedCompId);
+                const updatedChar = { ...character, companions: nextActive, inactiveCompanions: nextInactive };
                 onUpdateCharacter(
-                    { ...character, companions: nextActive, inactiveCompanions: nextInactive },
+                    updatedChar,
                     `[차원 영입소] 동료 '${targetComp.name}'을(를) 등록했습니다. (${goldVal.toLocaleString()}G / 마정석 ${crystalVal}개)`
                 );
+                await syncCharacterImmediately(updatedChar);
                 setSelectedCompId(null);
             }
 
@@ -221,6 +269,7 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
                 notify('success', '영입 완료', `동료 '${boughtComp.name}'이(가) 합류했습니다!`);
             }
 
+            await syncCharacterImmediately(nextChar);
             await loadMarketData();
         } catch (err: any) {
             notify('failure', '구매 실패', err.message || '매물을 구매하지 못했습니다.');
@@ -236,14 +285,15 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
             const res = await cancelMarketListing(listing.id, currentUid);
             const parsed = JSON.parse(res.payloadJson);
 
+            let nextChar = { ...character };
             if (mode === 'item') {
+                nextChar = { ...character, inventory: [...character.inventory, parsed as Item] };
                 onUpdateCharacter(
-                    { ...character, inventory: [...character.inventory, parsed as Item] },
+                    nextChar,
                     `[차원 경매장] '${res.title}' 출품을 취소하고 인벤토리로 회수했습니다.`
                 );
             } else {
                 const comp = parsed as Companion;
-                const nextChar = { ...character };
                 if ((character.companions || []).length < 6) {
                     nextChar.companions = [...(character.companions || []), comp];
                 } else {
@@ -251,6 +301,7 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
                 }
                 onUpdateCharacter(nextChar, `[차원 영입소] '${res.title}' 등록을 취소하고 회수했습니다.`);
             }
+            await syncCharacterImmediately(nextChar);
             notify('info', '등록 취소 완료', `'${res.title}'을(를) 회수했습니다.`);
             await loadMarketData();
         } catch (err: any) {
@@ -268,20 +319,22 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
             const totalCrystal = settlements.reduce((s, st) => s + Number(st.mana_crystal_amount || 0), 0);
             await claimSettlements(currentUid, settlements.map(s => s.id));
 
+            const nextChar: Character = {
+                ...character,
+                money: character.money + totalGold,
+                base: character.base ? {
+                    ...character.base,
+                    resources: {
+                        ...character.base.resources,
+                        manaCrystal: (character.base.resources.manaCrystal || 0) + totalCrystal
+                    }
+                } : undefined
+            };
             onUpdateCharacter(
-                {
-                    ...character,
-                    money: character.money + totalGold,
-                    base: character.base ? {
-                        ...character.base,
-                        resources: {
-                            ...character.base.resources,
-                            manaCrystal: (character.base.resources.manaCrystal || 0) + totalCrystal
-                        }
-                    } : undefined
-                },
+                nextChar,
                 `[차원 경매장 정산] 판매 대금 ${totalGold.toLocaleString()}G 및 마정석 ${totalCrystal.toLocaleString()}개를 수령했습니다.`
             );
+            await syncCharacterImmediately(nextChar);
             notify('success', '정산 완료', `${totalGold.toLocaleString()}G와 마정석 ${totalCrystal.toLocaleString()}개를 수령했습니다!`);
             await loadMarketData();
         } catch (err: any) {
@@ -533,6 +586,16 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
                                 />
                             </div>
                         </div>
+                        <div className="text-[11px] bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-2 flex items-center justify-between text-slate-400">
+                            <span>예상 정산금 (수수료 10% 차감):</span>
+                            <span className="font-bold text-emerald-400">
+                                {Math.floor((parseInt(priceGold || '0', 10) || 0) * 0.9).toLocaleString()}G
+                                {(parseInt(priceCrystal || '0', 10) || 0) > 0 ? ` / 마정석 ${Math.floor((parseInt(priceCrystal || '0', 10) || 0) * 0.9).toLocaleString()}개` : ''}
+                            </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500">
+                            * 출품 시 실물이 즉시 차감되며 세이브 슬롯에 자동 동기화됩니다.
+                        </p>
                         <button
                             onClick={handlePublishListing}
                             disabled={isLoading || !supabaseReady || (mode === 'item' ? selectedItemIdx === null : !selectedCompId)}

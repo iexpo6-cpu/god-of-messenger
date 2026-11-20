@@ -165,10 +165,16 @@ BEGIN
         buyer_uid = p_buyer_uid
     WHERE id = p_listing_id;
 
+    -- 10% 경매장 거래 수수료 차감 후 판매자 정산함 기록 (자전거래 방어)
     INSERT INTO public.dimension_settlements (
         seller_uid, listing_id, title, gold_amount, mana_crystal_amount, claimed
     ) VALUES (
-        v_row.seller_uid, v_row.id, v_row.title, v_row.price_gold, v_row.price_mana_crystal, FALSE
+        v_row.seller_uid,
+        v_row.id,
+        v_row.title,
+        FLOOR(v_row.price_gold * 0.9)::BIGINT,
+        FLOOR(v_row.price_mana_crystal * 0.9)::BIGINT,
+        FALSE
     );
 
     RETURN QUERY SELECT TRUE, '구매 성공'::TEXT, v_row.storage_path, v_row.price_gold, v_row.price_mana_crystal, v_row.title;

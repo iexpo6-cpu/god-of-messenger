@@ -13,8 +13,12 @@ import {
   uploadSaveToDrive, 
   getValidDriveAccessToken, 
   invalidateDriveAccessToken,
-  getCurrentDriveUser
+  getCurrentDriveUser,
+  uploadMissingImagesToDrive
 } from './googleDriveService';
+import { isSupabaseConfigured } from './supabaseClient';
+import { uploadLightSaveToSupabase } from './supabaseSaveService';
+import { extractImagesFromSaveData } from './imageAssetSplitService';
 
 export interface AutoBackupStatus {
   state: 'idle' | 'syncing' | 'success' | 'error';
@@ -142,9 +146,10 @@ export const triggerSaveAutoBackup = (slotNum: number, preloadedData?: any): voi
       // 1. 구글 로그인 및 유효한 액세스 토큰 취득 (자동 갱신 포함)
       const token = await getValidDriveAccessToken();
       const currentUser = getCurrentDriveUser();
+      const useSupabase = isSupabaseConfigured();
 
-      // 구글 계정이 연동되어 있지 않으면 조용히 건너뜁니다
-      if (!token || !currentUser) {
+      // 로그인 계정이 연동되어 있지 않거나(Supabase 미설정 + Drive 토큰 없음)면 조용히 건너뜁니다
+      if (!currentUser || (!useSupabase && !token)) {
         isBackupRunning = false;
         return;
       }
@@ -153,13 +158,12 @@ export const triggerSaveAutoBackup = (slotNum: number, preloadedData?: any): voi
         state: 'syncing',
         lastSlot: slotNum,
         lastTime: currentStatus.lastTime,
-        message: `슬롯 ${slotNum}의 여정을 구글 드라이브에 안전하게 동기화하고 있습니다...`
+        message: `슬롯 ${slotNum}의 여정을 계정에 안전하게 동기화하고 있습니다...`
       });
 
       // 2. 저장 데이터 확보 (선제 데이터가 없으면 로컬 스토리지에서 비동기 조회)
       let targetData = preloadedData;
       if (!targetData) {
-        // 방금 저장된 슬롯 데이터가 디스크에 안착할 수 있도록 미세 대기
         await new Promise(res => setTimeout(res, 200));
         const key = getSaveSlotKey(slotNum);
         targetData = await GameStorage.get(key);
@@ -169,26 +173,39 @@ export const triggerSaveAutoBackup = (slotNum: number, preloadedData?: any): voi
         throw new Error('백업할 슬롯 데이터를 찾을 수 없습니다.');
       }
 
-      // 3. 데이터 최적화 및 고효율 압축
+      // 3. 데이터 최적화 및 하이브리드 / 레거시 업로드 실행
       const sanitized = optimizeSaveData(targetData);
-      const compressed = await compressData(sanitized);
 
-      // 4. 구글 드라이브 업로드 실행
-      try {
-        await uploadSaveToDrive(slotNum, compressed, token);
-      } catch (uploadError: any) {
-        // 401 인증 만료 등 발생 시 토큰 무효화 후 1회 재검증 재시도
-        const errMsg = String(uploadError?.message || '');
-        if (errMsg.includes('401') || errMsg.includes('인증') || errMsg.includes('토큰')) {
-          invalidateDriveAccessToken();
-          const refreshedToken = await getValidDriveAccessToken();
-          if (refreshedToken) {
-            await uploadSaveToDrive(slotNum, compressed, refreshedToken);
+      if (useSupabase) {
+        const { lightData, images } = await extractImagesFromSaveData(sanitized);
+        if (images.length > 0 && token) {
+          // 이미지 데이터는 변동(신규 추가)이 있는 경우에만 Google Drive에 업로드
+          await uploadMissingImagesToDrive(images, token).catch(err => {
+            console.warn('[배경 백업] 신규 이미지 Google Drive 업로드 스킵:', err);
+          });
+        }
+        const compressedLight = await compressData(lightData);
+        await uploadLightSaveToSupabase(currentUser.uid, slotNum, compressedLight, {
+          characterName: targetData.character?.name || '이름 없음',
+          level: targetData.character?.level || 1
+        });
+      } else {
+        const compressed = await compressData(sanitized);
+        try {
+          await uploadSaveToDrive(slotNum, compressed, token!);
+        } catch (uploadError: any) {
+          const errMsg = String(uploadError?.message || '');
+          if (errMsg.includes('401') || errMsg.includes('인증') || errMsg.includes('토큰')) {
+            invalidateDriveAccessToken();
+            const refreshedToken = await getValidDriveAccessToken();
+            if (refreshedToken) {
+              await uploadSaveToDrive(slotNum, compressed, refreshedToken);
+            } else {
+              throw uploadError;
+            }
           } else {
             throw uploadError;
           }
-        } else {
-          throw uploadError;
         }
       }
 
