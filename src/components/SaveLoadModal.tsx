@@ -17,13 +17,15 @@ import { ResultData } from './ActionResultModal';
 import { 
   googleSignIn, 
   getCachedAccessToken, 
+  getValidDriveAccessToken,
   logoutGoogle, 
   subscribeAuth, 
   getDriveSavesMetaList, 
   uploadSaveToDrive, 
   downloadSaveFromDrive, 
   deleteSaveFromDrive,
-  uploadMissingImagesToDrive
+  uploadMissingImagesToDrive,
+  deduplicateCustomImagesInDrive
 } from '../services/googleDriveService';
 import { isSupabaseConfigured } from '../services/supabaseClient';
 import {
@@ -95,6 +97,8 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
   const [compressingSlot, setCompressingSlot] = useState<number | null>(null);
   const [accountSyncMsg, setAccountSyncMsg] = useState<string>('');
   const autoSyncInProgressRef = useRef<boolean>(false);
+  const [dedupLoading, setDedupLoading] = useState(false);
+  const [dedupResult, setDedupResult] = useState<string>('');
   const [compressionProgress, setCompressionProgress] = useState<{ total: number; current: number; label: string } | null>(null);
   const [compressionResult, setCompressionResult] = useState<{ originalSize: number; compressedSize: number; ratio: number; slotNum: number } | null>(null);
   
@@ -1761,6 +1765,58 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
                             </div>
                         </div>
                     </div>
+
+                    {/* Google Drive 중복 이미지 정리 섹션 */}
+                    {currentUser && (
+                      <div className="bg-slate-950/40 p-6 rounded-3xl border border-slate-800/80 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 text-left">
+                            <Trash2 className="text-cyan-400 shrink-0" size={18} />
+                            <div>
+                              <h4 className="text-sm font-bold text-white">Google Drive 중복 이미지 정리</h4>
+                              <p className="text-[10px] text-slate-500 mt-0.5">
+                                드라이브 `custom_images` 폴더에 동일 해시로 중복 저장된 이미지 사본을 1개만 남기고 일괄 삭제합니다.
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={dedupLoading}
+                            onClick={async () => {
+                              setDedupLoading(true);
+                              setDedupResult('');
+                              try {
+                                const token = getCachedAccessToken() || googleToken || (await getValidDriveAccessToken());
+                                if (!token) {
+                                  setDedupResult('Google Drive 인증 토큰이 필요합니다. 다시 로그인 후 시도해 주세요.');
+                                  return;
+                                }
+                                const res = await deduplicateCustomImagesInDrive(token);
+                                const freedMb = (res.freedBytes / (1024 * 1024)).toFixed(2);
+                                setDedupResult(
+                                  res.deletedDuplicates > 0
+                                    ? `중복 이미지 ${res.deletedDuplicates}개 삭제 완료! (고유 이미지 ${res.uniqueFiles}개 유지, 약 ${freedMb}MB 확보)`
+                                    : `중복 이미지가 없습니다. (현재 고유 이미지 ${res.uniqueFiles}개 깔끔하게 유지 중)`
+                                );
+                              } catch (e: any) {
+                                setDedupResult(`정리 실패: ${e?.message || '오류가 발생했습니다.'}`);
+                              } finally {
+                                setDedupLoading(false);
+                              }
+                            }}
+                            className="px-3.5 py-2 rounded-xl bg-cyan-900/50 hover:bg-cyan-800/70 border border-cyan-500/40 text-cyan-200 text-xs font-bold shrink-0 flex items-center gap-1.5 disabled:opacity-50"
+                          >
+                            {dedupLoading ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                            {dedupLoading ? '정리 중...' : '중복 정리'}
+                          </button>
+                        </div>
+                        {dedupResult && (
+                          <div className="px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-[11px] text-cyan-200 font-medium text-left">
+                            {dedupResult}
+                          </div>
+                        )}
+                      </div>
+                    )}
                 </div>
             )}
 

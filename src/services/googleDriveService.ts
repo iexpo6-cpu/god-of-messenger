@@ -572,9 +572,35 @@ export const findOrCreateCustomImagesFolder = async (accessToken: string): Promi
   return created.id;
 };
 
+const deleteDriveFilesBatch = async (fileIds: string[], accessToken: string): Promise<number> => {
+  if (!fileIds.length) return 0;
+  let deleted = 0;
+  const BATCH_SIZE = 5;
+  for (let i = 0; i < fileIds.length; i += BATCH_SIZE) {
+    const batch = fileIds.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (id) => {
+        try {
+          const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+          });
+          if (res.ok || res.status === 404) {
+            deleted++;
+          }
+        } catch (err) {
+          console.warn(`[GoogleDrive] 중복 파일(${id}) 삭제 실패:`, err);
+        }
+      })
+    );
+  }
+  return deleted;
+};
+
 export const listCustomImageFilesInDrive = async (accessToken: string): Promise<Record<string, string>> => {
   const folderId = await findOrCreateCustomImagesFolder(accessToken);
   const fileMap: Record<string, string> = {};
+  const duplicateIds: string[] = [];
   let pageToken: string | undefined;
 
   do {
@@ -588,14 +614,84 @@ export const listCustomImageFilesInDrive = async (accessToken: string): Promise<
     (data.files || []).forEach((f: any) => {
       if (f?.name && f?.id) {
         const hash = String(f.name).replace(/\.json$/i, '');
-        fileMap[hash] = f.id;
+        if (fileMap[hash]) {
+          // 동일 해시 파일이 이미 존재하면 중복 사본으로 수집
+          duplicateIds.push(f.id);
+        } else {
+          fileMap[hash] = f.id;
+        }
       }
     });
     pageToken = data.nextPageToken;
   } while (pageToken);
 
+  // 동일 해시 중복 파일이 발견되면 백그라운드에서 자동 삭제
+  if (duplicateIds.length > 0) {
+    deleteDriveFilesBatch(duplicateIds, accessToken).catch(() => {});
+  }
+
   return fileMap;
 };
+
+/**
+ * custom_images 폴더 내 동일 해시(<hash>.json) 중복 사본을 일괄 검사하여 1개만 남기고 삭제합니다.
+ */
+export const deduplicateCustomImagesInDrive = async (
+  accessToken: string
+): Promise<{
+  totalFiles: number;
+  uniqueFiles: number;
+  deletedDuplicates: number;
+  freedBytes: number;
+}> => {
+  const folderId = await findOrCreateCustomImagesFolder(accessToken);
+  const seenMap = new Map<string, string>();
+  const duplicateIds: string[] = [];
+  let totalFiles = 0;
+  let freedBytes = 0;
+  let pageToken: string | undefined;
+
+  do {
+    const query = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+    const url = `https://www.googleapis.com/drive/v3/files?q=${query}&pageSize=1000&fields=nextPageToken,files(id,name,size)${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!res.ok) {
+      throw new Error(`드라이브 이미지 목록 조회 실패 (${res.status})`);
+    }
+    const data = await res.json();
+    (data.files || []).forEach((f: any) => {
+      if (!f?.name || !f?.id) return;
+      totalFiles++;
+      const hash = String(f.name).replace(/\.json$/i, '');
+      if (seenMap.has(hash)) {
+        duplicateIds.push(f.id);
+        freedBytes += Number(f.size || 0);
+      } else {
+        seenMap.set(hash, f.id);
+      }
+    });
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+
+  const deletedDuplicates = await deleteDriveFilesBatch(duplicateIds, accessToken);
+
+  // 로컬 업로드 캐시도 최신 고유 해시 목록과 동기화
+  const localUploaded = getUploadedHashesCache();
+  seenMap.forEach((_id, hash) => localUploaded.add(hash));
+  saveUploadedHashesCache(localUploaded);
+
+  return {
+    totalFiles,
+    uniqueFiles: seenMap.size,
+    deletedDuplicates,
+    freedBytes
+  };
+};
+
+// 동일 해시 동시 중복 업로드 방지 락
+const inFlightImageHashes = new Set<string>();
 
 const UPLOADED_HASHES_CACHE_KEY = 'shinryoku_gdrive_uploaded_hashes';
 
@@ -630,66 +726,71 @@ export const uploadMissingImagesToDrive = async (
 ): Promise<{ uploaded: number; skipped: number }> => {
   if (!images.length) return { uploaded: 0, skipped: 0 };
 
-  // 1. 로컬 업로드 완료 캐시 확인: 변동된 신규 이미지가 없으면 Google Drive API 호출 자체를 생략
+  // 1. 로컬 업로드 완료 캐시 + 진행 중 락 확인: 변동된 신규 이미지가 없으면 Google Drive API 호출 자체를 생략
   const localUploaded = getUploadedHashesCache();
-  const candidates = images.filter(img => !localUploaded.has(img.hash));
+  const candidates = images.filter(img => !localUploaded.has(img.hash) && !inFlightImageHashes.has(img.hash));
   if (candidates.length === 0) {
     return { uploaded: 0, skipped: images.length };
   }
 
-  const folderId = await findOrCreateCustomImagesFolder(accessToken);
-  const existingMap = await listCustomImageFilesInDrive(accessToken);
-  Object.keys(existingMap).forEach(h => localUploaded.add(h));
-  // 기존 Drive 목록 확인 즉시 캐시 저장 (이후 배치 중단 시에도 재조회 방지)
-  saveUploadedHashesCache(localUploaded);
-
-  const missing = candidates.filter(img => !existingMap[img.hash]);
-  const skipped = images.length - missing.length;
-  if (missing.length === 0) {
-    return { uploaded: 0, skipped };
-  }
-
-  let uploaded = 0;
-  const BATCH_SIZE = 4;
-
-  for (let i = 0; i < missing.length; i += BATCH_SIZE) {
-    const batch = missing.slice(i, i + BATCH_SIZE);
-    await Promise.all(
-      batch.map(async (item) => {
-        const metadata = {
-          name: `${item.hash}.json`,
-          parents: [folderId],
-          mimeType: 'application/json'
-        };
-        const boundary = '-------314159265358979323846';
-        const body =
-          `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
-          JSON.stringify(metadata) +
-          `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
-          JSON.stringify({ hash: item.hash, dataUrl: item.dataUrl }) +
-          `\r\n--${boundary}--`;
-
-        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': `multipart/related; boundary="${boundary}"`
-          },
-          body
-        });
-        if (!res.ok) {
-          throw new Error(`이미지(${item.hash.slice(0, 8)}) 드라이브 업로드 실패`);
-        }
-        localUploaded.add(item.hash);
-        uploaded++;
-        onProgress?.(uploaded, missing.length);
-      })
-    );
-    // 배치 완료마다 즉시 캐시 저장 (중간 타임아웃/중단 시에도 완료된 이미지는 재업로드 안 함)
+  candidates.forEach(img => inFlightImageHashes.add(img.hash));
+  try {
+    const folderId = await findOrCreateCustomImagesFolder(accessToken);
+    const existingMap = await listCustomImageFilesInDrive(accessToken);
+    Object.keys(existingMap).forEach(h => localUploaded.add(h));
+    // 기존 Drive 목록 확인 즉시 캐시 저장 (이후 배치 중단 시에도 재조회 방지)
     saveUploadedHashesCache(localUploaded);
-  }
 
-  return { uploaded, skipped };
+    const missing = candidates.filter(img => !existingMap[img.hash]);
+    const skipped = images.length - missing.length;
+    if (missing.length === 0) {
+      return { uploaded: 0, skipped };
+    }
+
+    let uploaded = 0;
+    const BATCH_SIZE = 4;
+
+    for (let i = 0; i < missing.length; i += BATCH_SIZE) {
+      const batch = missing.slice(i, i + BATCH_SIZE);
+      await Promise.all(
+        batch.map(async (item) => {
+          const metadata = {
+            name: `${item.hash}.json`,
+            parents: [folderId],
+            mimeType: 'application/json'
+          };
+          const boundary = '-------314159265358979323846';
+          const body =
+            `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+            JSON.stringify(metadata) +
+            `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+            JSON.stringify({ hash: item.hash, dataUrl: item.dataUrl }) +
+            `\r\n--${boundary}--`;
+
+          const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': `multipart/related; boundary="${boundary}"`
+            },
+            body
+          });
+          if (!res.ok) {
+            throw new Error(`이미지(${item.hash.slice(0, 8)}) 드라이브 업로드 실패`);
+          }
+          localUploaded.add(item.hash);
+          uploaded++;
+          onProgress?.(uploaded, missing.length);
+        })
+      );
+      // 배치 완료마다 즉시 캐시 저장 (중간 타임아웃/중단 시에도 완료된 이미지는 재업로드 안 함)
+      saveUploadedHashesCache(localUploaded);
+    }
+
+    return { uploaded, skipped };
+  } finally {
+    candidates.forEach(img => inFlightImageHashes.delete(img.hash));
+  }
 };
 
 export const downloadImagesFromDrive = async (
