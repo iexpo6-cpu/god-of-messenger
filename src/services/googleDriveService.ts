@@ -532,3 +532,159 @@ export const downloadVfxFileFromDrive = async (fileName: string, accessToken: st
     throw error;
   }
 };
+
+// ============================================================================
+// [하이브리드 분할 저장용] Google Drive custom_images 폴더 관리 API
+// ============================================================================
+
+export const findOrCreateCustomImagesFolder = async (accessToken: string): Promise<string> => {
+  const parentId = await findOrCreateAppFolder(accessToken);
+  const folderName = 'custom_images';
+  const query = encodeURIComponent(`'${parentId}' in parents and name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+
+  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  if (!searchRes.ok) {
+    throw new Error(`custom_images 폴더 검색 실패: ${await searchRes.text()}`);
+  }
+  const searchData = await searchRes.json();
+  if (searchData.files && searchData.files.length > 0) {
+    return searchData.files[0].id;
+  }
+
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: folderName,
+      parents: [parentId],
+      mimeType: 'application/vnd.google-apps.folder'
+    })
+  });
+  if (!createRes.ok) {
+    throw new Error(`custom_images 폴더 생성 실패: ${await createRes.text()}`);
+  }
+  const created = await createRes.json();
+  return created.id;
+};
+
+export const listCustomImageFilesInDrive = async (accessToken: string): Promise<Record<string, string>> => {
+  const folderId = await findOrCreateCustomImagesFolder(accessToken);
+  const fileMap: Record<string, string> = {};
+  let pageToken: string | undefined;
+
+  do {
+    const query = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+    const url = `https://www.googleapis.com/drive/v3/files?q=${query}&pageSize=1000&fields=nextPageToken,files(id,name)${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+    if (!res.ok) break;
+    const data = await res.json();
+    (data.files || []).forEach((f: any) => {
+      if (f?.name && f?.id) {
+        const hash = String(f.name).replace(/\.json$/i, '');
+        fileMap[hash] = f.id;
+      }
+    });
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+
+  return fileMap;
+};
+
+export const uploadMissingImagesToDrive = async (
+  images: Array<{ hash: string; dataUrl: string }>,
+  accessToken: string,
+  onProgress?: (done: number, total: number) => void
+): Promise<{ uploaded: number; skipped: number }> => {
+  if (!images.length) return { uploaded: 0, skipped: 0 };
+  const folderId = await findOrCreateCustomImagesFolder(accessToken);
+  const existingMap = await listCustomImageFilesInDrive(accessToken);
+  const missing = images.filter(img => !existingMap[img.hash]);
+  const skipped = images.length - missing.length;
+
+  let uploaded = 0;
+  const BATCH_SIZE = 4;
+
+  for (let i = 0; i < missing.length; i += BATCH_SIZE) {
+    const batch = missing.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (item) => {
+        const metadata = {
+          name: `${item.hash}.json`,
+          parents: [folderId],
+          mimeType: 'application/json'
+        };
+        const boundary = '-------314159265358979323846';
+        const body =
+          `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+          JSON.stringify(metadata) +
+          `\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+          JSON.stringify({ hash: item.hash, dataUrl: item.dataUrl }) +
+          `\r\n--${boundary}--`;
+
+        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': `multipart/related; boundary="${boundary}"`
+          },
+          body
+        });
+        if (!res.ok) {
+          throw new Error(`이미지(${item.hash.slice(0, 8)}) 드라이브 업로드 실패`);
+        }
+        uploaded++;
+        onProgress?.(uploaded, missing.length);
+      })
+    );
+  }
+
+  return { uploaded, skipped };
+};
+
+export const downloadImagesFromDrive = async (
+  hashes: string[],
+  accessToken: string,
+  onProgress?: (done: number, total: number) => void
+): Promise<Record<string, string>> => {
+  const result: Record<string, string> = {};
+  if (!hashes.length) return result;
+
+  const existingMap = await listCustomImageFilesInDrive(accessToken);
+  const targets = hashes.filter(h => Boolean(existingMap[h]));
+  let done = 0;
+  const BATCH_SIZE = 5;
+
+  for (let i = 0; i < targets.length; i += BATCH_SIZE) {
+    const batch = targets.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (hash) => {
+        const fileId = existingMap[hash];
+        try {
+          const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+          });
+          if (res.ok) {
+            const parsed = await res.json();
+            if (parsed?.dataUrl) {
+              result[hash] = parsed.dataUrl;
+            }
+          }
+        } catch (err) {
+          console.warn(`[GoogleDrive] 이미지(${hash.slice(0, 8)}) 복원 스킵:`, err);
+        } finally {
+          done++;
+          onProgress?.(done, targets.length);
+        }
+      })
+    );
+  }
+
+  return result;
+};

@@ -22,8 +22,19 @@ import {
   getDriveSavesMetaList, 
   uploadSaveToDrive, 
   downloadSaveFromDrive, 
-  deleteSaveFromDrive 
+  deleteSaveFromDrive,
+  uploadMissingImagesToDrive
 } from '../services/googleDriveService';
+import { isSupabaseConfigured } from '../services/supabaseClient';
+import {
+  getSupabaseSavesMetaList,
+  uploadLightSaveToSupabase,
+  downloadLightSaveFromSupabase
+} from '../services/supabaseSaveService';
+import {
+  extractImagesFromSaveData,
+  restoreImagesToSaveData
+} from '../services/imageAssetSplitService';
 import { 
   isAutoBackupEnabled, 
   setAutoBackupEnabled, 
@@ -171,10 +182,31 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
 
   const fetchCloudSlotsInfo = async (force: boolean = false) => {
     const token = getCachedAccessToken() || googleToken;
-    if (!currentUser || !token) return;
+    if (!currentUser) return;
     try {
-      const cloudInfo = await getDriveSavesMetaList(token);
-      setCloudSlotsInfo(cloudInfo);
+      const merged: Record<string, any> = {};
+      if (token) {
+        try {
+          const driveInfo = await getDriveSavesMetaList(token);
+          Object.assign(merged, driveInfo);
+        } catch (err) {
+          console.warn("Google Drive meta fetch skipped:", err);
+        }
+      }
+      if (isSupabaseConfigured()) {
+        const sbInfo = await getSupabaseSavesMetaList(currentUser.uid);
+        Object.entries(sbInfo).forEach(([slotKey, meta]) => {
+          merged[slotKey] = {
+            ...(merged[slotKey] || {}),
+            fileId: `supabase:${slotKey}`,
+            modifiedTime: meta.timestampDisplay,
+            characterName: meta.characterName,
+            level: meta.level,
+            source: 'supabase'
+          };
+        });
+      }
+      setCloudSlotsInfo(merged);
     } catch (e) {
       console.warn("Cloud slots info fetch skipped or failed", e);
     }
@@ -385,27 +417,49 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
 
   const initiateCloudPullPreview = async (slotNum: number) => {
     const token = getCachedAccessToken() || googleToken;
-    if (!currentUser || !token) {
-      showResult('warning', '권한 부족', '구글 드라이브 연동 로그인이 필요합니다.');
+    const useSupabase = isSupabaseConfigured();
+    if (!currentUser || (!useSupabase && !token)) {
+      showResult('warning', '권한 부족', '클라우드 연동 로그인이 필요합니다.');
       return;
     }
 
     setIsProcessing(true);
-    setCloudProgress({ current: 0, total: 2, label: `슬롯 ${slotNum}의 백업 조회 대기 중` });
+    setCloudProgress({ current: 0, total: 3, label: `슬롯 ${slotNum}의 백업 조회 대기 중` });
     try {
-      setCloudProgress({ current: 1, total: 2, label: `슬롯 ${slotNum}의 백업 데이터 내려받는 중` });
-      const payload = await downloadSaveFromDrive(slotNum, token);
-      if (!payload) {
-        showResult('info', '데이터 없음', `슬롯 ${slotNum}에 해당하는 구글 드라이브 백업 데이터가 없습니다.`);
+      let finalData: any = null;
+      let restoredTimestamp: string | undefined;
+
+      if (useSupabase) {
+        setCloudProgress({ current: 1, total: 3, label: `Supabase에서 슬롯 ${slotNum} 경량 데이터 내려받는 중` });
+        const sbCompressed = await downloadLightSaveFromSupabase(currentUser.uid, slotNum);
+        if (sbCompressed) {
+          setCloudProgress({ current: 2, total: 3, label: `압축 해제 및 Google Drive 이미지 복원 중` });
+          const parsedLight = await decompressData(sbCompressed);
+          const { restoredData } = await restoreImagesToSaveData(parsedLight, token);
+          finalData = restoredData;
+          restoredTimestamp = parsedLight?.timestamp;
+        }
+      }
+
+      if (!finalData && token) {
+        setCloudProgress({ current: 1, total: 3, label: `구글 드라이브에서 슬롯 ${slotNum} 백업 내려받는 중` });
+        const payload = await downloadSaveFromDrive(slotNum, token);
+        if (payload) {
+          setCloudProgress({ current: 2, total: 3, label: `백업 세이브 파일 압축 해제 중` });
+          finalData = await decompressData(payload.compressedData);
+          restoredTimestamp = payload.timestamp || finalData?.timestamp;
+        }
+      }
+
+      if (!finalData) {
+        showResult('info', '데이터 없음', `슬롯 ${slotNum}에 해당하는 클라우드 백업 데이터가 없습니다.`);
         return;
       }
 
-      setCloudProgress({ current: 2, total: 2, label: `백업 세이브 파일 압축 해제 중` });
-      const finalData = await decompressData(payload.compressedData);
-
+      setCloudProgress({ current: 3, total: 3, label: `불러오기 미리보기 준비 완료` });
       const restoredSaveData = {
         ...finalData,
-        timestamp: payload.timestamp || finalData.timestamp || new Date().toISOString(),
+        timestamp: restoredTimestamp || finalData.timestamp || new Date().toISOString(),
         character: finalData.character,
         messages: Array.isArray(finalData.messages) ? finalData.messages : [],
         choices: Array.isArray(finalData.choices) ? finalData.choices : [],
@@ -419,7 +473,7 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
         newData: restoredSaveData as any
       });
     } catch (e: any) {
-      showResult('failure', '구글 드라이브 데이터를 불러오지 못했습니다', e.message);
+      showResult('failure', '클라우드 데이터를 불러오지 못했습니다', e.message);
     } finally {
       setIsProcessing(false);
       setCloudProgress(null);
@@ -428,28 +482,55 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
 
   const handlePushToCloudConfirmed = async (slotNum: number) => {
     const token = getCachedAccessToken() || googleToken;
-    if (!currentUser || !token) {
-      showResult('warning', '권한 부족', '구글 드라이브 연동 로그인이 필요합니다.');
+    const useSupabase = isSupabaseConfigured();
+    if (!currentUser || (!useSupabase && !token)) {
+      showResult('warning', '권한 부족', '클라우드 연동 로그인이 필요합니다.');
       return;
     }
     const data = slots[slotNum - 1];
     if (!data) return;
 
     setIsProcessing(true);
-    setCloudProgress({ current: 0, total: 3, label: `슬롯 ${slotNum} 데이터 최적화 및 압축 중` });
+    setCloudProgress({ current: 0, total: 4, label: `슬롯 ${slotNum} 데이터 최적화 중` });
     try {
       const sanitizedData = optimizeSaveData(data);
-      const compressed = await compressData(sanitizedData);
-      setCloudProgress({ current: 1, total: 3, label: `기존 구글 드라이브 백업 정리 중` });
-      setCloudProgress({ current: 2, total: 3, label: `슬롯 ${slotNum} 데이터를 신의사자rpg 폴더로 업로드 중` });
-      await uploadSaveToDrive(slotNum, compressed, token);
-      setCloudProgress({ current: 3, total: 3, label: `백업 슬롯 목록 갱신 중` });
-      showResult('success', '구글 드라이브 백업 완료', `슬롯 ${slotNum}의 여정을 사용자님의 구글 드라이브에 안전하게 백업했습니다.`);
-      
+
+      if (useSupabase) {
+        setCloudProgress({ current: 1, total: 4, label: `커스텀 이미지 분리 추출 중` });
+        const { lightData, images } = await extractImagesFromSaveData(sanitizedData);
+
+        if (images.length > 0 && token) {
+          setCloudProgress({ current: 2, total: 4, label: `신규 이미지(${images.length}건) Google Drive 동기화 중` });
+          await uploadMissingImagesToDrive(images, token);
+        } else {
+          setCloudProgress({ current: 2, total: 4, label: `이미지 로컬 캐시 동기화 완료` });
+        }
+
+        setCloudProgress({ current: 3, total: 4, label: `경량 텍스트 세이브를 Supabase에 저장 중` });
+        const compressedLight = await compressData(lightData);
+        await uploadLightSaveToSupabase(currentUser.uid, slotNum, compressedLight, {
+          characterName: data.character?.name || '이름 없음',
+          level: data.character?.level || 1
+        });
+
+        setCloudProgress({ current: 4, total: 4, label: `백업 슬롯 목록 갱신 중` });
+        showResult(
+          'success',
+          '하이브리드 클라우드 백업 완료',
+          `슬롯 ${slotNum}의 이미지(Google Drive)와 진행 데이터(Supabase)를 안전하게 분할 저장했습니다.${!token && images.length > 0 ? ' (※ Google Drive 토큰이 없어 신규 이미지는 로컬 캐시에만 보관되었습니다.)' : ''}`
+        );
+      } else {
+        const compressed = await compressData(sanitizedData);
+        setCloudProgress({ current: 2, total: 4, label: `슬롯 ${slotNum} 데이터를 신의사자rpg 폴더로 업로드 중` });
+        await uploadSaveToDrive(slotNum, compressed, token!);
+        setCloudProgress({ current: 4, total: 4, label: `백업 슬롯 목록 갱신 중` });
+        showResult('success', '구글 드라이브 백업 완료', `슬롯 ${slotNum}의 여정을 사용자님의 구글 드라이브에 안전하게 백업했습니다.`);
+      }
+
       await fetchCloudSlotsInfo(true);
       setPreviewState(null);
     } catch (e: any) {
-      showResult('failure', '구글 드라이브 저장 실패', e.message);
+      showResult('failure', '클라우드 저장 실패', e.message);
     } finally {
       setIsProcessing(false);
       setCloudProgress(null);

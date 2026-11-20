@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Character, Companion, ItemRarity, JobType } from '../types';
-import { X, UserPlus, Zap, Coins, Sparkles, Loader2, Copy, CheckCircle, Users, ClipboardPaste, Crown, User, ShieldCheck, Star, Globe, AlertTriangle, FileText, ChevronDown, ChevronUp, Link } from 'lucide-react';
+import { X, UserPlus, Zap, Coins, Sparkles, Loader2, Copy, CheckCircle, Users, ClipboardPaste, Crown, User, ShieldCheck, Star, Globe, AlertTriangle, FileText, ChevronDown, ChevronUp, Link, Store } from 'lucide-react';
 import { generateSummonCode, parseSummonCode, assignRandomCombatStyle, generateDefaultVisualUrl } from '../utils';
 import { publishDimensionShare, resolveDimensionCode } from '../services/dimensionShareService';
 import { remapCompanionRelationships } from '../services/playerCompanionSwitchService';
 import ActionResultModal, { ResultData } from './ActionResultModal';
+import { DimensionMarketPanel } from './DimensionMarketPanel';
 import { GoogleDriveAuthPanel } from './GoogleDriveAuthPanel';
 import { findOrCreateAppFolder, uploadTextFileToFolder, shareFileWithAnyone, getFileWebViewLink, fetchFileContentFromUrl, getCachedAccessToken } from '../services/googleDriveService';
 
@@ -16,7 +17,7 @@ interface Props {
 }
 
 const CommunicationSummonModal: React.FC<Props> = ({ isOpen, onClose, character, onUpdateCharacter }) => {
-    const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
+    const [activeTab, setActiveTab] = useState<'market' | 'export' | 'import'>('market');
     const [selectedTargetId, setSelectedTargetId] = useState<string>('player');
     const [successorId, setSuccessorId] = useState<string | null>(null);
     const [summonCode, setSummonCode] = useState('');
@@ -439,22 +440,35 @@ const CommunicationSummonModal: React.FC<Props> = ({ isOpen, onClose, character,
                 {/* Tabs */}
                 <div className="flex bg-slate-950 border-b border-slate-800 shrink-0">
                     <button 
+                        onClick={() => setActiveTab('market')} 
+                        className={`flex-1 py-3 sm:py-3.5 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'market' ? 'text-indigo-400 border-indigo-500 bg-slate-900' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                    >
+                        <Store size={14}/> 차원 영입소
+                    </button>
+                    <button 
                         onClick={() => setActiveTab('export')} 
                         className={`flex-1 py-3 sm:py-3.5 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'export' ? 'text-amber-400 border-amber-500 bg-slate-900' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                     >
-                        <Sparkles size={14}/> 구글 드라이브에 등록
+                        <Sparkles size={14}/> 코드 발급
                     </button>
                     <button 
                         onClick={() => setActiveTab('import')} 
                         className={`flex-1 py-3 sm:py-3.5 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'import' ? 'text-indigo-400 border-indigo-500 bg-slate-900' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                     >
-                        <Globe size={14}/> 차원 소환
+                        <Globe size={14}/> 코드 소환
                     </button>
                 </div>
 
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 sm:p-6 space-y-4">
-                    {activeTab === 'export' ? (
+                    {activeTab === 'market' ? (
+                        <DimensionMarketPanel
+                            mode="companion"
+                            character={character}
+                            onUpdateCharacter={onUpdateCharacter}
+                            onNotify={(type, title, message) => setResultData({ type, title, message, items: [] })}
+                        />
+                    ) : activeTab === 'export' ? (
                         <div className="space-y-4 animate-in slide-in-from-left-2">
                             <div className="bg-slate-950/50 p-3 sm:p-4 rounded-xl border border-slate-800">
                                 <h3 className="text-xs font-bold text-slate-400 uppercase mb-2.5 flex items-center gap-1.5">

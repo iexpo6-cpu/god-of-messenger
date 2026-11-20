@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from './firebase';
+import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
 
 export type DimensionShareType = 'battle' | 'summon' | 'item';
 
@@ -20,6 +21,44 @@ export const publishDimensionShare = async (type: DimensionShareType, payload: s
     // 접두사 결정 (BT: 배틀, SM: 소환, IT: 아이템)
     const prefix = type === 'battle' ? 'BT' : type === 'summon' ? 'SM' : 'IT';
     const shortCode = generateShortId(prefix);
+
+    if (isSupabaseConfigured()) {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+            try {
+                let storagePath: string | null = null;
+                let inlineData: string | null = null;
+                const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+                if (payload.length > 100000) {
+                    storagePath = `shares/${shortCode}.txt`;
+                    const blob = new Blob([payload], { type: 'text/plain;charset=utf-8' });
+                    const { error: upErr } = await supabase.storage
+                        .from('dimension-shares')
+                        .upload(storagePath, blob, { upsert: true, contentType: 'text/plain;charset=utf-8' });
+                    if (upErr) throw upErr;
+                } else {
+                    inlineData = payload;
+                }
+
+                const { error: dbErr } = await supabase
+                    .from('dimension_shares')
+                    .insert({
+                        short_code: shortCode,
+                        type,
+                        storage_path: storagePath,
+                        inline_data: inlineData,
+                        expires_at: expiresAt
+                    });
+                if (dbErr) throw dbErr;
+
+                console.log(`[DimensionShare] Registered ${type} with code ${shortCode} to Supabase.`);
+                return shortCode;
+            } catch (sbErr) {
+                console.warn('[DimensionShare] Supabase publish failed, falling back to Firestore:', sbErr);
+            }
+        }
+    }
 
     try {
         const shareRef = doc(db, 'dimension_shares', shortCode);
@@ -71,6 +110,43 @@ export const resolveDimensionCode = async (input: string): Promise<string> => {
     const isShortFormat = /^[A-Z0-9]{2}-[A-Z0-9]{4,10}$/i.test(trimmed) || (trimmed.length <= 16 && !trimmed.includes('{') && !trimmed.includes('"') && !trimmed.includes('='));
 
     if (isShortFormat) {
+        if (isSupabaseConfigured()) {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                try {
+                    const { data: row, error } = await supabase
+                        .from('dimension_shares')
+                        .select('storage_path, inline_data, expires_at')
+                        .eq('short_code', upper)
+                        .maybeSingle();
+
+                    if (!error && row) {
+                        if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) {
+                            throw new Error(`만료된 차원 숏코드(${upper})입니다.`);
+                        }
+                        let rawData = row.inline_data || '';
+                        if (!rawData && row.storage_path) {
+                            const { data: blob, error: dlErr } = await supabase.storage
+                                .from('dimension-shares')
+                                .download(row.storage_path);
+                            if (dlErr || !blob) throw new Error('차원 교신 데이터를 다운로드하지 못했습니다.');
+                            rawData = await blob.text();
+                        }
+                        rawData = String(rawData).trim();
+                        if (rawData) {
+                            if (rawData.startsWith('{') || rawData.startsWith('[')) {
+                                return btoa(unescape(encodeURIComponent(rawData)));
+                            }
+                            return rawData;
+                        }
+                    }
+                } catch (sbErr: any) {
+                    if (sbErr?.message?.includes('만료된')) throw sbErr;
+                    console.warn('[DimensionShare] Supabase lookup fallback to Firestore:', sbErr);
+                }
+            }
+        }
+
         try {
             const shareRef = doc(db, 'dimension_shares', upper);
             const snapshot = await getDoc(shareRef);

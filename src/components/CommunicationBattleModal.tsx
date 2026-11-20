@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Character, Enemy } from '../types';
-import { X, Sword, Copy, ClipboardPaste, ShieldAlert, Loader2, Zap, CheckCircle, Coins, Sparkles, FileText, ChevronDown, ChevronUp, Link } from 'lucide-react';
-import { generateBattleCode, parseBattleCode } from '../utils';
+import { X, Sword, Copy, ClipboardPaste, ShieldAlert, Loader2, Zap, CheckCircle, Coins, Sparkles, FileText, ChevronDown, ChevronUp, Link, Users, RefreshCw, Trophy, AlertTriangle } from 'lucide-react';
+import { generateBattleCode, parseBattleCode, calculateFinalStats } from '../utils';
 import { publishDimensionShare, resolveDimensionCode } from '../services/dimensionShareService';
+import { auth } from '../services/firebase';
+import { isSupabaseConfigured } from '../services/supabaseClient';
+import {
+    DimensionBattleRoster,
+    fetchBattleRosters,
+    upsertMyBattleRoster,
+    downloadBattleRosterPayload
+} from '../services/dimensionMarketService';
 import { GoogleDriveAuthPanel } from './GoogleDriveAuthPanel';
 import { findOrCreateAppFolder, uploadTextFileToFolder, shareFileWithAnyone, getFileWebViewLink, fetchFileContentFromUrl, getCachedAccessToken } from '../services/googleDriveService';
 
@@ -15,7 +23,10 @@ interface Props {
 }
 
 const CommunicationBattleModal: React.FC<Props> = ({ isOpen, onClose, character, onStartBattle, onUpdateCharacter }) => {
-    const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
+    const [activeTab, setActiveTab] = useState<'rosters' | 'export' | 'import'>('rosters');
+    const [rosters, setRosters] = useState<DimensionBattleRoster[]>([]);
+    const [rostersLoading, setRostersLoading] = useState(false);
+    const [rosterSearch, setRosterSearch] = useState('');
     const [battleCode, setBattleCode] = useState('');
     const [rawFullCode, setRawFullCode] = useState('');
     const [showFullCode, setShowFullCode] = useState(false);
@@ -30,11 +41,86 @@ const CommunicationBattleModal: React.FC<Props> = ({ isOpen, onClose, character,
     const [driveShareLink, setDriveShareLink] = useState('');
     const [driveCopyFeedback, setDriveCopyFeedback] = useState(false);
 
+    const supabaseReady = isSupabaseConfigured();
+    const currentUid = auth.currentUser?.uid || character.id || 'local_player';
+
+    const loadRosters = async () => {
+        if (!supabaseReady) return;
+        setRostersLoading(true);
+        try {
+            const list = await fetchBattleRosters();
+            setRosters(list);
+        } catch (err) {
+            console.warn('[BattleRosters] 로드 실패:', err);
+        } finally {
+            setRostersLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (isOpen) {
             setDriveToken(getCachedAccessToken());
+            if (supabaseReady) loadRosters();
         }
     }, [isOpen]);
+
+    const handleRegisterMyRoster = async () => {
+        if (!supabaseReady) {
+            alert('Supabase가 설정되지 않았습니다 (.env 확인 필요).');
+            return;
+        }
+        setRostersLoading(true);
+        try {
+            const fullCode = generateBattleCode(character);
+            const { finalStats } = calculateFinalStats(character);
+            const cp = Math.floor((finalStats.str + finalStats.int + finalStats.def + finalStats.wis + finalStats.agi + finalStats.ctrl) * 10 + (finalStats.maxHp / 5));
+            await upsertMyBattleRoster({
+                ownerUid: currentUid,
+                challengerName: character.name,
+                level: character.level,
+                combatPower: cp,
+                shinryokuType: character.shinryokuType || '무속성',
+                payloadJson: fullCode
+            });
+            alert('내 파티가 차원 배틀 목록에 성공적으로 등록/갱신되었습니다!');
+            await loadRosters();
+        } catch (err: any) {
+            alert(err.message || '파티 등록 실패');
+        } finally {
+            setRostersLoading(false);
+        }
+    };
+
+    const handleChallengeRoster = async (roster: DimensionBattleRoster) => {
+        if (character.money < BATTLE_GOLD_COST) {
+            alert(`골드가 부족합니다. (필요: ${BATTLE_GOLD_COST.toLocaleString()}G)`);
+            return;
+        }
+        const currentCrystals = character.base?.resources.manaCrystal || 0;
+        if (currentCrystals < BATTLE_CRYSTAL_COST) {
+            alert(`마정석이 부족합니다. (필요: ${BATTLE_CRYSTAL_COST}개)`);
+            return;
+        }
+
+        setIsProcessing(true);
+        setLoadingMessage(`${roster.challenger_name}의 차원 파티 데이터 불러오는 중...`);
+        try {
+            const payload = await downloadBattleRosterPayload(roster.storage_path);
+            const result = parseBattleCode(payload);
+            const newChar = { ...character };
+            newChar.money -= BATTLE_GOLD_COST;
+            if (newChar.base) {
+                newChar.base.resources.manaCrystal -= BATTLE_CRYSTAL_COST;
+            }
+            onUpdateCharacter(newChar, `[차원 배틀 목록] '${roster.challenger_name}'에게 도전합니다! (-${BATTLE_GOLD_COST.toLocaleString()}G / 마정석 -${BATTLE_CRYSTAL_COST})`);
+            onStartBattle(result.enemies, payload);
+            onClose();
+        } catch (err: any) {
+            alert(err.message || '차원 배틀 데이터 로드 실패');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
 
     const BATTLE_GOLD_COST = 10000;
     const BATTLE_CRYSTAL_COST = 5;
@@ -227,22 +313,110 @@ const CommunicationBattleModal: React.FC<Props> = ({ isOpen, onClose, character,
                 {/* Tabs */}
                 <div className="flex bg-slate-950 border-b border-slate-800 shrink-0">
                     <button 
+                        onClick={() => setActiveTab('rosters')} 
+                        className={`flex-1 py-3 sm:py-3.5 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'rosters' ? 'text-rose-400 border-rose-500 bg-slate-900' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                    >
+                        <Users size={14}/> 배틀 목록
+                    </button>
+                    <button 
                         onClick={() => setActiveTab('export')} 
                         className={`flex-1 py-3 sm:py-3.5 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'export' ? 'text-amber-400 border-amber-500 bg-slate-900' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                     >
-                        <Zap size={14}/> 내 배틀코드 발급
+                        <Zap size={14}/> 배틀코드 발급
                     </button>
                     <button 
                         onClick={() => setActiveTab('import')} 
                         className={`flex-1 py-3 sm:py-3.5 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'import' ? 'text-red-400 border-red-500 bg-slate-900' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                     >
-                        <Sword size={14}/> 결투 신청
+                        <Sword size={14}/> 코드 결투
                     </button>
                 </div>
 
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 sm:p-6 space-y-4">
-                    {activeTab === 'export' ? (
+                    {activeTab === 'rosters' ? (
+                        <div className="space-y-3 animate-in fade-in">
+                            {!supabaseReady && (
+                                <div className="p-3 bg-amber-950/40 border border-amber-600/50 rounded-xl text-[11px] text-amber-200 flex items-start gap-2">
+                                    <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-bold">Supabase 배틀 목록 미연결</p>
+                                        <p className="text-slate-400 mt-0.5">.env 설정 전까지는 [배틀코드 발급] 및 [코드 결투] 탭을 이용해 주세요.</p>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                                <button
+                                    onClick={handleRegisterMyRoster}
+                                    disabled={!supabaseReady || rostersLoading}
+                                    className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 disabled:opacity-40 text-white text-xs font-bold shadow flex items-center gap-1.5"
+                                >
+                                    <Trophy size={13} /> 내 파티 목록 등록/갱신
+                                </button>
+                                <button
+                                    onClick={loadRosters}
+                                    disabled={!supabaseReady || rostersLoading}
+                                    className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold flex items-center gap-1 disabled:opacity-40"
+                                >
+                                    <RefreshCw size={12} className={rostersLoading ? 'animate-spin' : ''} /> 새로고침
+                                </button>
+                            </div>
+                            <input
+                                type="text"
+                                value={rosterSearch}
+                                onChange={(e) => setRosterSearch(e.target.value)}
+                                placeholder="도전자 이름 또는 신력 속성 검색..."
+                                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-rose-500"
+                            />
+                            <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                                {rostersLoading ? (
+                                    <div className="py-10 text-center text-slate-400 text-xs flex flex-col items-center gap-2">
+                                        <Loader2 size={20} className="animate-spin text-rose-400" />
+                                        <span>차원 배틀 도전자 목록을 불러오는 중...</span>
+                                    </div>
+                                ) : rosters.filter(r => !rosterSearch.trim() || r.challenger_name.toLowerCase().includes(rosterSearch.toLowerCase()) || r.shinryoku_type.toLowerCase().includes(rosterSearch.toLowerCase())).length === 0 ? (
+                                    <div className="py-10 text-center bg-slate-950/50 rounded-xl border border-slate-800 text-xs text-slate-500">
+                                        등록된 차원 배틀 도전자가 없습니다.
+                                    </div>
+                                ) : (
+                                    rosters
+                                        .filter(r => !rosterSearch.trim() || r.challenger_name.toLowerCase().includes(rosterSearch.toLowerCase()) || r.shinryoku_type.toLowerCase().includes(rosterSearch.toLowerCase()))
+                                        .map(r => {
+                                            const isMine = r.owner_uid === currentUid;
+                                            return (
+                                                <div key={r.id} className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-2">
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-xs font-bold text-white truncate">{r.challenger_name}</span>
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-rose-300 font-bold">Lv.{r.level}</span>
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 font-bold">{r.shinryoku_type}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 mt-1 text-[10px] text-slate-400">
+                                                            <span className="text-amber-300 font-bold">전투력 {Number(r.combat_power).toLocaleString()}</span>
+                                                            <span>전적: {r.wins}승 {r.losses}패</span>
+                                                        </div>
+                                                    </div>
+                                                    {isMine ? (
+                                                        <span className="text-[10px] px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-400 font-bold shrink-0">내 파티</span>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleChallengeRoster(r)}
+                                                            disabled={isProcessing}
+                                                            className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold shadow shrink-0 active:scale-95"
+                                                        >
+                                                            도전하기
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
+                                )}
+                            </div>
+                            <p className="text-[10px] text-slate-500 text-center">
+                                * 도전 시 중개료 {BATTLE_GOLD_COST.toLocaleString()}G + 마정석 {BATTLE_CRYSTAL_COST}개가 소모됩니다.
+                            </p>
+                        </div>
+                    ) : activeTab === 'export' ? (
                         <div className="space-y-4 animate-in slide-in-from-left-2">
                             <p className="text-[11px] text-slate-400 text-center leading-relaxed">
                                 "구글 드라이브 연결 시 내 배틀 정보가 구글 클라우드에 텍스트 파일로 저장되며 공유 가능한 링크가 생성됩니다."

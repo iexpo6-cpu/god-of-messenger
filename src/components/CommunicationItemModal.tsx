@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Character, Item, ItemRarity } from '../types';
-import { X, Package, Zap, Coins, Sparkles, Loader2, Copy, CheckCircle, ClipboardPaste, Send, Minus, Plus, FileText, ChevronDown, ChevronUp, Link } from 'lucide-react';
+import { X, Package, Zap, Coins, Sparkles, Loader2, Copy, CheckCircle, ClipboardPaste, Send, Minus, Plus, FileText, ChevronDown, ChevronUp, Link, Store } from 'lucide-react';
 import { SELL_PRICES } from '../constants';
 import { publishDimensionShare, resolveDimensionCode } from '../services/dimensionShareService';
 import { compressDataSync, decompressDataSync } from '../utils';
 import ActionResultModal, { ResultData } from './ActionResultModal';
+import { DimensionMarketPanel } from './DimensionMarketPanel';
 import { GoogleDriveAuthPanel } from './GoogleDriveAuthPanel';
 import { findOrCreateAppFolder, uploadTextFileToFolder, shareFileWithAnyone, getFileWebViewLink, fetchFileContentFromUrl, getCachedAccessToken } from '../services/googleDriveService';
 
@@ -22,7 +23,7 @@ interface SelectedItem {
 }
 
 const CommunicationItemModal: React.FC<Props> = ({ isOpen, onClose, character, onUpdateCharacter }) => {
-    const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
+    const [activeTab, setActiveTab] = useState<'market' | 'export' | 'import'>('market');
     const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
     const [itemCode, setItemCode] = useState('');
     const [rawFullCode, setRawFullCode] = useState('');
@@ -331,22 +332,35 @@ const CommunicationItemModal: React.FC<Props> = ({ isOpen, onClose, character, o
                 {/* Tabs */}
                 <div className="flex bg-slate-950 border-b border-slate-800 shrink-0">
                     <button 
+                        onClick={() => setActiveTab('market')} 
+                        className={`flex-1 py-3 sm:py-3.5 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'market' ? 'text-amber-400 border-amber-500 bg-slate-900' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                    >
+                        <Store size={14}/> 차원 경매장
+                    </button>
+                    <button 
                         onClick={() => { setActiveTab('export'); setItemCode(''); setRawFullCode(''); setDriveShareLink(''); }} 
                         className={`flex-1 py-3 sm:py-3.5 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'export' ? 'text-amber-400 border-amber-500 bg-slate-900' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                     >
-                        <Sparkles size={14}/> 아이템 코드 발급
+                        <Sparkles size={14}/> 코드 발급
                     </button>
                     <button 
                         onClick={() => { setActiveTab('import'); setPreviewItems([]); }} 
                         className={`flex-1 py-3 sm:py-3.5 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-1.5 ${activeTab === 'import' ? 'text-amber-400 border-amber-500 bg-slate-900' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
                     >
-                        <Zap size={14}/> 아이템 소환
+                        <Zap size={14}/> 코드 소환
                     </button>
                 </div>
 
                 {/* Body */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 sm:p-6 space-y-4">
-                    {activeTab === 'export' ? (
+                    {activeTab === 'market' ? (
+                        <DimensionMarketPanel
+                            mode="item"
+                            character={character}
+                            onUpdateCharacter={onUpdateCharacter}
+                            onNotify={(type, title, message) => setResultData({ type, title, message, items: [] })}
+                        />
+                    ) : activeTab === 'export' ? (
                         <div className="space-y-4 animate-in slide-in-from-left-2">
                             {!itemCode ? (
                                 <>
