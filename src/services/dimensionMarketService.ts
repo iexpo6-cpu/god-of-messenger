@@ -149,10 +149,117 @@ export const fetchMyListingsAndSettlements = async (
             .order('created_at', { ascending: false })
     ]);
 
+    // 이미 정산 완료되었거나 취소되어 DB에 남아있는 잔여 데이터 백그라운드 자동 정리
+    cleanupSettledMarketData(sellerUid).catch(() => {});
+
     return {
         myListings: (listData || []) as DimensionMarketListing[],
         settlements: (settleData || []) as DimensionSettlement[]
     };
+};
+
+/**
+ * 이미 정산(claimed=true)되었거나 취소/판매 완료된 잔여 매물 및 스토리지 파일 정리
+ */
+export const cleanupSettledMarketData = async (sellerUid: string): Promise<void> => {
+    if (!isSupabaseConfigured() || !sellerUid) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    try {
+        // 1. 이미 수령 완료(claimed=true)된 정산 레코드 조회 및 삭제
+        const { data: claimedRows } = await supabase
+            .from('dimension_settlements')
+            .select('id, listing_id')
+            .eq('seller_uid', sellerUid)
+            .eq('claimed', true);
+
+        if (claimedRows && claimedRows.length > 0) {
+            const claimedIds = claimedRows.map((r: any) => r.id).filter(Boolean);
+            const listingIds = claimedRows.map((r: any) => r.listing_id).filter(Boolean);
+
+            if (claimedIds.length > 0) {
+                await supabase
+                    .from('dimension_settlements')
+                    .delete()
+                    .eq('seller_uid', sellerUid)
+                    .in('id', claimedIds);
+            }
+
+            if (listingIds.length > 0) {
+                const { data: soldListings } = await supabase
+                    .from('dimension_market_listings')
+                    .select('id, storage_path')
+                    .eq('seller_uid', sellerUid)
+                    .in('id', listingIds);
+
+                const paths = (soldListings || []).map((l: any) => l.storage_path).filter(Boolean);
+                if (paths.length > 0) {
+                    await supabase.storage.from('dimension-shares').remove(paths).catch(() => {});
+                }
+                await supabase
+                    .from('dimension_market_listings')
+                    .delete()
+                    .eq('seller_uid', sellerUid)
+                    .in('id', listingIds);
+            }
+        }
+
+        // 2. 취소 완료(status='cancelled')된 매물 행 삭제
+        const { data: cancelledRows } = await supabase
+            .from('dimension_market_listings')
+            .select('id, storage_path')
+            .eq('seller_uid', sellerUid)
+            .eq('status', 'cancelled');
+
+        if (cancelledRows && cancelledRows.length > 0) {
+            const paths = cancelledRows.map((r: any) => r.storage_path).filter(Boolean);
+            if (paths.length > 0) {
+                await supabase.storage.from('dimension-shares').remove(paths).catch(() => {});
+            }
+            const cancelIds = cancelledRows.map((r: any) => r.id).filter(Boolean);
+            await supabase
+                .from('dimension_market_listings')
+                .delete()
+                .eq('seller_uid', sellerUid)
+                .in('id', cancelIds);
+        }
+
+        // 3. 미수령 정산 건이 없는 판매 완료(status='sold') 매물 행도 정리
+        const { data: soldRows } = await supabase
+            .from('dimension_market_listings')
+            .select('id, storage_path')
+            .eq('seller_uid', sellerUid)
+            .eq('status', 'sold');
+
+        if (soldRows && soldRows.length > 0) {
+            const { data: pendingSettlements } = await supabase
+                .from('dimension_settlements')
+                .select('listing_id')
+                .eq('seller_uid', sellerUid)
+                .eq('claimed', false);
+
+            const pendingListingIds = new Set(
+                (pendingSettlements || []).map((s: any) => s.listing_id).filter(Boolean)
+            );
+            const removableSold = soldRows.filter((r: any) => !pendingListingIds.has(r.id));
+
+            if (removableSold.length > 0) {
+                const paths = removableSold.map((r: any) => r.storage_path).filter(Boolean);
+                if (paths.length > 0) {
+                    await supabase.storage.from('dimension-shares').remove(paths).catch(() => {});
+                }
+                const soldIds = removableSold.map((r: any) => r.id).filter(Boolean);
+                await supabase
+                    .from('dimension_market_listings')
+                    .delete()
+                    .eq('seller_uid', sellerUid)
+                    .in('id', soldIds);
+            }
+        }
+    } catch (err) {
+        console.warn('[DimensionMarket] 정산/취소 잔여 데이터 정리 중 오류 (무시 가능):', err);
+    }
 };
 
 export const publishMarketListing = async (params: {
@@ -251,6 +358,10 @@ export const purchaseMarketListing = async (
     }
 
     const payloadJson = await blob.text();
+    // 구매자가 실물 데이터를 정상 수신했으므로 스토리지 파일 즉시 삭제
+    if (row.storage_path) {
+        await supabase.storage.from('dimension-shares').remove([row.storage_path]).catch(() => {});
+    }
     return {
         payloadJson,
         priceGold: Number(row.price_gold || 0),
@@ -291,7 +402,13 @@ export const cancelMarketListing = async (
     }
 
     const payloadJson = await blob.text();
-    await supabase.storage.from('dimension-shares').remove([row.storage_path]);
+    await supabase.storage.from('dimension-shares').remove([row.storage_path]).catch(() => {});
+    // 취소된 매물 DB 행도 즉시 삭제
+    await supabase
+        .from('dimension_market_listings')
+        .delete()
+        .eq('id', listingId)
+        .eq('seller_uid', sellerUid);
     return {
         payloadJson,
         title: row.title || ''
@@ -306,14 +423,49 @@ export const claimSettlements = async (
     const supabase = getSupabaseClient();
     if (!supabase) return;
 
+    // 1. 정산 대상과 연결된 listing_id 먼저 조회
+    const { data: settleRows } = await supabase
+        .from('dimension_settlements')
+        .select('id, listing_id')
+        .eq('seller_uid', sellerUid)
+        .in('id', settlementIds);
+
+    const listingIds = (settleRows || [])
+        .map((r: any) => r.listing_id)
+        .filter((id: any): id is string => Boolean(id));
+
+    // 2. 정산 완료된 정산함 레코드 실제 삭제
     const { error } = await supabase
         .from('dimension_settlements')
-        .update({ claimed: true })
+        .delete()
         .eq('seller_uid', sellerUid)
         .in('id', settlementIds);
 
     if (error) {
         throw new Error(`정산 수령 처리 실패: ${error.message}`);
+    }
+
+    // 3. 판매 및 정산이 모두 끝난 원본 매물 행 + 잔여 스토리지 파일 완전 삭제
+    if (listingIds.length > 0) {
+        const { data: listingRows } = await supabase
+            .from('dimension_market_listings')
+            .select('id, storage_path')
+            .eq('seller_uid', sellerUid)
+            .in('id', listingIds);
+
+        const storagePaths = (listingRows || [])
+            .map((r: any) => r.storage_path)
+            .filter((p: any): p is string => Boolean(p));
+
+        if (storagePaths.length > 0) {
+            await supabase.storage.from('dimension-shares').remove(storagePaths).catch(() => {});
+        }
+
+        await supabase
+            .from('dimension_market_listings')
+            .delete()
+            .eq('seller_uid', sellerUid)
+            .in('id', listingIds);
     }
 };
 

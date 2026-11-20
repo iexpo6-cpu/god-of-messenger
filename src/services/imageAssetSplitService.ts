@@ -22,22 +22,37 @@ const isExtractableBase64Image = (val: unknown): val is string => {
     );
 };
 
+// 인메모리 이미지 해시 & IndexedDB 기록 캐시 (매 저장마다 동일 이미지 재해시/재쓰기 방지)
+const imageHashMemo = new Map<string, string>();
+const indexedDbSavedHashes = new Set<string>();
+
 export const computeImageHash = async (dataUrl: string): Promise<string> => {
+    const memoized = imageHashMemo.get(dataUrl);
+    if (memoized) return memoized;
+
+    let result: string;
     // Web Crypto API (SHA-256)
     if (typeof crypto !== 'undefined' && crypto.subtle) {
         const encoder = new TextEncoder();
         const data = encoder.encode(dataUrl);
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+        result = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+    } else {
+        // Fallback FNV-1a + length
+        let h1 = 0x811c9dc5;
+        for (let i = 0; i < dataUrl.length; i++) {
+            h1 ^= dataUrl.charCodeAt(i);
+            h1 = Math.imul(h1, 0x01000193);
+        }
+        result = `fnv_${(h1 >>> 0).toString(16)}_${dataUrl.length}`;
     }
-    // Fallback FNV-1a + length
-    let h1 = 0x811c9dc5;
-    for (let i = 0; i < dataUrl.length; i++) {
-        h1 ^= dataUrl.charCodeAt(i);
-        h1 = Math.imul(h1, 0x01000193);
+
+    if (imageHashMemo.size > 500) {
+        imageHashMemo.clear();
     }
-    return `fnv_${(h1 >>> 0).toString(16)}_${dataUrl.length}`;
+    imageHashMemo.set(dataUrl, result);
+    return result;
 };
 
 export const extractImagesFromSaveData = async <T>(
@@ -123,11 +138,20 @@ export const extractImagesFromSaveData = async <T>(
         dataUrl
     }));
 
-    // 로컬 IndexedDB 캐시에도 즉시 반영
+    // 로컬 IndexedDB 캐시에는 신규(미기록) 이미지만 선별 반영
     if (images.length > 0) {
         const cacheBatch: Record<string, string> = {};
-        images.forEach(img => { cacheBatch[img.hash] = img.dataUrl; });
-        await setCachedImagesBatch(cacheBatch);
+        let newCount = 0;
+        images.forEach(img => {
+            if (!indexedDbSavedHashes.has(img.hash)) {
+                cacheBatch[img.hash] = img.dataUrl;
+                newCount++;
+            }
+        });
+        if (newCount > 0) {
+            await setCachedImagesBatch(cacheBatch);
+            Object.keys(cacheBatch).forEach(h => indexedDbSavedHashes.add(h));
+        }
     }
 
     return { lightData, images };

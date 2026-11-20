@@ -614,6 +614,15 @@ const saveUploadedHashesCache = (hashes: Set<string>) => {
   } catch {}
 };
 
+/**
+ * 로컬 업로드 캐시 기준으로 아직 Google Drive에 올라가지 않은(변동/신규) 이미지만 즉시 필터링
+ */
+export const filterUnuploadedImages = <T extends { hash: string }>(images: T[]): T[] => {
+  if (!images.length) return [];
+  const localUploaded = getUploadedHashesCache();
+  return images.filter(img => !localUploaded.has(img.hash));
+};
+
 export const uploadMissingImagesToDrive = async (
   images: Array<{ hash: string; dataUrl: string }>,
   accessToken: string,
@@ -631,11 +640,12 @@ export const uploadMissingImagesToDrive = async (
   const folderId = await findOrCreateCustomImagesFolder(accessToken);
   const existingMap = await listCustomImageFilesInDrive(accessToken);
   Object.keys(existingMap).forEach(h => localUploaded.add(h));
+  // 기존 Drive 목록 확인 즉시 캐시 저장 (이후 배치 중단 시에도 재조회 방지)
+  saveUploadedHashesCache(localUploaded);
 
   const missing = candidates.filter(img => !existingMap[img.hash]);
   const skipped = images.length - missing.length;
   if (missing.length === 0) {
-    saveUploadedHashesCache(localUploaded);
     return { uploaded: 0, skipped };
   }
 
@@ -675,9 +685,10 @@ export const uploadMissingImagesToDrive = async (
         onProgress?.(uploaded, missing.length);
       })
     );
+    // 배치 완료마다 즉시 캐시 저장 (중간 타임아웃/중단 시에도 완료된 이미지는 재업로드 안 함)
+    saveUploadedHashesCache(localUploaded);
   }
 
-  saveUploadedHashesCache(localUploaded);
   return { uploaded, skipped };
 };
 

@@ -14,7 +14,8 @@ import {
   getValidDriveAccessToken, 
   invalidateDriveAccessToken,
   getCurrentDriveUser,
-  uploadMissingImagesToDrive
+  uploadMissingImagesToDrive,
+  filterUnuploadedImages
 } from './googleDriveService';
 import { isSupabaseConfigured } from './supabaseClient';
 import { uploadLightSaveToSupabase } from './supabaseSaveService';
@@ -134,10 +135,11 @@ const runBackupTask = async (slotNum: number, preloadedData?: any): Promise<void
     const currentUser = getCurrentDriveUser();
     const useSupabase = isSupabaseConfigured();
 
-    // Google Drive 토큰 확인 (Supabase 사용 시 토큰 지연으로 본 백업이 막히지 않도록 5초 타임아웃)
-    const token = useSupabase
-      ? await withTimeout(getValidDriveAccessToken(), 5000, '드라이브 토큰 확인').catch(() => null)
-      : await getValidDriveAccessToken();
+    // 레거시 모드(Supabase 미설정)일 때만 먼저 Drive 토큰 확인
+    let token: string | null = null;
+    if (!useSupabase) {
+      token = await getValidDriveAccessToken();
+    }
 
     // 로그인 계정이 연동되어 있지 않거나(Supabase 미설정 + Drive 토큰 없음)면 조용히 건너뜁니다
     if (!currentUser || (!useSupabase && !token)) {
@@ -154,7 +156,7 @@ const runBackupTask = async (slotNum: number, preloadedData?: any): Promise<void
     // 2. 저장 데이터 확보 (선제 데이터가 없으면 로컬 스토리지에서 비동기 조회)
     let targetData = preloadedData;
     if (!targetData) {
-      await new Promise(res => setTimeout(res, 200));
+      await new Promise(res => setTimeout(res, 100));
       const key = getSaveSlotKey(slotNum);
       targetData = await GameStorage.get(key);
     }
@@ -170,7 +172,7 @@ const runBackupTask = async (slotNum: number, preloadedData?: any): Promise<void
       const { lightData, images } = await extractImagesFromSaveData(sanitized);
       const compressedLight = await compressData(lightData);
 
-      // 3-1. 계정(Supabase) 경량 세이브를 먼저 업로드 (12초 타임아웃)하여 즉시 계정 연동 완료
+      // 3-1. 계정(Supabase) 경량 세이브 즉시 업로드 (이미지 제외 텍스트만 빠르게 업로드)
       await withTimeout(
         uploadLightSaveToSupabase(currentUser.uid, slotNum, compressedLight, {
           characterName: targetData.character?.name || '이름 없음',
@@ -180,15 +182,19 @@ const runBackupTask = async (slotNum: number, preloadedData?: any): Promise<void
         '계정 세이브 동기화'
       );
 
-      // 3-2. 이미지 데이터는 변동(신규 추가)이 있는 경우에만 Google Drive에 업로드 (15초 타임아웃, 실패해도 계정 세이브 유지)
-      if (images.length > 0 && token) {
-        await withTimeout(
-          uploadMissingImagesToDrive(images, token),
-          15000,
-          '신규 이미지 드라이브 백업'
-        ).catch(err => {
-          console.warn('[배경 백업] 신규 이미지 Google Drive 업로드 스킵/지연:', err);
-        });
+      // 3-2. 신규/변동 이미지가 1건 이상일 때만 백그라운드(비차단)로 Google Drive 업로드
+      //      변동 이미지가 0건이면 Google Drive 토큰 확인/API 호출 자체를 0ms 스킵!
+      const unuploadedImages = filterUnuploadedImages(images);
+      if (unuploadedImages.length > 0) {
+        (async () => {
+          try {
+            const driveToken = await withTimeout(getValidDriveAccessToken(), 5000, '드라이브 토큰 확인').catch(() => null);
+            if (!driveToken) return;
+            await uploadMissingImagesToDrive(unuploadedImages, driveToken);
+          } catch (err) {
+            console.warn('[배경 백업] 신규 이미지 Google Drive 백그라운드 업로드 스킵/지연:', err);
+          }
+        })();
       }
     } else {
       const compressed = await compressData(sanitized);
