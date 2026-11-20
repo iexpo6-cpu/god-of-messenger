@@ -2,6 +2,7 @@ import React, { memo, useCallback, useMemo } from 'react';
 import { Companion, Skill } from '../../types';
 import { PartyCard } from './PartyCard';
 import { FloatingFeedbackItem } from './FloatingFeedbackOverlay';
+import { getAllyMaxBreakGauge } from '../../services/shinryokuBreakService';
 
 interface CombatAlliesGridProps {
     partyMembers: any[];
@@ -110,7 +111,7 @@ export const CombatAlliesGrid = memo(({
                                                 statusEffects={member.statusEffects}
                                                 visualUrl={member.visualUrl}
                                                 breakGauge={(member.entity as any)?.breakGauge}
-                                                maxBreakGauge={(member.entity as any)?.maxBreakGauge}
+                                                maxBreakGauge={(member.entity as any)?.maxBreakGauge ?? getAllyMaxBreakGauge(member.isPlayer ? member.entity : undefined, member.entity)}
                                                 unusableLabel={
                                                     selectionMode === 'ally' && isPureResurrectionPending 
                                                     ? (member.stats.hp > 0 ? "생존" : "") 

@@ -1124,6 +1124,7 @@ export interface Companion {
   levelCapUnlockBonus?: number; // 초월의 성소에서 개별 해방한 누적 최대 레벨 보너스
   breakGauge?: number; // 전투 중 현재 신력 실드 칸 수
   maxBreakGauge?: number; // 전투 중 최대 신력 실드 칸 수
+  shinryokuShieldLevel?: number; // 신력 결계전 개별 신력 실드 강화 레벨
   skillShortcuts?: string[];
   age: string;
   birthYear?: number;
@@ -1404,6 +1405,7 @@ export interface CapturedMonster extends Enemy {
   levelCapUnlockBonus?: number; // 초월의 성소에서 개별 해방한 누적 최대 레벨 보너스
   breakGauge?: number; // 전투 중 현재 신력 실드 칸 수
   maxBreakGauge?: number; // 전투 중 최대 신력 실드 칸 수
+  shinryokuShieldLevel?: number; // 신력 결계전 개별 신력 실드 강화 레벨
     height?: number;
     weight?: number;
     appearance?: string;
@@ -1744,6 +1746,7 @@ export interface Character {
   levelCapUnlockBonus?: number; // 초월의 성소에서 개별 해방한 누적 최대 레벨 보너스
   breakGauge?: number; // 전투 중 현재 신력 실드 칸 수
   maxBreakGauge?: number; // 전투 중 최대 신력 실드 칸 수
+  shinryokuShieldLevel?: number; // 신력 결계전 개별 신력 실드 강화 레벨
   age: string;
   birthYear?: number;
   gender: string;

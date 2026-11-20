@@ -18,7 +18,7 @@ import {
   checkAndCompleteBaseConstructions 
 } from '../services/baseConstructionService';
 import { startCookingJob, claimCookedDish, cancelCookingJob } from '../services/cookingService';
-import { getAllyMaxBreakGauge, getShinryokuShieldUpgradeCost, MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL } from '../services/shinryokuBreakService';
+import { getAllyMaxBreakGauge, getShinryokuShieldUpgradeCost, MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL, getShinryokuSanctuaryLevel, getUnitShinryokuShieldLevel } from '../services/shinryokuBreakService';
 import { X, Home, Hammer, Users, Package, ArrowUpCircle, Coins,Info, Leaf, Shield, CalendarCheck ,TestTube, Zap, ShoppingCart,Lock, DollarSign, UserCheck, Briefcase, Play, Box, ArrowRight, ArrowLeft, BedDouble, MessageCircle, Dog, BookOpen, Microscope, Trash2, Sword, Swords, Dumbbell, Trophy, Target, Brain, Activity, User, Utensils, ChevronLeft, Wine, Gamepad2, Hand, Sparkles, Heart, CheckCircle, Filter, Pickaxe, Mountain, FlaskConical, Gem, Layers, MapPin, Truck, AlertTriangle, AlertCircle, Clock, ChevronsUp, TrendingUp, Trees, Apple, Flame, Building2, Crosshair, Eye, Skull, Waves, Wind, Sun, Moon, Edit, PenTool, Upload, Store, Award, Star, Wand2, Search, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
 
 const STORAGE_RARITY_COLORS: Record<string, string> = {
@@ -225,6 +225,8 @@ const BaseModal: React.FC<Props> = ({
     const [sanctuaryTargetId, setSanctuaryTargetId] = useState<string>('player');
     const [sanctuarySort, setSanctuarySort] = useState<'party' | 'level' | 'name' | 'custom'>('party');
     const [sanctuarySearch, setSanctuarySearch] = useState<string>('');
+    const [shieldCategory, setShieldCategory] = useState<'player' | 'companion' | 'monster'>('player');
+    const [shieldTargetKey, setShieldTargetKey] = useState<string>('player');
 
     // [기지 창고] 골드 입출금 모달 상태
     const [goldTransferModal, setGoldTransferModal] = useState<{
@@ -1970,6 +1972,10 @@ const BaseModal: React.FC<Props> = ({
                 const defBonusDef = Math.floor(totalStats * 0.5);
                 bonusInfo = `기지 방어력 +${defBonusDef} (종합 스탯)`;
                 break;
+            case 'shinryoku_sanctuary':
+                const shinSanctuaryLv = getShinryokuSanctuaryLevel(character.base) || 1;
+                bonusInfo = `개별 신력 실드 최대 강화 한도: Lv.${Math.min(MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL, shinSanctuaryLv)} (최대 ${4 + Math.min(MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL, shinSanctuaryLv)}칸)`;
+                break;
         }
 
         return bonusInfo ? (
@@ -2966,111 +2972,6 @@ const BaseModal: React.FC<Props> = ({
                                 <span>방어 분대 관리</span>
                             </button>
                         </div>
-
-                        {/* 아군 신력 결계(실드) 강화 섹션 */}
-                        {(() => {
-                            const currentShieldLevel = Math.min(MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL, character.base?.shinryokuShieldLevel || 0);
-                            const currentAllyMaxBreak = getAllyMaxBreakGauge(character);
-                            const upgradeCost = getShinryokuShieldUpgradeCost(currentShieldLevel);
-                            const res = character.base?.resources || { wood: 0, stone: 0, iron: 0, manaCrystal: 0 };
-                            const canAfford = upgradeCost ? (
-                                character.money >= upgradeCost.gold &&
-                                (res.manaCrystal || 0) >= upgradeCost.manaCrystal &&
-                                (res.iron || 0) >= upgradeCost.iron &&
-                                (res.stone || 0) >= upgradeCost.stone
-                            ) : false;
-
-                            const handleUpgradeShinryokuShield = () => {
-                                if (!upgradeCost || !canAfford || !character.base) return;
-                                onUpdateCharacter(
-                                    {
-                                        ...character,
-                                        money: character.money - upgradeCost.gold,
-                                        base: {
-                                            ...character.base,
-                                            shinryokuShieldLevel: currentShieldLevel + 1,
-                                            resources: {
-                                                ...res,
-                                                manaCrystal: (res.manaCrystal || 0) - upgradeCost.manaCrystal,
-                                                iron: (res.iron || 0) - upgradeCost.iron,
-                                                stone: (res.stone || 0) - upgradeCost.stone,
-                                            }
-                                        }
-                                    },
-                                    `[기지 방어소] 아군 신력 결계(실드)를 Lv.${currentShieldLevel + 1} (${currentAllyMaxBreak + 1}칸)로 강화했습니다.`
-                                );
-                            };
-
-                            return (
-                                <div className="bg-cyan-950/25 border border-cyan-500/35 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
-                                    <div className="flex items-start gap-3 flex-1">
-                                        <div className="p-2.5 bg-cyan-900/40 rounded-lg text-cyan-300 border border-cyan-500/30 shrink-0">
-                                            <Zap size={22} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <h5 className="font-extrabold text-sm text-cyan-100">아군 신력 결계(실드) 강화</h5>
-                                                <span className="text-[10px] bg-cyan-900/80 text-cyan-200 border border-cyan-600/60 px-2 py-0.5 rounded-full font-bold">
-                                                    Lv.{currentShieldLevel} / {MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL}
-                                                </span>
-                                                <span className="text-[11px] font-bold text-cyan-300">
-                                                    현재 실드 {currentAllyMaxBreak}칸
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-slate-300 mt-1">
-                                                전투 시 플레이어와 모든 동료에게 적용되는 신력 브레이크 실드 최대 칸수를 늘려 아군의 브레이크(1턴 행동불가 + 피격 1.5배)를 지연시킵니다.
-                                            </p>
-                                            <div className="flex items-center gap-1 mt-2 max-w-xs">
-                                                {Array.from({ length: 4 + MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL }).map((_, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        className={`h-2 flex-1 rounded-sm ${
-                                                            idx < currentAllyMaxBreak
-                                                                ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.65)]'
-                                                                : 'bg-slate-800 border border-slate-700'
-                                                        }`}
-                                                    />
-                                                ))}
-                                            </div>
-                                            {upgradeCost && (
-                                                <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px]">
-                                                    <span className={character.money >= upgradeCost.gold ? 'text-amber-300' : 'text-rose-400 font-bold'}>
-                                                        골드 {upgradeCost.gold.toLocaleString()}
-                                                    </span>
-                                                    <span className={(res.manaCrystal || 0) >= upgradeCost.manaCrystal ? 'text-cyan-300' : 'text-rose-400 font-bold'}>
-                                                        마력정수 {upgradeCost.manaCrystal}
-                                                    </span>
-                                                    <span className={(res.iron || 0) >= upgradeCost.iron ? 'text-slate-300' : 'text-rose-400 font-bold'}>
-                                                        철광석 {upgradeCost.iron}
-                                                    </span>
-                                                    <span className={(res.stone || 0) >= upgradeCost.stone ? 'text-stone-300' : 'text-rose-400 font-bold'}>
-                                                        석재 {upgradeCost.stone}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    {upgradeCost ? (
-                                        <button
-                                            onClick={handleUpgradeShinryokuShield}
-                                            disabled={!canAfford}
-                                            className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center justify-center gap-1.5 ${
-                                                canAfford
-                                                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-md active:scale-95'
-                                                    : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
-                                            }`}
-                                        >
-                                            <ArrowUpCircle size={15} />
-                                            <span>실드 +1 강화 (Lv.{upgradeCost.nextLv})</span>
-                                        </button>
-                                    ) : (
-                                        <span className="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-950/70 text-cyan-300 border border-cyan-600/50 shrink-0">
-                                            최대 강화 완료 (9칸)
-                                        </span>
-                                    )}
-                                </div>
-                            );
-                        })()}
 
                         {/* 현재 이 방어소 인스턴스에 지어진 시설 상태 */}
                         {currentInstanceStructure ? (
@@ -4758,6 +4659,361 @@ const BaseModal: React.FC<Props> = ({
                         </button>
                     </div>
                     </>
+                    )}
+                </div>
+            );
+        }
+
+        if (selectedFacility === 'shinryoku_sanctuary') {
+            const currentInst = character.base?.layout?.find(f => f.id === (selectedInstanceId || activeInstanceId)) || character.base?.layout?.find(f => f.type === 'shinryoku_sanctuary');
+            const facilityLevel = currentInst ? (currentInst.level || 1) : (getShinryokuSanctuaryLevel(character.base) || 1);
+            const maxAllowedShieldLv = Math.min(MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL, Math.max(1, facilityLevel));
+            const res = character.base?.resources || ({} as BaseResources);
+
+            type ShieldUnitEntry = {
+                key: string;
+                category: 'player' | 'companion' | 'monster';
+                source: 'player' | 'active_companion' | 'inactive_companion' | 'player_mount' | 'companion_mount' | 'captured_monster';
+                ownerCompId?: string;
+                id: string;
+                name: string;
+                level: number;
+                subLabel: string;
+                badge?: string;
+                shieldLevel: number;
+                maxBreak: number;
+            };
+
+            const playerShieldLv = getUnitShinryokuShieldLevel(character, character);
+            const playerEntry: ShieldUnitEntry = {
+                key: 'player',
+                category: 'player',
+                source: 'player',
+                id: character.id || 'player',
+                name: character.name,
+                level: character.level,
+                subLabel: character.shinryokuType || '미정',
+                badge: '주인공',
+                shieldLevel: playerShieldLv,
+                maxBreak: 4 + playerShieldLv
+            };
+
+            const companionEntries: ShieldUnitEntry[] = [
+                ...(character.companions || []).map((c): ShieldUnitEntry => {
+                    const lv = getUnitShinryokuShieldLevel(c);
+                    return {
+                        key: `comp:${c.id}`,
+                        category: 'companion',
+                        source: 'active_companion',
+                        id: c.id,
+                        name: c.name,
+                        level: c.level,
+                        subLabel: c.shinryokuType || '미정',
+                        badge: '파티',
+                        shieldLevel: lv,
+                        maxBreak: 4 + lv
+                    };
+                }),
+                ...(character.inactiveCompanions || []).map((c): ShieldUnitEntry => {
+                    const lv = getUnitShinryokuShieldLevel(c);
+                    return {
+                        key: `comp:${c.id}`,
+                        category: 'companion',
+                        source: 'inactive_companion',
+                        id: c.id,
+                        name: c.name,
+                        level: c.level,
+                        subLabel: c.shinryokuType || '미정',
+                        badge: '대기',
+                        shieldLevel: lv,
+                        maxBreak: 4 + lv
+                    };
+                })
+            ];
+
+            const monsterEntries: ShieldUnitEntry[] = [];
+            if (character.mountedMonster) {
+                const lv = getUnitShinryokuShieldLevel(character.mountedMonster);
+                monsterEntries.push({
+                    key: `mount:player:${character.mountedMonster.id}`,
+                    category: 'monster',
+                    source: 'player_mount',
+                    id: character.mountedMonster.id,
+                    name: character.mountedMonster.name,
+                    level: character.mountedMonster.level,
+                    subLabel: `${character.mountedMonster.shinryokuType || '미정'} · 탑승 중`,
+                    badge: '주인공 탑승',
+                    shieldLevel: lv,
+                    maxBreak: 4 + lv
+                });
+            }
+            [...(character.companions || []), ...(character.inactiveCompanions || [])].forEach(c => {
+                if (c.mountedMonster) {
+                    const lv = getUnitShinryokuShieldLevel(c.mountedMonster);
+                    monsterEntries.push({
+                        key: `mount:${c.id}:${c.mountedMonster.id}`,
+                        category: 'monster',
+                        source: 'companion_mount',
+                        ownerCompId: c.id,
+                        id: c.mountedMonster.id,
+                        name: c.mountedMonster.name,
+                        level: c.mountedMonster.level,
+                        subLabel: `${c.mountedMonster.shinryokuType || '미정'} · ${c.name} 탑승`,
+                        badge: '동료 탑승',
+                        shieldLevel: lv,
+                        maxBreak: 4 + lv
+                    });
+                }
+            });
+            (character.base?.capturedMonsters || []).forEach(m => {
+                const lv = getUnitShinryokuShieldLevel(m);
+                monsterEntries.push({
+                    key: `captured:${m.id}`,
+                    category: 'monster',
+                    source: 'captured_monster',
+                    id: m.id,
+                    name: m.name,
+                    level: m.level,
+                    subLabel: m.shinryokuType || '미정',
+                    badge: '사육소',
+                    shieldLevel: lv,
+                    maxBreak: 4 + lv
+                });
+            });
+
+            const categoryList = shieldCategory === 'player'
+                ? [playerEntry]
+                : shieldCategory === 'companion'
+                    ? companionEntries
+                    : monsterEntries;
+
+            const selectedTarget = categoryList.find(item => item.key === shieldTargetKey) || categoryList[0] || playerEntry;
+            const currentLv = selectedTarget.shieldLevel;
+            const isFacilityCapReached = currentLv >= maxAllowedShieldLv && currentLv < MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL;
+            const upgradeCost = getShinryokuShieldUpgradeCost(currentLv);
+            const canAfford = upgradeCost && currentLv < maxAllowedShieldLv ? (
+                character.money >= upgradeCost.gold &&
+                (res.manaCrystal || 0) >= upgradeCost.manaCrystal &&
+                (res.iron || 0) >= upgradeCost.iron &&
+                (res.stone || 0) >= upgradeCost.stone
+            ) : false;
+
+            const handleUpgradeIndividualShield = () => {
+                if (!upgradeCost || !canAfford || !character.base || currentLv >= maxAllowedShieldLv) return;
+                const nextLv = currentLv + 1;
+                const nextChar: Character = {
+                    ...character,
+                    money: character.money - upgradeCost.gold,
+                    base: {
+                        ...character.base,
+                        resources: {
+                            ...res,
+                            manaCrystal: (res.manaCrystal || 0) - upgradeCost.manaCrystal,
+                            iron: (res.iron || 0) - upgradeCost.iron,
+                            stone: (res.stone || 0) - upgradeCost.stone,
+                        }
+                    }
+                };
+
+                if (selectedTarget.source === 'player') {
+                    nextChar.shinryokuShieldLevel = nextLv;
+                } else if (selectedTarget.source === 'active_companion') {
+                    nextChar.companions = (character.companions || []).map(c =>
+                        c.id === selectedTarget.id ? { ...c, shinryokuShieldLevel: nextLv } : c
+                    );
+                } else if (selectedTarget.source === 'inactive_companion') {
+                    nextChar.inactiveCompanions = (character.inactiveCompanions || []).map(c =>
+                        c.id === selectedTarget.id ? { ...c, shinryokuShieldLevel: nextLv } : c
+                    );
+                } else if (selectedTarget.source === 'player_mount' && character.mountedMonster) {
+                    nextChar.mountedMonster = { ...character.mountedMonster, shinryokuShieldLevel: nextLv };
+                } else if (selectedTarget.source === 'companion_mount' && selectedTarget.ownerCompId) {
+                    const updateCompMount = (c: Companion) =>
+                        c.id === selectedTarget.ownerCompId && c.mountedMonster
+                            ? { ...c, mountedMonster: { ...c.mountedMonster, shinryokuShieldLevel: nextLv } }
+                            : c;
+                    nextChar.companions = (character.companions || []).map(updateCompMount);
+                    nextChar.inactiveCompanions = (character.inactiveCompanions || []).map(updateCompMount);
+                } else if (selectedTarget.source === 'captured_monster') {
+                    nextChar.base = {
+                        ...nextChar.base!,
+                        capturedMonsters: (character.base?.capturedMonsters || []).map(m =>
+                            m.id === selectedTarget.id ? { ...m, shinryokuShieldLevel: nextLv } : m
+                        )
+                    };
+                }
+
+                onUpdateCharacter(
+                    nextChar,
+                    `[신력 결계전] [${selectedTarget.name}]의 신력 방어 결계(실드)를 Lv.${nextLv} (${4 + nextLv}칸)로 개별 강화했습니다.`
+                );
+            };
+
+            return (
+                <div className="space-y-4 animate-in fade-in">
+                    {renderHeader()}
+
+                    <div className="bg-cyan-950/30 border border-cyan-500/40 rounded-2xl p-4 space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <Shield size={20} className="text-cyan-300" />
+                                <h4 className="font-black text-base text-cyan-100">신력 결계전 — 개별 신력 방어 설정</h4>
+                            </div>
+                            <span className="text-xs font-bold px-3 py-1 rounded-full bg-cyan-900/70 text-cyan-200 border border-cyan-500/50">
+                                시설 Lv.{facilityLevel} (개별 강화 한도: Lv.{maxAllowedShieldLv} / 최대 {4 + maxAllowedShieldLv}칸)
+                            </span>
+                        </div>
+                        <p className="text-xs text-slate-300 leading-relaxed">
+                            주인공, 동료, 몬스터 각각의 신력 방어 결계(브레이크 실드)를 개별적으로 강화할 수 있습니다. 실드 칸수가 많을수록 약점 공격을 버티며 신력 브레이크(1턴 행동불가 · 받는 피해 1.5배)를 지연시킬 수 있습니다.
+                        </p>
+                    </div>
+
+                    {/* 카테고리 선택 탭 */}
+                    <div className="grid grid-cols-3 gap-2 bg-slate-950/70 p-1.5 rounded-xl border border-slate-800">
+                        <button
+                            onClick={() => { setShieldCategory('player'); setShieldTargetKey('player'); }}
+                            className={`py-2 px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${shieldCategory === 'player' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                        >
+                            주인공 (1)
+                        </button>
+                        <button
+                            onClick={() => {
+                                setShieldCategory('companion');
+                                if (companionEntries[0]) setShieldTargetKey(companionEntries[0].key);
+                            }}
+                            className={`py-2 px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${shieldCategory === 'companion' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                        >
+                            동료 ({companionEntries.length})
+                        </button>
+                        <button
+                            onClick={() => {
+                                setShieldCategory('monster');
+                                if (monsterEntries[0]) setShieldTargetKey(monsterEntries[0].key);
+                            }}
+                            className={`py-2 px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${shieldCategory === 'monster' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
+                        >
+                            몬스터 ({monsterEntries.length})
+                        </button>
+                    </div>
+
+                    {/* 대상 개체 선택 목록 */}
+                    {categoryList.length === 0 ? (
+                        <div className="p-8 text-center bg-slate-900/50 border border-slate-800 rounded-xl text-xs text-slate-400">
+                            해당 분류에 등록된 대상이 없습니다.
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
+                                {categoryList.map(unit => {
+                                    const isSelected = selectedTarget.key === unit.key;
+                                    return (
+                                        <button
+                                            key={unit.key}
+                                            onClick={() => setShieldTargetKey(unit.key)}
+                                            className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+                                                isSelected
+                                                    ? 'bg-cyan-950/60 border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.2)]'
+                                                    : 'bg-slate-900/70 border-slate-800 hover:border-slate-600'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between gap-1">
+                                                <span className="font-bold text-xs text-white truncate">{unit.name}</span>
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300 font-bold shrink-0">
+                                                    {unit.badge}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-[11px] text-slate-400">
+                                                <span>Lv.{unit.level} · {unit.subLabel}</span>
+                                                <span className="font-bold text-cyan-300">🛡️ {unit.maxBreak}칸 (Lv.{unit.shieldLevel})</span>
+                                            </div>
+                                            <div className="flex items-center gap-0.5">
+                                                {Array.from({ length: 4 + MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL }).map((_, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className={`h-1.5 flex-1 rounded-sm ${
+                                                            idx < unit.maxBreak
+                                                                ? 'bg-cyan-400'
+                                                                : 'bg-slate-800'
+                                                        }`}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* 선택된 개체 상세 강화 패널 */}
+                            <div className="bg-slate-900/90 border border-cyan-500/40 rounded-2xl p-4 space-y-3">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-black text-white">{selectedTarget.name}</span>
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-900/80 text-cyan-200 border border-cyan-600/60 font-bold">
+                                                신력 실드 Lv.{currentLv} / {MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-cyan-300 font-bold mt-1">
+                                            전투 적용 실드: {selectedTarget.maxBreak}칸 {upgradeCost && currentLv < maxAllowedShieldLv ? `➔ 강화 시 ${selectedTarget.maxBreak + 1}칸` : ''}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                    {Array.from({ length: 4 + MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL }).map((_, idx) => (
+                                        <div
+                                            key={idx}
+                                            className={`h-2.5 flex-1 rounded-sm transition-all ${
+                                                idx < selectedTarget.maxBreak
+                                                    ? 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.65)]'
+                                                    : 'bg-slate-800 border border-slate-700'
+                                            }`}
+                                        />
+                                    ))}
+                                </div>
+
+                                {upgradeCost && currentLv < MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL ? (
+                                    isFacilityCapReached ? (
+                                        <div className="p-3 bg-amber-950/30 border border-amber-600/40 rounded-xl text-xs text-amber-300 font-bold text-center">
+                                            현재 신력 결계전 시설 레벨(Lv.{facilityLevel})의 한도에 도달했습니다. 시설을 업그레이드하면 Lv.{facilityLevel + 1}까지 추가 강화할 수 있습니다.
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                                                <span className={character.money >= upgradeCost.gold ? 'text-amber-300 font-bold' : 'text-rose-400 font-bold'}>
+                                                    골드 {upgradeCost.gold.toLocaleString()}
+                                                </span>
+                                                <span className={(res.manaCrystal || 0) >= upgradeCost.manaCrystal ? 'text-cyan-300 font-bold' : 'text-rose-400 font-bold'}>
+                                                    마력정수 {upgradeCost.manaCrystal}
+                                                </span>
+                                                <span className={(res.iron || 0) >= upgradeCost.iron ? 'text-slate-300 font-bold' : 'text-rose-400 font-bold'}>
+                                                    철광석 {upgradeCost.iron}
+                                                </span>
+                                                <span className={(res.stone || 0) >= upgradeCost.stone ? 'text-stone-300 font-bold' : 'text-rose-400 font-bold'}>
+                                                    석재 {upgradeCost.stone}
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={handleUpgradeIndividualShield}
+                                                disabled={!canAfford}
+                                                className={`w-full py-3 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                                                    canAfford
+                                                        ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-lg cursor-pointer active:scale-95'
+                                                        : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                                                }`}
+                                            >
+                                                <ArrowUpCircle size={16} />
+                                                <span>[{selectedTarget.name}] 신력 방어 실드 +1 강화 (Lv.{upgradeCost.nextLv})</span>
+                                            </button>
+                                        </>
+                                    )
+                                ) : (
+                                    <div className="p-3 bg-cyan-950/60 border border-cyan-500/50 rounded-xl text-xs text-cyan-200 font-black text-center">
+                                        ✨ [{selectedTarget.name}]의 신력 방어 결계가 최대 단계(9칸)까지 강화되었습니다!
+                                    </div>
+                                )}
+                            </div>
+                        </>
                     )}
                 </div>
             );

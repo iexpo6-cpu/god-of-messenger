@@ -4,8 +4,47 @@ import { SHINRYOKU_AFFINITY } from '../constants';
 export const SHINRYOKU_BREAK_STATUS_NAME = '신력 브레이크';
 export const MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL = 5;
 
-export const getAllyMaxBreakGauge = (character?: Pick<Character, 'base'> | null): number => {
-    const bonus = Math.max(0, Math.min(MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL, character?.base?.shinryokuShieldLevel || 0));
+export const getShinryokuSanctuaryLevel = (base?: any): number => {
+    if (!base) return 0;
+    let maxLv = 0;
+    if (Array.isArray(base.facilities)) {
+        base.facilities.forEach((f: any) => {
+            if ((f?.id === 'shinryoku_sanctuary' || f?.type === 'shinryoku_sanctuary') && !f?.underConstruction) {
+                maxLv = Math.max(maxLv, f.level || 1);
+            }
+        });
+    }
+    if (Array.isArray(base.facilityGrid)) {
+        base.facilityGrid.forEach((slot: any) => {
+            const st = slot?.structure;
+            if (st && (st.id === 'shinryoku_sanctuary' || st.type === 'shinryoku_sanctuary') && !st.underConstruction) {
+                maxLv = Math.max(maxLv, st.level || 1);
+            }
+        });
+    }
+    return maxLv;
+};
+
+export const getUnitShinryokuShieldLevel = (
+    unit?: { shinryokuShieldLevel?: number } | null,
+    character?: Pick<Character, 'base' | 'shinryokuShieldLevel'> | null
+): number => {
+    if (unit && unit.shinryokuShieldLevel !== undefined) {
+        return Math.max(0, Math.min(MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL, unit.shinryokuShieldLevel));
+    }
+    // 레거시 호환: 플레이어 본인이고 개별 레벨이 아직 없으면 기존 base.shinryokuShieldLevel 폴백
+    if (character && (!unit || unit === (character as any))) {
+        const legacyLv = character.shinryokuShieldLevel ?? character.base?.shinryokuShieldLevel ?? 0;
+        return Math.max(0, Math.min(MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL, legacyLv));
+    }
+    return 0;
+};
+
+export const getAllyMaxBreakGauge = (
+    character?: Pick<Character, 'base' | 'shinryokuShieldLevel'> | null,
+    unit?: { shinryokuShieldLevel?: number } | null
+): number => {
+    const bonus = getUnitShinryokuShieldLevel(unit || character, character);
     return 4 + bonus;
 };
 
@@ -28,6 +67,7 @@ export const isUnitShinryokuBroken = (statusEffects?: ActiveStatus[]): boolean =
 };
 
 export const getShinryokuShieldUpgradeCost = (currentLevel: number) => {
+    if (currentLevel >= MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL) return null;
     const nextLv = Math.max(1, currentLevel + 1);
     return {
         nextLv,

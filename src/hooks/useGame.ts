@@ -3013,7 +3013,8 @@ if (!timeAdvancedChar.divineRelations) {
                         if (result.affinityEffect) totalLog += result.affinityEffect;
 
                         if (simulationEnemies[t.idx] && simulationEnemies[t.idx].hp > 0) {
-                            const shieldDmg = (isShinryokuWeaknessHit(caster?.shinryokuType, simulationEnemies[t.idx].shinryokuType) ? 1 : 0)
+                            const atkShinryoku = (skill.shinryokuType && skill.shinryokuType !== '무속성') ? skill.shinryokuType : caster?.shinryokuType;
+                            const shieldDmg = (isShinryokuWeaknessHit(atkShinryoku, simulationEnemies[t.idx].shinryokuType) ? 1 : 0)
                                 + (caster === nextCharState && qteGrade === 'JUST' ? 1 : 0);
                             if (shieldDmg > 0) {
                                 const bRes = applyShinryokuBreakHit(simulationEnemies[t.idx], shieldDmg, getEnemyMaxBreakGauge(simulationEnemies[t.idx]));
@@ -3812,11 +3813,12 @@ if (!timeAdvancedChar.divineRelations) {
                                             dmg = shieldRes.remainingDamage;
                                             totalLog += shieldRes.totalLog;
 
+                                            const enemyAtkShinryoku = (matchedSkill?.shinryokuType && matchedSkill.shinryokuType !== '무속성') ? matchedSkill.shinryokuType : enemy.shinryokuType;
                                             if (tObj.type === 'player') {
                                                 nextCharState.stats.hp = Math.max(0, nextCharState.stats.hp - dmg);
                                                 if (dmg > 0) totalLog += `\n[시스템: ${nextCharState.name} HP -${dmg}] (by ${enemy.name})`;
-                                                if (dmg > 0 && nextCharState.stats.hp > 0 && isShinryokuWeaknessHit(enemy.shinryokuType, nextCharState.shinryokuType)) {
-                                                    const bRes = applyShinryokuBreakHit(nextCharState, 1, getAllyMaxBreakGauge(nextCharState));
+                                                if (dmg > 0 && nextCharState.stats.hp > 0 && isShinryokuWeaknessHit(enemyAtkShinryoku, nextCharState.shinryokuType)) {
+                                                    const bRes = applyShinryokuBreakHit(nextCharState, 1, getAllyMaxBreakGauge(nextCharState, nextCharState));
                                                     if (bRes.log) totalLog += bRes.log;
                                                 }
                                             } else if (tObj.type === 'companion') {
@@ -3825,8 +3827,8 @@ if (!timeAdvancedChar.divineRelations) {
                                                     const targetComp = nextCharState.companions[cIdx];
                                                     targetComp.stats.hp = Math.max(0, targetComp.stats.hp - dmg);
                                                     if (dmg > 0) totalLog += `\n[시스템: ${targetComp.name} HP -${dmg}] (by ${enemy.name})`;
-                                                    if (dmg > 0 && targetComp.stats.hp > 0 && isShinryokuWeaknessHit(enemy.shinryokuType, targetComp.shinryokuType)) {
-                                                        const bRes = applyShinryokuBreakHit(targetComp, 1, getAllyMaxBreakGauge(nextCharState));
+                                                    if (dmg > 0 && targetComp.stats.hp > 0 && isShinryokuWeaknessHit(enemyAtkShinryoku, targetComp.shinryokuType)) {
+                                                        const bRes = applyShinryokuBreakHit(targetComp, 1, getAllyMaxBreakGauge(nextCharState, targetComp));
                                                         if (bRes.log) totalLog += bRes.log;
                                                     }
                                                 }
@@ -4359,7 +4361,7 @@ if (!timeAdvancedChar.divineRelations) {
             }
         }
         else if (isDefense && !playerSkipTurn) {
-            const recoveredShield = recoverAllyBreakGauge(nextCharState, 2, getAllyMaxBreakGauge(nextCharState));
+            const recoveredShield = recoverAllyBreakGauge(nextCharState, 2, getAllyMaxBreakGauge(nextCharState, nextCharState));
             totalLog += `\n[시스템] ${nextCharState.name}이(가) 방어 태세를 취해 피해를 줄일 준비를 합니다.${recoveredShield > 0 ? ` (🛡️신력 실드 +${recoveredShield} 복구)` : ''}`;
             playerActionDone = true;
         }
@@ -5135,7 +5137,13 @@ let targetIdx = -1;
 
                 if (effect.duration <= 0 && !isDefenseStance) {
                     if (effect.name === SHINRYOKU_BREAK_STATUS_NAME) {
-                        const fallbackMax = entity.maxBreakGauge ?? (entity === nextCharState || nextCharState.companions?.includes(entity) ? getAllyMaxBreakGauge(nextCharState) : getEnemyMaxBreakGauge(entity));
+                        const fallbackMax = entity.maxBreakGauge ?? (
+                            entity === nextCharState
+                                ? getAllyMaxBreakGauge(nextCharState, nextCharState)
+                                : nextCharState.companions?.includes(entity)
+                                    ? getAllyMaxBreakGauge(nextCharState, entity)
+                                    : getEnemyMaxBreakGauge(entity)
+                        );
                         entity.breakGauge = fallbackMax;
                     }
                     totalLog += `\n[시스템] ${entity.name}의 ${effect.name} 버프/효과 지속시간이 종료되었습니다.`;
@@ -6321,6 +6329,13 @@ dom.corruption += 10000;
         }
 
 
+            if (isEnded) {
+                finalChar.breakGauge = undefined;
+                finalChar.maxBreakGauge = undefined;
+                if (Array.isArray(finalChar.companions)) {
+                    finalChar.companions = finalChar.companions.map(c => ({ ...c, breakGauge: undefined, maxBreakGauge: undefined }));
+                }
+            }
             setCharacterSafe(finalChar);
             if (isEnded) {
                 setMessages(prev => [...prev, { role: 'ai', text: localNarrative }]);
@@ -6882,6 +6897,10 @@ dom.corruption += 10000;
                         if (isCombatOnly(e)) return false; // 삭제
                         return true; // 그 외 일반 버프 보존
                     });
+                }
+                if (entity) {
+                    entity.breakGauge = undefined;
+                    entity.maxBreakGauge = undefined;
                 }
             };
             clearCombatStatus(updatedChar);
