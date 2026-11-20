@@ -214,6 +214,13 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
     }
   };
 
+  const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} 시간 초과`)), ms))
+    ]);
+  };
+
   const performAccountAutoSync = async (uid: string) => {
     if (!isSupabaseConfigured() || !uid || autoSyncInProgressRef.current) return;
     autoSyncInProgressRef.current = true;
@@ -221,11 +228,15 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
     setAccountSyncMsg('계정 클라우드와 자동 동기화 중...');
 
     try {
-      const sbMeta = await getSupabaseSavesMetaList(uid);
+      const sbMeta = await withTimeout(getSupabaseSavesMetaList(uid), 8000, '메타데이터 조회');
       let updatedLocalCount = 0;
-      let uploadedCloudCount = 0;
 
-      for (let slotNum = 1; slotNum <= 10; slotNum++) {
+      // 클라우드에 존재하는 슬롯만 선별 비교 (빠른 메타 비교)
+      const cloudSlotEntries = Object.entries(sbMeta);
+      for (const [slotKey, cloudMeta] of cloudSlotEntries) {
+        const slotNum = parseInt(slotKey, 10);
+        if (isNaN(slotNum) || slotNum < 1 || slotNum > 10) continue;
+
         const key = getSaveSlotKey(slotNum);
         const rawLocal = await GameStorage.get(key);
         let localData: any = null;
@@ -235,45 +246,35 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
           } catch {}
         }
 
-        const cloudMeta = sbMeta[String(slotNum)];
         const localTimeMs = localData?.timestamp ? new Date(localData.timestamp).getTime() : 0;
         const cloudTimeMs = cloudMeta?.updatedAt ? new Date(cloudMeta.updatedAt).getTime() : 0;
 
-        if (cloudMeta && (!localData || cloudTimeMs > localTimeMs + 3000)) {
+        if (!localData || cloudTimeMs > localTimeMs + 5000) {
           // 클라우드가 더 최신이거나 로컬에 없음 -> 경량 데이터 다운로드 + 변동 이미지만 Google Drive 복원
-          const compressed = await downloadLightSaveFromSupabase(uid, slotNum);
+          const compressed = await withTimeout(
+            downloadLightSaveFromSupabase(uid, slotNum),
+            10000,
+            `슬롯 ${slotNum} 다운로드`
+          );
           if (compressed) {
             const parsedLight = await decompressData(compressed);
             const { restoredData } = await restoreImagesToSaveData(parsedLight, token);
             await GameStorage.set(key, restoredData);
             updatedLocalCount++;
           }
-        } else if (localData && (!cloudMeta || localTimeMs > cloudTimeMs + 3000)) {
-          // 로컬이 더 최신이거나 클라우드에 없음 -> 이미지 변동분만 Google Drive 업로드 + 경량 세이브 Supabase 업로드
-          const sanitized = optimizeSaveData(localData);
-          const { lightData, images } = await extractImagesFromSaveData(sanitized);
-          if (images.length > 0 && token) {
-            await uploadMissingImagesToDrive(images, token).catch(() => {});
-          }
-          const compressedLight = await compressData(lightData);
-          await uploadLightSaveToSupabase(uid, slotNum, compressedLight, {
-            characterName: localData.character?.name || '이름 없음',
-            level: localData.character?.level || 1
-          });
-          uploadedCloudCount++;
         }
       }
 
-      if (updatedLocalCount > 0 || uploadedCloudCount > 0) {
+      if (updatedLocalCount > 0) {
         await refreshSlots();
-        await fetchCloudSlotsInfo(true);
-        setAccountSyncMsg(`계정 자동 동기화 완료 (수신 ${updatedLocalCount} / 업로드 ${uploadedCloudCount})`);
+        setAccountSyncMsg(`계정 자동 동기화 완료 (${updatedLocalCount}개 슬롯 최신화)`);
       } else {
         setAccountSyncMsg('계정 클라우드와 최신 상태 동기화됨');
       }
-    } catch (err) {
+      await fetchCloudSlotsInfo(true);
+    } catch (err: any) {
       console.warn('[AutoSync] 계정 자동 동기화 실패:', err);
-      setAccountSyncMsg('');
+      setAccountSyncMsg('클라우드 동기화 대기 (로컬 슬롯 정상 사용 가능)');
     } finally {
       autoSyncInProgressRef.current = false;
     }
@@ -287,19 +288,18 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
       setImportCode('');
       setCopyFeedback(false);
       setAuthError('');
-      if (currentUser) {
+      if (currentUser?.uid) {
         fetchCloudSlotsInfo(false);
         if (isSupabaseConfigured()) {
           performAccountAutoSync(currentUser.uid);
         }
-        if (getCachedAccessToken() || googleToken) {
-          performLightweightAutoSyncCheck({ silent: true });
-        }
       } else {
         setAccountSyncMsg('');
       }
+    } else {
+      autoSyncInProgressRef.current = false;
     }
-  }, [isOpen, currentUser, googleToken]);
+  }, [isOpen, currentUser?.uid]);
 
   useEffect(() => {
     if (isOpen && activeTab === 'cloud' && currentUser) {
@@ -903,15 +903,13 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
         {/* Tabs */}
         <div className="flex bg-slate-950/50 border-b border-slate-800 shrink-0">
             {[
-              { id: 'slots', icon: Database, label: '저장 슬롯' },
-              { id: 'cloud', icon: Cloud, label: '클라우드' },
-              { id: 'code', icon: FileCode, label: '세이브 코드' },
+              { id: 'slots', icon: Database, label: '저장 슬롯 (자동 동기화)' },
               { id: 'file', icon: FileDown, label: '파일 관리' }
             ].map(tab => (
               <button 
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex-1 py-4 text-[10px] font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${activeTab === tab.id ? 'text-amber-500 border-amber-500 bg-slate-800' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
+                  className={`flex-1 py-4 text-xs font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${activeTab === tab.id ? 'text-amber-500 border-amber-500 bg-slate-800' : 'text-slate-500 border-transparent hover:text-slate-300'}`}
               >
                   <tab.icon size={14}/> {tab.label}
               </button>
@@ -920,40 +918,28 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
 
         {/* Content */}
         <div className="p-6 flex-1 overflow-y-auto custom-scrollbar max-h-[65vh] bg-slate-900/50 relative">
-            {GameStorage.isQuotaExceeded && (
-              <div className="mb-5 p-4 bg-red-950/60 border border-red-500/40 rounded-2xl text-xs text-red-200 flex flex-col gap-1.5 shadow-lg animate-in fade-in">
-                <div className="font-bold flex items-center gap-1.5 text-red-400">
-                  <AlertTriangle size={16} className="shrink-0 text-red-400" />
-                  <span>파이어베이스 클라우드 일일 무료 사용량(Quota) 초과 안내</span>
-                </div>
-                <p className="text-[11px] text-slate-300 leading-relaxed">
-                  파이어베이스 Firestore 무료 일일 읽기/쓰기 용량이 초과되어 <strong>클라우드 자동 연동이 중지</strong>되었습니다.
-                </p>
-                <p className="text-[10.5px] text-slate-400">
-                  💡 <strong>로컬 세이브/불러오기, 세이브 코드, 파일 저장/불러오기</strong>는 쿼터 영향 없이 100% 정상 작동합니다.
-                </p>
-                <a 
-                  href="https://console.firebase.google.com/project/gen-lang-client-0342639892/firestore/databases/ai-studio-48f44ad9-bd94-438e-bc5f-d4a9f849ebbf/data?openUpgradeDialog=true"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] text-amber-400 hover:text-amber-300 underline font-mono flex items-center gap-1 mt-0.5"
-                >
-                  <span>▶ Firebase 콘솔에서 쿼터 확인 및 업그레이드하기 ↗</span>
-                </a>
-              </div>
-            )}
-
             {accountSyncMsg && (
-              <div className="mb-3 px-3 py-2 bg-cyan-950/30 border border-cyan-500/30 rounded-xl flex items-center justify-between text-[11px] text-cyan-200">
-                <div className="flex items-center gap-2">
+              <div className="mb-3 px-3 py-2 bg-cyan-950/30 border border-cyan-500/30 rounded-xl flex items-center justify-between gap-2 text-[11px] text-cyan-200">
+                <div className="flex items-center gap-2 min-w-0">
                   {accountSyncMsg.includes('중') ? (
                     <Loader2 size={13} className="animate-spin text-cyan-400 shrink-0" />
                   ) : (
                     <CheckCircle size={13} className="text-emerald-400 shrink-0" />
                   )}
-                  <span className="font-bold">{accountSyncMsg}</span>
+                  <span className="font-bold truncate">{accountSyncMsg}</span>
                 </div>
-                <span className="text-[10px] text-slate-400">이미지는 변동 시에만 Drive 동기화</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] text-slate-400 hidden sm:inline">이미지는 변동 시에만 Drive 동기화</span>
+                  {currentUser?.uid && !accountSyncMsg.includes('중') && (
+                    <button
+                      type="button"
+                      onClick={() => performAccountAutoSync(currentUser.uid)}
+                      className="px-2 py-0.5 rounded bg-cyan-900/60 hover:bg-cyan-800 text-cyan-200 text-[10px] font-bold flex items-center gap-1"
+                    >
+                      <RefreshCw size={10} /> 동기화
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
