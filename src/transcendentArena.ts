@@ -67,7 +67,7 @@ export const getTranscendentRoundMeta = (round: number, winCount: number = 0) =>
 };
 
 const buildScaledArenaStats = (level: number, hpMult: number, statMult: number): Stats => {
-    const base = generateCompanionStats(level, ClassTier.FINAL);
+    const base = generateCompanionStats(level);
     const maxHp = Math.floor(base.maxHp * hpMult);
     const maxMp = Math.floor(base.maxMp * 6);
     return {
@@ -109,18 +109,25 @@ export const generateTranscendentArenaOpponents = (
     const champNation = nations[0];
     const champGender = Math.random() < 0.5 ? '남성' : '여성';
     const champRace = getRaceByNation(champNation);
-    const champRawName = generateName(champNation, champGender);
+    const champRawName = generateName(champNation, champGender === '남성' ? 'male' : 'female');
     const champLv = pickLv(40);
     const champShinryoku = isFinal && defendingChampion ? defendingChampion.shinryokuType : pickShinryoku();
+    const baseScaledChamp = buildScaledArenaStats(champLv, meta.hpMult, meta.statMult);
     const champStats: Stats = isFinal && defendingChampion
         ? {
-            ...defendingChampion.stats,
-            hp: Math.floor(defendingChampion.stats.maxHp * 4500 * (1 + Math.max(0, winCount) * 0.45)),
-            maxHp: Math.floor(defendingChampion.stats.maxHp * 4500 * (1 + Math.max(0, winCount) * 0.45)),
-            mp: Math.floor((defendingChampion.stats.maxMp || 1000) * 6),
-            maxMp: Math.floor((defendingChampion.stats.maxMp || 1000) * 6),
+            ...baseScaledChamp,
+            hp: Math.max(baseScaledChamp.maxHp, Math.floor(defendingChampion.stats.maxHp * 4500 * (1 + Math.max(0, winCount) * 0.45))),
+            maxHp: Math.max(baseScaledChamp.maxHp, Math.floor(defendingChampion.stats.maxHp * 4500 * (1 + Math.max(0, winCount) * 0.45))),
+            mp: Math.max(baseScaledChamp.maxMp, Math.floor((defendingChampion.stats.maxMp || 1000) * 6)),
+            maxMp: Math.max(baseScaledChamp.maxMp, Math.floor((defendingChampion.stats.maxMp || 1000) * 6)),
+            str: Math.max(baseScaledChamp.str, Math.floor((defendingChampion.stats.str || 0) * meta.statMult * 0.5)),
+            int: Math.max(baseScaledChamp.int, Math.floor((defendingChampion.stats.int || 0) * meta.statMult * 0.5)),
+            def: Math.max(baseScaledChamp.def, Math.floor((defendingChampion.stats.def || 0) * meta.statMult * 0.5)),
+            agi: Math.max(baseScaledChamp.agi, Math.floor((defendingChampion.stats.agi || 0) * meta.statMult * 0.5)),
+            wis: Math.max(baseScaledChamp.wis, Math.floor((defendingChampion.stats.wis || 0) * meta.statMult * 0.5)),
+            ctrl: Math.max(baseScaledChamp.ctrl, Math.floor((defendingChampion.stats.ctrl || 0) * meta.statMult * 0.5)),
         }
-        : buildScaledArenaStats(champLv, meta.hpMult, meta.statMult);
+        : baseScaledChamp;
 
     const champTitle = TRANSCENDENT_ARENA_CHAMPION_TITLES[Math.floor(Math.random() * TRANSCENDENT_ARENA_CHAMPION_TITLES.length)];
     const champName = isFinal && defendingChampion
@@ -163,7 +170,7 @@ export const generateTranscendentArenaOpponents = (
                 currentMastery: 0,
                 effectFormula: 'INT*3.0',
                 powerRatio: 300,
-                targetType: 'all'
+                targetType: 'aoe'
             }
         ],
         gender: champGender,
@@ -179,7 +186,7 @@ export const generateTranscendentArenaOpponents = (
         const compNation = nations[idx];
         const compGender = Math.random() < 0.5 ? '남성' : '여성';
         const compRace = getRaceByNation(compNation);
-        const compRawName = generateName(compNation, compGender);
+        const compRawName = generateName(compNation, compGender === '남성' ? 'male' : 'female');
         const compLv = pickLv(-30 * idx);
         const compStats = buildScaledArenaStats(compLv, meta.hpMult * 0.78, meta.statMult * 0.9);
         const compTitle = SUFFIX_COMPANION_TITLES[(idx + round) % SUFFIX_COMPANION_TITLES.length];
@@ -207,7 +214,7 @@ export const generateTranscendentArenaOpponents = (
                     currentMastery: 0,
                     effectFormula: idx % 2 === 0 ? 'INT*2.8' : 'STR*2.8',
                     powerRatio: 280,
-                    targetType: idx === 2 ? 'all' : 'single'
+                    targetType: idx === 2 ? 'aoe' : 'single'
                 }
             ],
             gender: compGender,
@@ -245,7 +252,7 @@ export const generateTranscendentArenaOpponents = (
                 currentMastery: 0,
                 effectFormula: 'STR*2.7',
                 powerRatio: 270,
-                targetType: 'all'
+                targetType: 'aoe'
             }
         ],
         race: '마수',

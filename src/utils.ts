@@ -5181,6 +5181,9 @@ export const calculateDamage = (
         if (target.statusEffects?.some(e => e.name === "방어 태세")) {
             damage = Math.floor(damage * 0.5);
         }
+        if (target.statusEffects?.some((e: any) => e.name === "신력 브레이크")) {
+            damage = Math.floor(damage * 1.5);
+        }
         return { damage: Math.floor(damage), isCrit, isMiss: false, affinityEffect, additionalDamage, attackerMythicOptions: atkDerived.mythicOptions, targetMythicOptions: defDerived.mythicOptions };
     } catch (e) {
         console.error("Damage Calculation Error:", e);

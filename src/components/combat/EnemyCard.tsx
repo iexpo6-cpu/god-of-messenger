@@ -6,6 +6,7 @@ import { HealthBar } from './HealthBar';
 import { CombatStatusBadge } from './CombatStatusBadge';
 import { FloatingFeedbackOverlay, FloatingFeedbackItem } from './FloatingFeedbackOverlay';
 import { getMonsterInfo } from '../../monsterfield';
+import { getEnemyMaxBreakGauge, isUnitShinryokuBroken } from '../../services/shinryokuBreakService';
 
 const SHINRYOKU_ICONS: Record<string, any> = {
     '화염계': Flame,
@@ -152,6 +153,32 @@ const EnemyCardComponent = ({
                     shield={enemy.statusEffects?.filter(s => s.name === '마나 쉴드' || s.name === '마나 쉴드 (패시브)').reduce((acc, curr) => acc + (curr.val || 0), 0) || 0}
                     label="HP"
                 />
+                {(() => {
+                    const maxBreak = enemy.maxBreakGauge ?? getEnemyMaxBreakGauge(enemy);
+                    const isBroken = isUnitShinryokuBroken(enemy.statusEffects);
+                    const currentBreak = isBroken ? 0 : (enemy.breakGauge ?? maxBreak);
+                    return (
+                        <div className="mt-1 flex items-center gap-1.5">
+                            <span className={`text-[9px] font-black tracking-tight shrink-0 ${isBroken ? 'text-rose-400 animate-pulse' : 'text-cyan-300'}`}>
+                                {isBroken ? '💥 BREAK' : `🛡️ ${currentBreak}/${maxBreak}`}
+                            </span>
+                            <div className="flex-1 flex items-center gap-0.5">
+                                {Array.from({ length: maxBreak }).map((_, idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`h-1.5 flex-1 rounded-sm transition-all duration-200 ${
+                                            isBroken
+                                                ? 'bg-rose-500/40 border border-rose-500/60'
+                                                : idx < currentBreak
+                                                    ? 'bg-cyan-400 shadow-[0_0_4px_rgba(34,211,238,0.65)]'
+                                                    : 'bg-slate-800/90 border border-slate-700/70'
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
         </div>
     );
@@ -160,6 +187,8 @@ const EnemyCardComponent = ({
 const areEnemyCardPropsEqual = (prev: EnemyCardProps, next: EnemyCardProps): boolean => {
     if (prev.enemy.hp !== next.enemy.hp) return false;
     if (prev.enemy.maxHp !== next.enemy.maxHp) return false;
+    if (prev.enemy.breakGauge !== next.enemy.breakGauge) return false;
+    if (prev.enemy.maxBreakGauge !== next.enemy.maxBreakGauge) return false;
     if (prev.selectable !== next.selectable) return false;
     if (prev.isHit !== next.isHit) return false;
     if (prev.playerType !== next.playerType) return false;

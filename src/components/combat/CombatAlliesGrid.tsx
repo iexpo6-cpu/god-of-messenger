@@ -109,6 +109,8 @@ export const CombatAlliesGrid = memo(({
                                                 onClick={() => handleAllyClick(member.name, member.entity, member.isPlayer)}
                                                 statusEffects={member.statusEffects}
                                                 visualUrl={member.visualUrl}
+                                                breakGauge={(member.entity as any)?.breakGauge}
+                                                maxBreakGauge={(member.entity as any)?.maxBreakGauge}
                                                 unusableLabel={
                                                     selectionMode === 'ally' && isPureResurrectionPending 
                                                     ? (member.stats.hp > 0 ? "생존" : "") 

@@ -116,12 +116,11 @@ export const generateAbyssTowerEnemies = (floor: number, isBossEncounter: boolea
         const bossLv = baseLv + 50;
         const bossName = ABYSS_BOSS_NAMES[Math.floor((floor / 10)) % ABYSS_BOSS_NAMES.length];
         const shinryoku = SHINRYOKU_TYPES_LIST[floor % SHINRYOKU_TYPES_LIST.length] || '어둠';
-        const baseEnemy = generateProceduralEnemy(bossLv, `[차원 수호자] ${bossName}`, {
-            region: '마계',
-            nation: '임페리얼 제국',
-            isBoss: true
-        });
-        const hpScale = 12 + Math.floor(floor / 10) * 1.5;
+        const baseEnemy = generateProceduralEnemy(bossLv, `[차원 수호자] ${bossName}`);
+        const modAtkMult = modifier.id === 'crimson_frenzy' ? 1.2 : modifier.id === 'abyss_resonance' ? 1.15 : 1.0;
+        const modDefMult = modifier.id === 'crimson_frenzy' ? 0.85 : modifier.id === 'erosion_fog' ? 1.15 : 1.0;
+        const modSpdMult = modifier.id === 'void_overload' ? 1.2 : 1.0;
+        const hpScale = (12 + Math.floor(floor / 10) * 1.5) * (modifier.id === 'erosion_fog' ? 1.15 : 1.0);
         const statScale = 2.8 + Math.floor(floor / 10) * 0.25;
         const maxHp = Math.floor(baseEnemy.maxHp * hpScale);
 
@@ -139,12 +138,12 @@ export const generateAbyssTowerEnemies = (floor: number, isBossEncounter: boolea
                     ...baseEnemy.stats,
                     hp: maxHp,
                     maxHp,
-                    str: Math.floor(baseEnemy.stats.str * statScale),
-                    int: Math.floor(baseEnemy.stats.int * statScale),
-                    def: Math.floor(baseEnemy.stats.def * (statScale * 1.05)),
-                    agi: Math.floor(baseEnemy.stats.agi * statScale),
+                    str: Math.floor(baseEnemy.stats.str * statScale * modAtkMult),
+                    int: Math.floor(baseEnemy.stats.int * statScale * modAtkMult),
+                    def: Math.floor(baseEnemy.stats.def * (statScale * 1.05) * modDefMult),
+                    agi: Math.floor(baseEnemy.stats.agi * statScale * modSpdMult),
                     wis: Math.floor(baseEnemy.stats.wis * statScale),
-                    ctrl: Math.floor(baseEnemy.stats.ctrl * (statScale * 1.2))
+                    ctrl: Math.floor(baseEnemy.stats.ctrl * (statScale * 1.2) * modSpdMult)
                 },
                 skills: [
                     ...(baseEnemy.skills || []),
@@ -159,7 +158,7 @@ export const generateAbyssTowerEnemies = (floor: number, isBossEncounter: boolea
                         currentMastery: 0,
                         effectFormula: 'INT*3.0',
                         powerRatio: 300,
-                        targetType: 'all'
+                        targetType: 'aoe'
                     }
                 ]
             }
@@ -167,16 +166,15 @@ export const generateAbyssTowerEnemies = (floor: number, isBossEncounter: boolea
     }
 
     const mobCount = Math.min(3, 1 + Math.floor(Math.random() * 2));
+    const modAtkMult = modifier.id === 'crimson_frenzy' ? 1.2 : modifier.id === 'abyss_resonance' ? 1.15 : 1.0;
+    const modDefMult = modifier.id === 'crimson_frenzy' ? 0.85 : modifier.id === 'erosion_fog' ? 1.15 : 1.0;
+    const modSpdMult = modifier.id === 'void_overload' ? 1.2 : 1.0;
     const enemies: Enemy[] = [];
     for (let i = 0; i < mobCount; i++) {
         const mobLv = baseLv + (i * 15);
         const mobName = ABYSS_MONSTER_NAMES[(floor + i) % ABYSS_MONSTER_NAMES.length];
-        const enemy = generateProceduralEnemy(mobLv, `[심연 ${floor}F] ${mobName}`, {
-            region: '마계',
-            nation: '임페리얼 제국',
-            isBoss: false
-        });
-        const maxHp = Math.floor(enemy.maxHp * 3.5);
+        const enemy = generateProceduralEnemy(mobLv, `[심연 ${floor}F] ${mobName}`);
+        const maxHp = Math.floor(enemy.maxHp * 3.5 * (modifier.id === 'erosion_fog' ? 1.15 : 1.0));
         enemies.push({
             ...enemy,
             hp: maxHp,
@@ -186,11 +184,11 @@ export const generateAbyssTowerEnemies = (floor: number, isBossEncounter: boolea
                 ...enemy.stats,
                 hp: maxHp,
                 maxHp,
-                str: Math.floor(enemy.stats.str * 1.9),
-                int: Math.floor(enemy.stats.int * 1.9),
-                def: Math.floor(enemy.stats.def * 1.8),
-                agi: Math.floor(enemy.stats.agi * 1.8),
-                ctrl: Math.floor(enemy.stats.ctrl * 2.0)
+                str: Math.floor(enemy.stats.str * 1.9 * modAtkMult),
+                int: Math.floor(enemy.stats.int * 1.9 * modAtkMult),
+                def: Math.floor(enemy.stats.def * 1.8 * modDefMult),
+                agi: Math.floor(enemy.stats.agi * 1.8 * modSpdMult),
+                ctrl: Math.floor(enemy.stats.ctrl * 2.0 * modSpdMult)
             }
         });
     }

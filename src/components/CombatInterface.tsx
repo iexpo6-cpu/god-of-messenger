@@ -244,6 +244,17 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOn
     const [combatSpeed, setCombatSpeed] = useState<'normal' | 'fast'>(() => {
         return (localStorage.getItem('combat_speed') as any) || 'normal';
     });
+    const [isQteEnabled, setIsQteEnabled] = useState<boolean>(() => {
+        const val = localStorage.getItem('combat_qte_enabled');
+        return val !== null ? val === 'true' : true;
+    });
+    const [qtePrompt, setQtePrompt] = useState<{
+        targetLabel: string;
+        progress: number;
+        resolve: (triggered: boolean) => void;
+    } | null>(null);
+    const [hitStopFlash, setHitStopFlash] = useState<boolean>(false);
+    const qteRafRef = useRef<number | null>(null);
     const [isActingTurn, setIsActingTurn] = useState<boolean>(false);
     const isActingTurnRef = useRef(false);
     const [manualCompanionSkillOpen, setManualCompanionSkillOpen] = useState<boolean>(false);
@@ -1763,9 +1774,9 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOn
         }
     }, [activeUnit, activeTurnIndex, turnQueue, isLoading, combatState.isEnded, combatState.enemies, combatState.turn, player, onAction, activeVideo, isOneOnOne, challengerCompanion]);
 
-    // Safety watchdog: if isActingTurn stays true for > 2.2s (and no active video/cutscene is playing), force unlock to prevent combat freezing
+    // Safety watchdog: if isActingTurn stays true for > 2.2s (and no active video/cutscene/QTE is playing), force unlock to prevent combat freezing
     useEffect(() => {
-        if (activeVideo || combatState.isEnded || isLoading) return;
+        if (activeVideo || combatState.isEnded || isLoading || qtePrompt) return;
         const checkDelay = combatSpeed === 'fast' ? 1000 : 2200;
         const watchdog = setTimeout(() => {
             if ((isActingTurnRef.current || isActingTurn) && !activeVideo && !combatState.isEnded) {
@@ -1778,7 +1789,81 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOn
             }
         }, checkDelay);
         return () => clearTimeout(watchdog);
-    }, [isActingTurn, activeTurnIndex, isAutoBattle, advanceTurn, activeUnit, activeVideo, combatSpeed, combatState.isEnded, isLoading]);
+    }, [isActingTurn, activeTurnIndex, isAutoBattle, advanceTurn, activeUnit, activeVideo, combatSpeed, combatState.isEnded, isLoading, qtePrompt]);
+
+    // [NEW] Timing Impact QTE + Hit-Stop helper
+    const runWithQte = useCallback((isOffensive: boolean, targetLabel: string, callback: (qteTag: string) => void) => {
+        if (!isQteEnabled || isAutoBattle || !isOffensive || combatState.isEnded || isCombatEndedRef.current) {
+            callback('');
+            return;
+        }
+        if (qteRafRef.current) cancelAnimationFrame(qteRafRef.current);
+
+        const durationMs = 950;
+        const startTime = performance.now();
+        let settled = false;
+
+        const finishQte = (triggered: boolean) => {
+            if (settled) return;
+            settled = true;
+            if (qteRafRef.current) {
+                cancelAnimationFrame(qteRafRef.current);
+                qteRafRef.current = null;
+            }
+            const elapsed = performance.now() - startTime;
+            const p = Math.min(1, Math.max(0, elapsed / durationMs));
+            setQtePrompt(null);
+
+            let grade: 'JUST' | 'GOOD' | 'MISS' = 'MISS';
+            if (triggered) {
+                if (p >= 0.60 && p <= 0.80) grade = 'JUST';
+                else if (p >= 0.40 && p <= 0.92) grade = 'GOOD';
+            }
+
+            if (grade === 'JUST') {
+                setHitStopFlash(true);
+                triggerFloatingText(targetLabel || player.name, '⚡ JUST IMPACT! 125%', 'crit');
+                setTimeout(() => {
+                    if (!isMountedRef.current) return;
+                    setHitStopFlash(false);
+                    callback(' [QTE:JUST]');
+                }, 70);
+            } else if (grade === 'GOOD') {
+                triggerFloatingText(targetLabel || player.name, 'GOOD! 100%', 'normal');
+                callback(' [QTE:GOOD]');
+            } else {
+                triggerFloatingText(targetLabel || player.name, 'MISS... 75%', 'debuff');
+                callback(' [QTE:MISS]');
+            }
+        };
+
+        setQtePrompt({ targetLabel, progress: 0, resolve: finishQte });
+
+        const tick = () => {
+            if (settled || !isMountedRef.current || isCombatEndedRef.current) return;
+            const p = Math.min(1, (performance.now() - startTime) / durationMs);
+            setQtePrompt(prev => prev ? { ...prev, progress: p, resolve: finishQte } : null);
+            if (p >= 1) {
+                finishQte(false);
+            } else {
+                qteRafRef.current = requestAnimationFrame(tick);
+            }
+        };
+        qteRafRef.current = requestAnimationFrame(tick);
+    }, [isQteEnabled, isAutoBattle, combatState.isEnded, player.name]);
+
+    useEffect(() => {
+        if (!qtePrompt) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                qtePrompt.resolve(true);
+            }
+        };
+        window.addEventListener('keydown', onKeyDown, true);
+        return () => window.removeEventListener('keydown', onKeyDown, true);
+    }, [qtePrompt]);
 
     let typeLabel = "NORMAL BATTLE";
     let typeColor = "text-slate-500 border-slate-600";
@@ -1870,7 +1955,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOn
             return { isSkip: false, name: '' };
         }
         const ccEffect = entity.statusEffects.find(eff => 
-            ['속박', '빙결', '감전', '기절', '마비', '혼란', '수면', '소멸'].includes(eff.name)
+            ['속박', '빙결', '감전', '기절', '마비', '혼란', '수면', '소멸', '신력 브레이크'].includes(eff.name)
         );
         if (ccEffect) {
             return { isSkip: true, name: ccEffect.name };
@@ -2082,14 +2167,16 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOn
                 setIsSkillModalOpen(false);
                 return;
             }
-            // [MODIFIED] Check for cutscene before executing
+            // [MODIFIED] Check for cutscene before executing + Timing QTE
             triggerCutsceneIfFinal(player, skill, () => {
-                triggerCombatEffect(skill, undefined, targetType === 'aoe', '전체 대상', player.name, skill.name);
-                if (isSummon) {
-                    spawnSummon(player, skill);
-                }
-                onAction(buildSkillActionCommand(skill, player.name, false, targetType), skill.mpCost);
-                advanceTurn();
+                runWithQte(isOffensiveAttack, '전체 대상', (qteTag) => {
+                    triggerCombatEffect(skill, undefined, targetType === 'aoe', '전체 대상', player.name, skill.name);
+                    if (isSummon) {
+                        spawnSummon(player, skill);
+                    }
+                    onAction(buildSkillActionCommand(skill, player.name, false, targetType) + qteTag, skill.mpCost);
+                    advanceTurn();
+                });
             });
             setIsSkillModalOpen(false);
         } else if (targetType === 'ally' || (targetType === 'single' && (isBuff || isRes))) {
@@ -2190,10 +2277,13 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOn
                 advanceTurn();
                 return;
             }
+            const isOffensiveSkill = skill.type === SkillType.PHYSICAL || skill.type === SkillType.MAGIC || String(skill.type).includes('물리') || String(skill.type).includes('마법');
             triggerCutsceneIfFinal(player, skill, () => {
-                triggerCombatEffect(skill, undefined, skill.targetType === 'aoe', targetName, player.name, skill.name);
-                onAction(buildSkillActionCommand(skill, player.name, false, targetName), skill.mpCost);
-                advanceTurn();
+                runWithQte(isOffensiveSkill, targetName, (qteTag) => {
+                    triggerCombatEffect(skill, undefined, skill.targetType === 'aoe', targetName, player.name, skill.name);
+                    onAction(buildSkillActionCommand(skill, player.name, false, targetName) + qteTag, skill.mpCost);
+                    advanceTurn();
+                });
             });
         } else if (pendingCompanionSkill) {
             const { skill, caster } = pendingCompanionSkill;
@@ -2221,8 +2311,11 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOn
         } else if (pendingAttack) {
             setPendingAttack(false);
             setSelectionMode(null);
-            onAction(`[일반 공격] ${targetName} 공격`);
-            advanceTurn();
+            runWithQte(true, targetName, (qteTag) => {
+                triggerCombatEffect(player.shinryokuType || '화염계', 'NORMAL', false, targetName, player.name);
+                onAction(`[일반 공격] ${targetName} 공격${qteTag}`);
+                advanceTurn();
+            });
         } else if (pendingItem) {
             const item = pendingItem;
             setPendingItem(null);
@@ -2459,7 +2552,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOn
                     </div>
 
                     {/* Turn Controls */}
-                    <div className="flex items-center space-x-1 sm:space-x-2">
+                    <div className="flex flex-wrap items-center justify-end gap-1 sm:gap-2">
                         {/* Companion Auto Toggle */}
                         <button
                             onClick={() => {
@@ -2524,6 +2617,25 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOn
                         >
                             <FastForward size={11} className="mr-0.5 md:mr-1 md:size-[13px]" />
                             {combatSpeed === 'fast' ? '빠름' : '보통'}
+                        </button>
+
+                        {/* Timing Impact QTE Toggle */}
+                        <button
+                            onClick={() => {
+                                const next = !isQteEnabled;
+                                setIsQteEnabled(next);
+                                localStorage.setItem('combat_qte_enabled', String(next));
+                            }}
+                            title="수동 공격/스킬 시 타이밍 임팩트 QTE 활성화 여부"
+                            className={`px-1.5 py-0.5 sm:px-2 sm:py-1 md:px-2 md:py-1 rounded text-[8.5px] sm:text-[10px] md:text-xs font-bold flex items-center transition-all border cursor-pointer ${
+                                isQteEnabled
+                                ? 'bg-amber-950/80 border-amber-500/80 text-amber-300'
+                                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                            }`}
+                        >
+                            <Zap size={11} className="mr-0.5 md:mr-1 md:size-[13px]" />
+                            <span className="hidden sm:inline">QTE·히트스톱: </span>
+                            <span className="sm:hidden">QTE:</span>{isQteEnabled ? 'ON' : 'OFF'}
                         </button>
                     </div>
                 </div>
@@ -2958,6 +3070,57 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOn
                         : (player.skillShortcuts || [])
                 }
             />
+
+            {/* [NEW] Timing Impact QTE Overlay */}
+            {qtePrompt && (
+                <div
+                    onClick={() => qtePrompt.resolve(true)}
+                    className="fixed inset-0 z-[80] bg-black/45 backdrop-blur-[1px] flex flex-col items-center justify-center cursor-pointer select-none animate-in fade-in duration-100"
+                >
+                    <div className="relative w-44 h-44 sm:w-52 sm:h-52 flex items-center justify-center">
+                        {/* Outer Timing Ring shrinking toward Golden Target */}
+                        <div
+                            className="absolute rounded-full border-4 border-amber-300/90 shadow-[0_0_24px_rgba(251,191,36,0.75)] pointer-events-none"
+                            style={{
+                                width: `${Math.max(40, (1.45 - qtePrompt.progress * 0.95) * 140)}px`,
+                                height: `${Math.max(40, (1.45 - qtePrompt.progress * 0.95) * 140)}px`,
+                            }}
+                        />
+                        {/* Golden JUST Target Ring */}
+                        <div
+                            className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 flex flex-col items-center justify-center transition-colors ${
+                                qtePrompt.progress >= 0.60 && qtePrompt.progress <= 0.80
+                                    ? 'border-amber-400 bg-amber-500/30 shadow-[0_0_30px_rgba(251,191,36,0.9)] scale-105'
+                                    : qtePrompt.progress >= 0.40 && qtePrompt.progress <= 0.92
+                                        ? 'border-cyan-400 bg-cyan-500/15'
+                                        : 'border-slate-500/70 bg-slate-900/70'
+                            }`}
+                        >
+                            <span className="text-xs sm:text-sm font-black text-amber-200 tracking-wider">JUST!</span>
+                            <span className="text-[10px] text-white/80 font-bold mt-0.5">터치 / SPACE</span>
+                        </div>
+                    </div>
+                    <div className="mt-3 w-56 sm:w-64 h-3 bg-slate-900/95 border border-slate-700 rounded-full overflow-hidden relative">
+                        {/* GOOD zone (40% ~ 92%) */}
+                        <div className="absolute inset-y-0 bg-cyan-500/35" style={{ left: '40%', width: '52%' }} />
+                        {/* JUST zone (60% ~ 80%) */}
+                        <div className="absolute inset-y-0 bg-amber-400/80" style={{ left: '60%', width: '20%' }} />
+                        {/* Moving cursor */}
+                        <div
+                            className="absolute inset-y-0 w-1.5 bg-white shadow-[0_0_8px_#fff]"
+                            style={{ left: `${Math.min(98, qtePrompt.progress * 100)}%` }}
+                        />
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-slate-200">
+                        {qtePrompt.targetLabel} 타격 타이밍! <span className="text-amber-300">(JUST 125% · MISS 75%)</span>
+                    </p>
+                </div>
+            )}
+
+            {/* Hit-Stop Golden Flash */}
+            {hitStopFlash && (
+                <div className="fixed inset-0 z-[85] bg-amber-200/35 pointer-events-none animate-pulse" />
+            )}
         </div>
     );
 };

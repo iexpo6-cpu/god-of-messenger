@@ -81,7 +81,7 @@ const CityMapBoard: React.FC<Props> = ({
         '포르투갈', '그리스', '아일랜드', '헝가리', '체코', '루마니아', '터키', '스코틀랜드'
     ].includes(loc.nation);
     const isMiddleEastOrAfrica = loc.region === '아프리카' || ['사우디아라비아', 'UAE', '이집트', '이란', '이스라엘', '모로코'].includes(loc.nation);
-    const isAmericasOrOceania = ['북아메리카', '남아메리카', '오세아니아'].includes(loc.region) || ['미국', '캐나다', '호주', '뉴질랜드', '브라질'].includes(loc.nation);
+    const isAmericasOrOceania = ['북아메리카', '남아메리카', '오세아니아'].includes(loc.region) || ['미국', '캐나다', '멕시코', '호주', '뉴질랜드', '브라질', '아르헨티나'].includes(loc.nation);
 
     // Determine city tier
     let tier: CityTier = 'City';

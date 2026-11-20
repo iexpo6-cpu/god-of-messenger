@@ -1505,7 +1505,102 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
             badgeClass: "bg-amber-950/70 text-amber-300 border-amber-600/60 shadow-[0_0_15px_rgba(245,158,11,0.25)]",
             description: "황금빛 사막의 모래언덕과 영롱한 에메랄드빛 오아시스, 태양신의 고대 피라미드와 황금빛 돔이 석양에 빛나는 신비로운 사막의 성도입니다."
         },
-        matchedNations: ["아프리카", "이집트", "남아공", "나이지리아", "케냐", "모로코", "이스라엘", "이란"]
+        matchedNations: ["아프리카"]
+    },
+
+    africa_egypt_solar_pyramid_nile: {
+        id: "africa_egypt_solar_pyramid_nile",
+        name: "이집트 태양 피라미드 나일 성도",
+        region: "아프리카",
+        concept: "나일강변의 황금 피라미드와 태양 원반 마법 오벨리스크",
+        prompt: "Epic fantasy panoramic illustration of an ancient Egyptian arcane solar citadel along the Nile river, monumental golden-capped pyramids radiating celestial sun-disc magic, colossal sandstone obelisks, palm-lined oasis canals and glowing hieroglyphic wards at twilight, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/africa_egypt_solar_pyramid_nile.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(67, 20, 7, 0.75) 0%, rgba(120, 53, 15, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-yellow-300",
+            borderColor: "border-amber-500/60",
+            glowColor: "rgba(245, 158, 11, 0.35)",
+            badgeText: "🔺 나일 태양 피라미드 (Solar Nile)",
+            badgeClass: "bg-amber-950/70 text-amber-300 border-amber-600/60 shadow-[0_0_15px_rgba(245,158,11,0.25)]",
+            description: "나일강의 비옥한 오아시스 운하 너머 황금 피라미드와 상형문자 오벨리스크가 태양신의 광휘를 내뿜는 고대 성도입니다."
+        },
+        matchedNations: ["이집트"]
+    },
+
+    africa_southafrica_table_mountain_bay: {
+        id: "africa_southafrica_table_mountain_bay",
+        name: "남아공 테이블 마운틴 해안 요새",
+        region: "아프리카",
+        concept: "안개 구름이 걸린 테이블 마운틴과 석양의 희망봉 항구",
+        prompt: "Epic fantasy panoramic illustration of a South African coastal fortress city inspired by Cape Town beneath a flat-topped Table Mountain shrouded in mist, vibrant harbor bastion with golden stone walls meeting dramatic turquoise ocean waves at sunset, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/africa_southafrica_table_mountain_bay.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(67, 20, 7, 0.75) 0%, rgba(120, 53, 15, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-yellow-300",
+            borderColor: "border-amber-500/60",
+            glowColor: "rgba(245, 158, 11, 0.35)",
+            badgeText: "🌊 희망봉 요새 (Table Bay)",
+            badgeClass: "bg-amber-950/70 text-amber-300 border-amber-600/60 shadow-[0_0_15px_rgba(245,158,11,0.25)]",
+            description: "구름 식탁보를 두른 거대한 테이블 마운틴 아래, 두 대양이 만나는 황금빛 해안 요새가 장엄하게 자리합니다."
+        },
+        matchedNations: ["남아공"]
+    },
+
+    africa_nigeria_golden_savanna_citadel: {
+        id: "africa_nigeria_golden_savanna_citadel",
+        name: "나이지리아 황금 청동 왕성",
+        region: "아프리카",
+        concept: "테라코타와 청동 태양 룬이 새겨진 서아프리카 거석 왕성",
+        prompt: "Epic fantasy panoramic illustration of a West African grand royal citadel inspired by Benin and Abuja, monumental terracotta-and-bronze fortress walls inlaid with glowing golden sun-runes, lush tropical lagoon and towering sandstone monoliths under dramatic golden sky, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/africa_nigeria_golden_savanna_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(67, 20, 7, 0.75) 0%, rgba(120, 53, 15, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-yellow-300",
+            borderColor: "border-amber-500/60",
+            glowColor: "rgba(245, 158, 11, 0.35)",
+            badgeText: "🛡️ 황금 청동 왕성 (Bronze Citadel)",
+            badgeClass: "bg-amber-950/70 text-amber-300 border-amber-600/60 shadow-[0_0_15px_rgba(245,158,11,0.25)]",
+            description: "거대한 사암 거석과 황금 태양 룬이 아로새겨진 테라코타 청동 성벽이 열대 석호를 수호하는 서아프리카의 웅장한 왕도입니다."
+        },
+        matchedNations: ["나이지리아"]
+    },
+
+    africa_kenya_kilimanjaro_savanna_sanctuary: {
+        id: "africa_kenya_kilimanjaro_savanna_sanctuary",
+        name: "케냐 킬리만자로 초원 성역",
+        region: "아프리카",
+        concept: "만년설 킬리만자로와 아카시아 대초원을 굽어보는 자연 마법 첨탑",
+        prompt: "Epic fantasy panoramic illustration of an East African savanna sanctuary city overlooking sweeping acacia plains beneath snow-crowned Mount Kilimanjaro at sunrise, elevated stone-and-timber wind-spires infused with emerald nature magic, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/africa_kenya_kilimanjaro_savanna_sanctuary.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(67, 20, 7, 0.75) 0%, rgba(120, 53, 15, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-yellow-300",
+            borderColor: "border-amber-500/60",
+            glowColor: "rgba(245, 158, 11, 0.35)",
+            badgeText: "🦒 킬리만자로 성역 (Savanna Spire)",
+            badgeClass: "bg-amber-950/70 text-amber-300 border-amber-600/60 shadow-[0_0_15px_rgba(245,158,11,0.25)]",
+            description: "만년설을 인 킬리만자로를 배경으로 끝없는 아카시아 대초원과 바람의 정령 첨탑이 조화를 이루는 대자연의 성역입니다."
+        },
+        matchedNations: ["케냐"]
+    },
+
+    africa_morocco_red_atlas_kasbah: {
+        id: "africa_morocco_red_atlas_kasbah",
+        name: "모로코 붉은 아틀라스 카스바",
+        region: "아프리카",
+        concept: "장밋빛 사암 아치와 청색 모자이크 정원, 황혼의 아틀라스 설산",
+        prompt: "Epic fantasy panoramic illustration of a Moroccan red-earth kasbah citadel inspired by Marrakech and Chefchaouen, intricate rose-sandstone arches, cobalt-blue mosaic courtyards, glowing brass lanterns and snow-dusted Atlas Mountains at dusk, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/africa_morocco_red_atlas_kasbah.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(67, 20, 7, 0.75) 0%, rgba(120, 53, 15, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-yellow-300",
+            borderColor: "border-amber-500/60",
+            glowColor: "rgba(245, 158, 11, 0.35)",
+            badgeText: "🕌 아틀라스 카스바 (Red Kasbah)",
+            badgeClass: "bg-amber-950/70 text-amber-300 border-amber-600/60 shadow-[0_0_15px_rgba(245,158,11,0.25)]",
+            description: "붉은 사암 성채와 코발트블루 타일 정원, 은은한 황동 등불 너머로 아틀라스 설산이 펼쳐지는 이국적인 마법 요새입니다."
+        },
+        matchedNations: ["모로코"]
     },
 
     // 9. 아메리카 / 오세아니아 (마도 공학과 마천루 신대륙)
@@ -1525,7 +1620,140 @@ export const CITY_BACKGROUND_MANIFEST: Record<string, CityBackgroundConfig> = {
             badgeClass: "bg-cyan-950/70 text-cyan-300 border-cyan-600/60 shadow-[0_0_15px_rgba(45,212,191,0.25)]",
             description: "푸른 에테르 에너지가 흐르는 수정 마천루와 하늘을 가르는 비공정, 드넓은 해양을 굽어보는 첨단 마도 공학의 신대륙입니다."
         },
-        matchedNations: ["북아메리카", "남아메리카", "오세아니아", "미국", "캐나다", "멕시코", "브라질", "아르헨티나", "호주", "뉴질랜드"]
+        matchedNations: ["북아메리카", "남아메리카", "오세아니아"]
+    },
+
+    oceania_australia_harbor_arcane_opera: {
+        id: "oceania_australia_harbor_arcane_opera",
+        name: "호주 하버 아케인 오페라 메트로폴리스",
+        region: "오세아니아",
+        concept: "청록 에테르가 빛나는 돛 모양 수정 오페라 돔과 아치 대교",
+        prompt: "Epic fantasy-magitech panoramic illustration of an Australian coastal harbor metropolis inspired by Sydney, sweeping white sail-shaped crystal opera domes glowing with teal arcane energy beside a grand steel arch bridge over sparkling turquoise waters at golden dawn, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/oceania_australia_harbor_arcane_opera.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.75) 0%, rgba(14, 116, 144, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-teal-300",
+            borderColor: "border-cyan-400/60",
+            glowColor: "rgba(45, 212, 191, 0.35)",
+            badgeText: "⛵ 아케인 오페라 항구 (Harbor Opera)",
+            badgeClass: "bg-cyan-950/70 text-cyan-300 border-cyan-600/60 shadow-[0_0_15px_rgba(45,212,191,0.25)]",
+            description: "에메랄드빛 항구 위로 돛을 닮은 백색 수정 오페라 돔과 룬이 깃든 강철 아치 대교가 눈부신 아침 햇살을 받는 남반구 최대의 해양 수도입니다."
+        },
+        matchedNations: ["호주"]
+    },
+
+    oceania_newzealand_alpine_emerald_haven: {
+        id: "oceania_newzealand_alpine_emerald_haven",
+        name: "뉴질랜드 피오르 에메랄드 안식처",
+        region: "오세아니아",
+        concept: "서던 알프스 설산과 폭포 협곡, 수정 빙하 호수의 엘프식 첨탑",
+        prompt: "Epic fantasy panoramic illustration of a New Zealand fjord and alpine haven inspired by Queenstown and Milford Sound, lush emerald mountain valleys, crystal glacial lake reflecting snow-capped Southern Alps peaks, and serene elven-style timber-and-stone spires at sunrise, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/oceania_newzealand_alpine_emerald_haven.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.75) 0%, rgba(14, 116, 144, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-teal-300",
+            borderColor: "border-cyan-400/60",
+            glowColor: "rgba(45, 212, 191, 0.35)",
+            badgeText: "🏞️ 에메랄드 피오르 (Alpine Haven)",
+            badgeClass: "bg-cyan-950/70 text-cyan-300 border-cyan-600/60 shadow-[0_0_15px_rgba(45,212,191,0.25)]",
+            description: "만년설 서던 알프스와 웅장한 폭포 절벽이 거울 같은 빙하 호수에 비치며, 자연과 하나 된 첨탑이 고요히 빛나는 청정의 안식처입니다."
+        },
+        matchedNations: ["뉴질랜드"]
+    },
+
+    america_usa_arcane_metropolis: {
+        id: "america_usa_arcane_metropolis",
+        name: "미국 아케인 마천루 수도",
+        region: "북아메리카",
+        concept: "청록 마력 도관이 흐르는 아르데코 마천루와 대리석 캐피톨",
+        prompt: "Epic fantasy-magitech panoramic illustration of an American grand metropolis inspired by New York and Washington, towering art-deco spires infused with glowing cyan mana conduits, monumental marble capitol dome and starlit skyline over a grand harbor, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/america_usa_arcane_metropolis.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.75) 0%, rgba(14, 116, 144, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-teal-300",
+            borderColor: "border-cyan-400/60",
+            glowColor: "rgba(45, 212, 191, 0.35)",
+            badgeText: "🗽 아케인 메트로폴리스 (Arcane USA)",
+            badgeClass: "bg-cyan-950/70 text-cyan-300 border-cyan-600/60 shadow-[0_0_15px_rgba(45,212,191,0.25)]",
+            description: "푸른 에테르 도관이 빛나는 아르데코 마천루와 백색 대리석 캐피톨 돔이 별빛 항구를 수놓는 신대륙 최대의 마도 공학 수도입니다."
+        },
+        matchedNations: ["미국"]
+    },
+
+    america_canada_maple_northern_citadel: {
+        id: "america_canada_maple_northern_citadel",
+        name: "캐나다 단풍 빙하 성채",
+        region: "북아메리카",
+        concept: "붉은 단풍 숲과 에메랄드 빙하 호수 위의 석조 샤토 요새",
+        prompt: "Epic fantasy panoramic illustration of a Canadian northern citadel surrounded by crimson autumn maple forests, turquoise glacial lakes, snow-dusted Rocky Mountain peaks, and a grand stone chateau fortress glowing with warm amber lantern light, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/america_canada_maple_northern_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.75) 0%, rgba(14, 116, 144, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-teal-300",
+            borderColor: "border-cyan-400/60",
+            glowColor: "rgba(45, 212, 191, 0.35)",
+            badgeText: "🍁 단풍 빙하 성채 (Maple Citadel)",
+            badgeClass: "bg-cyan-950/70 text-cyan-300 border-cyan-600/60 shadow-[0_0_15px_rgba(45,212,191,0.25)]",
+            description: "만년설 로키 산맥과 청록빛 빙하 호수, 불타는 붉은 단풍 숲 사이로 따뜻한 등불을 밝힌 북방의 석조 샤토 성채입니다."
+        },
+        matchedNations: ["캐나다"]
+    },
+
+    america_mexico_aztec_sun_pyramid: {
+        id: "america_mexico_aztec_sun_pyramid",
+        name: "멕시코 태양 피라미드 신전",
+        region: "북아메리카",
+        concept: "황금 태양 오벨리스크와 비취빛 운하의 고대 계단 신전",
+        prompt: "Epic fantasy panoramic illustration of a monumental Mesoamerican-Aztec sun pyramid city nestled in lush emerald jungle and highland terraces, golden solar magic obelisks, jade canals and dramatic golden sunset sky, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/america_mexico_aztec_sun_pyramid.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.75) 0%, rgba(14, 116, 144, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-teal-300",
+            borderColor: "border-cyan-400/60",
+            glowColor: "rgba(45, 212, 191, 0.35)",
+            badgeText: "🌞 태양 피라미드 (Aztec Pyramid)",
+            badgeClass: "bg-cyan-950/70 text-cyan-300 border-cyan-600/60 shadow-[0_0_15px_rgba(45,212,191,0.25)]",
+            description: "울창한 에메랄드 밀림과 비취 운하 위, 고대 태양 마법의 황금 오벨리스크가 우뚝 솟은 장엄한 계단 피라미드 도시입니다."
+        },
+        matchedNations: ["멕시코"]
+    },
+
+    america_brazil_emerald_christ_bay: {
+        id: "america_brazil_emerald_christ_bay",
+        name: "브라질 비취빛 만과 성소",
+        region: "남아메리카",
+        concept: "열대 우림 봉우리와 황혼의 초승달 만을 수호하는 빛의 거상",
+        prompt: "Epic fantasy panoramic illustration of a vibrant Brazilian coastal sanctuary city inspired by Rio de Janeiro, lush emerald rainforest peaks, sweeping crescent bay at golden twilight, and an awe-inspiring radiant skyward statue atop a mountain spire, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/america_brazil_emerald_christ_bay.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.75) 0%, rgba(14, 116, 144, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-teal-300",
+            borderColor: "border-cyan-400/60",
+            glowColor: "rgba(45, 212, 191, 0.35)",
+            badgeText: "🌴 비취빛 성소 만 (Emerald Bay)",
+            badgeClass: "bg-cyan-950/70 text-cyan-300 border-cyan-600/60 shadow-[0_0_15px_rgba(45,212,191,0.25)]",
+            description: "황금빛 노을이 물든 초승달 만과 열대 우림 봉우리 정상에서 빛의 거상이 도시 전체를 굽어보는 남미의 해안 성소입니다."
+        },
+        matchedNations: ["브라질"]
+    },
+
+    america_argentina_patagonia_tango_citadel: {
+        id: "america_argentina_patagonia_tango_citadel",
+        name: "아르헨티나 파타고니아 대성채",
+        region: "남아메리카",
+        concept: "안데스 빙하 봉우리 아래 황금 가로등이 빛나는 대리석 대로",
+        prompt: "Epic fantasy panoramic illustration of an Argentine grand highland and coastal citadel inspired by Buenos Aires and Patagonia, ornate European-colonial marble avenues lit by warm golden streetlights beneath jagged glacial Andean peaks at dusk, 8k masterpiece.",
+        localPath: "assets/visuals/backgrounds/america_argentina_patagonia_tango_citadel.jpg",
+        theme: {
+            overlayGradient: "linear-gradient(to bottom, rgba(15, 23, 42, 0.75) 0%, rgba(14, 116, 144, 0.45) 50%, rgba(2, 6, 23, 0.94) 100%)",
+            accentColor: "text-teal-300",
+            borderColor: "border-cyan-400/60",
+            glowColor: "rgba(45, 212, 191, 0.35)",
+            badgeText: "🏔️ 파타고니아 성채 (Andean Citadel)",
+            badgeClass: "bg-cyan-950/70 text-cyan-300 border-cyan-600/60 shadow-[0_0_15px_rgba(45,212,191,0.25)]",
+            description: "거친 안데스의 빙하 봉우리를 등지고 황금 가로등과 웅장한 대리석 대로가 낭만적으로 펼쳐진 남미 최남단의 요새 도시입니다."
+        },
+        matchedNations: ["아르헨티나"]
     }
 };
 
@@ -1662,12 +1890,37 @@ export function getCityBackgroundConfig(region?: string, nation?: string, city?:
 
     // 6. 중동/아프리카 판정 (아프리카 국가 유지; 아시아 중동 4개국은 위에서 전용 매칭됨)
     const middleEastNations = ['이집트', '남아공', '나이지리아', '케냐', '모로코'];
+    // 6. 아프리카 / 중동 판정 (아프리카 5개국 전용 배경 우선 매칭)
+    const AFRICA_NATION_TO_MANIFEST_KEY: Record<string, string> = {
+        '이집트': 'africa_egypt_solar_pyramid_nile',
+        '남아공': 'africa_southafrica_table_mountain_bay',
+        '나이지리아': 'africa_nigeria_golden_savanna_citadel',
+        '케냐': 'africa_kenya_kilimanjaro_savanna_sanctuary',
+        '모로코': 'africa_morocco_red_atlas_kasbah',
+    };
+    const africaMatchKey = AFRICA_NATION_TO_MANIFEST_KEY[n];
+    if (africaMatchKey && CITY_BACKGROUND_MANIFEST[africaMatchKey]) {
+        return CITY_BACKGROUND_MANIFEST[africaMatchKey];
+    }
     if (r === '아프리카' || middleEastNations.includes(n)) {
         return CITY_BACKGROUND_MANIFEST.africa_middle_east_oasis_temple;
     }
 
-    // 7. 아메리카 / 오세아니아 판정
-    if (r === '북아메리카' || r === '남아메리카' || r === '오세아니아' || ['미국', '캐나다', '멕시코', '브라질', '아르헨티나', '호주', '뉴질랜드'].includes(n)) {
+    // 7. 아메리카 / 오세아니아 판정 (북·남아메리카 5개국 + 오세아니아 2개국 전용 배경 매칭)
+    const AMERICA_OCEANIA_NATION_TO_MANIFEST_KEY: Record<string, string> = {
+        '미국': 'america_usa_arcane_metropolis',
+        '캐나다': 'america_canada_maple_northern_citadel',
+        '멕시코': 'america_mexico_aztec_sun_pyramid',
+        '브라질': 'america_brazil_emerald_christ_bay',
+        '아르헨티나': 'america_argentina_patagonia_tango_citadel',
+        '호주': 'oceania_australia_harbor_arcane_opera',
+        '뉴질랜드': 'oceania_newzealand_alpine_emerald_haven',
+    };
+    const americaMatchKey = AMERICA_OCEANIA_NATION_TO_MANIFEST_KEY[n];
+    if (americaMatchKey && CITY_BACKGROUND_MANIFEST[americaMatchKey]) {
+        return CITY_BACKGROUND_MANIFEST[americaMatchKey];
+    }
+    if (r === '북아메리카' || r === '남아메리카' || r === '오세아니아') {
         return CITY_BACKGROUND_MANIFEST.america_oceania_magitech_city;
     }
 

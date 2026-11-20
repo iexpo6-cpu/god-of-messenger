@@ -5,6 +5,7 @@ import { SHINRYOKU_UI_CONFIG } from '../../constants';
 import { HealthBar } from './HealthBar';
 import { CombatStatusBadge } from './CombatStatusBadge';
 import { FloatingFeedbackOverlay, FloatingFeedbackItem } from './FloatingFeedbackOverlay';
+import { isUnitShinryokuBroken } from '../../services/shinryokuBreakService';
 
 const SHINRYOKU_ICONS: Record<string, any> = {
     '화염계': Flame,
@@ -48,6 +49,8 @@ interface PartyCardProps {
     floatingTexts?: FloatingFeedbackItem[];
     isHit?: boolean;
     skills?: Skill[];
+    breakGauge?: number;
+    maxBreakGauge?: number;
 }
 
 const PartyCardComponent = ({ 
@@ -71,7 +74,9 @@ const PartyCardComponent = ({
     onMountClick, 
     floatingTexts, 
     isHit, 
-    skills 
+    skills,
+    breakGauge,
+    maxBreakGauge
 }: PartyCardProps) => {
     const isDead = hp <= 0;
     const isLowHp = hp > 0 && maxHp > 0 && (hp / maxHp) <= 0.25;
@@ -246,6 +251,32 @@ const PartyCardComponent = ({
                     label="MP" 
                     compact
                 />
+                {(() => {
+                    const maxBreak = maxBreakGauge ?? 4;
+                    const isBroken = isUnitShinryokuBroken(statusEffects);
+                    const currentBreak = isBroken ? 0 : (breakGauge ?? maxBreak);
+                    return (
+                        <div className="pt-0.5 flex items-center gap-1">
+                            <span className={`text-[8px] font-black tracking-tight shrink-0 ${isBroken ? 'text-rose-400 animate-pulse' : 'text-cyan-300'}`}>
+                                {isBroken ? '💥BREAK' : `🛡️${currentBreak}/${maxBreak}`}
+                            </span>
+                            <div className="flex-1 flex items-center gap-0.5">
+                                {Array.from({ length: maxBreak }).map((_, idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`h-1 flex-1 rounded-sm transition-all duration-200 ${
+                                            isBroken
+                                                ? 'bg-rose-500/40 border border-rose-500/60'
+                                                : idx < currentBreak
+                                                    ? 'bg-cyan-400 shadow-[0_0_3px_rgba(34,211,238,0.6)]'
+                                                    : 'bg-slate-800/90 border border-slate-700/70'
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
         </div>
     );
@@ -255,6 +286,8 @@ const PartyCardComponent = ({
 const arePartyCardPropsEqual = (prev: PartyCardProps, next: PartyCardProps): boolean => {
     if (prev.hp !== next.hp) return false;
     if (prev.maxHp !== next.maxHp) return false;
+    if (prev.breakGauge !== next.breakGauge) return false;
+    if (prev.maxBreakGauge !== next.maxBreakGauge) return false;
     if (prev.mp !== next.mp) return false;
     if (prev.maxMp !== next.maxMp) return false;
     if (prev.isActive !== next.isActive) return false;

@@ -940,7 +940,10 @@ const CityInterface: React.FC<Props> = ({
                     character={character}
                     onClose={() => setIsAbyssTowerOpen(false)}
                     onUpdateCharacter={onUpdateCharacter}
-                    onBattle={(enemy, type) => onBattle!(enemy, type || 'abyss_tower_mob')}
+                    onBattle={(enemy, type) => {
+                        setIsAbyssTowerOpen(false);
+                        onBattle!(enemy, type || 'abyss_tower_mob');
+                    }}
                 />
             )}
             {isFrontlineOpen && loc.nation && (

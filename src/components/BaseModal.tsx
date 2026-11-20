@@ -18,6 +18,7 @@ import {
   checkAndCompleteBaseConstructions 
 } from '../services/baseConstructionService';
 import { startCookingJob, claimCookedDish, cancelCookingJob } from '../services/cookingService';
+import { getAllyMaxBreakGauge, getShinryokuShieldUpgradeCost, MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL } from '../services/shinryokuBreakService';
 import { X, Home, Hammer, Users, Package, ArrowUpCircle, Coins,Info, Leaf, Shield, CalendarCheck ,TestTube, Zap, ShoppingCart,Lock, DollarSign, UserCheck, Briefcase, Play, Box, ArrowRight, ArrowLeft, BedDouble, MessageCircle, Dog, BookOpen, Microscope, Trash2, Sword, Swords, Dumbbell, Trophy, Target, Brain, Activity, User, Utensils, ChevronLeft, Wine, Gamepad2, Hand, Sparkles, Heart, CheckCircle, Filter, Pickaxe, Mountain, FlaskConical, Gem, Layers, MapPin, Truck, AlertTriangle, AlertCircle, Clock, ChevronsUp, TrendingUp, Trees, Apple, Flame, Building2, Crosshair, Eye, Skull, Waves, Wind, Sun, Moon, Edit, PenTool, Upload, Store, Award, Star, Wand2, Search, ArrowUpDown, LayoutGrid, List } from 'lucide-react';
 
 const STORAGE_RARITY_COLORS: Record<string, string> = {
@@ -2965,6 +2966,111 @@ const BaseModal: React.FC<Props> = ({
                                 <span>방어 분대 관리</span>
                             </button>
                         </div>
+
+                        {/* 아군 신력 결계(실드) 강화 섹션 */}
+                        {(() => {
+                            const currentShieldLevel = Math.min(MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL, character.base?.shinryokuShieldLevel || 0);
+                            const currentAllyMaxBreak = getAllyMaxBreakGauge(character);
+                            const upgradeCost = getShinryokuShieldUpgradeCost(currentShieldLevel);
+                            const res = character.base?.resources || { wood: 0, stone: 0, iron: 0, manaCrystal: 0 };
+                            const canAfford = upgradeCost ? (
+                                character.money >= upgradeCost.gold &&
+                                (res.manaCrystal || 0) >= upgradeCost.manaCrystal &&
+                                (res.iron || 0) >= upgradeCost.iron &&
+                                (res.stone || 0) >= upgradeCost.stone
+                            ) : false;
+
+                            const handleUpgradeShinryokuShield = () => {
+                                if (!upgradeCost || !canAfford || !character.base) return;
+                                onUpdateCharacter(
+                                    {
+                                        ...character,
+                                        money: character.money - upgradeCost.gold,
+                                        base: {
+                                            ...character.base,
+                                            shinryokuShieldLevel: currentShieldLevel + 1,
+                                            resources: {
+                                                ...res,
+                                                manaCrystal: (res.manaCrystal || 0) - upgradeCost.manaCrystal,
+                                                iron: (res.iron || 0) - upgradeCost.iron,
+                                                stone: (res.stone || 0) - upgradeCost.stone,
+                                            }
+                                        }
+                                    },
+                                    `[기지 방어소] 아군 신력 결계(실드)를 Lv.${currentShieldLevel + 1} (${currentAllyMaxBreak + 1}칸)로 강화했습니다.`
+                                );
+                            };
+
+                            return (
+                                <div className="bg-cyan-950/25 border border-cyan-500/35 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
+                                    <div className="flex items-start gap-3 flex-1">
+                                        <div className="p-2.5 bg-cyan-900/40 rounded-lg text-cyan-300 border border-cyan-500/30 shrink-0">
+                                            <Zap size={22} />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h5 className="font-extrabold text-sm text-cyan-100">아군 신력 결계(실드) 강화</h5>
+                                                <span className="text-[10px] bg-cyan-900/80 text-cyan-200 border border-cyan-600/60 px-2 py-0.5 rounded-full font-bold">
+                                                    Lv.{currentShieldLevel} / {MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL}
+                                                </span>
+                                                <span className="text-[11px] font-bold text-cyan-300">
+                                                    현재 실드 {currentAllyMaxBreak}칸
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-300 mt-1">
+                                                전투 시 플레이어와 모든 동료에게 적용되는 신력 브레이크 실드 최대 칸수를 늘려 아군의 브레이크(1턴 행동불가 + 피격 1.5배)를 지연시킵니다.
+                                            </p>
+                                            <div className="flex items-center gap-1 mt-2 max-w-xs">
+                                                {Array.from({ length: 4 + MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL }).map((_, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className={`h-2 flex-1 rounded-sm ${
+                                                            idx < currentAllyMaxBreak
+                                                                ? 'bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.65)]'
+                                                                : 'bg-slate-800 border border-slate-700'
+                                                        }`}
+                                                    />
+                                                ))}
+                                            </div>
+                                            {upgradeCost && (
+                                                <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px]">
+                                                    <span className={character.money >= upgradeCost.gold ? 'text-amber-300' : 'text-rose-400 font-bold'}>
+                                                        골드 {upgradeCost.gold.toLocaleString()}
+                                                    </span>
+                                                    <span className={(res.manaCrystal || 0) >= upgradeCost.manaCrystal ? 'text-cyan-300' : 'text-rose-400 font-bold'}>
+                                                        마력정수 {upgradeCost.manaCrystal}
+                                                    </span>
+                                                    <span className={(res.iron || 0) >= upgradeCost.iron ? 'text-slate-300' : 'text-rose-400 font-bold'}>
+                                                        철광석 {upgradeCost.iron}
+                                                    </span>
+                                                    <span className={(res.stone || 0) >= upgradeCost.stone ? 'text-stone-300' : 'text-rose-400 font-bold'}>
+                                                        석재 {upgradeCost.stone}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {upgradeCost ? (
+                                        <button
+                                            onClick={handleUpgradeShinryokuShield}
+                                            disabled={!canAfford}
+                                            className={`w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center justify-center gap-1.5 ${
+                                                canAfford
+                                                    ? 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-md active:scale-95'
+                                                    : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            <ArrowUpCircle size={15} />
+                                            <span>실드 +1 강화 (Lv.{upgradeCost.nextLv})</span>
+                                        </button>
+                                    ) : (
+                                        <span className="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-950/70 text-cyan-300 border border-cyan-600/50 shrink-0">
+                                            최대 강화 완료 (9칸)
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })()}
 
                         {/* 현재 이 방어소 인스턴스에 지어진 시설 상태 */}
                         {currentInstanceStructure ? (

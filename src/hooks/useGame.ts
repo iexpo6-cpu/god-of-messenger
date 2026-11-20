@@ -41,6 +41,7 @@ import { processEquipmentOnHit } from '../services/equipmentAilmentService';
 import { applyBuffWithDiminishingPriority, refreshBuffDiminishingStatus, resolveSkillShinryokuType } from '../services/buffDiminishingManager';
 import { getFocusFusionDamageMultiplier, getEchoAftershockDamage, isSkillAuraTranscend, isSkillAuraErosion, applyBuffMassCleanse, applyDebuffDefenseShatter } from '../services/aoeSkillEnhanceService';
 import { CombatShieldService } from '../services/combatShieldService';
+import { getAllyMaxBreakGauge, getEnemyMaxBreakGauge, isShinryokuWeaknessHit, applyShinryokuBreakHit, recoverAllyBreakGauge, SHINRYOKU_BREAK_STATUS_NAME } from '../services/shinryokuBreakService';
 import { chooseEnemySkill, isEnemyAoeSkill, adjustEnemyDamageForAoe } from '../services/enemyCombatSkillService';
 
 import { combatStateBridge } from '../services/combatStateBridge';
@@ -1333,7 +1334,7 @@ export const useGame = () => {
       if (isRestAction) { 
         const { finalStats: pFinal } = calculateFinalStats(timeAdvancedChar);
         const clearAilmentsOnly = (effects: ActiveStatus[] = []) => {
-            const ailments = ['중독', '화상', '출혈', '빙결', '감전', '속박', '혼란', '기절', '마비', '침묵', '소멸', '흡정', '마나 쉴드'];
+            const ailments = ['중독', '화상', '출혈', '빙결', '감전', '속박', '혼란', '기절', '마비', '침묵', '소멸', '흡정', '마나 쉴드', SHINRYOKU_BREAK_STATUS_NAME];
             return (effects || []).filter((e: any) => {
                 if (e?.isPassive || e?.name === '마나 쉴드 (패시브)') return true;
                 const isAilment = ailments.includes(e.name) || ailments.some(a => e.name?.includes(a));
@@ -1914,6 +1915,14 @@ if (!timeAdvancedChar.divineRelations) {
         let accumulatedExp = currentCombat?.accumulatedExp || 0;
         let accumulatedGold = currentCombat?.accumulatedGold || 0;
         let accumulatedLoot = currentCombat?.accumulatedLoot ? [...currentCombat.accumulatedLoot] : [];
+
+        const qteMatch = actionText.match(/\[QTE:(JUST|GOOD|MISS)\]/);
+        const qteGrade = qteMatch ? (qteMatch[1] as 'JUST' | 'GOOD' | 'MISS') : null;
+        const qteMultiplier = qteGrade === 'JUST' ? 1.25 : qteGrade === 'MISS' ? 0.75 : 1.0;
+        const qteLogTag = qteGrade === 'JUST' ? ' [⚡JUST IMPACT! +25%]' : qteGrade === 'MISS' ? ' [타이밍 MISS -25%]' : '';
+        if (qteMatch) {
+            actionText = actionText.replace(/\s*\[QTE:(?:JUST|GOOD|MISS)\]/g, '').trim();
+        }
 
         const isEnemyTurnAction = actionText.startsWith('[적 행동:') || actionText.startsWith('[적 턴:');
         const isCompanionCommand = actionText.startsWith('[동료 지시:') || actionText.startsWith('[동료 행동:') || actionText.startsWith('[동료 스킬:');
@@ -2979,6 +2988,9 @@ if (!timeAdvancedChar.divineRelations) {
                     if (focusInfo.multiplier > 1.0 && !result.isMiss) {
                         result.damage = Math.max(1, Math.floor(result.damage * focusInfo.multiplier));
                     }
+                    if (caster === nextCharState && qteMultiplier !== 1.0 && !result.isMiss) {
+                        result.damage = Math.max(1, Math.round(result.damage * qteMultiplier));
+                    }
                     
                     if (result.isMiss) {
                         if (skill.currentMastery && skill.currentMastery > 0) {
@@ -2996,9 +3008,18 @@ if (!timeAdvancedChar.divineRelations) {
 
                         const newHp = Math.max(0, t.entity.hp - remainingDamage);
                         simulationEnemies[t.idx] = { ...t.entity, hp: newHp };
-                        if (remainingDamage > 0) totalLog += `\n[시스템: ${t.entity.name} HP -${remainingDamage}]${focusInfo.logTag} (by ${caster.name})`;
+                        if (remainingDamage > 0) totalLog += `\n[시스템: ${t.entity.name} HP -${remainingDamage}]${focusInfo.logTag}${caster === nextCharState ? qteLogTag : ''} (by ${caster.name})`;
                         if (result.isCrit) totalLog += " (치명타!)";
                         if (result.affinityEffect) totalLog += result.affinityEffect;
+
+                        if (simulationEnemies[t.idx] && simulationEnemies[t.idx].hp > 0) {
+                            const shieldDmg = (isShinryokuWeaknessHit(caster?.shinryokuType, simulationEnemies[t.idx].shinryokuType) ? 1 : 0)
+                                + (caster === nextCharState && qteGrade === 'JUST' ? 1 : 0);
+                            if (shieldDmg > 0) {
+                                const bRes = applyShinryokuBreakHit(simulationEnemies[t.idx], shieldDmg, getEnemyMaxBreakGauge(simulationEnemies[t.idx]));
+                                if (bRes.log) totalLog += bRes.log;
+                            }
+                        }
                         
                         applyPostAttackMythicOptions(caster, t.entity, t.idx, result, true);
                         
@@ -3585,7 +3606,7 @@ if (!timeAdvancedChar.divineRelations) {
             if (enemy && enemy.hp > 0) {
                 let skipTurn = false; let ccName = ""; 
                 enemy.statusEffects?.forEach(eff => { 
-                    if (["빙결", "기절", "마비", "수면", "소멸"].includes(eff.name)) { skipTurn = true; ccName = eff.name; } 
+                    if (["빙결", "기절", "마비", "수면", "소멸", SHINRYOKU_BREAK_STATUS_NAME].includes(eff.name)) { skipTurn = true; ccName = eff.name; } 
                     else if (eff.name === "감전" && Math.random() < 0.75) { skipTurn = true; ccName = "감전"; } 
                     else if (eff.name === "속박" && Math.random() < 0.75) { skipTurn = true; ccName = "속박"; } 
                     else if (eff.name === "혼란" && Math.random() < 0.5) { skipTurn = true; ccName = "혼란"; } 
@@ -3794,11 +3815,20 @@ if (!timeAdvancedChar.divineRelations) {
                                             if (tObj.type === 'player') {
                                                 nextCharState.stats.hp = Math.max(0, nextCharState.stats.hp - dmg);
                                                 if (dmg > 0) totalLog += `\n[시스템: ${nextCharState.name} HP -${dmg}] (by ${enemy.name})`;
+                                                if (dmg > 0 && nextCharState.stats.hp > 0 && isShinryokuWeaknessHit(enemy.shinryokuType, nextCharState.shinryokuType)) {
+                                                    const bRes = applyShinryokuBreakHit(nextCharState, 1, getAllyMaxBreakGauge(nextCharState));
+                                                    if (bRes.log) totalLog += bRes.log;
+                                                }
                                             } else if (tObj.type === 'companion') {
                                                 const cIdx = nextCharState.companions.findIndex(c => c.id === (curTarget as Companion).id);
                                                 if (cIdx >= 0) {
-                                                    nextCharState.companions[cIdx].stats.hp = Math.max(0, nextCharState.companions[cIdx].stats.hp - dmg);
-                                                    if (dmg > 0) totalLog += `\n[시스템: ${nextCharState.companions[cIdx].name} HP -${dmg}] (by ${enemy.name})`;
+                                                    const targetComp = nextCharState.companions[cIdx];
+                                                    targetComp.stats.hp = Math.max(0, targetComp.stats.hp - dmg);
+                                                    if (dmg > 0) totalLog += `\n[시스템: ${targetComp.name} HP -${dmg}] (by ${enemy.name})`;
+                                                    if (dmg > 0 && targetComp.stats.hp > 0 && isShinryokuWeaknessHit(enemy.shinryokuType, targetComp.shinryokuType)) {
+                                                        const bRes = applyShinryokuBreakHit(targetComp, 1, getAllyMaxBreakGauge(nextCharState));
+                                                        if (bRes.log) totalLog += bRes.log;
+                                                    }
                                                 }
                                             } else if (tObj.type === 'enemy') {
                                                 curTarget.hp = Math.max(0, curTarget.hp - dmg);
@@ -4101,6 +4131,12 @@ if (!timeAdvancedChar.divineRelations) {
                     }
 
                     nextCharState.stats.mp -= actualCost;
+                    if (qteGrade === 'JUST' && actualCost > 0) {
+                        const mpPayback = Math.max(1, Math.ceil(actualCost * 0.1));
+                        const playerMaxMp = calculateFinalStats(nextCharState).finalStats.maxMp;
+                        nextCharState.stats.mp = Math.min(playerMaxMp, nextCharState.stats.mp + mpPayback);
+                        totalLog += `\n[⚡JUST IMPACT!] 타이밍 적중 보너스! MP +${mpPayback} 페이백`;
+                    }
                     const skillMasteryMult = getSkillMasteryMultiplier(nextCharState);
                     const skillGain = Math.round(1 * skillMasteryMult);
                     usedSkill.currentMastery = (usedSkill.currentMastery || 0) + skillGain;
@@ -4206,10 +4242,21 @@ if (!timeAdvancedChar.divineRelations) {
                                 totalLog += `\n[시스템] ${enemy.name}이(가) ${nextCharState.name}의 ${i+1}차 공격을 회피했습니다! (MISS)`;
                                 continue;
                             }
+                            if (qteMultiplier !== 1.0) {
+                                currentResult.damage = Math.max(1, Math.round(currentResult.damage * qteMultiplier));
+                            }
                             const newHp = Math.max(0, simulationEnemies[idx].hp - currentResult.damage);
                             simulationEnemies[idx] = { ...simulationEnemies[idx], hp: newHp };
-                            totalLog += `\n[시스템: ${enemy.name} HP -${currentResult.damage}] (by ${nextCharState.name}${attackCount > 1 ? ` ${i+1}타` : ''})`;
+                            totalLog += `\n[시스템: ${enemy.name} HP -${currentResult.damage}]${qteLogTag} (by ${nextCharState.name}${attackCount > 1 ? ` ${i+1}타` : ''})`;
                             if (currentResult.isCrit) totalLog += " (치명타!)";
+                            if (i === 0 && simulationEnemies[idx].hp > 0) {
+                                const shieldDmg = (isShinryokuWeaknessHit(nextCharState.shinryokuType, simulationEnemies[idx].shinryokuType) ? 1 : 0)
+                                    + (qteGrade === 'JUST' ? 1 : 0);
+                                if (shieldDmg > 0) {
+                                    const bRes = applyShinryokuBreakHit(simulationEnemies[idx], shieldDmg, getEnemyMaxBreakGauge(simulationEnemies[idx]));
+                                    if (bRes.log) totalLog += bRes.log;
+                                }
+                            }
                             
                             applyPostAttackMythicOptions(nextCharState, enemy, idx, currentResult, true);
                             
@@ -4312,7 +4359,8 @@ if (!timeAdvancedChar.divineRelations) {
             }
         }
         else if (isDefense && !playerSkipTurn) {
-            totalLog += `\n[시스템] ${nextCharState.name}이(가) 방어 태세를 취해 피해를 줄일 준비를 합니다.`;
+            const recoveredShield = recoverAllyBreakGauge(nextCharState, 2, getAllyMaxBreakGauge(nextCharState));
+            totalLog += `\n[시스템] ${nextCharState.name}이(가) 방어 태세를 취해 피해를 줄일 준비를 합니다.${recoveredShield > 0 ? ` (🛡️신력 실드 +${recoveredShield} 복구)` : ''}`;
             playerActionDone = true;
         }
         else if (isSystemAction) {
@@ -5086,6 +5134,10 @@ let targetIdx = -1;
                 }
 
                 if (effect.duration <= 0 && !isDefenseStance) {
+                    if (effect.name === SHINRYOKU_BREAK_STATUS_NAME) {
+                        const fallbackMax = entity.maxBreakGauge ?? (entity === nextCharState || nextCharState.companions?.includes(entity) ? getAllyMaxBreakGauge(nextCharState) : getEnemyMaxBreakGauge(entity));
+                        entity.breakGauge = fallbackMax;
+                    }
                     totalLog += `\n[시스템] ${entity.name}의 ${effect.name} 버프/효과 지속시간이 종료되었습니다.`;
                 } else {
                     newEffects.push(effect);
@@ -5791,14 +5843,19 @@ dom.corruption += 10000;
                             const diamondGain = Math.round(5 * rewardScale);
                             finalChar.money = (finalChar.money || 0) + prizeGold;
                             if (finalChar.base?.resources) {
-                                finalChar.base.resources.manaCrystal = (finalChar.base.resources.manaCrystal || 0) + manaGain;
-                                finalChar.base.resources.legendaryCrystal = (finalChar.base.resources.legendaryCrystal || 0) + legCrystalGain;
-                                finalChar.base.resources.shinryoku_flower = (finalChar.base.resources.shinryoku_flower || 0) + flowerGain;
-                                finalChar.base.resources.diamond = (finalChar.base.resources.diamond || 0) + diamondGain;
+                                finalChar.base = {
+                                    ...finalChar.base,
+                                    resources: {
+                                        ...finalChar.base.resources,
+                                        manaCrystal: (finalChar.base.resources.manaCrystal || 0) + manaGain,
+                                        legendaryCrystal: (finalChar.base.resources.legendaryCrystal || 0) + legCrystalGain,
+                                        shinryoku_flower: (finalChar.base.resources.shinryoku_flower || 0) + flowerGain,
+                                        diamond: (finalChar.base.resources.diamond || 0) + diamondGain,
+                                    }
+                                };
                             }
-                            if (!finalChar.titles) finalChar.titles = [];
-                            if (!finalChar.titles.includes('만신전의 패자')) {
-                                finalChar.titles.push('만신전의 패자');
+                            if (!(finalChar.availableTitles || []).includes('만신전의 패자')) {
+                                finalChar.availableTitles = [...(finalChar.availableTitles || []), '만신전의 패자'];
                             }
                             resultTitle = `초월 그랜드 아레나 우승! (누적 ${tArena.winCount}회)`;
                             resultMsg = `신의 거처 만신전의 정점에 등극했습니다! 다음 시즌부터 적들이 더욱 강해지고 보상도 ${Math.round((1 + tArena.winCount * 0.5) * 100)}%로 상승합니다.`;
@@ -5816,7 +5873,13 @@ dom.corruption += 10000;
                             const stepMana = Math.round(30 * rewardScale);
                             finalChar.money = (finalChar.money || 0) + stepGold;
                             if (finalChar.base?.resources) {
-                                finalChar.base.resources.manaCrystal = (finalChar.base.resources.manaCrystal || 0) + stepMana;
+                                finalChar.base = {
+                                    ...finalChar.base,
+                                    resources: {
+                                        ...finalChar.base.resources,
+                                        manaCrystal: (finalChar.base.resources.manaCrystal || 0) + stepMana,
+                                    }
+                                };
                             }
                             resultTitle = '만신전 결투 승리!';
                             resultMsg = `${nextRound <= 2 ? '결승전' : `${nextRound}강전`} 진출에 성공했습니다!`;
@@ -5848,24 +5911,34 @@ dom.corruption += 10000;
                                 tower.unlockedCheckpointFloor = Math.max(tower.unlockedCheckpointFloor || 1, curFloor + 1);
                             }
                             if (tower.activeGridState?.tiles) {
+                                const pPos = tower.pendingTilePos;
                                 tower.activeGridState = {
                                     ...tower.activeGridState,
                                     bossDefeated: true,
-                                    tiles: tower.activeGridState.tiles.map((row: any[]) =>
-                                        row.map((t: any) =>
-                                            t.content === 'boss' || t.type === 'boss_door'
-                                                ? { ...t, isCleared: true, type: 'stairs', name: `${curFloor + 1}층으로 향하는 심연 계단` }
-                                                : t
-                                        )
+                                    tiles: tower.activeGridState.tiles.map((row: any[], ry: number) =>
+                                        row.map((t: any, rx: number) => {
+                                            const isPending = pPos && pPos.x === rx && pPos.y === ry;
+                                            if (isPending || t.content === 'boss' || t.type === 'boss_door') {
+                                                return { ...t, isCleared: true, type: 'stairs', name: `${curFloor + 1}층으로 향하는 심연 계단` };
+                                            }
+                                            return t;
+                                        })
                                     )
                                 };
                             }
+                            tower.pendingTilePos = undefined;
                             if (finalChar.base?.resources) {
-                                finalChar.base.resources.manaCrystal = (finalChar.base.resources.manaCrystal || 0) + 80;
-                                finalChar.base.resources.epicCrystal = (finalChar.base.resources.epicCrystal || 0) + 15;
-                                finalChar.base.resources.legendaryCrystal = (finalChar.base.resources.legendaryCrystal || 0) + 5;
-                                finalChar.base.resources.shinryoku_flower = (finalChar.base.resources.shinryoku_flower || 0) + 3;
-                                finalChar.base.resources.diamond = (finalChar.base.resources.diamond || 0) + 3;
+                                finalChar.base = {
+                                    ...finalChar.base,
+                                    resources: {
+                                        ...finalChar.base.resources,
+                                        manaCrystal: (finalChar.base.resources.manaCrystal || 0) + 80,
+                                        epicCrystal: (finalChar.base.resources.epicCrystal || 0) + 15,
+                                        legendaryCrystal: (finalChar.base.resources.legendaryCrystal || 0) + 5,
+                                        shinryoku_flower: (finalChar.base.resources.shinryoku_flower || 0) + 3,
+                                        diamond: (finalChar.base.resources.diamond || 0) + 3,
+                                    }
+                                };
                             }
                             resultTitle = `심연 탑 ${curFloor}F 차원 수호자 격파!`;
                             resultMsg = curFloor % 10 === 0
@@ -5878,8 +5951,24 @@ dom.corruption += 10000;
                                 { label: '초월 재료', after: '마정석+80, 결정/신력꽃/다이아' }
                             ];
                         } else {
+                            if (tower.activeGridState?.tiles && tower.pendingTilePos) {
+                                const { x: px, y: py } = tower.pendingTilePos;
+                                tower.activeGridState = {
+                                    ...tower.activeGridState,
+                                    tiles: tower.activeGridState.tiles.map((row: any[], ry: number) =>
+                                        row.map((t: any, rx: number) => (rx === px && ry === py ? { ...t, isCleared: true } : t))
+                                    )
+                                };
+                            }
+                            tower.pendingTilePos = undefined;
                             if (finalChar.base?.resources) {
-                                finalChar.base.resources.manaCrystal = (finalChar.base.resources.manaCrystal || 0) + 15;
+                                finalChar.base = {
+                                    ...finalChar.base,
+                                    resources: {
+                                        ...finalChar.base.resources,
+                                        manaCrystal: (finalChar.base.resources.manaCrystal || 0) + 15,
+                                    }
+                                };
                             }
                             resultTitle = `심연 탑 ${curFloor}F 교전 승리`;
                             resultMsg = '심연의 적을 격퇴했습니다. 모달을 다시 열어 다음 타일로 이동하세요.';
@@ -6778,14 +6867,14 @@ dom.corruption += 10000;
                                effectText.includes('WEAPONMASTERY') || effectText.includes('무기숙련') ||
                                effectText.includes('SKILLMASTERY') || effectText.includes('스킬숙련') ||
                                effectText.includes('비약') ||
-                               (typeof e.duration === 'number' && e.duration > 0 && !['마나 쉴드', '빙결', '감전', '속박', '혼란', '기절', '침묵'].includes(e.name));
+                               (typeof e.duration === 'number' && e.duration > 0 && !['마나 쉴드', '빙결', '감전', '속박', '혼란', '기절', '침묵', SHINRYOKU_BREAK_STATUS_NAME].includes(e.name));
                     };
 
                     // 전투 전용 상태 효과 (전투 종료 시 삭제 대상)
                     const isCombatOnly = (e: any) => {
                         return e.name === '마나 쉴드' || 
                                e.name === '마나 쉴드 (패시브)' ||
-                                ['빙결', '감전', '속박', '혼란', '기절', '침묵'].includes(e.name);
+                                ['빙결', '감전', '속박', '혼란', '기절', '침묵', SHINRYOKU_BREAK_STATUS_NAME].includes(e.name);
                     };
 
                     entity.statusEffects = entity.statusEffects.filter((e: any) => {
@@ -6819,7 +6908,7 @@ dom.corruption += 10000;
                            text.includes('무기숙련') || text.includes('WEAPONMASTERY') ||
                            text.includes('스킬숙련') || text.includes('SKILLMASTERY') ||
                            text.includes('성장') || text.includes('수련') || text.includes('축복') || text.includes('버프') || text.includes('배') ||
-                           (e?.duration !== undefined && e?.duration > 0 && !['마나 쉴드', '빙결', '감전', '속박', '혼란', '기절', '침묵'].includes(e?.name));
+                           (e?.duration !== undefined && e?.duration > 0 && !['마나 쉴드', '빙결', '감전', '속박', '혼란', '기절', '침묵', SHINRYOKU_BREAK_STATUS_NAME].includes(e?.name));
                 };
 
                 const activeBuffs = isRestAction ? [] : [

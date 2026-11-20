@@ -116,6 +116,13 @@ const AbyssTowerModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle
             const newChar: Character = {
                 ...character,
                 money: (character.money || 0) + goldReward,
+                base: character.base ? {
+                    ...character.base,
+                    resources: {
+                        ...character.base.resources,
+                        manaCrystal: (character.base.resources.manaCrystal || 0) + manaReward
+                    }
+                } : character.base,
                 abyssTowerState: {
                     highestFloor: Math.max(highestFloor, nextState.currentFloor),
                     unlockedCheckpointFloor: unlockedCheckpoint,
@@ -124,9 +131,6 @@ const AbyssTowerModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle
                     activeGridState: nextState
                 }
             };
-            if (newChar.base?.resources) {
-                newChar.base.resources.manaCrystal = (newChar.base.resources.manaCrystal || 0) + manaReward;
-            }
             setGridState(nextState);
             setNotice({ title: '심연 보물 상자 발견', desc: `골드 +${goldReward.toLocaleString()}G, 마정석 +${manaReward}개 획득!` });
             onUpdateCharacter(newChar, `[무한 심연 탑 ${nextState.currentFloor}F] 심연 상자에서 ${goldReward.toLocaleString()}G와 마정석 ${manaReward}개를 획득했습니다.`);
@@ -136,10 +140,10 @@ const AbyssTowerModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle
         // 2. 제단
         if (target.content === 'shrine' && !target.isCleared) {
             target.isCleared = true;
-            const playerFinal = calculateFinalStats(character);
+            const playerFinal = calculateFinalStats(character).finalStats;
             const healedCompanions = (character.companions || []).map((c) => {
                 if (c.isDead || c.stats.hp <= 0) return c;
-                const cFinal = calculateFinalStats(c as any);
+                const cFinal = calculateFinalStats(c as any).finalStats;
                 return {
                     ...c,
                     stats: {
@@ -204,13 +208,7 @@ const AbyssTowerModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle
                 });
                 return;
             }
-            target.isCleared = true;
-            if (isBossBattle) {
-                nextState.bossDefeated = true;
-                target.type = 'stairs';
-                target.name = `${nextState.currentFloor + 1}층으로 향하는 심연 계단`;
-            }
-
+            // 전투 승리 시에만 useGame.ts에서 클리어/보스 계단 전환 처리 (패배·도주 악용 방지)
             const newChar: Character = {
                 ...character,
                 abyssTowerState: {
@@ -218,6 +216,7 @@ const AbyssTowerModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle
                     unlockedCheckpointFloor: unlockedCheckpoint,
                     totalClearedBosses: towerState?.totalClearedBosses || 0,
                     currentFloor: nextState.currentFloor,
+                    pendingTilePos: { x, y },
                     activeGridState: nextState
                 }
             };

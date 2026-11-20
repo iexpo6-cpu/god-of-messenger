@@ -955,6 +955,7 @@ export interface AbyssTowerState {
     unlockedCheckpointFloor: number; // 1, 11, 21, ...
     totalClearedBosses: number;
     currentFloor?: number;
+    pendingTilePos?: { x: number; y: number };
     activeGridState?: any; // 진행 중인 심연 탑 층 격자 상태 유지
 }
 
@@ -1121,6 +1122,8 @@ export interface Companion {
   name: string;
   levelCapUnlockCount?: number; // 초월의 성소에서 개별 해방한 누적 횟수
   levelCapUnlockBonus?: number; // 초월의 성소에서 개별 해방한 누적 최대 레벨 보너스
+  breakGauge?: number; // 전투 중 현재 신력 실드 칸 수
+  maxBreakGauge?: number; // 전투 중 최대 신력 실드 칸 수
   skillShortcuts?: string[];
   age: string;
   birthYear?: number;
@@ -1399,6 +1402,8 @@ export interface CapturedMonster extends Enemy {
     statPoints?: number;
     levelCapUnlockCount?: number; // 초월의 성소에서 개별 해방한 누적 횟수
   levelCapUnlockBonus?: number; // 초월의 성소에서 개별 해방한 누적 최대 레벨 보너스
+  breakGauge?: number; // 전투 중 현재 신력 실드 칸 수
+  maxBreakGauge?: number; // 전투 중 최대 신력 실드 칸 수
     height?: number;
     weight?: number;
     appearance?: string;
@@ -1737,6 +1742,8 @@ export interface Character {
   name: string;
   levelCapUnlockCount?: number; // 초월의 성소에서 개별 해방한 누적 횟수
   levelCapUnlockBonus?: number; // 초월의 성소에서 개별 해방한 누적 최대 레벨 보너스
+  breakGauge?: number; // 전투 중 현재 신력 실드 칸 수
+  maxBreakGauge?: number; // 전투 중 최대 신력 실드 칸 수
   age: string;
   birthYear?: number;
   gender: string;
@@ -2031,6 +2038,8 @@ export interface Enemy {
   statusEffects: ActiveStatus[];
   description?: string;
   shinryokuType?: string;
+  breakGauge?: number;
+  maxBreakGauge?: number;
   skills?: Skill[];
   combatStyle?: CombatStyle; // [NEW] 전투 계열
   visualUrl?: string; 
@@ -2281,6 +2290,7 @@ export interface Base {
   houses?: HouseBuilding[]; // [NEW] 단지 내 주택 목록 (유형, 정원, 별칭 등)
   labels?: Record<string, string>;
   urgentAlarms?: string[]; // [NEW] 긴급 알람 로그
+  shinryokuShieldLevel?: number; // [NEW] 방어소 신력 결계 강화 레벨 (0~5, 아군 신력 실드 +1칸씩 증가)
   storage: Item[];
   levelCapUnlockCount?: number; // 초월의 성소에서 해방한 누적 횟수 (레거시 호환용)
   lastTrainingDate?: string; 
