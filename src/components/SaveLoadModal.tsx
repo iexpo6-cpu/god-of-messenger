@@ -134,7 +134,7 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
   useEffect(() => {
     const unsubscribe = subscribeAuth((user, token) => {
       setGoogleToken(token);
-      if (user && token) {
+      if (user && token && !isSupabaseConfigured()) {
         performLightweightAutoSyncCheck({ silent: true });
       }
     });
@@ -258,8 +258,18 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
           );
           if (compressed) {
             const parsedLight = await decompressData(compressed);
-            const { restoredData } = await restoreImagesToSaveData(parsedLight, token);
-            await GameStorage.set(key, restoredData);
+            let finalData = parsedLight;
+            try {
+              const { restoredData } = await withTimeout(
+                restoreImagesToSaveData(parsedLight, token),
+                10000,
+                `슬롯 ${slotNum} 이미지 복원`
+              );
+              finalData = restoredData;
+            } catch (imgErr) {
+              console.warn(`[AutoSync] 슬롯 ${slotNum} 이미지 복원 지연/스킵 (경량 세이브 우선 반영):`, imgErr);
+            }
+            await GameStorage.set(key, finalData);
             updatedLocalCount++;
           }
         }
@@ -271,7 +281,7 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
       } else {
         setAccountSyncMsg('계정 클라우드와 최신 상태 동기화됨');
       }
-      await fetchCloudSlotsInfo(true);
+      fetchCloudSlotsInfo(true).catch(() => {});
     } catch (err: any) {
       console.warn('[AutoSync] 계정 자동 동기화 실패:', err);
       setAccountSyncMsg('클라우드 동기화 대기 (로컬 슬롯 정상 사용 가능)');
@@ -969,12 +979,12 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
                             </div>
                           </div>
                         )}
-                        {currentUser && googleToken && (
+                        {currentUser && (googleToken || isSupabaseConfigured()) && (
                           <div className="pt-2 border-t border-slate-800/60 space-y-2 text-[10px]">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 text-blue-300 font-medium">
                                 <Cloud size={13} className="text-blue-400 shrink-0" />
-                                <span>세이브 시 구글 드라이브 자동 백업</span>
+                                <span>{isSupabaseConfigured() ? '세이브 시 계정 자동 백업 (이미지는 변동 시 Drive)' : '세이브 시 구글 드라이브 자동 백업'}</span>
                               </div>
                               <button
                                 type="button"
@@ -993,27 +1003,29 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
                               </button>
                             </div>
 
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 text-emerald-300 font-medium">
-                                <Download size={13} className="text-emerald-400 shrink-0" />
-                                <span>접속 및 열기 시 자동 불러오기</span>
+                            {!isSupabaseConfigured() && (
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5 text-emerald-300 font-medium">
+                                  <Download size={13} className="text-emerald-400 shrink-0" />
+                                  <span>접속 및 열기 시 자동 불러오기</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = !autoSyncEnabled;
+                                    setAutoSyncEnabledState(next);
+                                    setAutoSyncEnabled(next);
+                                  }}
+                                  className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all ${
+                                    autoSyncEnabled 
+                                      ? 'bg-emerald-600/80 hover:bg-emerald-500 text-white border border-emerald-400/50' 
+                                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                                  }`}
+                                >
+                                  {autoSyncEnabled ? "자동 불러오기 켜짐" : "자동 불러오기 꺼짐"}
+                                </button>
                               </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const next = !autoSyncEnabled;
-                                  setAutoSyncEnabledState(next);
-                                  setAutoSyncEnabled(next);
-                                }}
-                                className={`px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all ${
-                                  autoSyncEnabled 
-                                    ? 'bg-emerald-600/80 hover:bg-emerald-500 text-white border border-emerald-400/50' 
-                                    : 'bg-slate-800 text-slate-400 border border-slate-700'
-                                }`}
-                              >
-                                {autoSyncEnabled ? "자동 불러오기 켜짐" : "자동 불러오기 꺼짐"}
-                              </button>
-                            </div>
+                            )}
 
                             <div className="flex items-center justify-between text-[9px] text-slate-400 pt-0.5">
                               {autoBackupStatus.state === 'syncing' ? (
@@ -1026,20 +1038,20 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
                                 </span>
                               ) : <span>자동 백업 대기 중</span>}
 
-                              {autoSyncStatus.state === 'syncing' ? (
+                              {!isSupabaseConfigured() && (autoSyncStatus.state === 'syncing' ? (
                                 <span className="text-emerald-400 flex items-center gap-1 animate-pulse font-bold">
                                   <RefreshCw size={10} className="animate-spin" /> 자동 불러오기 진행 중
                                 </span>
                               ) : autoSyncStatus.lastCheckedTime ? (
                                 <span>최근 동기화 점검: {autoSyncStatus.lastCheckedTime}</span>
-                              ) : null}
+                              ) : null)}
                             </div>
                           </div>
                         )}
                     </div>
 
-                    {/* 스마트 최신 세이브 감지 알림 및 원클릭 동기화 배너 */}
-                    {currentUser && googleToken && autoSyncStatus.newerSlots && autoSyncStatus.newerSlots.length > 0 && (
+                    {/* 스마트 최신 세이브 감지 알림 및 원클릭 동기화 배너 (레거시 Drive 전용) */}
+                    {!isSupabaseConfigured() && currentUser && googleToken && autoSyncStatus.newerSlots && autoSyncStatus.newerSlots.length > 0 && (
                       <div className="p-3.5 bg-gradient-to-r from-amber-950/90 via-slate-900 to-blue-950/90 border border-amber-500/50 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-xl animate-in fade-in">
                         <div className="flex items-center gap-2.5">
                           <Cloud size={20} className="text-amber-400 shrink-0 animate-bounce" />
