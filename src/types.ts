@@ -1979,6 +1979,7 @@ export interface Character {
     instantDungeons?: InstantDungeon[]; // [NEW]
     trackedQuestIds?: string[]; // [NEW] 퀘스트 추적 UI용 ID 목록
     clearedDungeonsByCity?: Record<string, string>; // [NEW] 도시별 마지막 클리어 날짜 (CityName -> YYYY-MM-DD)
+    scoutedDungeons?: string[]; // [NEW] 파견 정찰을 통해 지리가 사전 해금된 던전 도시명 목록
     paidTollsToday?: string[]; // [NEW] 오늘 통행료를 지불한 도시 목록
     lastTollPaidDate?: string; // [NEW] 마지막으로 통행료를 지불한 날짜 (YYYY-MM-DD)
     activeBlackMarket?: BlackMarketData; // [NEW] 월간 암시장 정보

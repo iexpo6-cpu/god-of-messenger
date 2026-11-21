@@ -75,7 +75,8 @@ export const generateGridDungeonFloor = (
     city: string,
     floor: number,
     isMythic: boolean,
-    bossName?: string
+    bossName?: string,
+    options?: { torchBonus?: number; isScouted?: boolean }
 ): GridDungeonState => {
     const maxFloors = isMythic ? 5 : 3;
     const isFinalFloor = floor === maxFloors - 1;
@@ -283,8 +284,17 @@ export const generateGridDungeonFloor = (
         tiles[p.y][p.x].isIdentified = false;
     }
 
-    // 5. 플레이어 초기 시야 밝히기 (반경 1.5)
-    revealFogOfWar(tiles, playerPos.x, playerPos.y, 1.5);
+    // 5. 플레이어 초기 시야 밝히기 (기본 1.5/1.8 + 탐험 관측소 보너스)
+    const baseTorchRadius = isMythic ? 1.5 : 1.8;
+    const finalTorchRadius = Number((baseTorchRadius + (options?.torchBonus || 0)).toFixed(1));
+    revealFogOfWar(tiles, playerPos.x, playerPos.y, finalTorchRadius);
+    if (options?.isScouted) {
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                tiles[y][x].isRevealed = true;
+            }
+        }
+    }
     updateTileIdentifications(tiles, playerPos.x, playerPos.y);
 
     return {
@@ -299,7 +309,7 @@ export const generateGridDungeonFloor = (
         tiles,
         activeRunesCount: 0,
         totalRunesRequired: isMythic ? 3 : 0,
-        torchRadius: isMythic ? 1.5 : 1.8,
+        torchRadius: finalTorchRadius,
         bossDefeated: false
     };
 };

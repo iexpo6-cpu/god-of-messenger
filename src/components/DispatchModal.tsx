@@ -145,8 +145,8 @@ export const getDispatchSystemInfo = (mission: DispatchMission): ExternalDispatc
         isExternal: false,
         systemType: 'native',
         systemName: '파견 사령부',
-        badgeBg: 'bg-indigo-950/90 text-indigo-300 border-indigo-600/50',
-        badgeText: type === 'ScoutDispatch' ? '스카우트' : type === 'Expedition' ? '원정대' : '일반 파견',
+        badgeBg: type === 'DungeonRecon' ? 'bg-emerald-950/90 text-emerald-300 border-emerald-600/50' : 'bg-indigo-950/90 text-indigo-300 border-indigo-600/50',
+        badgeText: type === 'DungeonRecon' ? '던전 정찰' : type === 'ScoutDispatch' ? '스카우트' : type === 'Expedition' ? '원정대' : '일반 파견',
         guidanceTitle: '파견 보상 수령',
         guidanceMsg: '',
         guidanceLocation: '파견 사령부'
@@ -202,7 +202,7 @@ export const isRoleUnlocked = (comp?: Companion | null, role?: 'tanker' | 'deale
 
 const DispatchModal: React.FC<Props> = ({ character, instanceId, onClose, onUpdateCharacter, onFacilityUpgrade, onOpenExternalModal }) => {
     const hasUrgentAlarms = character.base?.urgentAlarms && character.base.urgentAlarms.length > 0;
-    const [activeTab, setActiveTab] = useState<'new' | 'expedition' | 'scout' | 'status'>(hasUrgentAlarms ? 'status' : 'new');
+    const [activeTab, setActiveTab] = useState<'new' | 'expedition' | 'scout' | 'dungeon_recon' | 'status'>(hasUrgentAlarms ? 'status' : 'new');
     const [selectedExternalNotice, setSelectedExternalNotice] = useState<{ mission: DispatchMission; systemInfo: ExternalDispatchSystemInfo } | null>(null);
     
     // Normal Dispatch State
@@ -231,6 +231,12 @@ const DispatchModal: React.FC<Props> = ({ character, instanceId, onClose, onUpda
     const [scoutTargetJob, setScoutTargetJob] = useState<JobType>(JobType.FARMER);
     const [scoutCompanionId, setScoutCompanionId] = useState<string | null>(null);
     const [scoutDuration, setScoutDuration] = useState<number>(1);
+
+    // Dungeon Recon Dispatch State (던전 지리 정찰 파견)
+    const [reconRegion, setReconRegion] = useState<string>(initialScoutRegion);
+    const [reconNation, setReconNation] = useState<string>(character.currentLocation?.nation || '대한민국');
+    const [reconCity, setReconCity] = useState<string>(character.currentLocation?.city || '서울');
+    const [reconCompanionId, setReconCompanionId] = useState<string | null>(null);
 
     // 6-Member Team Slots (기본 역할: 'none', 전술훈련소 숙련도 100 달성 시 해당 역할로 전환 가능)
     const [teamSlots, setTeamSlots] = useState<TeamSlot[]>([
@@ -938,6 +944,76 @@ const DispatchModal: React.FC<Props> = ({ character, instanceId, onClose, onUpda
         setScoutCompanionId(null);
     };
 
+    // 던전 지리 정찰 파견 실행 (7일 소요, 완료 시 해당 도시 던전 전체 지도 해금)
+    const getDungeonReconSuccessRate = () => {
+        const comp = getAvailableCompanions().find(c => c.id === reconCompanionId);
+        const obsLv = character.base?.layout?.find(f => f.type === 'explorer_observatory' && !f.underConstruction)?.level || 0;
+        const baseRate = 75 + (facilityLevel * 2) + (obsLv * 5);
+        const compBonus = comp ? Math.min(20, Math.floor((comp.level || 1) * 0.4 + ((comp.stats?.agi || 10) * 0.05))) : 0;
+        return Math.min(100, baseRate + compBonus);
+    };
+
+    const handleDungeonReconDispatch = () => {
+        if (!reconCompanionId) return alert("던전 정찰에 파견할 대원을 선택해 주십시오.");
+        if (currentDispatchCount >= maxDispatch) return alert("파견 가능 슬롯이 꽉 찼습니다.");
+        if (character.scoutedDungeons?.includes(reconCity)) {
+            return alert(`${reconCity} 던전은 이미 지리 정찰이 완료되어 있습니다.`);
+        }
+
+        const goldCost = 1500;
+        const foodCost = 30;
+        const currentFood = character.base?.resources?.food ?? 0;
+        if ((character.money || 0) < goldCost) return alert(`골드가 부족합니다. (필요: ${goldCost.toLocaleString()}G)`);
+        if (currentFood < foodCost) return alert(`식량이 부족합니다. (필요: ${foodCost}, 보유: ${currentFood})`);
+
+        const reconComp = getAvailableCompanions().find(c => c.id === reconCompanionId);
+        const successRate = getDungeonReconSuccessRate();
+        const startDate = character.currentDate || '2000-01-01';
+        const returnDate = addDays(startDate, 7);
+
+        const newMission: DispatchMission = {
+            id: `recon_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            companionId: reconCompanionId,
+            destination: { region: reconRegion, nation: reconNation, city: reconCity },
+            startTime: startDate,
+            durationMonths: 1,
+            expectedReturnDate: returnDate,
+            status: 'Normal',
+            dangerCounter: 0,
+            successRate,
+            missionType: 'DungeonRecon',
+            expeditionTargetName: `[던전 지리 정찰] ${reconNation} ${reconCity}`
+        };
+
+        let newChar = unassignFromTraining({ ...character }, reconCompanionId);
+        newChar.money -= goldCost;
+        if (newChar.base) {
+            if (!newChar.base.resources) {
+                newChar.base.resources = { food: 0, wood: 0, stone: 0, iron: 0, manaCrystal: 0, gold: 0, manaStone: 0, herbs: 0, normalCrystal: 0 } as any;
+            }
+            newChar.base.resources.food -= foodCost;
+            if (!newChar.base.dispatched) newChar.base.dispatched = [];
+            newChar.base.dispatched.push(newMission);
+            if (!newChar.base.assignments) newChar.base.assignments = {};
+            newChar.base.assignments[`dispatch_${newMission.id}`] = reconCompanionId;
+        }
+
+        onUpdateCharacter(newChar, `[던전 정찰] ${reconComp?.name} 대원을 ${reconNation} ${reconCity} 던전 지리 정찰에 파견했습니다. (7일 소요)`);
+
+        setResultData({
+            type: 'success',
+            title: '던전 지리 정찰 파견 출발',
+            message: `${reconComp?.name} 대원이 ${reconNation} ${reconCity} 던전의 지형과 방 배치를 사전 정찰하러 출발했습니다.`,
+            items: [
+                { label: '정찰 목표', after: `${reconNation} ${reconCity} 던전` },
+                { label: '소요 기간', after: '7일' },
+                { label: '예상 성공률', after: `${successRate}%` },
+                { label: '소모 자원', after: `${goldCost.toLocaleString()}G / 식량 ${foodCost}` }
+            ]
+        });
+        setReconCompanionId(null);
+    };
+
     // 파견 중도 복귀
     const handleRecall = (mission: DispatchMission) => {
         if (!confirm("중도 복귀 시 보상을 획득할 수 없습니다. 정말 복귀시키겠습니까?")) return;
@@ -1146,6 +1222,7 @@ const DispatchModal: React.FC<Props> = ({ character, instanceId, onClose, onUpda
     const handleComplete = (mission: DispatchMission) => {
         const isExpedition = mission.missionType === 'Expedition';
         const isScout = mission.missionType === 'ScoutDispatch';
+        const isDungeonRecon = mission.missionType === 'DungeonRecon';
         const successRate = mission.successRate || 50;
         const roll = Math.random() * 100;
 
@@ -1161,6 +1238,51 @@ const DispatchModal: React.FC<Props> = ({ character, instanceId, onClose, onUpda
         let title = "";
         let msg = "";
         let resultType: ResultData['type'] = 'info';
+
+        if (isDungeonRecon) {
+            const reconComp = [...character.companions, ...(character.inactiveCompanions || [])].find(c => c.id === mission.companionId);
+            const targetCity = mission.destination?.city || '서울';
+            const targetNation = mission.destination?.nation || '대한민국';
+            const isSuccess = outcome === 'Great' || outcome === 'Success';
+
+            if (newChar.base?.dispatched) {
+                newChar.base = {
+                    ...newChar.base,
+                    dispatched: newChar.base.dispatched.filter(d => d.id !== mission.id),
+                    assignments: Object.fromEntries(
+                        Object.entries(newChar.base.assignments || {}).filter(([k]) => !k.includes(mission.id))
+                    ),
+                    urgentAlarms: (newChar.base.urgentAlarms || []).filter(a => !a.includes(mission.id))
+                };
+            }
+
+            if (isSuccess) {
+                const prevScouted = newChar.scoutedDungeons || [];
+                if (!prevScouted.includes(targetCity)) {
+                    newChar.scoutedDungeons = [...prevScouted, targetCity];
+                }
+                const expGain = outcome === 'Great' ? 1200 : 700;
+                onUpdateCharacter(newChar, `[던전 정찰 성공] ${reconComp?.name || '대원'}이(가) ${targetNation} ${targetCity} 던전의 전체 지도를 확보했습니다!`);
+                setResultData({
+                    type: 'success',
+                    title: outcome === 'Great' ? '🗺️ 던전 정밀 정찰 대성공!' : '🗺️ 던전 지리 정찰 성공!',
+                    message: `${reconComp?.name || '정찰 대원'}이(가) ${targetNation} ${targetCity} 던전의 지형, 방, 보물상자 및 출구·보스 위치를 모두 파악해 돌아왔습니다. 이제 해당 던전 입장 시 전체 지도가 공개된 상태로 시작합니다!`,
+                    items: [
+                        { label: '정찰 해금 던전', after: `${targetCity} 던전 (영구 개방)`, color: 'text-emerald-300' },
+                        { label: '정찰 보고', after: `대원 노고 보상 (+${expGain} EXP 상당)` }
+                    ]
+                });
+            } else {
+                onUpdateCharacter(newChar, `[던전 정찰 실패] ${reconComp?.name || '대원'}이(가) ${targetNation} ${targetCity} 던전 지리 파악에 실패하고 복귀했습니다.`);
+                setResultData({
+                    type: 'failure',
+                    title: '던전 지리 정찰 실패',
+                    message: `${reconComp?.name || '정찰 대원'}이(가) ${targetCity} 던전 내부의 짙은 안개와 마물들의 방해로 지도 작성에 실패하고 복귀했습니다.`,
+                    items: [{ label: '결과', after: '재정찰 필요' }]
+                });
+            }
+            return;
+        }
 
         if (isScout) {
             const scouterComp = [...character.companions, ...(character.inactiveCompanions || [])].find(c => c.id === mission.companionId);
@@ -1805,6 +1927,14 @@ const DispatchModal: React.FC<Props> = ({ character, instanceId, onClose, onUpda
                         }`}
                     >
                         <UserPlus size={15} className="mr-1.5 text-cyan-400"/> 인재 스카우트
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('dungeon_recon')} 
+                        className={`flex-1 min-w-[120px] py-2.5 sm:py-3 text-xs sm:text-sm font-bold flex items-center justify-center transition-colors whitespace-nowrap ${
+                            activeTab === 'dungeon_recon' ? 'text-emerald-400 border-b-2 border-emerald-500 bg-slate-900/90' : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                    >
+                        <Search size={15} className="mr-1.5 text-emerald-400"/> 던전 지리 정찰
                     </button>
                     <button 
                         onClick={() => setActiveTab('status')} 
@@ -2695,6 +2825,130 @@ const DispatchModal: React.FC<Props> = ({ character, instanceId, onClose, onUpda
                             </div>
                         </div>
                     )}
+
+                    {/* TAB 3.5: DUNGEON RECON DISPATCH */}
+                    {activeTab === 'dungeon_recon' && (() => {
+                        const reconNations = Object.keys(WORLD_GEOGRAPHY[reconRegion] || {});
+                        const reconCities = (WORLD_GEOGRAPHY[reconRegion]?.[reconNation] || []) as string[];
+                        const isAlreadyScouted = Boolean(character.scoutedDungeons?.includes(reconCity));
+                        const availableComps = getAvailableCompanions();
+                        const reconRate = getDungeonReconSuccessRate();
+
+                        return (
+                            <div className="space-y-4 max-w-4xl mx-auto">
+                                <div className="bg-emerald-950/30 border border-emerald-500/40 p-4 rounded-xl">
+                                    <h3 className="text-sm font-extrabold text-emerald-200 flex items-center gap-2">
+                                        <Search size={16} className="text-emerald-400" />
+                                        던전 지리 사전 정찰 (7일 소요)
+                                    </h3>
+                                    <p className="text-xs text-slate-300 mt-1">
+                                        동료를 던전에 사전 정찰 파견하여 성공하면, 해당 도시 던전에 입장할 때 <span className="text-emerald-300 font-bold">첫 층부터 전체 지도(방/상자/보스/출구 위치)가 영구적으로 공개</span>됩니다.
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-950/70 p-4 rounded-xl border border-slate-800">
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-slate-400 mb-1">대륙</label>
+                                        <select
+                                            value={reconRegion}
+                                            onChange={(e) => {
+                                                const nextReg = e.target.value;
+                                                const nextNat = Object.keys(WORLD_GEOGRAPHY[nextReg] || {})[0] || '';
+                                                const nextCit = (WORLD_GEOGRAPHY[nextReg]?.[nextNat] || [])[0] || '';
+                                                setReconRegion(nextReg);
+                                                setReconNation(nextNat);
+                                                setReconCity(nextCit);
+                                            }}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white"
+                                        >
+                                            {availableScoutRegions.map(r => (
+                                                <option key={r} value={r}>{r}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-slate-400 mb-1">국가</label>
+                                        <select
+                                            value={reconNation}
+                                            onChange={(e) => {
+                                                const nextNat = e.target.value;
+                                                const nextCit = (WORLD_GEOGRAPHY[reconRegion]?.[nextNat] || [])[0] || '';
+                                                setReconNation(nextNat);
+                                                setReconCity(nextCit);
+                                            }}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white"
+                                        >
+                                            {reconNations.map(n => (
+                                                <option key={n} value={n}>{n}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] font-bold text-slate-400 mb-1">대상 던전 도시</label>
+                                        <select
+                                            value={reconCity}
+                                            onChange={(e) => setReconCity(e.target.value)}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white"
+                                        >
+                                            {reconCities.map(c => (
+                                                <option key={c} value={c}>
+                                                    {c} {character.scoutedDungeons?.includes(c) ? '(정찰 완료 ✓)' : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800 space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-300">정찰 파견 대원 선택</span>
+                                        <span className="text-[11px] text-emerald-400 font-bold">예상 성공률: {reconRate}% (탐험 관측소 보너스 포함)</span>
+                                    </div>
+                                    {availableComps.length === 0 ? (
+                                        <p className="text-xs text-slate-500 py-3 text-center">현재 파견 가능한 대기 동료가 없습니다.</p>
+                                    ) : (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
+                                            {availableComps.map(comp => (
+                                                <button
+                                                    key={comp.id}
+                                                    onClick={() => setReconCompanionId(comp.id)}
+                                                    className={`p-2 rounded-lg border text-left transition-all ${
+                                                        reconCompanionId === comp.id
+                                                            ? 'bg-emerald-950/60 border-emerald-400 text-white'
+                                                            : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:border-slate-600'
+                                                    }`}
+                                                >
+                                                    <div className="text-xs font-bold truncate">{comp.name}</div>
+                                                    <div className="text-[10px] text-slate-400">Lv.{comp.level} · AGI {comp.stats?.agi || 10}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+                                    <div className="text-xs text-slate-300 space-y-0.5">
+                                        <div>비용: <span className="text-amber-300 font-bold">1,500G</span> · <span className="text-emerald-300 font-bold">식량 30</span> · 기간: <span className="text-white font-bold">7일</span></div>
+                                        {isAlreadyScouted && (
+                                            <div className="text-emerald-400 font-bold">✓ {reconCity} 던전은 이미 지리 정찰이 완료되었습니다.</div>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={handleDungeonReconDispatch}
+                                        disabled={!reconCompanionId || isAlreadyScouted || currentDispatchCount >= maxDispatch}
+                                        className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                                            !reconCompanionId || isAlreadyScouted || currentDispatchCount >= maxDispatch
+                                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md active:scale-95'
+                                        }`}
+                                    >
+                                        <Send size={14} />
+                                        <span>{isAlreadyScouted ? '이미 정찰 완료' : '던전 정찰 파견 출발'}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     {/* TAB 4: DISPATCH STATUS & MISSIONS */}
                     {activeTab === 'status' && (

@@ -1976,6 +1976,10 @@ const BaseModal: React.FC<Props> = ({
                 const shinSanctuaryLv = getShinryokuSanctuaryLevel(character.base) || 1;
                 bonusInfo = `개별 신력 실드 최대 강화 한도: Lv.${Math.min(MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL, shinSanctuaryLv)} (최대 ${4 + Math.min(MAX_SHINRYOKU_SHIELD_UPGRADE_LEVEL, shinSanctuaryLv)}칸)`;
                 break;
+            case 'explorer_observatory':
+                const obsLv = character.base?.layout?.find(f => f.type === 'explorer_observatory' && !f.underConstruction)?.level || 1;
+                bonusInfo = `던전 횃불 시야 반경 +${(obsLv * 0.5).toFixed(1)}칸 확장`;
+                break;
         }
 
         return bonusInfo ? (
@@ -4660,6 +4664,86 @@ const BaseModal: React.FC<Props> = ({
                     </div>
                     </>
                     )}
+                </div>
+            );
+        }
+
+        if (selectedFacility === 'explorer_observatory') {
+            const currentInst = character.base?.layout?.find(f => f.id === (selectedInstanceId || activeInstanceId)) || character.base?.layout?.find(f => f.type === 'explorer_observatory');
+            const facilityLevel = currentInst ? (currentInst.level || 1) : 1;
+            const torchBonus = Number((facilityLevel * 0.5).toFixed(1));
+            const scoutedList = character.scoutedDungeons || [];
+            const dispatchInst = character.base?.layout?.find(f => f.type === 'dispatch' && !f.underConstruction);
+
+            return (
+                <div className="space-y-5">
+                    <div className="bg-amber-950/30 border border-amber-500/40 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2.5 bg-amber-900/50 rounded-xl text-amber-300 border border-amber-500/40 shrink-0">
+                                <Flame size={22} />
+                            </div>
+                            <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h4 className="text-base font-extrabold text-amber-100">탐험 관측소 · 고성능 탐조 마법구</h4>
+                                    <span className="text-[11px] bg-amber-900/80 text-amber-200 border border-amber-600/60 px-2 py-0.5 rounded-full font-bold">
+                                        Lv.{facilityLevel} / 5
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                                    시설 레벨당 던전 탐험 시 <span className="text-amber-300 font-bold">횃불 시야 반경이 +0.5칸</span>씩 영구 확장됩니다.
+                                </p>
+                                <div className="mt-2.5 flex flex-wrap gap-2 text-xs font-bold">
+                                    <span className="px-2.5 py-1 rounded-lg bg-slate-900/80 border border-amber-500/30 text-amber-300">
+                                        🔥 현재 시야 보너스: +{torchBonus}칸
+                                    </span>
+                                    <span className="px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-700 text-slate-200">
+                                        일반 미궁: {(1.8 + torchBonus).toFixed(1)}칸
+                                    </span>
+                                    <span className="px-2.5 py-1 rounded-lg bg-slate-900/80 border border-purple-500/30 text-purple-300">
+                                        신화 심연: {(1.5 + torchBonus).toFixed(1)}칸
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-900/70 border border-slate-800 p-4 rounded-xl space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <MapPin size={16} className="text-emerald-400" />
+                                <h5 className="text-sm font-extrabold text-slate-100">사전 지리 정찰 완료 던전 ({scoutedList.length}곳)</h5>
+                            </div>
+                            {dispatchInst && (
+                                <button
+                                    onClick={() => {
+                                        setSelectedFacility('dispatch');
+                                        setActiveInstanceId(dispatchInst.id);
+                                    }}
+                                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                                >
+                                    <Search size={13} />
+                                    <span>파견소에서 던전 정찰 보내기</span>
+                                </button>
+                            )}
+                        </div>
+                        <p className="text-xs text-slate-400">
+                            파견소에서 <span className="text-emerald-300 font-bold">[던전 지리 정찰]</span> 임무를 완수하면, 해당 도시 던전에 입장할 때 첫 층부터 전체 지도(방/상자/보스/출구 위치)가 미리 밝혀진 상태로 시작합니다.
+                        </p>
+                        {scoutedList.length === 0 ? (
+                            <div className="p-4 rounded-lg bg-slate-950/60 border border-slate-800/80 text-center text-xs text-slate-500">
+                                아직 지리 정찰이 완료된 던전이 없습니다. 파견소에서 정찰 임무를 파견해 보세요!
+                            </div>
+                        ) : (
+                            <div className="flex flex-wrap gap-2">
+                                {scoutedList.map(cityName => (
+                                    <span key={cityName} className="px-3 py-1.5 rounded-lg bg-emerald-950/50 border border-emerald-600/50 text-emerald-200 text-xs font-bold flex items-center gap-1.5">
+                                        <CheckCircle size={13} className="text-emerald-400" />
+                                        {cityName} 던전
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         }

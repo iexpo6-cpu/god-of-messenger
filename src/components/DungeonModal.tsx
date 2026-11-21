@@ -99,10 +99,27 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         }
 
         // 기존 진행 중인 격자 던전 데이터가 있다면 복원
+        const obsList = (character.base?.layout || []).filter(f => f.type === 'explorer_observatory' && !f.underConstruction);
+        const obsMaxLv = obsList.reduce((acc, f) => Math.max(acc, f.level || 1), 0);
+        const torchBonus = Number((obsMaxLv * 0.5).toFixed(1));
+        const isCityScouted = Boolean(character.scoutedDungeons?.includes(city));
+
         if (character.dungeonProgress?.gridDungeon) {
             const saved = character.dungeonProgress.gridDungeon as GridDungeonState;
-            setGridState(saved);
-            const playerTile = saved.tiles[saved.playerPos.y]?.[saved.playerPos.x] || null;
+            const baseTorch = saved.dungeonType === 'mythic' ? 1.5 : 1.8;
+            const updatedTorchRadius = Math.max(saved.torchRadius, Number((baseTorch + torchBonus).toFixed(1)));
+            const restoredTiles = saved.tiles.map(row => row.map(tile => ({
+                ...tile,
+                isRevealed: isCityScouted ? true : tile.isRevealed
+            })));
+            revealFogOfWar(restoredTiles, saved.playerPos.x, saved.playerPos.y, updatedTorchRadius);
+            const patchedSaved: GridDungeonState = {
+                ...saved,
+                torchRadius: updatedTorchRadius,
+                tiles: restoredTiles
+            };
+            setGridState(patchedSaved);
+            const playerTile = restoredTiles[patchedSaved.playerPos.y]?.[patchedSaved.playerPos.x] || null;
             setSelectedTile(playerTile);
             return;
         }
@@ -178,7 +195,14 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
             syncGridToCharacter(updatedGrid, character, logMsg);
         } else {
             // 신규 층 생성
-            const newDungeon = generateGridDungeonFloor(nation, currentCity, targetFloor, isSeasonalBoss, bossInfo?.name);
+            const obsList = (character.base?.layout || []).filter(f => f.type === 'explorer_observatory' && !f.underConstruction);
+            const obsMaxLv = obsList.reduce((acc, f) => Math.max(acc, f.level || 1), 0);
+            const torchBonus = Number((obsMaxLv * 0.5).toFixed(1));
+            const isCityScouted = Boolean(character.scoutedDungeons?.includes(currentCity));
+            const newDungeon = generateGridDungeonFloor(nation, currentCity, targetFloor, isSeasonalBoss, bossInfo?.name, {
+                torchBonus,
+                isScouted: isCityScouted
+            });
             newDungeon.activeRunesCount = gridState?.activeRunesCount || 0;
             newDungeon.totalRunesRequired = isSeasonalBoss ? 3 : 0;
             newDungeon.floorCache = currentCache;
@@ -668,10 +692,17 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                         {/* 좌측: 격자 캔버스 뷰 */}
                         <div className="flex-1 bg-slate-950/80 p-3 sm:p-5 flex flex-col items-center justify-center overflow-auto border-b lg:border-b-0 lg:border-r border-slate-800">
                             {/* 미궁 상단 상태 바 */}
-                            <div className="w-full flex justify-between items-center mb-3 px-2 text-xs font-bold text-slate-400">
-                                <span className="flex items-center gap-1.5 text-amber-400">
-                                    <Flame size={14} /> 횃불 시야 반경: {gridState.torchRadius}칸
-                                </span>
+                            <div className="w-full flex flex-wrap justify-between items-center gap-2 mb-3 px-2 text-xs font-bold text-slate-400">
+                                <div className="flex items-center gap-2">
+                                    <span className="flex items-center gap-1.5 text-amber-400">
+                                        <Flame size={14} /> 횃불 시야 반경: {gridState.torchRadius}칸
+                                    </span>
+                                    {character.scoutedDungeons?.includes(currentCity) && (
+                                        <span className="flex items-center gap-1 text-[11px] text-emerald-300 bg-emerald-950/60 border border-emerald-700/60 px-2 py-0.5 rounded-lg">
+                                            🗺️ 정찰 완료 (전체 지도 개방)
+                                        </span>
+                                    )}
+                                </div>
                                 {gridState.totalRunesRequired > 0 && (
                                     <span className="flex items-center gap-1.5 text-rose-400 bg-rose-950/40 px-2.5 py-1 rounded-lg border border-rose-900/60">
                                         <Lock size={12} /> 결계 해제 봉인석: {gridState.activeRunesCount} / {gridState.totalRunesRequired}

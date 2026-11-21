@@ -978,7 +978,7 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
         }
     };
 
-    // 6. 아군 턴 종료 및 적군 턴 자동 진행
+    // 6. 아군 턴 종료 및 적군 턴 자동 진행 (적 AI 추적 이동 + 인접 시 선제 교전)
     const handleEndPlayerTurn = () => {
         if (turnOwner !== 'player') return;
 
@@ -986,24 +986,80 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
         setSelectedUnitId(null);
 
         setTimeout(() => {
-            setEnemies(prevEnemies => {
-                return prevEnemies.map(e => {
-                    if (e.isBoss) return e; // 적장은 본진 수호
-                    const nextRow = Math.min(numRows - 1, e.row + 1);
-                    const isBlocked = allies.some(a => a.row === nextRow && a.col === e.col) ||
-                                      prevEnemies.some(other => other.id !== e.id && other.row === nextRow && other.col === e.col);
+            const currentAllies = allies.filter(a => a.hp > 0);
+            const movedEnemies = enemies.map(e => ({ ...e }));
 
-                    if (!isBlocked) {
-                        return { ...e, row: nextRow };
+            for (let i = 0; i < movedEnemies.length; i++) {
+                const enemy = movedEnemies[i];
+                if (enemy.hp <= 0 || enemy.isBoss || currentAllies.length === 0) continue;
+
+                // 가장 가까운 아군 탐색
+                let nearestAlly = currentAllies[0];
+                let minDist = Math.abs(enemy.row - nearestAlly.row) + Math.abs(enemy.col - nearestAlly.col);
+                for (const ally of currentAllies) {
+                    const d = Math.abs(enemy.row - ally.row) + Math.abs(enemy.col - ally.col);
+                    if (d < minDist) {
+                        minDist = d;
+                        nearestAlly = ally;
                     }
-                    return e;
-                });
-            });
+                }
 
+                // 이미 아군과 인접(거리 1)해 있으면 이동하지 않고 교전 대기
+                if (minDist <= 1) continue;
+
+                // 상하좌우 중 빈 칸이며 목표 아군과의 거리를 가장 줄이는 칸 선택
+                const dirs = [
+                    { dr: 1, dc: 0 },
+                    { dr: -1, dc: 0 },
+                    { dr: 0, dc: 1 },
+                    { dr: 0, dc: -1 }
+                ];
+                let bestRow = enemy.row;
+                let bestCol = enemy.col;
+                let bestDist = minDist;
+
+                for (const { dr, dc } of dirs) {
+                    const nr = enemy.row + dr;
+                    const nc = enemy.col + dc;
+                    if (nr < 0 || nr >= numRows || nc < 0 || nc >= numCols) continue;
+                    const blockedByAlly = currentAllies.some(a => a.row === nr && a.col === nc);
+                    const blockedByEnemy = movedEnemies.some((other, idx) => idx !== i && other.hp > 0 && other.row === nr && other.col === nc);
+                    if (blockedByAlly || blockedByEnemy) continue;
+
+                    const nd = Math.abs(nr - nearestAlly.row) + Math.abs(nc - nearestAlly.col);
+                    if (nd < bestDist) {
+                        bestDist = nd;
+                        bestRow = nr;
+                        bestCol = nc;
+                    }
+                }
+
+                enemy.row = bestRow;
+                enemy.col = bestCol;
+            }
+
+            // 이동 완료 후 아군과 인접한 적군이 있으면 선제 교전 개시 (적군 턴당 1회)
+            let ambushPair: { ally: TacticalUnit; enemy: TacticalEnemyUnit } | null = null;
+            for (const enemy of movedEnemies) {
+                if (enemy.hp <= 0) continue;
+                const adjacentAlly = currentAllies.find(
+                    a => Math.abs(enemy.row - a.row) + Math.abs(enemy.col - a.col) === 1
+                );
+                if (adjacentAlly) {
+                    ambushPair = { ally: adjacentAlly, enemy };
+                    break;
+                }
+            }
+
+            setEnemies(movedEnemies);
             setAllies(prev => prev.map(u => ({ ...u, hasActed: false })));
             setTurnCount(c => c + 1);
             setTurnOwner('player');
-        }, 700);
+
+            if (ambushPair) {
+                startCombatEncounter(ambushPair.ally, ambushPair.enemy);
+            }
+        }, 650);
     };
 
     // 7. 전쟁 최종 승리 처리: 계급별 점유율 상승 및 명확한 시각적 피드백 제공!

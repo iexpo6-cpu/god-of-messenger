@@ -4654,6 +4654,7 @@ export const FACILITIES_INFO = [
     { id: 'monster_arena', name: '몬스터 수련 투기장', desc: '사육소의 몬스터들끼리 모의 대전을 치르며 야성을 일깨우는 시설입니다. (사육사의 지도 아래 몬스터의 능력 증가)', minLevel: 3, isUnique: false },
     { id: 'transcendence_sanctuary', name: '초월의 성소', desc: '각종 자원과 결정을 봉헌하여 주인공과 동료·몬스터의 최대 레벨 상한을 영구 해방하는 고유 성소입니다. (시설 레벨 × 20만큼 최대 레벨 해방)', minLevel: 2, isUnique: true },
     { id: 'shinryoku_sanctuary', name: '신력 결계전', desc: '주인공과 동료·몬스터 각각의 신력 방어 결계(브레이크 실드)를 개별적으로 강화하고 최대 실드 칸수를 확장하는 고유 성소입니다. (시설 레벨에 따라 최대 실드 강화 한도 확장)', minLevel: 1, isUnique: true },
+    { id: 'explorer_observatory', name: '탐험 관측소', desc: '고성능 탐조 마법구와 지형 관측 장비를 운용해 던전 내 횃불 시야 반경을 넓히고 던전 정찰 현황을 관리하는 고유 시설입니다. (시설 레벨당 횃불 시야 +0.5칸, 최대 Lv.5)', minLevel: 2, isUnique: true },
 ];
 
 export const RESOURCE_SELL_PRICES: Record<string, number> = {
@@ -4735,6 +4736,7 @@ export const FACILITY_CONSTRUCTION_COSTS: Record<string, { gold?: number, food?:
     'monster_arena': { gold: 40000, wood: 50, stone: 40, iron: 30, manaCrystal: 5 },
     'transcendence_sanctuary': { gold: 100000, wood: 60, stone: 60, iron: 50, manaCrystal: 20 },
     'shinryoku_sanctuary': { gold: 80000, wood: 40, stone: 50, iron: 40, manaCrystal: 15 },
+    'explorer_observatory': { gold: 50000, wood: 35, stone: 35, iron: 25, manaCrystal: 10 },
 };
 
 export const BASE_UPGRADE_COSTS: Record<number, { food: number, wood: number, stone: number, iron: number, manaCrystal: number, time: number }> = {
@@ -4777,6 +4779,7 @@ export const FACILITY_UPGRADE_CONFIG: Record<string, { maxLevel: number, woodCos
     'monster_arena': { maxLevel: 5, woodCost: 25, stoneCost: 20, goldCost: 40000, foodCost: 20, manaCost: 5 },
     'transcendence_sanctuary': { maxLevel: 5, woodCost: 30, stoneCost: 30, goldCost: 100000, foodCost: 20, manaCost: 20 },
     'shinryoku_sanctuary': { maxLevel: 5, woodCost: 25, stoneCost: 30, goldCost: 80000, foodCost: 15, manaCost: 15 },
+    'explorer_observatory': { maxLevel: 5, woodCost: 20, stoneCost: 20, goldCost: 45000, foodCost: 10, manaCost: 10 },
 };
 
 
