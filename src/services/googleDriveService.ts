@@ -646,14 +646,13 @@ export const deduplicateCustomImagesInDrive = async (
 }> => {
   const folderId = await findOrCreateCustomImagesFolder(accessToken);
   const seenMap = new Map<string, string>();
-  const duplicateIds: string[] = [];
+  const duplicateItems: Array<{ id: string; size: number }> = [];
   let totalFiles = 0;
-  let freedBytes = 0;
   let pageToken: string | undefined;
 
   do {
     const query = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
-    const url = `https://www.googleapis.com/drive/v3/files?q=${query}&pageSize=1000&fields=nextPageToken,files(id,name,size)${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
+    const url = `https://www.googleapis.com/drive/v3/files?q=${query}&orderBy=createdTime&pageSize=1000&fields=nextPageToken,files(id,name,size)${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
     const res = await fetch(url, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
@@ -666,8 +665,7 @@ export const deduplicateCustomImagesInDrive = async (
       totalFiles++;
       const hash = String(f.name).replace(/\.json$/i, '');
       if (seenMap.has(hash)) {
-        duplicateIds.push(f.id);
-        freedBytes += Number(f.size || 0);
+        duplicateItems.push({ id: f.id, size: Number(f.size || 0) });
       } else {
         seenMap.set(hash, f.id);
       }
@@ -675,7 +673,28 @@ export const deduplicateCustomImagesInDrive = async (
     pageToken = data.nextPageToken;
   } while (pageToken);
 
-  const deletedDuplicates = await deleteDriveFilesBatch(duplicateIds, accessToken);
+  let deletedDuplicates = 0;
+  let freedBytes = 0;
+  const BATCH_SIZE = 5;
+  for (let i = 0; i < duplicateItems.length; i += BATCH_SIZE) {
+    const batch = duplicateItems.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (item) => {
+        try {
+          const res = await fetch(`https://www.googleapis.com/drive/v3/files/${item.id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+          });
+          if (res.ok || res.status === 404) {
+            deletedDuplicates++;
+            freedBytes += item.size;
+          }
+        } catch (err) {
+          console.warn(`[GoogleDrive] 중복 파일(${item.id}) 삭제 실패:`, err);
+        }
+      })
+    );
+  }
 
   // 로컬 업로드 캐시도 최신 고유 해시 목록과 동기화
   const localUploaded = getUploadedHashesCache();
@@ -693,11 +712,17 @@ export const deduplicateCustomImagesInDrive = async (
 // 동일 해시 동시 중복 업로드 방지 락
 const inFlightImageHashes = new Set<string>();
 
-const UPLOADED_HASHES_CACHE_KEY = 'shinryoku_gdrive_uploaded_hashes';
+const UPLOADED_HASHES_CACHE_PREFIX = 'shinryoku_gdrive_uploaded_hashes';
+
+const getUploadedHashesCacheKey = (): string => {
+  const uid = getCurrentDriveUser()?.uid;
+  return uid ? `${UPLOADED_HASHES_CACHE_PREFIX}_${uid}` : UPLOADED_HASHES_CACHE_PREFIX;
+};
 
 const getUploadedHashesCache = (): Set<string> => {
   try {
-    const raw = localStorage.getItem(UPLOADED_HASHES_CACHE_KEY);
+    const key = getUploadedHashesCacheKey();
+    const raw = localStorage.getItem(key);
     return raw ? new Set(JSON.parse(raw)) : new Set();
   } catch {
     return new Set();
@@ -706,7 +731,8 @@ const getUploadedHashesCache = (): Set<string> => {
 
 const saveUploadedHashesCache = (hashes: Set<string>) => {
   try {
-    localStorage.setItem(UPLOADED_HASHES_CACHE_KEY, JSON.stringify(Array.from(hashes)));
+    const key = getUploadedHashesCacheKey();
+    localStorage.setItem(key, JSON.stringify(Array.from(hashes)));
   } catch {}
 };
 

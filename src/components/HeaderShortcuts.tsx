@@ -136,10 +136,11 @@ const DEFAULT_PINNED: ShortcutId[] = ['base', 'map', 'mailbox', 'facility_worksh
 
 interface HeaderShortcutsProps {
     unreadMailCount: number;
+    unclaimedSettlementCount?: number;
     onAction: (id: ShortcutId) => void;
 }
 
-export const HeaderShortcuts: React.FC<HeaderShortcutsProps> = ({ unreadMailCount, onAction }) => {
+export const HeaderShortcuts: React.FC<HeaderShortcutsProps> = ({ unreadMailCount, unclaimedSettlementCount = 0, onAction }) => {
     const [pinnedIds, setPinnedIds] = useState<ShortcutId[]>(() => {
         try {
             const saved = localStorage.getItem('player_pinned_shortcuts');
@@ -188,6 +189,7 @@ export const HeaderShortcuts: React.FC<HeaderShortcutsProps> = ({ unreadMailCoun
                 if (!def) return null;
                 const IconComponent = def.icon;
                 const isMail = id === 'mailbox';
+                const isDimension = id === 'dimension';
 
                 return (
                     <button
@@ -203,6 +205,16 @@ export const HeaderShortcuts: React.FC<HeaderShortcutsProps> = ({ unreadMailCoun
                         {isMail && unreadMailCount > 0 && (
                             <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[9px] font-black font-mono w-4 h-4 rounded-full flex items-center justify-center shadow-lg animate-pulse">
                                 {unreadMailCount > 99 ? '99+' : unreadMailCount}
+                            </span>
+                        )}
+
+                        {/* Unclaimed Dimension Market Settlement Badge */}
+                        {isDimension && unclaimedSettlementCount > 0 && (
+                            <span
+                                className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-slate-950 text-[9px] font-black font-mono w-4 h-4 rounded-full flex items-center justify-center shadow-lg animate-pulse"
+                                title={`미수령 경매장 정산 ${unclaimedSettlementCount}건`}
+                            >
+                                {unclaimedSettlementCount > 99 ? '99+' : unclaimedSettlementCount}
                             </span>
                         )}
                     </button>

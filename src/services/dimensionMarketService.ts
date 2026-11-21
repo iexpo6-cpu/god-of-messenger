@@ -321,11 +321,96 @@ export const publishMarketListing = async (params: {
     return data as DimensionMarketListing;
 };
 
+// 매물 상세 툴팁 프리뷰용 인메모리 캐시 (storagePath -> parsed JSON object)
+const previewPayloadCache = new Map<string, any>();
+
+/**
+ * 매물의 storage_path JSON을 온디맨드 로드(캐싱)하여 툴팁/상세 프리뷰용 객체 반환
+ */
+export const fetchListingPreviewPayload = async <T = any>(storagePath: string): Promise<T | null> => {
+    if (!storagePath || !isSupabaseConfigured()) return null;
+    if (previewPayloadCache.has(storagePath)) {
+        return previewPayloadCache.get(storagePath) as T;
+    }
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+
+    const { data: blob, error } = await supabase.storage
+        .from('dimension-shares')
+        .download(storagePath);
+
+    if (error || !blob) return null;
+    try {
+        const parsed = JSON.parse(await blob.text());
+        if (previewPayloadCache.size > 150) {
+            previewPayloadCache.clear();
+        }
+        previewPayloadCache.set(storagePath, parsed);
+        return parsed as T;
+    } catch {
+        return null;
+    }
+};
+
+/**
+ * 미수령 경매장 정산 건수 경량 카운트 조회 (헤더 알림 배지용)
+ */
+export const countUnclaimedSettlements = async (sellerUid: string): Promise<number> => {
+    if (!isSupabaseConfigured() || !sellerUid) return 0;
+    const supabase = getSupabaseClient();
+    if (!supabase) return 0;
+
+    try {
+        const { count, error } = await supabase
+            .from('dimension_settlements')
+            .select('id', { count: 'exact', head: true })
+            .eq('seller_uid', sellerUid)
+            .eq('claimed', false);
+
+        if (error) return 0;
+        return count || 0;
+    } catch {
+        return 0;
+    }
+};
+
+/**
+ * 구매/취소 후 클라이언트 실물 반영 및 세이브 동기화 완료 시점에 스토리지 파일 안전 삭제
+ */
+export const cleanupMarketStorageFile = async (storagePath?: string | null): Promise<void> => {
+    if (!storagePath || !isSupabaseConfigured()) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    previewPayloadCache.delete(storagePath);
+    await supabase.storage.from('dimension-shares').remove([storagePath]).catch(() => {});
+};
+
+const downloadMarketPayloadWithRetry = async (storagePath: string, retries: number = 2): Promise<string> => {
+    const supabase = getSupabaseClient();
+    if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.');
+
+    let lastErr: any = null;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        const { data: blob, error } = await supabase.storage
+            .from('dimension-shares')
+            .download(storagePath);
+        if (!error && blob) {
+            return await blob.text();
+        }
+        lastErr = error;
+        if (attempt < retries) {
+            await new Promise(res => setTimeout(res, 400 * (attempt + 1)));
+        }
+    }
+    throw new Error(lastErr?.message || '매물 실물 데이터를 불러오지 못했습니다.');
+};
+
 export const purchaseMarketListing = async (
     listingId: string,
     buyerUid: string
 ): Promise<{
     payloadJson: string;
+    storagePath: string;
     priceGold: number;
     priceManaCrystal: number;
     title: string;
@@ -349,21 +434,10 @@ export const purchaseMarketListing = async (
         throw new Error(row?.message || '매물 구매에 실패했습니다.');
     }
 
-    const { data: blob, error: dlErr } = await supabase.storage
-        .from('dimension-shares')
-        .download(row.storage_path);
-
-    if (dlErr || !blob) {
-        throw new Error('구매는 처리되었으나 매물 데이터를 불러오지 못했습니다.');
-    }
-
-    const payloadJson = await blob.text();
-    // 구매자가 실물 데이터를 정상 수신했으므로 스토리지 파일 즉시 삭제
-    if (row.storage_path) {
-        await supabase.storage.from('dimension-shares').remove([row.storage_path]).catch(() => {});
-    }
+    const payloadJson = await downloadMarketPayloadWithRetry(row.storage_path, 2);
     return {
         payloadJson,
+        storagePath: row.storage_path || '',
         priceGold: Number(row.price_gold || 0),
         priceManaCrystal: Number(row.price_mana_crystal || 0),
         title: row.title || ''
@@ -373,7 +447,7 @@ export const purchaseMarketListing = async (
 export const cancelMarketListing = async (
     listingId: string,
     sellerUid: string
-): Promise<{ payloadJson: string; title: string }> => {
+): Promise<{ payloadJson: string; storagePath: string; title: string }> => {
     const supabase = getSupabaseClient();
     if (!supabase) {
         throw new Error('Supabase가 설정되지 않았습니다.');
@@ -393,17 +467,8 @@ export const cancelMarketListing = async (
         throw new Error(row?.message || '매물 등록 취소에 실패했습니다.');
     }
 
-    const { data: blob, error: dlErr } = await supabase.storage
-        .from('dimension-shares')
-        .download(row.storage_path);
-
-    if (dlErr || !blob) {
-        throw new Error('취소된 매물 실물 데이터를 복구하지 못했습니다.');
-    }
-
-    const payloadJson = await blob.text();
-    await supabase.storage.from('dimension-shares').remove([row.storage_path]).catch(() => {});
-    // 취소된 매물 DB 행도 즉시 삭제
+    const payloadJson = await downloadMarketPayloadWithRetry(row.storage_path, 2);
+    // 취소된 매물 DB 행 삭제 (스토리지 파일은 호출자가 실물 회수 완료 후 cleanupMarketStorageFile로 안전 삭제)
     await supabase
         .from('dimension_market_listings')
         .delete()
@@ -411,6 +476,7 @@ export const cancelMarketListing = async (
         .eq('seller_uid', sellerUid);
     return {
         payloadJson,
+        storagePath: row.storage_path || '',
         title: row.title || ''
     };
 };

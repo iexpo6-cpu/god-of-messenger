@@ -46,6 +46,7 @@ import { chooseEnemySkill, isEnemyAoeSkill, adjustEnemyDamageForAoe } from '../s
 
 import { combatStateBridge } from '../services/combatStateBridge';
 import { filterDebuffsForCleanse } from '../services/statusCleanseService';
+import { triggerSaveAutoBackup } from '../services/googleDriveAutoBackupService';
 
 
 
@@ -7211,6 +7212,8 @@ dom.corruption += 10000;
           const rawSave = { timestamp: new Date().toISOString(), character: syncedChar, messages, choices, sceneType }; 
           const saveData = optimizeSaveData(rawSave);
           await GameStorage.set(key, saveData);
+          // 완성된 세이브 데이터(messages/choices/sceneType 포함)로 계정 자동 백업 실행
+          triggerSaveAutoBackup(slotNum, saveData);
           setIsSaveLoadOpen(false);
           setResultModalData({
               type: 'success',

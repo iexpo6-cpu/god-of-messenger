@@ -21,6 +21,7 @@ import { SuddenEventData } from './services/suddenEventService';
 import { BestiaryEntry, DailyReportData } from './types';
 import TranscendentArenaModal from './components/TranscendentArenaModal';
 import AbyssTowerModal from './components/AbyssTowerModal';
+import { countUnclaimedSettlements } from './services/dimensionMarketService';
 
 // Lazy Loaded Modals for Bundle Code-Splitting & Memory Optimization
 import {
@@ -336,6 +337,35 @@ const App: React.FC = () => {
   const [isCommunicationBattleOpen, setIsCommunicationBattleOpen] = useState(false);
   const [isCommunicationSummonOpen, setIsCommunicationSummonOpen] = useState(false);
   const [isCommunicationItemOpen, setIsCommunicationItemOpen] = useState(false);
+  const [unclaimedSettlementCount, setUnclaimedSettlementCount] = useState(0);
+
+  useEffect(() => {
+    const refreshSettlementBadge = async () => {
+      const uid = auth.currentUser?.uid;
+      if (!uid) {
+        setUnclaimedSettlementCount(0);
+        return;
+      }
+      const cnt = await countUnclaimedSettlements(uid);
+      setUnclaimedSettlementCount(cnt);
+    };
+    refreshSettlementBadge();
+    const unsubAuth = auth.onAuthStateChanged(() => {
+      refreshSettlementBadge();
+    });
+    const handleChanged = () => {
+      refreshSettlementBadge();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('shinryoku_market_settlement_changed', handleChanged);
+    }
+    return () => {
+      unsubAuth();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('shinryoku_market_settlement_changed', handleChanged);
+      }
+    };
+  }, [isCommunicationOpen, isCommunicationItemOpen, isCommunicationSummonOpen]);
   const [isClassNameModalOpen, setIsClassNameModalOpen] = useState(false);
   const [isNameChangeModalOpen, setIsNameChangeModalOpen] = useState(false);
   const [nameChangeTargetId, setNameChangeTargetId] = useState<string | null>(null);
@@ -6891,10 +6921,17 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                                     {/* 4. 차원 */}
                                                     <button 
                                                         onClick={() => { handleOpenCommunication(); setIsMobileFunctionsOpen(false); }} 
-                                                        className="p-2.5 text-slate-300 hover:text-blue-400 bg-slate-900/60 hover:bg-slate-900 border border-slate-850 hover:border-blue-500/50 rounded-xl flex items-center gap-2 transition-all active:scale-95 text-xs font-bold cursor-pointer" 
+                                                        className="p-2.5 text-slate-300 hover:text-blue-400 bg-slate-900/60 hover:bg-slate-900 border border-slate-850 hover:border-blue-500/50 rounded-xl flex items-center justify-between transition-all active:scale-95 text-xs font-bold cursor-pointer" 
                                                     >
-                                                        <Radio size={14} className="text-blue-400 shrink-0" />
-                                                        <span>차원</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <Radio size={14} className="text-blue-400 shrink-0" />
+                                                            <span>차원</span>
+                                                        </div>
+                                                        {unclaimedSettlementCount > 0 && (
+                                                            <span className="bg-emerald-500 text-slate-950 text-[10px] font-mono px-1.5 py-0.5 rounded-full font-black animate-pulse">
+                                                                {unclaimedSettlementCount}
+                                                            </span>
+                                                        )}
                                                     </button>
 
                                                     {/* 5. 도감 */}
@@ -7045,6 +7082,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                             {/* Bottom Row (메뉴 버튼 하단): 바로가기 바 (Header Shortcuts) */}
                             <HeaderShortcuts 
                                 unreadMailCount={unreadMailCount} 
+                                unclaimedSettlementCount={unclaimedSettlementCount}
                                 onAction={handleShortcutAction} 
                             />
                         </div>

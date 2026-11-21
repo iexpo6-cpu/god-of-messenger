@@ -15,6 +15,19 @@ function copyRecursiveSync(src, dest) {
   }
 }
 
+function cleanOldAssetBundles(assetsDir) {
+  if (!fs.existsSync(assetsDir)) return;
+  fs.readdirSync(assetsDir).forEach(entry => {
+    const fullPath = path.join(assetsDir, entry);
+    const stat = fs.statSync(fullPath);
+    if (stat.isFile() && /\.(js|css|map)$/i.test(entry)) {
+      try {
+        fs.unlinkSync(fullPath);
+      } catch {}
+    }
+  });
+}
+
 console.log('[1/4] Building src with Vite...');
 execSync('npm run build', { cwd: path.join(__dirname, '..', 'src'), stdio: 'inherit' });
 
@@ -23,6 +36,7 @@ const rootDir = path.join(__dirname, '..');
 const distDir = path.join(rootDir, 'dist');
 
 console.log('[2/4] Syncing src/dist -> dist...');
+cleanOldAssetBundles(path.join(distDir, 'assets'));
 copyRecursiveSync(srcDist, distDir);
 
 console.log('[3/4] Syncing src/dist -> project root (for GitHub Pages root hosting)...');
@@ -30,6 +44,7 @@ if (fs.existsSync(path.join(srcDist, 'index.html'))) {
   fs.copyFileSync(path.join(srcDist, 'index.html'), path.join(rootDir, 'index.html'));
 }
 if (fs.existsSync(path.join(srcDist, 'assets'))) {
+  cleanOldAssetBundles(path.join(rootDir, 'assets'));
   copyRecursiveSync(path.join(srcDist, 'assets'), path.join(rootDir, 'assets'));
 }
 

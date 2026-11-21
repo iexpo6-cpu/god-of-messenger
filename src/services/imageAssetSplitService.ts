@@ -221,7 +221,8 @@ export const restoreImagesToSaveData = async <T>(
                     const found = resolvedMap[hash];
                     if (!found) {
                         missingCount++;
-                        return '';
+                        // 미복원 시 빈 문자열로 파괴하지 않고 원본 imgref:<hash> 유지 (추후 토큰 확보 시 재복원 가능)
+                        return item;
                     }
                     return found;
                 }
@@ -241,7 +242,8 @@ export const restoreImagesToSaveData = async <T>(
                     const found = resolvedMap[hash];
                     if (!found) {
                         missingCount++;
-                        cloned[key] = '';
+                        // 미복원 시 빈 문자열로 파괴하지 않고 원본 imgref:<hash> 유지 (추후 토큰 확보 시 재복원 가능)
+                        cloned[key] = val;
                     } else {
                         cloned[key] = found;
                     }

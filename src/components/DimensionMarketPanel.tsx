@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Character, Item, Companion, ItemRarity } from '../types';
+import { Character, Item, Companion, ItemRarity, ClassTier } from '../types';
 import { auth } from '../services/firebase';
 import { isSupabaseConfigured } from '../services/supabaseClient';
 import { GameStorage } from '../storage';
-import { getSaveSlotKey, optimizeSaveData, compressData } from '../utils';
+import { getSaveSlotKey, optimizeSaveData, compressData, decompressData } from '../utils';
 import { extractImagesFromSaveData } from '../services/imageAssetSplitService';
 import { uploadLightSaveToSupabase } from '../services/supabaseSaveService';
 import {
@@ -11,6 +11,8 @@ import {
     DimensionSettlement,
     fetchMarketListings,
     fetchMyListingsAndSettlements,
+    fetchListingPreviewPayload,
+    cleanupMarketStorageFile,
     publishMarketListing,
     purchaseMarketListing,
     cancelMarketListing,
@@ -20,7 +22,8 @@ import {
 } from '../services/dimensionMarketService';
 import {
     Store, Coins, Sparkles, Search, RefreshCw, Loader2, Tag,
-    CheckCircle2, AlertTriangle, Package, Users, RotateCcw, Wallet
+    CheckCircle2, AlertTriangle, Package, Users, RotateCcw, Wallet,
+    Eye, X, Shield, Swords, ArrowUpDown
 } from 'lucide-react';
 
 interface DimensionMarketPanelProps {
@@ -43,6 +46,12 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [searchText, setSearchText] = useState('');
     const [rarityFilter, setRarityFilter] = useState<string>('ALL');
+    const [sortBy, setSortBy] = useState<'latest' | 'price_asc' | 'price_desc' | 'grade_desc' | 'power_desc'>('latest');
+
+    // 매물 툴팁형 상세 프리뷰 상태
+    const [previewListing, setPreviewListing] = useState<DimensionMarketListing | null>(null);
+    const [previewData, setPreviewData] = useState<any | null>(null);
+    const [previewLoading, setPreviewLoading] = useState(false);
 
     // 출품 상태
     const [selectedItemIdx, setSelectedItemIdx] = useState<number | null>(null);
@@ -50,7 +59,9 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
     const [priceGold, setPriceGold] = useState<string>('10000');
     const [priceCrystal, setPriceCrystal] = useState<string>('0');
 
-    const currentUid = auth.currentUser?.uid || character.id || 'local_player';
+    const loggedInUid = auth.currentUser?.uid || '';
+    const isLoggedIn = Boolean(loggedInUid);
+    const currentUid = loggedInUid;
     const supabaseReady = isSupabaseConfigured();
     const myManaCrystal = character.base?.resources?.manaCrystal || 0;
 
@@ -59,35 +70,120 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
         else alert(`[${title}] ${msg}`);
     };
 
+    const getCompanionBusyReason = (comp: Companion): string | null => {
+        const cid = comp.id;
+        const base: any = character.base;
+        if (base) {
+            if ((base.activeDispatches || []).some((d: any) => d.companionId === cid || (d.companionIds || []).includes(cid))) {
+                return '기지 파견 임무 중';
+            }
+            if ((base.defenseSquad || []).includes(cid) || (base.defenseSquadIds || []).includes(cid)) {
+                return '거점 방어대 배치 중';
+            }
+            if (base.farm?.assignedCompanionId === cid || (base.farm?.assignedCompanionIds || []).includes(cid)) {
+                return '농장 배치 중';
+            }
+            if (base.mine?.assignedCompanionId === cid || (base.mine?.assignedCompanionIds || []).includes(cid)) {
+                return '광산 배치 중';
+            }
+            if ((base.trainingSlots || []).some((t: any) => t.companionId === cid)) {
+                return '훈련소 훈련 중';
+            }
+            if ((base.combatTrainingCenter?.trainees || []).some((t: any) => t.companionId === cid)) {
+                return '전투 훈련장 배치 중';
+            }
+            if (base.housekeeperId === cid) {
+                return '하우스키퍼 지정 중';
+            }
+        }
+        if ((character.mercenaryGroup?.activeMissions || []).some((m: any) => (m.companionIds || []).includes(cid))) {
+            return '용병단 임무 수행 중';
+        }
+        if ((character.military?.activeDispatches || []).some((m: any) => (m.companionIds || []).includes(cid))) {
+            return '군사 파견 임무 중';
+        }
+        return null;
+    };
+
+    const handleTogglePreview = async (listing: DimensionMarketListing) => {
+        if (previewListing?.id === listing.id) {
+            setPreviewListing(null);
+            setPreviewData(null);
+            return;
+        }
+        setPreviewListing(listing);
+        setPreviewData(null);
+        setPreviewLoading(true);
+        try {
+            const payload = await fetchListingPreviewPayload(listing.storage_path);
+            setPreviewData(payload);
+        } catch {
+            setPreviewData(null);
+        } finally {
+            setPreviewLoading(false);
+        }
+    };
+
     // [리세마라/복사 방지] 경매장 출품·구매·취소·정산 직후 즉시 로컬 세이브 및 Supabase 클라우드 강제 동기화
+    // 기존 슬롯의 messages/choices/sceneType을 보존한 채 character/timestamp만 안전 병합
     const syncCharacterImmediately = useCallback(async (updatedChar: Character) => {
         try {
-            const payload = {
-                timestamp: new Date().toISOString(),
-                character: updatedChar,
-                sceneType: 'normal'
+            const parseSlotRaw = async (raw: any): Promise<any | null> => {
+                if (!raw) return null;
+                try {
+                    return typeof raw === 'string' ? await decompressData(raw) : raw;
+                } catch {
+                    return null;
+                }
             };
-            const sanitized = optimizeSaveData(payload);
-            await GameStorage.set(getSaveSlotKey(0), sanitized);
 
-            // 동일 캐릭터가 저장된 로컬 슬롯이 있으면 함께 즉시 덮어쓰기
-            const targetSlots: number[] = [];
+            const nowIso = new Date().toISOString();
+
+            // 1. 자동 저장 슬롯(0번) 기존 데이터 보존 병합
+            const autoRaw = await GameStorage.get(getSaveSlotKey(0));
+            const autoParsed = await parseSlotRaw(autoRaw);
+            const autoMerged = optimizeSaveData({
+                ...(autoParsed || {}),
+                timestamp: nowIso,
+                character: updatedChar,
+                messages: autoParsed?.messages || [],
+                choices: autoParsed?.choices || [],
+                sceneType: autoParsed?.sceneType || 'normal'
+            });
+            await GameStorage.set(getSaveSlotKey(0), autoMerged);
+
+            // 2. 동일 캐릭터(정확한 id 또는 name 일치)가 저장된 로컬 슬롯만 선별 병합
+            const matchedSlots: Array<{ slotNum: number; parsed: any }> = [];
             for (let s = 1; s <= 10; s++) {
                 try {
                     const raw = await GameStorage.get(getSaveSlotKey(s));
-                    if (raw && ((typeof raw === 'string' && raw.includes(updatedChar.name)) || (typeof raw === 'object' && raw?.character?.name === updatedChar.name))) {
-                        targetSlots.push(s);
+                    const parsed = await parseSlotRaw(raw);
+                    if (!parsed?.character) continue;
+                    const sameId = Boolean(updatedChar.id && parsed.character.id && parsed.character.id === updatedChar.id);
+                    const sameName = Boolean(updatedChar.name && parsed.character.name === updatedChar.name);
+                    if (sameId || sameName) {
+                        matchedSlots.push({ slotNum: s, parsed });
                     }
                 } catch {}
             }
-            if (targetSlots.length === 0) targetSlots.push(1);
 
-            const { lightData } = await extractImagesFromSaveData(sanitized);
-            const compressedLight = await compressData(lightData);
+            if (matchedSlots.length === 0) {
+                matchedSlots.push({ slotNum: 1, parsed: autoMerged });
+            }
 
-            for (const slotNum of targetSlots) {
-                await GameStorage.set(getSaveSlotKey(slotNum), sanitized);
+            for (const { slotNum, parsed } of matchedSlots) {
+                const mergedSlot = optimizeSaveData({
+                    ...parsed,
+                    timestamp: nowIso,
+                    character: updatedChar,
+                    messages: parsed?.messages || autoParsed?.messages || [],
+                    choices: parsed?.choices || autoParsed?.choices || [],
+                    sceneType: parsed?.sceneType || autoParsed?.sceneType || 'normal'
+                });
+                await GameStorage.set(getSaveSlotKey(slotNum), mergedSlot);
                 if (supabaseReady && auth.currentUser?.uid) {
+                    const { lightData } = await extractImagesFromSaveData(mergedSlot);
+                    const compressedLight = await compressData(lightData);
                     await uploadLightSaveToSupabase(auth.currentUser.uid, slotNum, compressedLight, {
                         characterName: updatedChar.name || '이름 없음',
                         level: updatedChar.level || 1
@@ -142,6 +238,10 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
             notify('warning', 'Supabase 미설정', '.env에 VITE_SUPABASE_URL 및 VITE_SUPABASE_ANON_KEY를 연결해야 경매장을 이용할 수 있습니다.');
             return;
         }
+        if (!isLoggedIn) {
+            notify('warning', 'Google 로그인 필요', '차원 경매장 출품은 Google 계정 로그인 후 이용할 수 있습니다.');
+            return;
+        }
         const goldVal = Math.max(0, parseInt(priceGold || '0', 10) || 0);
         const crystalVal = Math.max(0, parseInt(priceCrystal || '0', 10) || 0);
         if (goldVal === 0 && crystalVal === 0) {
@@ -185,13 +285,18 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
                     notify('warning', '선택 필요', '출품할 동료를 선택해 주세요.');
                     return;
                 }
+                const busyReason = getCompanionBusyReason(targetComp);
+                if (busyReason) {
+                    notify('warning', '출품 불가', `'${targetComp.name}'은(는) 현재 [${busyReason}] 상태입니다. 배치/파견을 해제한 뒤 출품해 주세요.`);
+                    return;
+                }
 
                 await publishMarketListing({
                     sellerUid: currentUid,
                     sellerName: character.name,
                     listingType: 'companion',
                     title: targetComp.name,
-                    rarityOrTier: String(targetComp.classTier || '1차'),
+                    rarityOrTier: String(targetComp.classTier || ClassTier.FIRST),
                     levelOrCp: targetComp.level || 1,
                     priceGold: goldVal,
                     priceManaCrystal: crystalVal,
@@ -221,6 +326,10 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
 
     const handlePurchase = async (listing: DimensionMarketListing) => {
         if (!supabaseReady) return;
+        if (!isLoggedIn) {
+            notify('warning', 'Google 로그인 필요', '차원 경매장 구매는 Google 계정 로그인 후 이용할 수 있습니다.');
+            return;
+        }
         if (character.money < listing.price_gold) {
             notify('warning', '골드 부족', `골드가 부족합니다. (필요: ${listing.price_gold.toLocaleString()}G)`);
             return;
@@ -270,6 +379,12 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
             }
 
             await syncCharacterImmediately(nextChar);
+            // 실물 반영 및 세이브 동기화가 완료된 뒤에 스토리지 파일 안전 삭제
+            await cleanupMarketStorageFile(res.storagePath);
+            if (previewListing?.id === listing.id) {
+                setPreviewListing(null);
+                setPreviewData(null);
+            }
             await loadMarketData();
         } catch (err: any) {
             notify('failure', '구매 실패', err.message || '매물을 구매하지 못했습니다.');
@@ -280,6 +395,10 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
     };
 
     const handleCancelListing = async (listing: DimensionMarketListing) => {
+        if (!isLoggedIn) {
+            notify('warning', 'Google 로그인 필요', 'Google 계정 로그인 후 이용할 수 있습니다.');
+            return;
+        }
         setIsLoading(true);
         try {
             const res = await cancelMarketListing(listing.id, currentUid);
@@ -302,6 +421,7 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
                 onUpdateCharacter(nextChar, `[차원 영입소] '${res.title}' 등록을 취소하고 회수했습니다.`);
             }
             await syncCharacterImmediately(nextChar);
+            await cleanupMarketStorageFile(res.storagePath);
             notify('info', '등록 취소 완료', `'${res.title}'을(를) 회수했습니다.`);
             await loadMarketData();
         } catch (err: any) {
@@ -313,10 +433,20 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
 
     const handleClaimAllSettlements = async () => {
         if (settlements.length === 0) return;
+        if (!isLoggedIn) {
+            notify('warning', 'Google 로그인 필요', 'Google 계정 로그인 후 정산금을 수령할 수 있습니다.');
+            return;
+        }
+        const totalGold = settlements.reduce((s, st) => s + Number(st.gold_amount || 0), 0);
+        const totalCrystal = settlements.reduce((s, st) => s + Number(st.mana_crystal_amount || 0), 0);
+
+        if (totalCrystal > 0 && !character.base) {
+            notify('warning', '기지 미개방 (마정석 수령 불가)', '정산금에 마정석이 포함되어 있습니다. 마정석 증발 방지를 위해 기지를 먼저 개방한 뒤 수령해 주세요.');
+            return;
+        }
+
         setIsLoading(true);
         try {
-            const totalGold = settlements.reduce((s, st) => s + Number(st.gold_amount || 0), 0);
-            const totalCrystal = settlements.reduce((s, st) => s + Number(st.mana_crystal_amount || 0), 0);
             await claimSettlements(currentUid, settlements.map(s => s.id));
 
             const nextChar: Character = {
@@ -335,6 +465,9 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
                 `[차원 경매장 정산] 판매 대금 ${totalGold.toLocaleString()}G 및 마정석 ${totalCrystal.toLocaleString()}개를 수령했습니다.`
             );
             await syncCharacterImmediately(nextChar);
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('shinryoku_market_settlement_changed'));
+            }
             notify('success', '정산 완료', `${totalGold.toLocaleString()}G와 마정석 ${totalCrystal.toLocaleString()}개를 수령했습니다!`);
             await loadMarketData();
         } catch (err: any) {
@@ -344,15 +477,51 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
         }
     };
 
-    const filteredListings = listings.filter(l => {
-        if (searchText.trim() && !l.title.toLowerCase().includes(searchText.toLowerCase()) && !l.seller_name.toLowerCase().includes(searchText.toLowerCase())) {
-            return false;
-        }
-        if (rarityFilter !== 'ALL' && l.rarity_or_tier !== rarityFilter) {
-            return false;
-        }
-        return true;
-    });
+    const ITEM_GRADE_WEIGHT: Record<string, number> = {
+        [ItemRarity.NORMAL]: 1,
+        [ItemRarity.MAGIC]: 2,
+        [ItemRarity.RARE]: 3,
+        [ItemRarity.EPIC]: 4,
+        [ItemRarity.UNIQUE]: 5,
+        [ItemRarity.LEGENDARY]: 6,
+        [ItemRarity.MYTHTIC]: 7,
+    };
+
+    const TIER_WEIGHT: Record<string, number> = {
+        [ClassTier.NONE]: 0,
+        [ClassTier.FIRST]: 1,
+        [ClassTier.SECOND]: 2,
+        [ClassTier.LAST]: 3,
+        [ClassTier.FINAL]: 4,
+        '1차': 1, '2차': 2, '3차': 3, '4차': 4
+    };
+
+    const filteredListings = listings
+        .filter(l => {
+            if (searchText.trim() && !l.title.toLowerCase().includes(searchText.toLowerCase()) && !l.seller_name.toLowerCase().includes(searchText.toLowerCase())) {
+                return false;
+            }
+            if (rarityFilter !== 'ALL' && l.rarity_or_tier !== rarityFilter) {
+                return false;
+            }
+            return true;
+        })
+        .sort((a, b) => {
+            if (sortBy === 'price_asc') {
+                return (a.price_gold + a.price_mana_crystal * 10000) - (b.price_gold + b.price_mana_crystal * 10000);
+            }
+            if (sortBy === 'price_desc') {
+                return (b.price_gold + b.price_mana_crystal * 10000) - (a.price_gold + a.price_mana_crystal * 10000);
+            }
+            if (sortBy === 'grade_desc') {
+                const map = mode === 'item' ? ITEM_GRADE_WEIGHT : TIER_WEIGHT;
+                return (map[b.rarity_or_tier] || 0) - (map[a.rarity_or_tier] || 0);
+            }
+            if (sortBy === 'power_desc') {
+                return (b.level_or_cp || 0) - (a.level_or_cp || 0);
+            }
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
 
     const allOwnedCompanions = [...(character.companions || []), ...(character.inactiveCompanions || [])];
 
@@ -413,11 +582,18 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
                 </button>
             </div>
 
+            {!isLoggedIn && supabaseReady && (
+                <div className="p-2.5 bg-indigo-950/40 border border-indigo-500/40 rounded-xl text-[11px] text-indigo-200 flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-indigo-400 shrink-0" />
+                    <span>매물 조회는 가능하지만, <strong>출품·구매·정산</strong>은 Google 로그인 후 이용 가능합니다.</span>
+                </div>
+            )}
+
             {/* 1. 매물 목록 */}
             {subTab === 'browse' && (
                 <div className="space-y-2.5">
-                    <div className="flex gap-2">
-                        <div className="relative flex-1">
+                    <div className="flex flex-wrap gap-1.5">
+                        <div className="relative flex-1 min-w-[140px]">
                             <Search size={14} className="absolute left-2.5 top-2.5 text-slate-500" />
                             <input
                                 type="text"
@@ -430,23 +606,32 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
                         <select
                             value={rarityFilter}
                             onChange={(e) => setRarityFilter(e.target.value)}
-                            className="bg-slate-950 border border-slate-800 rounded-lg px-2 text-xs text-slate-300 outline-none"
+                            className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none"
                         >
                             <option value="ALL">전체 등급</option>
                             {mode === 'item' ? (
                                 Object.values(ItemRarity).map(r => <option key={r} value={r}>{r}</option>)
                             ) : (
-                                <>
-                                    <option value="1차">1차</option>
-                                    <option value="2차">2차</option>
-                                    <option value="3차">3차</option>
-                                    <option value="4차">4차</option>
-                                </>
+                                [ClassTier.FIRST, ClassTier.SECOND, ClassTier.LAST, ClassTier.FINAL].map(tier => (
+                                    <option key={tier} value={tier}>{tier}</option>
+                                ))
                             )}
+                        </select>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as any)}
+                            className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none"
+                            title="정렬 기준"
+                        >
+                            <option value="latest">최신순</option>
+                            <option value="price_asc">낮은 가격순</option>
+                            <option value="price_desc">높은 가격순</option>
+                            <option value="grade_desc">높은 등급순</option>
+                            <option value="power_desc">{mode === 'item' ? '고강화순' : '고레벨순'}</option>
                         </select>
                     </div>
 
-                    <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                    <div className="space-y-2 max-h-72 overflow-y-auto custom-scrollbar pr-1">
                         {isLoading ? (
                             <div className="py-10 text-center text-slate-400 text-xs flex flex-col items-center gap-2">
                                 <Loader2 size={20} className="animate-spin text-amber-400" />
@@ -458,40 +643,232 @@ export const DimensionMarketPanel: React.FC<DimensionMarketPanelProps> = ({
                             </div>
                         ) : (
                             filteredListings.map(listing => {
-                                const isMine = listing.seller_uid === currentUid;
-                                const canAfford = character.money >= listing.price_gold && myManaCrystal >= listing.price_mana_crystal;
+                                const isMine = Boolean(currentUid && listing.seller_uid === currentUid);
+                                const canAfford = isLoggedIn && character.money >= listing.price_gold && myManaCrystal >= listing.price_mana_crystal;
+                                const isExpanded = previewListing?.id === listing.id;
                                 return (
-                                    <div key={listing.id} className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3">
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 font-bold shrink-0">
-                                                    {listing.rarity_or_tier}
-                                                </span>
-                                                <span className="text-xs font-bold text-white truncate">{listing.title}</span>
+                                    <div key={listing.id} className={`bg-slate-950/80 border rounded-xl transition-all ${isExpanded ? 'border-amber-500/70 shadow-lg shadow-amber-950/30' : 'border-slate-800 hover:border-slate-700'}`}>
+                                        <div
+                                            onClick={() => handleTogglePreview(listing)}
+                                            className="p-3 flex items-center justify-between gap-3 cursor-pointer"
+                                        >
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 font-bold shrink-0">
+                                                        {listing.rarity_or_tier}
+                                                    </span>
+                                                    <span className="text-xs font-bold text-white truncate">{listing.title}</span>
+                                                    <span className="text-[10px] text-slate-500 flex items-center gap-0.5 shrink-0">
+                                                        <Eye size={11} className={isExpanded ? 'text-amber-400' : 'text-slate-500'} />
+                                                    </span>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-slate-400">
+                                                    <span>판매자: {listing.seller_name}</span>
+                                                    {mode === 'companion' && <span>Lv.{listing.level_or_cp}</span>}
+                                                    <span className="text-amber-400 font-bold">{listing.price_gold.toLocaleString()}G</span>
+                                                    {listing.price_mana_crystal > 0 && (
+                                                        <span className="text-cyan-400 font-bold">+ 마정석 {listing.price_mana_crystal.toLocaleString()}</span>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-slate-400">
-                                                <span>판매자: {listing.seller_name}</span>
-                                                {mode === 'companion' && <span>Lv.{listing.level_or_cp}</span>}
-                                                <span className="text-amber-400 font-bold">{listing.price_gold.toLocaleString()}G</span>
-                                                {listing.price_mana_crystal > 0 && (
-                                                    <span className="text-cyan-400 font-bold">+ 마정석 {listing.price_mana_crystal.toLocaleString()}</span>
+                                            {isMine ? (
+                                                <span className="text-[10px] px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-400 font-bold shrink-0">내 매물</span>
+                                            ) : (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handlePurchase(listing);
+                                                    }}
+                                                    disabled={!canAfford || isLoading}
+                                                    className={`px-3 py-1.5 rounded-lg text-[11px] font-bold shrink-0 transition-all ${
+                                                        canAfford
+                                                            ? 'bg-amber-600 hover:bg-amber-500 text-white shadow active:scale-95'
+                                                            : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                                    }`}
+                                                >
+                                                    구매하기
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* 게임 아이템/동료 툴팁 스타일 인라인 상세 프리뷰 */}
+                                        {isExpanded && (
+                                            <div className="px-3 pb-3 pt-2 border-t border-slate-800/80 bg-slate-900/80 rounded-b-xl text-[11px] space-y-2 animate-in fade-in slide-in-from-top-1">
+                                                {previewLoading ? (
+                                                    <div className="py-3 flex items-center justify-center gap-2 text-slate-400 text-[11px]">
+                                                        <Loader2 size={13} className="animate-spin text-amber-400" />
+                                                        <span>상세 옵션 불러오는 중...</span>
+                                                    </div>
+                                                ) : !previewData ? (
+                                                    <div className="py-2 text-center text-slate-500 text-[11px]">
+                                                        상세 정보를 불러올 수 없습니다.
+                                                    </div>
+                                                ) : mode === 'item' ? (
+                                                    (() => {
+                                                        const it = previewData as Item;
+                                                        const statEntries = it.stats ? Object.entries(it.stats).filter(([, v]) => Number(v) !== 0) : [];
+                                                        const statLabelMap: Record<string, string> = {
+                                                            str: '힘', int: '지능', wis: '지혜', def: '방어', agi: '민첩', ctrl: '제어',
+                                                            hp: '체력', maxHp: '최대체력', mp: '마력', maxMp: '최대마력',
+                                                            critRate: '치명타율', critDmg: '치명타피해', atk: '공격력'
+                                                        };
+                                                        return (
+                                                            <div className="space-y-1.5">
+                                                                <div className="flex items-center justify-between gap-2">
+                                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                                        <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-[10px]">
+                                                                            {it.rarity || listing.rarity_or_tier}
+                                                                        </span>
+                                                                        {it.type && (
+                                                                            <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 text-[10px]">
+                                                                                {it.type}{it.weaponType ? ` · ${it.weaponType}` : ''}
+                                                                            </span>
+                                                                        )}
+                                                                        {it.enhancement ? (
+                                                                            <span className="px-1.5 py-0.5 rounded bg-emerald-950/70 border border-emerald-500/40 text-emerald-300 font-bold text-[10px]">
+                                                                                +{it.enhancement}강
+                                                                            </span>
+                                                                        ) : null}
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => { setPreviewListing(null); setPreviewData(null); }}
+                                                                        className="text-slate-500 hover:text-slate-200 p-0.5"
+                                                                    >
+                                                                        <X size={13} />
+                                                                    </button>
+                                                                </div>
+
+                                                                {statEntries.length > 0 && (
+                                                                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                                                        {statEntries.map(([k, v]) => (
+                                                                            <span key={k} className="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-sky-300 font-semibold text-[10px]">
+                                                                                {statLabelMap[k] || k} {Number(v) > 0 ? `+${v}` : v}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+
+                                                                {it.secondaryOptions && it.secondaryOptions.length > 0 && (
+                                                                    <div className="space-y-0.5 pt-1 border-t border-slate-800/70">
+                                                                        <div className="text-[10px] font-bold text-indigo-300">부옵션</div>
+                                                                        {it.secondaryOptions.map((opt: any, i: number) => (
+                                                                            <div key={i} className="text-[10.5px] text-indigo-200 pl-1.5">
+                                                                                • {typeof opt === 'string' ? opt : (opt?.description || opt?.name || JSON.stringify(opt))}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+
+                                                                {it.mythicOption && (
+                                                                    <div className="p-1.5 rounded-lg bg-amber-950/40 border border-amber-500/40 text-[10.5px] text-amber-200">
+                                                                        <span className="font-bold text-amber-400">✦ 신화 옵션: </span>
+                                                                        {typeof it.mythicOption === 'string' ? it.mythicOption : ((it.mythicOption as any)?.description || (it.mythicOption as any)?.type || JSON.stringify(it.mythicOption))}
+                                                                    </div>
+                                                                )}
+
+                                                                {(it as any).magyeOption && (
+                                                                    <div className="p-1.5 rounded-lg bg-purple-950/40 border border-purple-500/40 text-[10.5px] text-purple-200">
+                                                                        <span className="font-bold text-purple-400">◈ 마계 옵션: </span>
+                                                                        {typeof (it as any).magyeOption === 'string' ? (it as any).magyeOption : ((it as any).magyeOption?.description || (it as any).magyeOption?.type || JSON.stringify((it as any).magyeOption))}
+                                                                    </div>
+                                                                )}
+
+                                                                {it.description && (
+                                                                    <p className="text-[10px] text-slate-400 leading-relaxed pt-1 border-t border-slate-800/60">
+                                                                        {it.description}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()
+                                                ) : (
+                                                    (() => {
+                                                        const comp = previewData as Companion;
+                                                        return (
+                                                            <div className="space-y-2">
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <div className="flex items-center gap-2.5">
+                                                                        {comp.visualUrl && !comp.visualUrl.startsWith('imgref:') ? (
+                                                                            <img src={comp.visualUrl} alt={comp.name} className="w-10 h-10 rounded-lg object-cover border border-slate-700 shrink-0" />
+                                                                        ) : (
+                                                                            <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 shrink-0">
+                                                                                <Users size={16} />
+                                                                            </div>
+                                                                        )}
+                                                                        <div>
+                                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                                <span className="font-bold text-white text-xs">{comp.name}</span>
+                                                                                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                                                                                    Lv.{comp.level || 1}
+                                                                                </span>
+                                                                                <span className="px-1.5 py-0.5 rounded bg-indigo-950/70 border border-indigo-500/40 text-indigo-300 text-[10px]">
+                                                                                    {comp.classTier || listing.rarity_or_tier}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="text-[10px] text-slate-400 mt-0.5">
+                                                                                {comp.shinryokuType || '무속성'} · {comp.battleRole || '전투원'}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => { setPreviewListing(null); setPreviewData(null); }}
+                                                                        className="text-slate-500 hover:text-slate-200 p-0.5"
+                                                                    >
+                                                                        <X size={13} />
+                                                                    </button>
+                                                                </div>
+
+                                                                {comp.stats && (
+                                                                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 text-[10px]">
+                                                                        <div className="bg-slate-950 px-1.5 py-1 rounded border border-slate-800 text-center">
+                                                                            <span className="text-slate-500 block text-[9px]">힘</span>
+                                                                            <span className="text-rose-300 font-bold">{comp.stats.str || 0}</span>
+                                                                        </div>
+                                                                        <div className="bg-slate-950 px-1.5 py-1 rounded border border-slate-800 text-center">
+                                                                            <span className="text-slate-500 block text-[9px]">지능</span>
+                                                                            <span className="text-sky-300 font-bold">{comp.stats.int || 0}</span>
+                                                                        </div>
+                                                                        <div className="bg-slate-950 px-1.5 py-1 rounded border border-slate-800 text-center">
+                                                                            <span className="text-slate-500 block text-[9px]">지혜</span>
+                                                                            <span className="text-emerald-300 font-bold">{comp.stats.wis || 0}</span>
+                                                                        </div>
+                                                                        <div className="bg-slate-950 px-1.5 py-1 rounded border border-slate-800 text-center">
+                                                                            <span className="text-slate-500 block text-[9px]">방어</span>
+                                                                            <span className="text-amber-300 font-bold">{comp.stats.def || 0}</span>
+                                                                        </div>
+                                                                        <div className="bg-slate-950 px-1.5 py-1 rounded border border-slate-800 text-center">
+                                                                            <span className="text-slate-500 block text-[9px]">민첩</span>
+                                                                            <span className="text-lime-300 font-bold">{comp.stats.agi || 0}</span>
+                                                                        </div>
+                                                                        <div className="bg-slate-950 px-1.5 py-1 rounded border border-slate-800 text-center">
+                                                                            <span className="text-slate-500 block text-[9px]">제어</span>
+                                                                            <span className="text-purple-300 font-bold">{comp.stats.ctrl || 0}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
+                                                                {comp.skills && comp.skills.length > 0 && (
+                                                                    <div className="pt-1 border-t border-slate-800/70">
+                                                                        <div className="text-[10px] font-bold text-cyan-300 mb-1">보유 스킬 ({comp.skills.length})</div>
+                                                                        <div className="flex flex-wrap gap-1">
+                                                                            {comp.skills.slice(0, 8).map((sk: any, idx: number) => (
+                                                                                <span key={idx} className="px-1.5 py-0.5 rounded bg-cyan-950/50 border border-cyan-500/30 text-cyan-200 text-[10px]">
+                                                                                    {sk.name}
+                                                                                </span>
+                                                                            ))}
+                                                                            {comp.skills.length > 8 && (
+                                                                                <span className="text-[10px] text-slate-500">+{comp.skills.length - 8}개</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()
                                                 )}
                                             </div>
-                                        </div>
-                                        {isMine ? (
-                                            <span className="text-[10px] px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-400 font-bold shrink-0">내 매물</span>
-                                        ) : (
-                                            <button
-                                                onClick={() => handlePurchase(listing)}
-                                                disabled={!canAfford || isLoading}
-                                                className={`px-3 py-1.5 rounded-lg text-[11px] font-bold shrink-0 transition-all ${
-                                                    canAfford
-                                                        ? 'bg-amber-600 hover:bg-amber-500 text-white shadow active:scale-95'
-                                                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                                                }`}
-                                            >
-                                                구매하기
-                                            </button>
                                         )}
                                     </div>
                                 );

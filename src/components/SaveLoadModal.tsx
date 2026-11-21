@@ -205,6 +205,7 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
           merged[slotKey] = {
             ...(merged[slotKey] || {}),
             fileId: `supabase:${slotKey}`,
+            timestamp: meta.updatedAt,
             modifiedTime: meta.timestampDisplay,
             characterName: meta.characterName,
             level: meta.level,
@@ -846,8 +847,7 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
           const content = event.target?.result as string;
           if (!content) return;
           setImportCode(content);
-          setActiveTab('code');
-          showResult('info', '파일 불러오기', '파일 내용을 파싱했습니다. 덮어씌울 슬롯을 선택해주세요.');
+          showResult('info', '파일 불러오기 준비 완료', '파일 내용을 파싱했습니다. 아래에서 덮어씌울 슬롯 번호를 선택해 주세요.');
       };
       reader.readAsText(file);
   };
@@ -1679,6 +1679,33 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
                         >
                             <FileUp size={20}/> 파일 선택하기
                         </button>
+                        {importCode && (
+                          <div className="mt-5 pt-4 border-t border-slate-800 space-y-2.5 text-left">
+                            <div className="flex items-center justify-between text-xs font-bold text-indigo-300">
+                              <span>불러온 파일을 덮어씌울 슬롯 선택</span>
+                              <button
+                                type="button"
+                                onClick={() => setImportCode('')}
+                                className="text-[10px] text-slate-400 hover:text-white"
+                              >
+                                취소
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-5 gap-2">
+                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                                <button
+                                  key={num}
+                                  type="button"
+                                  disabled={isProcessing}
+                                  onClick={() => handleImportCode(num)}
+                                  className="py-2.5 rounded-xl bg-indigo-900/40 hover:bg-indigo-700 border border-indigo-500/40 text-indigo-100 text-xs font-bold transition-all"
+                                >
+                                  슬롯 {num}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                     </div>
 
                     {/* 세이브 용량 다이어트 마법사 섹션 */}
@@ -2183,11 +2210,8 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
                                 onClick={() => {
                                     if (previewState.type === 'local_save' || previewState.type === 'local_load') {
                                         const targetSlot = previewState.slotNum;
-                                        const targetData = previewState.newData;
+                                        // useGame.handleSaveLoadSlotSelection 내부에서 완성된 saveData로 자동 백업 실행
                                         onSelectSlot(targetSlot);
-                                        if (previewState.type === 'local_save') {
-                                            triggerSaveAutoBackup(targetSlot, targetData);
-                                        }
                                         setPreviewState(null);
                                     } else if (previewState.type === 'cloud_backup') {
                                         handlePushToCloudConfirmed(previewState.slotNum);
