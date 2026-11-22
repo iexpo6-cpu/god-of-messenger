@@ -157,7 +157,18 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
     const [activeCombat, setActiveCombat] = useState<{
         ally: TacticalUnit;
         enemy: TacticalEnemyUnit;
+        isAmbush?: boolean;
     } | null>(null);
+    const enemyTurnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        return () => {
+            if (enemyTurnTimerRef.current) {
+                clearTimeout(enemyTurnTimerRef.current);
+                enemyTurnTimerRef.current = null;
+            }
+        };
+    }, []);
 
     // CombatInterface 전용 로컬 상태 및 반응형 전투 참가 캐릭터 상태
     const [localCombatState, setLocalCombatState] = useState<CombatState | null>(null);
@@ -455,8 +466,8 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
     };
 
     // 5. 정식 CombatInterface 교전 개시! (점유율에 따라 4~6인 이상의 대형 적 분대 출현)
-    const startCombatEncounter = (ally: TacticalUnit, enemy: TacticalEnemyUnit) => {
-        setActiveCombat({ ally, enemy });
+    const startCombatEncounter = (ally: TacticalUnit, enemy: TacticalEnemyUnit, isAmbush: boolean = false) => {
+        setActiveCombat({ ally, enemy, isAmbush });
 
         const mainEnemy: Enemy = {
             ...enemy.enemy,
@@ -916,7 +927,7 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
             const finalHp = Math.max(1, nextPlayer.stats.hp);
             const finalMp = Math.max(0, nextPlayer.stats.mp);
             setTimeout(() => {
-                finishCombatWin(activeCombat.ally, activeCombat.enemy, finalHp, finalMp);
+                finishCombatWin(activeCombat.ally, activeCombat.enemy, finalHp, finalMp, Boolean(activeCombat.isAmbush));
             }, 1200);
         } else if (isAllyDefeated) {
             newLogs.push(`[시스템] 💀 아군 부대가 치명상을 입고 전선에서 후퇴합니다...`);
@@ -934,7 +945,7 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
     };
 
     // 교전 승리 처리
-    const finishCombatWin = (ally: TacticalUnit, enemy: TacticalEnemyUnit, remainingHp: number, remainingMp: number) => {
+    const finishCombatWin = (ally: TacticalUnit, enemy: TacticalEnemyUnit, remainingHp: number, remainingMp: number, isAmbush: boolean = false) => {
         const nextEnemies = enemies.filter(e => e.id !== enemy.id);
         setEnemies(nextEnemies);
 
@@ -944,9 +955,10 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                     ...u,
                     hp: remainingHp,
                     mp: remainingMp,
-                    row: enemy.row,
-                    col: enemy.col,
-                    hasActed: true
+                    // 적군 선제 교전(방어전) 승리 시 원위치와 새 턴 행동권을 보존
+                    row: isAmbush ? u.row : enemy.row,
+                    col: isAmbush ? u.col : enemy.col,
+                    hasActed: isAmbush ? false : true
                 };
             }
             return u;
@@ -985,7 +997,11 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
         setTurnOwner('enemy');
         setSelectedUnitId(null);
 
-        setTimeout(() => {
+        if (enemyTurnTimerRef.current) {
+            clearTimeout(enemyTurnTimerRef.current);
+        }
+        enemyTurnTimerRef.current = setTimeout(() => {
+            enemyTurnTimerRef.current = null;
             const currentAllies = allies.filter(a => a.hp > 0);
             const movedEnemies = enemies.map(e => ({ ...e }));
 
@@ -1057,7 +1073,7 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
             setTurnOwner('player');
 
             if (ambushPair) {
-                startCombatEncounter(ambushPair.ally, ambushPair.enemy);
+                startCombatEncounter(ambushPair.ally, ambushPair.enemy, true);
             }
         }, 650);
     };

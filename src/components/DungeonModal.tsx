@@ -174,6 +174,15 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
             }
 
             revealFogOfWar(restoredTiles, newPlayerPos.x, newPlayerPos.y, gridState!.torchRadius);
+            const isCityScouted = Boolean(character.scoutedDungeons?.includes(city));
+            if (isCityScouted) {
+                for (let y = 0; y < cached.height; y++) {
+                    for (let x = 0; x < cached.width; x++) {
+                        restoredTiles[y][x].isRevealed = true;
+                        restoredTiles[y][x].isIdentified = true;
+                    }
+                }
+            }
             updateTileIdentifications(restoredTiles, newPlayerPos.x, newPlayerPos.y);
 
             const updatedGrid: GridDungeonState = {
@@ -617,11 +626,11 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isOpen, gridState, eventNotice, dayChangeNotice, rescuedModalInfo]);
 
-    if (!isOpen) return null;
-
     const playerFinalStats = useMemo(() => {
         return calculateFinalStats(character).finalStats;
-    }, [character.stats, character.level, character.equippedItems, character.title]);
+    }, [character.stats, character.level, character.equipment, character.titles]);
+
+    if (!isOpen) return null;
 
     const city = character.currentLocation?.city || "알 수 없는 도시";
     const isAlreadyClearedToday = character.clearedDungeonsByCity && character.clearedDungeonsByCity[city] === character.currentDate;

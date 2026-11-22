@@ -6809,14 +6809,14 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
         <>
             <div className="flex flex-1 overflow-hidden relative">
                 {sceneType !== 'combat' && (
-                    <div className={`fixed inset-0 z-[100] md:static md:bg-transparent md:z-auto transition-all duration-300 md:block ${isMobileMenuOpen ? 'visible bg-black/80' : 'invisible md:visible pointer-events-none md:pointer-events-auto'}`} onClick={(e) => { if (window.innerWidth < 768 && isMobileMenuOpen) { setIsMobileMenuOpen(false); } }}>
-                        <div className={`h-full w-80 md:w-80 flex flex-col relative bg-slate-900 border-r border-slate-700 transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`} onClick={(e) => e.stopPropagation()}>
+                    <div className={`fixed inset-0 z-[100] transition-all duration-300 ${isMobileMenuOpen ? 'visible bg-black/75 backdrop-blur-[2px]' : 'invisible pointer-events-none'}`} onClick={() => setIsMobileMenuOpen(false)}>
+                        <div className={`h-full w-80 sm:w-96 max-w-[90vw] flex flex-col relative bg-slate-900 border-r border-slate-700 shadow-2xl transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`} onClick={(e) => e.stopPropagation()}>
                             <button 
                                 onClick={() => setIsMobileMenuOpen(false)} 
-                                className="absolute top-2.5 right-2.5 md:hidden text-slate-200 hover:text-white bg-slate-800/95 hover:bg-slate-700 p-2.5 rounded-full z-[110] shadow-2xl border border-slate-600 active:scale-95 cursor-pointer"
-                                title="닫기"
+                                className="absolute top-2.5 right-2.5 text-slate-200 hover:text-white bg-slate-800/95 hover:bg-slate-700 p-2 rounded-full z-[110] shadow-2xl border border-slate-600 active:scale-95 cursor-pointer"
+                                title="캐릭터 시트 닫기"
                             >
-                                <X size={20} />
+                                <X size={18} />
                             </button>
                             <div className="flex-1 overflow-hidden">
                                <CharacterSheet character={character} onOpenSkillBook={() => { setSkillBookTarget(null); setIsSkillBookOpen(true); }} onOpenWeaponMastery={() => { setWeaponMasteryTarget(null); setIsWeaponMasteryOpen(true); }} onOpenProfessionMastery={() => setIsProfessionMasteryOpen(true)} onIncreaseStat={handleIncreaseStat} onUseItem={(item, idx) => handleItemAction('use', item, idx as number)} onUnequipItem={handleUnequipItem} onSellItem={(item, idx, isAll) => {
@@ -6870,14 +6870,14 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                                     <span className="text-[9px] bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded-full text-slate-400">선택</span>
                                                 </div>
 
-                                                {/* 모바일 전용: 캐릭터 정보 버튼 */}
-                                                <div className="md:hidden mb-2">
+                                                {/* 캐릭터 정보(시트) 드로어 열기 버튼 */}
+                                                <div className="mb-2">
                                                     <button 
                                                         onClick={() => { setIsMobileMenuOpen(true); setIsMobileFunctionsOpen(false); }} 
                                                         className="w-full p-2.5 text-amber-300 hover:text-amber-200 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-800/60 rounded-xl flex items-center gap-2 transition-all active:scale-95 text-xs font-bold cursor-pointer shadow-sm"
                                                     >
                                                         <UserIcon size={14} className="text-amber-400 shrink-0" />
-                                                        <span>내 정보 (캐릭터 상세)</span>
+                                                        <span>내 정보</span>
                                                     </button>
                                                 </div>
 
@@ -7107,6 +7107,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                             {/* City Map Board as the main visual viewport */}
                             <CityMapBoard 
                                 character={character}
+                                onOpenCharacterSheet={() => setIsMobileMenuOpen(true)}
                                 onEnterCity={(district, openHuntMap) => {
                                     setCityInitialConfig({ district, openHuntMap });
                                     setIsCityOpen(true);

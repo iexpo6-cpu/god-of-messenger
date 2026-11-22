@@ -1697,7 +1697,7 @@ const SaveLoadModal: React.FC<Props> = ({ isOpen, mode, onClose, onSelectSlot, c
                                   key={num}
                                   type="button"
                                   disabled={isProcessing}
-                                  onClick={() => handleImportCode(num)}
+                                  onClick={() => handleImport(num)}
                                   className="py-2.5 rounded-xl bg-indigo-900/40 hover:bg-indigo-700 border border-indigo-500/40 text-indigo-100 text-xs font-bold transition-all"
                                 >
                                   슬롯 {num}

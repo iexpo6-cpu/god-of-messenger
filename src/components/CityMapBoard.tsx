@@ -11,6 +11,7 @@ import QuickTravelModal from './QuickTravelModal';
 import MidnightPenaltyModal from './MidnightPenaltyModal';
 import MilitaryCityActionPanel from './MilitaryCityActionPanel';
 import MilitaryInfiltrationModal from './MilitaryInfiltrationModal';
+import CityRpgCanvas from './CityRpgCanvas';
 import { 
     Building2, Store, Users2, Clock, Shield, Tent, Crown, Home, Sword, 
     MapPin, BookOpen, Map, ShieldAlert, Compass, ChevronRight, HelpCircle, Calendar,
@@ -32,6 +33,7 @@ interface Props {
     onTravel?: (destination: any, cost: number, days: number) => void;
     onUpdateCharacter?: (updatedChar: Character, logMessage: string) => void;
     onStartBattle?: (enemies: any[], battleType: string, sourceId?: string) => void;
+    onOpenCharacterSheet?: () => void;
 }
 
 const CityMapBoard: React.FC<Props> = ({ 
@@ -47,11 +49,26 @@ const CityMapBoard: React.FC<Props> = ({
     onOpenAbyssTower,
     onTravel,
     onUpdateCharacter,
-    onStartBattle
+    onStartBattle,
+    onOpenCharacterSheet
 }) => {
     const [isQuickTravelOpen, setIsQuickTravelOpen] = useState(false);
     const [isMidnightModalOpen, setIsMidnightModalOpen] = useState(false);
     const [isInfiltrationModalOpen, setIsInfiltrationModalOpen] = useState(false);
+    const [mapViewMode, setMapViewMode] = useState<'rpg' | 'classic'>(() => {
+        try {
+            const saved = localStorage.getItem('shinryoku_city_map_view_mode');
+            return saved === 'classic' ? 'classic' : 'rpg';
+        } catch {
+            return 'rpg';
+        }
+    });
+    const toggleMapViewMode = (mode: 'rpg' | 'classic') => {
+        setMapViewMode(mode);
+        try {
+            localStorage.setItem('shinryoku_city_map_view_mode', mode);
+        } catch {}
+    };
     const loc = character.currentLocation || { region: "아시아", nation: "대한민국", city: "서울" };
 
     // 군대 첩보 임무 판별
@@ -648,9 +665,79 @@ const CityMapBoard: React.FC<Props> = ({
                         </div>
                     </div>
                 )}
+                {/* 내 정보(캐릭터 시트) 슬라이드 열기 버튼 */}
+                {onOpenCharacterSheet && (
+                    <button
+                        type="button"
+                        onClick={onOpenCharacterSheet}
+                        className="ml-2 mt-1.5 sm:mt-2.5 px-3 py-2 rounded-xl bg-slate-950/90 hover:bg-amber-950/80 border border-amber-500/50 hover:border-amber-400 text-amber-300 text-[10px] sm:text-[11px] font-black shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                        title="캐릭터 정보 / 인벤토리 / 동료 시트 열기"
+                    >
+                        <Users2 size={13} className="text-amber-400" />
+                        <span>내 정보</span>
+                    </button>
+                )}
+
+                {/* 쯔꾸르 2D 필드 <-> 클래식 보드 전환 토글 */}
+                <div className="ml-2 mt-1.5 sm:mt-2.5 flex items-center bg-slate-950/90 border border-slate-700/80 rounded-xl p-0.5 shadow-xl backdrop-blur-md">
+                    <button
+                        type="button"
+                        onClick={() => toggleMapViewMode('rpg')}
+                        className={`px-2.5 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-black transition-all flex items-center gap-1 ${
+                            mapViewMode === 'rpg'
+                                ? 'bg-amber-500 text-slate-950 shadow'
+                                : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="쯔꾸르 2D 탑다운 필드 모드"
+                    >
+                        <span>🎮 쯔꾸르 필드</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => toggleMapViewMode('classic')}
+                        className={`px-2.5 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-black transition-all flex items-center gap-1 ${
+                            mapViewMode === 'classic'
+                                ? 'bg-indigo-600 text-white shadow'
+                                : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="기존 클래식 보드 모드"
+                    >
+                        <span>📋 클래식</span>
+                    </button>
+                </div>
             </div>
- 
-            {/* Main Interactive Tactical City Map Visualizer */}
+
+            {mapViewMode === 'rpg' ? (
+                <div className="z-10 flex-1 mt-1.5 mb-[58px] sm:mb-[54px] flex flex-col w-full min-h-[420px] sm:min-h-[calc(100vh-165px)]">
+                    <CityRpgCanvas
+                        character={character}
+                        region={loc.region}
+                        nation={loc.nation}
+                        city={loc.city}
+                        tier={tier}
+                        activeDistricts={activeDistricts}
+                        hasBaseInCurrentLocation={hasBaseInCurrentLocation}
+                        isElfNation={isElfNation}
+                        isBeastNation={isBeastNation}
+                        isDemonNation={isDemonNation}
+                        canOpenTranscendent={Boolean((character.level || 1) >= 2000 && (onOpenTranscendentArena || onOpenAbyssTower))}
+                        timePeriod={timeAtmosphere.period as any}
+                        timeLabel={timeAtmosphere.label}
+                        isMythicBoss={isMythicBoss}
+                        bossName={currentBoss?.name}
+                        onEnterCity={onEnterCity}
+                        onOpenDungeon={onOpenDungeon}
+                        onOpenMap={onOpenMap}
+                        onOpenBase={onOpenBase}
+                        onOpenElfCity={onOpenElfCity}
+                        onOpenDemonCity={onOpenDemonCity}
+                        onOpenBeastCity={onOpenBeastCity}
+                        onOpenTranscendentArena={onOpenTranscendentArena}
+                        onOpenAbyssTower={onOpenAbyssTower}
+                    />
+                </div>
+            ) : (
+            /* Main Interactive Tactical City Map Visualizer */
             <div className="z-10 flex-1 -mt-16 xs:-mt-24 sm:-mt-28 -translate-y-8 xs:-translate-y-12 sm:-translate-y-14 flex flex-col justify-center items-center relative min-h-[260px] xs:min-h-[300px] sm:min-h-[360px] max-h-[500px] w-full">
                 
                 {/* RADIAL MAP GRID */}
@@ -1145,8 +1232,10 @@ const CityMapBoard: React.FC<Props> = ({
                 )}
  
             </div>
+            )}
 
-            {/* 하단 네비게이션 및 첩보 작전 버튼 바 (좌측 하단 고정 - 실시간 로그 위로 배치) */}
+            {/* 하단 네비게이션 및 첩보 작전 버튼 바 (클래식 모드 전용 — 쯔꾸르 필드에서는 퀵바/상단 배너 사용으로 겹침 방지) */}
+            {mapViewMode === 'classic' && (
             <div className="absolute left-2.5 xs:left-4 bottom-[72px] sm:bottom-[64px] z-20 flex items-center gap-2 flex-wrap">
                 {/* [모바일 최적화] 모바일에서는 하단 5대 네비게이션의 [지도] 탭이 있으므로 화면을 가리는 중복 버튼 숨김 */}
                 <button
@@ -1173,6 +1262,7 @@ const CityMapBoard: React.FC<Props> = ({
                     </button>
                 )}
             </div>
+            )}
 
             {/* 군대 계급 보유 시 국경 정찰 / 첩보 / 방벽 복구 / 심야 순찰 패널 (지상 도시 및 첩보 목표 도시 전용) */}
             {character.militaryRank && !isShingye && (!isMagye || Boolean(infiltrationQuest)) && (

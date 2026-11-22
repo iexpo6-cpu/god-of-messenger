@@ -292,6 +292,7 @@ export const generateGridDungeonFloor = (
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                 tiles[y][x].isRevealed = true;
+                tiles[y][x].isIdentified = true;
             }
         }
     }
