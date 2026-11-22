@@ -97,6 +97,24 @@ const getGravestoneImage = (): HTMLImageElement | null => {
     return null;
 };
 
+// 일반 사냥 도망 구역 마법진 이미지 로더
+let escapePortalImgCache: HTMLImageElement | null = null;
+let escapePortalImgAttempted = false;
+const getEscapePortalImage = (): HTMLImageElement | null => {
+    if (escapePortalImgAttempted) return escapePortalImgCache;
+    escapePortalImgAttempted = true;
+    const base = (import.meta as any).env?.BASE_URL || './';
+    const img = new Image();
+    img.onload = () => {
+        escapePortalImgCache = img;
+    };
+    img.onerror = () => {
+        escapePortalImgCache = null;
+    };
+    img.src = `${base.endsWith('/') ? base : `${base}/`}assets/visuals/escape_portal.png`;
+    return null;
+};
+
 // 전리품 드롭 이미지 캐시 (수루룩 드롭 연출용)
 const lootImgCache = new Map<string, HTMLImageElement | null>();
 const getCachedLootImage = (url?: string): HTMLImageElement | null => {
@@ -360,6 +378,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         });
         const afterPassives = applyBg3CombatStartPassives(cloned).units;
         // [FIX] 패시브/최종스탯 반영 후에도 모든 몬스터는 전투 시작 시 무조건 HP 100% 완충 보장!
+        // (sourceEntity.stats.maxHp는 원본 유지하여 calculateFinalStats 이중 배율 방지!)
         return afterPassives.map(u => {
             if (u.team !== 'enemy') return u;
             const fullHp = Math.max(u.maxHp, u.hp, 100);
@@ -368,7 +387,6 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 (u.sourceEntity as any).maxHp = fullHp;
                 if ((u.sourceEntity as any).stats) {
                     (u.sourceEntity as any).stats.hp = fullHp;
-                    (u.sourceEntity as any).stats.maxHp = fullHp;
                 }
             }
             return { ...u, hp: fullHp, maxHp: fullHp };
@@ -401,6 +419,13 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         isEnemyTarget: boolean;
         isRevive: boolean;
     } | null>(null);
+
+    // 전투 시작 및 아군 턴 전환 시 항상 [자유이동] 모드가 우선 선택되도록 강제 초기화!
+    useEffect(() => {
+        setActionMode('move');
+        setSelectedSkill(null);
+        setPendingItemUse(null);
+    }, [activeUnitId]);
     const [hoveringEnemy, setHoveringEnemy] = useState<boolean>(false);
     const [isBusy, setIsBusy] = useState<boolean>(false);
     const isBusyRef = useRef<boolean>(false);
@@ -425,6 +450,10 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         { id: 'init_0', round: 1, text: `⚔️ [${title}] 전투 개시! (${Math.round(arenaW / PX_PER_METER)}m × ${Math.round(arenaH / PX_PER_METER)}m 전장)`, tone: 'info' }
     ]);
     const [showLogDrawer, setShowLogDrawer] = useState<boolean>(false);
+    // 모바일(< 768px)에서는 좌측 하단 스탯 패널을 기본 접힘 상태로 시작해 전장 시야 확보!
+    const [statsPanelOpen, setStatsPanelOpen] = useState<boolean>(() =>
+        typeof window !== 'undefined' ? window.innerWidth >= 768 : true
+    );
     const pushCombatLog = useCallback((text: string, tone: 'info' | 'dmg' | 'heal' | 'warn' = 'info', r = 1) => {
         setCombatLogs(prev => [{ id: `log_${Date.now()}_${Math.random()}`, round: r, text, tone }, ...prev].slice(0, 120));
     }, []);
@@ -614,6 +643,12 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         const urls = new Set<string>();
         urls.add(getTerrainTileUrl(arena.cultureKey, 'ground'));
         arena.obstacles.forEach(o => urls.add(getPropAssetUrl('srpg', o.part)));
+        // 원소 지면 6종 고급 PNG 에셋 사전 로드
+        ['surface_fire', 'surface_water', 'surface_ice', 'surface_poison', 'surface_holy', 'surface_electrified'].forEach(sp =>
+            urls.add(getPropAssetUrl('srpg', sp))
+        );
+        getGravestoneImage();
+        getEscapePortalImage();
         unitsRef.current.forEach(u => {
             if (u.enemyTokenPart) urls.add(getPropAssetUrl('srpg', u.enemyTokenPart));
             if (u.team === 'enemy' && u.visualUrl) {
@@ -1396,7 +1431,39 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 pushCombatLog(`💞 [인연 합체기 발동!] ${caster.name} × ${partnerUnit?.name || partnerObj?.name || '동료'}의 [${skill.name}]!`, 'heal', roundNum);
             }
 
-            await emitDualLayerVfx(caster, targets, aimX, aimY, skill, targeting);
+            // [돌진(Dash) / 텔레포트(Teleport) 이동 연계 공격!]
+            const skillMoveMode = skill?.zoneConfig?.movementMode;
+            let casterAfterMoveX = caster.x;
+            let casterAfterMoveY = caster.y;
+            if ((skillMoveMode === 'dash' || skillMoveMode === 'teleport') && !isPureDebuffSkill) {
+                const angToAim = Math.atan2(aimY - caster.y, aimX - caster.x);
+                const standoffPx = targets.length === 1 ? (targets[0].radius || 22) + (caster.radius || 20) + 6 : 24;
+                const distToAim = distPx(caster.x, caster.y, aimX, aimY);
+                const moveDist = Math.max(0, distToAim - standoffPx);
+                const landX = Math.max(48, Math.min(arenaW - 48, caster.x + Math.cos(angToAim) * moveDist));
+                const landY = Math.max(48, Math.min(arenaH - 48, caster.y + Math.sin(angToAim) * moveDist));
+
+                if (skillMoveMode === 'dash') {
+                    spawnParticles(caster.x, caster.y, '#38bdf8', 16, 3.4);
+                    addFloatText(caster.x, caster.y - 32, '💨 돌진!', '#38bdf8', 1.15);
+                    await animateMove(caster.id, landX, landY, false);
+                    spawnParticles(landX, landY, '#38bdf8', 18, 3.8);
+                    pushCombatLog(`💨 ${caster.name}이(가) [${skill?.name}] 돌진 이동 공격!`, 'info', roundNum);
+                } else {
+                    // 텔레포트: 장애물·기회공격 무시하고 즉시 순간이동!
+                    spawnParticles(caster.x, caster.y, '#c084fc', 24, 4.0);
+                    addFloatText(caster.x, caster.y - 32, '⚡ 순간이동!', '#c084fc', 1.15);
+                    setUnits(prev => prev.map(u => (u.id === caster.id ? { ...u, x: landX, y: landY, dir: faceDir } : u)));
+                    cameraTargetRef.current = { x: landX, y: landY };
+                    spawnParticles(landX, landY, '#fde047', 26, 4.2);
+                    addFloatText(landX, landY - 36, '⚡ 텔레포트 타격!', '#fde047', 1.2);
+                    pushCombatLog(`⚡ ${caster.name}이(가) [${skill?.name}] 텔레포트 순간이동 공격!`, 'info', roundNum);
+                }
+                casterAfterMoveX = landX;
+                casterAfterMoveY = landY;
+            }
+
+            await emitDualLayerVfx({ ...caster, x: casterAfterMoveX, y: casterAfterMoveY }, targets, aimX, aimY, skill, targeting);
 
             const effectiveMpCost = Math.max(0, Math.round(mpCost * (1 - qteRes.mpPaybackPct)));
             let updatedUnits = unitsRef.current.map(u => {
@@ -1407,6 +1474,8 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     }
                     return {
                         ...u,
+                        x: casterAfterMoveX,
+                        y: casterAfterMoveY,
                         dir: faceDir,
                         mp: nextMp,
                         hasAction: false,
@@ -1877,10 +1946,78 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 nextU = turnStartRes.unit;
                 roundLogs.push(...turnStartRes.logs);
 
-                // 패시브 광역 효과로 영향받은 상대 유닛 반영
+                // [신력 특수 패시브 시각 이펙트!] 재생 / 성역 / 광합성 / 열기 / 월암 / 냉기 명확히 연출!
+                const joinedLogs = turnStartRes.logs.join(' ');
+                if (/재생|성역|광합성|지속 치유|지속 마력/.test(joinedLogs)) {
+                    const isSanctuary = joinedLogs.includes('성역');
+                    const fxColor = isSanctuary ? '#fde047' : '#4ade80';
+                    explosionsRef.current.push({
+                        id: `pas_heal_${Date.now()}_${u.id}`,
+                        x: u.x,
+                        y: u.y,
+                        maxRadius: 58,
+                        color: fxColor,
+                        startTime: performance.now(),
+                        duration: 520
+                    });
+                    spawnParticles(u.x, u.y, fxColor, 18, 3.0);
+                    addFloatText(u.x, u.y - 44, isSanctuary ? '🌟 성역 재생!' : '🌿 패시브 재생!', fxColor, 1.1);
+                }
+                if (/열기|태양열|화염 오라/.test(joinedLogs)) {
+                    explosionsRef.current.push({
+                        id: `pas_heat_${Date.now()}_${u.id}`,
+                        x: u.x,
+                        y: u.y,
+                        maxRadius: 110,
+                        color: '#f97316',
+                        startTime: performance.now(),
+                        duration: 560
+                    });
+                    spawnParticles(u.x, u.y, '#f97316', 24, 4.0);
+                    addFloatText(u.x, u.y - 52, '🔥 신력 패시브: 열기 발동!', '#fb923c', 1.15);
+                }
+                if (/월암/.test(joinedLogs)) {
+                    explosionsRef.current.push({
+                        id: `pas_lunar_${Date.now()}_${u.id}`,
+                        x: u.x,
+                        y: u.y,
+                        maxRadius: 110,
+                        color: '#a855f7',
+                        startTime: performance.now(),
+                        duration: 560
+                    });
+                    spawnParticles(u.x, u.y, '#a855f7', 22, 3.8);
+                    addFloatText(u.x, u.y - 52, '🌙 신력 패시브: 월암 발동!', '#c084fc', 1.15);
+                }
+                if (/냉기/.test(joinedLogs)) {
+                    explosionsRef.current.push({
+                        id: `pas_ice_${Date.now()}_${u.id}`,
+                        x: u.x,
+                        y: u.y,
+                        maxRadius: 110,
+                        color: '#38bdf8',
+                        startTime: performance.now(),
+                        duration: 560
+                    });
+                    spawnParticles(u.x, u.y, '#38bdf8', 22, 3.8);
+                    addFloatText(u.x, u.y - 52, '❄️ 신력 패시브: 냉기 발동!', '#7dd3fc', 1.15);
+                }
+
+                // 패시브 광역 효과로 영향받은 상대 유닛 반영 + 피격 이펙트
                 turnStartRes.otherUnitUpdates.forEach((updatedOpp, oppId) => {
                     const oIdx = working.findIndex(x => x.id === oppId);
-                    if (oIdx >= 0) working[oIdx] = updatedOpp;
+                    if (oIdx >= 0) {
+                        const prevOpp = working[oIdx];
+                        if (updatedOpp.hp < prevOpp.hp) {
+                            const pDmg = prevOpp.hp - updatedOpp.hp;
+                            spawnParticles(prevOpp.x, prevOpp.y, '#f97316', 14, 3.2);
+                            addFloatText(prevOpp.x, prevOpp.y - 32, `🔥 열기 -${formatCompactKorean(pDmg)}`, '#fb923c', 1.05);
+                        } else if ((updatedOpp.activeStatuses?.length || 0) > (prevOpp.activeStatuses?.length || 0)) {
+                            spawnParticles(prevOpp.x, prevOpp.y, '#c084fc', 14, 3.0);
+                            addFloatText(prevOpp.x, prevOpp.y - 32, '⚠️ 패시브 약화!', '#c084fc', 1.0);
+                        }
+                        working[oIdx] = updatedOpp;
+                    }
                 });
 
                 if (turnStartRes.skipTurn && nextU.hp > 0) {
@@ -2555,26 +2692,67 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 ctx.setLineDash([10, 6]);
                 ctx.strokeRect(24, escTop, arenaW - 48, 110);
                 ctx.setLineDash([]);
+                const portalImg = getEscapePortalImage();
+                if (portalImg && portalImg.complete && portalImg.naturalWidth > 0) {
+                    const pw = 112;
+                    const ph = 76;
+                    ctx.globalAlpha = 0.88;
+                    ctx.drawImage(portalImg, arenaW * 0.5 - pw / 2, escTop + 26, pw, ph);
+                    ctx.globalAlpha = 1;
+                }
                 ctx.font = 'bold 14px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#a7f3d0';
-                ctx.fillText('🏃 도망 구역 (이 영역 안으로 이동하면 하단 [도망] 버튼 활성화)', arenaW * 0.5, escTop + 26);
+                ctx.fillText('🏃 도망 구역 (이 영역 안으로 이동하면 하단 [도망] 버튼 활성화)', arenaW * 0.5, escTop + 22);
                 ctx.restore();
             }
 
-            // 1. Organic Elemental Surface Pools
+            // 1. Organic Elemental Surface Pools (+ 의미 안내 라벨 필 표기!)
+            const SURFACE_LABEL_MAP: Record<string, { label: string; textColor: string }> = {
+                fire: { label: '🔥 화염 지면 (매턴 -6%)', textColor: '#fed7aa' },
+                water: { label: '💧 물 웅덩이 (전격 콤보)', textColor: '#bae6fd' },
+                ice: { label: '❄️ 빙결 지면 (파쇄 콤보)', textColor: '#cffafe' },
+                poison: { label: '☠️ 독 웅덩이 (화염 콤보)', textColor: '#bbf7d0' },
+                holy: { label: '✨ 성역 지면 (치유)', textColor: '#fef08a' },
+                electrified: { label: '⚡ 감전 지면', textColor: '#e0f2fe' }
+            };
             surfacesRef.current.forEach(pool => {
                 const st = SURFACE_COLORS[pool.type] || SURFACE_COLORS.water;
                 const pulse = 1 + Math.sin(now * 0.004 + pool.x) * 0.04;
                 const r = pool.radius * pulse;
-                const rg = ctx.createRadialGradient(pool.x, pool.y, r * 0.15, pool.x, pool.y, r);
-                rg.addColorStop(0, st.edge);
-                rg.addColorStop(0.65, st.fill);
-                rg.addColorStop(1, 'rgba(0,0,0,0)');
-                ctx.fillStyle = rg;
-                ctx.beginPath();
-                ctx.ellipse(pool.x, pool.y, r * 1.12, r * 0.88, 0, 0, Math.PI * 2);
-                ctx.fill();
+                const surfImg = getCachedCityAssetImage(getPropAssetUrl('srpg', `surface_${pool.type}`));
+                if (surfImg) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.86;
+                    const dw = r * 2.15;
+                    const dh = r * 1.85;
+                    ctx.drawImage(surfImg, pool.x - dw / 2, pool.y - dh / 2, dw, dh);
+                    ctx.restore();
+                } else {
+                    const rg = ctx.createRadialGradient(pool.x, pool.y, r * 0.15, pool.x, pool.y, r);
+                    rg.addColorStop(0, st.edge);
+                    rg.addColorStop(0.65, st.fill);
+                    rg.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = rg;
+                    ctx.beginPath();
+                    ctx.ellipse(pool.x, pool.y, r * 1.12, r * 0.88, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                const sInfo = SURFACE_LABEL_MAP[pool.type];
+                if (sInfo) {
+                    ctx.save();
+                    ctx.font = 'bold 9.5px sans-serif';
+                    const tw = ctx.measureText(sInfo.label).width + 10;
+                    ctx.fillStyle = 'rgba(2, 6, 23, 0.72)';
+                    ctx.beginPath();
+                    ctx.roundRect(pool.x - tw / 2, pool.y - 8, tw, 16, 5);
+                    ctx.fill();
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = sInfo.textColor;
+                    ctx.fillText(sInfo.label, pool.x, pool.y + 3);
+                    ctx.restore();
+                }
             });
 
             // 2. Boss Telegraph Danger Circles
@@ -2600,18 +2778,32 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             // 3. Active Unit Move Range Circle & Enemy Melee Threat Circles
             const curActive = unitsRef.current.find(u => u.id === activeUnitId && u.hp > 0);
             if (curActive && curActive.team === 'ally' && !battleEnded) {
-                // Remaining movement circle (soft cyan)
+                // Remaining movement circle (선명한 시안 실선 + 상단 이동거리 라벨 필!)
                 if (actionMode === 'move' && curActive.remainingMeters > 0.2) {
                     const mrPx = metersToPx(curActive.remainingMeters);
                     ctx.save();
-                    ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-                    ctx.fillStyle = 'rgba(56, 189, 248, 0.06)';
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([8, 6]);
+                    ctx.strokeStyle = '#22d3ee';
+                    ctx.fillStyle = 'rgba(34, 211, 238, 0.10)';
+                    ctx.lineWidth = 2.8;
                     ctx.beginPath();
                     ctx.arc(curActive.x, curActive.y, mrPx, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.stroke();
+
+                    // 이동 가능 거리 필 라벨 (원 상단)
+                    const moveLabel = `👣 이동 가능 ${curActive.remainingMeters.toFixed(1)}m / ${curActive.moveMeters.toFixed(1)}m`;
+                    ctx.font = 'bold 11.5px sans-serif';
+                    const mTw = ctx.measureText(moveLabel).width + 14;
+                    ctx.fillStyle = 'rgba(2, 6, 23, 0.9)';
+                    ctx.beginPath();
+                    ctx.roundRect(curActive.x - mTw / 2, curActive.y - mrPx - 23, mTw, 19, 6);
+                    ctx.fill();
+                    ctx.strokeStyle = '#22d3ee';
+                    ctx.lineWidth = 1.3;
+                    ctx.stroke();
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = '#a5f3fc';
+                    ctx.fillText(moveLabel, curActive.x, curActive.y - mrPx - 9.5);
                     ctx.restore();
                 }
 
@@ -2715,6 +2907,28 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 if (img) {
                     const drawSz = obs.radius * 2.15;
                     ctx.drawImage(img, obs.x - drawSz / 2, obs.y - drawSz / 2 - 4, drawSz, drawSz);
+                }
+
+                // 전술 오브젝트 효과 안내 라벨 (숲 회피+, 성채 방어+, 제단 회복+ 등)
+                const obsTip = obs.healPct
+                    ? `✨ ${obs.label} (매턴 +${obs.healPct}%)`
+                    : obs.defBonus
+                        ? `🛡️ ${obs.label} (방어 +${obs.defBonus})`
+                        : obs.evaBonus
+                            ? `🌿 ${obs.label} (회피 +${obs.evaBonus}%)`
+                            : obs.label || '';
+                if (obsTip) {
+                    ctx.save();
+                    ctx.font = 'bold 9px sans-serif';
+                    const otw = ctx.measureText(obsTip).width + 10;
+                    ctx.fillStyle = 'rgba(2, 6, 23, 0.72)';
+                    ctx.beginPath();
+                    ctx.roundRect(obs.x - otw / 2, obs.y + obs.radius * 0.68, otw, 15, 4);
+                    ctx.fill();
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = obs.healPct ? '#86efac' : obs.defBonus ? '#fde68a' : obs.evaBonus ? '#a7f3d0' : '#cbd5e1';
+                    ctx.fillText(obsTip, obs.x, obs.y + obs.radius * 0.68 + 10.5);
+                    ctx.restore();
                 }
             });
 
@@ -3911,7 +4125,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                         type="button"
                         onClick={() => {
                             setOverviewMode(false);
-                            setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)));
+                            setZoom(z => Math.max(0.5, +(z - 0.35).toFixed(2)));
                         }}
                         className="min-w-[36px] min-h-[36px] px-2 rounded-lg bg-slate-900 hover:bg-slate-800 active:scale-95 text-slate-100 font-black text-base border border-slate-700 flex items-center justify-center"
                         title="화면 축소 (-)"
@@ -3922,7 +4136,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                         type="button"
                         onClick={() => {
                             setOverviewMode(false);
-                            setZoom(isLargeWar ? 1.55 : 1.25);
+                            setZoom(isLargeWar ? 1.85 : 1.5);
                         }}
                         className="min-h-[36px] px-2 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-amber-300 font-mono font-bold text-xs border border-slate-700/80 flex items-center justify-center"
                         title="기본 배율로 초기화"
@@ -3933,7 +4147,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                         type="button"
                         onClick={() => {
                             setOverviewMode(false);
-                            setZoom(z => Math.min(2.6, +(z + 0.25).toFixed(2)));
+                            setZoom(z => Math.min(4.5, +(z + 0.35).toFixed(2)));
                         }}
                         className="min-w-[36px] min-h-[36px] px-2 rounded-lg bg-slate-900 hover:bg-slate-800 active:scale-95 text-slate-100 font-black text-base border border-slate-700 flex items-center justify-center"
                         title="화면 확대 (+)"
@@ -4022,7 +4236,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                             const t1 = e.touches[1];
                             const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
                             const ratio = dist / Math.max(10, tg.pinchStartDist);
-                            const nextZoom = Math.max(0.5, Math.min(2.6, +(tg.pinchStartZoom * ratio).toFixed(2)));
+                            const nextZoom = Math.max(0.5, Math.min(4.5, +(tg.pinchStartZoom * ratio).toFixed(2)));
                             setZoom(nextZoom);
 
                             const midX = (t0.clientX + t1.clientX) / 2;
@@ -4066,7 +4280,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     }}
                     onWheel={e => {
                         setOverviewMode(false);
-                        setZoom(z => Math.max(0.5, Math.min(2.6, +(z + (e.deltaY < 0 ? 0.14 : -0.14)).toFixed(2))));
+                        setZoom(z => Math.max(0.5, Math.min(4.5, +(z + (e.deltaY < 0 ? 0.22 : -0.22)).toFixed(2))));
                     }}
                     style={{
                         cursor:
@@ -4079,9 +4293,37 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     className="block w-full h-full touch-none"
                 />
 
-                {/* [Item #4 & #7] 좌측 하단 현재 턴 캐릭터 전체 스탯(버프 포함) + 스킬 아이콘 버프 바 & 호버 툴팁 */}
-                {activeUnit && (
-                    <div className="absolute bottom-3 left-3 z-20 w-64 sm:w-72 max-w-[82vw] rounded-xl bg-slate-950/90 border border-slate-700/85 p-2.5 shadow-2xl backdrop-blur-md space-y-2">
+                {/* [Item #4 & #7 + 모바일 최적화] 좌측 하단 현재 턴 캐릭터 스탯 · 버프 패널 (모바일 기본 접힘, 탭으로 토글!) */}
+                {activeUnit && !statsPanelOpen && (
+                    <button
+                        type="button"
+                        onClick={() => setStatsPanelOpen(true)}
+                        className="absolute bottom-2.5 left-2.5 z-20 flex items-center gap-1.5 rounded-xl bg-slate-950/90 border border-slate-700/85 px-2.5 py-1.5 shadow-xl backdrop-blur-md text-[11px] font-bold text-slate-100 hover:border-amber-400/70"
+                    >
+                        {activeUnit.visualUrl && (
+                            <img
+                                src={activeUnit.visualUrl}
+                                alt={activeUnit.name}
+                                className="w-5 h-5 rounded-full object-cover object-top border border-amber-400/70"
+                            />
+                        )}
+                        <span className="truncate max-w-[72px]">{activeUnit.name}</span>
+                        <span className="text-emerald-300 font-mono">
+                            {Math.round((activeUnit.hp / Math.max(1, activeUnit.maxHp)) * 100)}%
+                        </span>
+                        {(activeUnit.maxBreakGauge || 0) > 0 && (
+                            <span className="text-amber-300 font-mono">
+                                ⚡{activeUnit.breakGauge ?? activeUnit.maxBreakGauge}/{activeUnit.maxBreakGauge}
+                            </span>
+                        )}
+                        {(activeUnit.activeBuffs?.length || 0) > 0 && (
+                            <span className="text-yellow-300 font-mono">✨{activeUnit.activeBuffs.length}</span>
+                        )}
+                        <span className="text-slate-400 text-[10px]">▲</span>
+                    </button>
+                )}
+                {activeUnit && statsPanelOpen && (
+                    <div className="absolute bottom-2.5 left-2.5 z-20 w-64 sm:w-72 max-w-[82vw] max-h-[62vh] overflow-y-auto rounded-xl bg-slate-950/92 border border-slate-700/85 p-2.5 shadow-2xl backdrop-blur-md space-y-2">
                         {/* 캐릭터 헤더 */}
                         <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-1.5">
                             <div className="flex items-center gap-2 min-w-0">
@@ -4114,6 +4356,14 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                 </div>
                             </div>
                             <div className="flex flex-col items-end gap-1 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setStatsPanelOpen(false)}
+                                    className="text-[10px] font-bold text-slate-400 hover:text-white px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700"
+                                    title="스탯 패널 접기"
+                                >
+                                    접기 ▼
+                                </button>
                                 {(activeUnit.maxBreakGauge || 0) > 0 && (
                                     <span className="text-[10px] font-black text-amber-300 bg-amber-950/80 border border-amber-500/50 px-1.5 py-0.5 rounded">
                                         ⚡ 신력쉴드 {activeUnit.breakGauge ?? activeUnit.maxBreakGauge}/{activeUnit.maxBreakGauge}
@@ -4190,10 +4440,10 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                     </div>
                                     {derived && (
                                         <div className="grid grid-cols-4 gap-1 text-[9px] font-mono bg-slate-900/60 border border-slate-800/80 rounded-md px-1.5 py-1">
-                                            <div><span className="text-slate-500">물공</span> <span className="text-rose-200 font-bold">{formatCompactKorean(Math.round(derived.pAtk || 0))}</span></div>
-                                            <div><span className="text-slate-500">마공</span> <span className="text-sky-200 font-bold">{formatCompactKorean(Math.round(derived.mAtk || 0))}</span></div>
-                                            <div><span className="text-slate-500">물방</span> <span className="text-amber-200 font-bold">{formatCompactKorean(Math.round(derived.pDef || 0))}</span></div>
-                                            <div><span className="text-slate-500">마방</span> <span className="text-indigo-200 font-bold">{formatCompactKorean(Math.round(derived.mDef || 0))}</span></div>
+                                            <div><span className="text-slate-500">물공</span> <span className="text-rose-200 font-bold">{formatCompactKorean(Math.round(derived.physAtk || 0))}</span></div>
+                                            <div><span className="text-slate-500">마공</span> <span className="text-sky-200 font-bold">{formatCompactKorean(Math.round(derived.magAtk || 0))}</span></div>
+                                            <div><span className="text-slate-500">물방</span> <span className="text-amber-200 font-bold">{formatCompactKorean(Math.round(derived.physDef || 0))}</span></div>
+                                            <div><span className="text-slate-500">마방</span> <span className="text-indigo-200 font-bold">{formatCompactKorean(Math.round(derived.magDef || 0))}</span></div>
                                             <div className="col-span-2"><span className="text-slate-500">치명</span> <span className="text-yellow-300 font-bold">{Math.round(derived.critChance || 0)}%</span></div>
                                             <div><span className="text-slate-500">명중</span> <span className="text-emerald-300 font-bold">{Math.round(derived.accuracy || 0)}</span></div>
                                             <div><span className="text-slate-500">회피</span> <span className="text-cyan-300 font-bold">{Math.round(derived.evasion || 0)}</span></div>
@@ -4480,7 +4730,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                             actionMode === 'move' ? 'bg-sky-600 border-sky-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'
                         }`}
                     >
-                        <Footprints size={13} /> 자유이동
+                        <Footprints size={13} /> 자유이동 {activeUnit ? `(${activeUnit.remainingMeters.toFixed(1)}m)` : ''}
                     </button>
 
                     {/* CombatInterface와 동일한 전체 스킬창 열기! */}

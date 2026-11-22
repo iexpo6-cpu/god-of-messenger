@@ -680,6 +680,13 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
               cost = Math.floor(cost * mult);
           }
 
+          // 돌진(Dash: +25%) / 텔레포트(Teleport: +45%) 이동 공격 옵션 MP 소모량 증대 반영
+          if (customSkillType === SkillType.PHYSICAL || customSkillType === SkillType.MAGIC) {
+              const mvMode = customZoneConfig.movementMode || 'none';
+              if (mvMode === 'dash') cost = Math.ceil(cost * 1.25);
+              else if (mvMode === 'teleport') cost = Math.ceil(cost * 1.45);
+          }
+
           const finalCost = Math.max(0, cost);
           setCustomMpCost(prev => (prev === finalCost ? prev : finalCost));
       }
@@ -3415,6 +3422,50 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                             </div>
                                                         </div>
                                                     )}
+                                                </div>
+                                            )}
+
+                                            {/* 돌진(Dash) / 텔레포트(Teleport) 이동 공격 옵션 (단일·광역 물리/마법 공격 공통, MP 소모 증대!) */}
+                                            {(customSkillType === SkillType.PHYSICAL || customSkillType === SkillType.MAGIC) && (
+                                                <div className="pt-2 border-t border-sky-500/20 space-y-1.5">
+                                                    <div className="flex items-center justify-between text-[10px]">
+                                                        <span className="font-bold text-cyan-200">⚡ 이동 연계 공격 옵션 (선택 시 MP 소모 증대)</span>
+                                                        <span className="font-mono text-amber-300">
+                                                            {customZoneConfig.movementMode === 'dash'
+                                                                ? 'MP +25%'
+                                                                : customZoneConfig.movementMode === 'teleport'
+                                                                    ? 'MP +45%'
+                                                                    : '추가 MP 없음'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-1.5">
+                                                        {([
+                                                            { id: 'none', label: '기본 (이동 없음)', sub: '+0% MP' },
+                                                            { id: 'dash', label: '💨 돌진 공격', sub: 'MP +25%' },
+                                                            { id: 'teleport', label: '⚡ 텔레포트 공격', sub: 'MP +45%' }
+                                                        ] as const).map(opt => {
+                                                            const active = (customZoneConfig.movementMode || 'none') === opt.id;
+                                                            return (
+                                                                <button
+                                                                    key={opt.id}
+                                                                    type="button"
+                                                                    onClick={() => setCustomZoneConfig(prev => ({ ...prev, movementMode: opt.id }))}
+                                                                    className={`py-1.5 px-2 rounded-lg text-[10px] font-bold border transition-all flex flex-col items-center ${
+                                                                        active
+                                                                            ? opt.id === 'teleport'
+                                                                                ? 'bg-purple-600/80 border-purple-300 text-white shadow'
+                                                                                : opt.id === 'dash'
+                                                                                    ? 'bg-cyan-600/80 border-cyan-300 text-white shadow'
+                                                                                    : 'bg-slate-700 border-slate-400 text-white'
+                                                                            : 'bg-slate-900/80 border-slate-700 text-slate-400 hover:text-slate-200'
+                                                                    }`}
+                                                                >
+                                                                    <span>{opt.label}</span>
+                                                                    <span className="text-[9px] opacity-80">{opt.sub}</span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>

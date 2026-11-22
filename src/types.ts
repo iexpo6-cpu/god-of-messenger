@@ -786,6 +786,8 @@ export interface SkillZoneConfig {
   squareLength?: number;
   /** Target 존 폭발/적용 반경 (m) */
   areaRadius?: number;
+  /** 공격 스킬 시전 시 이동 연계 옵션 (없음 / 돌진 / 텔레포트) */
+  movementMode?: 'none' | 'dash' | 'teleport';
 }
 
 export interface FinalSkillEnhanceData {

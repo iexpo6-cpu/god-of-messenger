@@ -26,48 +26,48 @@ export interface TierZoneCap {
 
 export const SKILL_ZONE_TIER_CAPS: Record<string, TierZoneCap> = {
     [ClassTier.NONE]: {
-        minTargetRadius: 3, maxTargetRadius: 10,
-        minConeLength: 4, maxConeLength: 8,
+        minTargetRadius: 1, maxTargetRadius: 6,
+        minConeLength: 2, maxConeLength: 5,
         minConeAngle: 30, maxConeAngle: 60,
-        minSquareWidth: 3, maxSquareWidth: 6,
-        minSquareLength: 4, maxSquareLength: 10,
-        minAreaRadius: 2, maxAreaRadius: 4,
+        minSquareWidth: 2, maxSquareWidth: 5,
+        minSquareLength: 2, maxSquareLength: 6,
+        minAreaRadius: 1.5, maxAreaRadius: 3.5,
         enhanceStepMeters: 1, enhanceStepAngle: 10
     },
     [ClassTier.FIRST]: {
-        minTargetRadius: 3, maxTargetRadius: 10,
-        minConeLength: 4, maxConeLength: 8,
+        minTargetRadius: 1, maxTargetRadius: 6,
+        minConeLength: 2, maxConeLength: 5,
         minConeAngle: 30, maxConeAngle: 60,
-        minSquareWidth: 3, maxSquareWidth: 6,
-        minSquareLength: 4, maxSquareLength: 10,
-        minAreaRadius: 2, maxAreaRadius: 4,
+        minSquareWidth: 2, maxSquareWidth: 5,
+        minSquareLength: 2, maxSquareLength: 6,
+        minAreaRadius: 1.5, maxAreaRadius: 3.5,
         enhanceStepMeters: 1, enhanceStepAngle: 10
     },
     [ClassTier.SECOND]: {
-        minTargetRadius: 3, maxTargetRadius: 15,
-        minConeLength: 4, maxConeLength: 12,
+        minTargetRadius: 1, maxTargetRadius: 9,
+        minConeLength: 2, maxConeLength: 8,
         minConeAngle: 30, maxConeAngle: 90,
-        minSquareWidth: 3, maxSquareWidth: 8,
-        minSquareLength: 4, maxSquareLength: 14,
-        minAreaRadius: 2, maxAreaRadius: 6,
+        minSquareWidth: 2, maxSquareWidth: 7,
+        minSquareLength: 2, maxSquareLength: 9,
+        minAreaRadius: 1.5, maxAreaRadius: 5,
         enhanceStepMeters: 1, enhanceStepAngle: 10
     },
     [ClassTier.LAST]: {
-        minTargetRadius: 3, maxTargetRadius: 22,
-        minConeLength: 4, maxConeLength: 18,
+        minTargetRadius: 1, maxTargetRadius: 14,
+        minConeLength: 2, maxConeLength: 12,
         minConeAngle: 30, maxConeAngle: 120,
-        minSquareWidth: 3, maxSquareWidth: 12,
-        minSquareLength: 4, maxSquareLength: 20,
-        minAreaRadius: 2, maxAreaRadius: 9,
+        minSquareWidth: 2, maxSquareWidth: 10,
+        minSquareLength: 2, maxSquareLength: 13,
+        minAreaRadius: 1.5, maxAreaRadius: 7,
         enhanceStepMeters: 1, enhanceStepAngle: 10
     },
     [ClassTier.FINAL]: {
-        minTargetRadius: 3, maxTargetRadius: 32,
-        minConeLength: 4, maxConeLength: 26,
+        minTargetRadius: 1, maxTargetRadius: 20,
+        minConeLength: 2, maxConeLength: 16,
         minConeAngle: 30, maxConeAngle: 150,
-        minSquareWidth: 3, maxSquareWidth: 16,
-        minSquareLength: 4, maxSquareLength: 28,
-        minAreaRadius: 2, maxAreaRadius: 13,
+        minSquareWidth: 2, maxSquareWidth: 13,
+        minSquareLength: 2, maxSquareLength: 18,
+        minAreaRadius: 1.5, maxAreaRadius: 10,
         enhanceStepMeters: 1, enhanceStepAngle: 10
     }
 };
@@ -226,12 +226,12 @@ export const resolveEffectiveSkillZone = (skill: Skill): EffectiveSkillZone => {
     return {
         isAoe,
         zoneType,
-        targetRadius: Math.max(2.5, (z.targetRadius ?? defaults.targetRadius ?? 8) + (enh.targetRadiusBonus || 0)),
-        coneLength: Math.max(3.5, (z.coneLength ?? defaults.coneLength ?? 8) + (enh.coneLengthBonus || 0)),
+        targetRadius: Math.max(1, (z.targetRadius ?? defaults.targetRadius ?? 4) + (enh.targetRadiusBonus || 0)),
+        coneLength: Math.max(2, (z.coneLength ?? defaults.coneLength ?? 5) + (enh.coneLengthBonus || 0)),
         coneAngle: Math.max(25, Math.min(220, (z.coneAngle ?? defaults.coneAngle ?? 60) + (enh.coneAngleBonus || 0))),
-        squareWidth: Math.max(2.5, (z.squareWidth ?? defaults.squareWidth ?? 5) + (enh.squareWidthBonus || 0)),
-        squareLength: Math.max(4, (z.squareLength ?? defaults.squareLength ?? 10) + (enh.squareLengthBonus || 0)),
-        areaRadius: Math.max(2, (z.areaRadius ?? defaults.areaRadius ?? 4.5) + (enh.areaRadiusBonus || 0))
+        squareWidth: Math.max(2, (z.squareWidth ?? defaults.squareWidth ?? 4) + (enh.squareWidthBonus || 0)),
+        squareLength: Math.max(2, (z.squareLength ?? defaults.squareLength ?? 6) + (enh.squareLengthBonus || 0)),
+        areaRadius: Math.max(1.5, (z.areaRadius ?? defaults.areaRadius ?? 3.5) + (enh.areaRadiusBonus || 0))
     };
 };
 

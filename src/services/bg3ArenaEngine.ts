@@ -202,15 +202,15 @@ export const pxToMeters = (px: number): number => px / PX_PER_METER;
 export const metersToPx = (m: number): number => m * PX_PER_METER;
 
 /**
- * AGI 능력치 기반 1턴 이동 거리(m) 산출
- * - 초중반(AGI 20~200): 11m ~ 16m
- * - 중후반(AGI 500~5,000): 20m ~ 25m
- * - 신계/마계(AGI 10,000+): 최대 30m (광활한 65m 전장에서 체감 확실!)
+ * AGI 능력치 기반 1턴 이동 거리(m) 산출 (최대 20.0m, AGI 1억 도달 시 최대치!)
+ * - AGI 10: ~6.9m | AGI 100: ~8.8m | AGI 1,000: ~10.6m
+ * - AGI 10만: ~14.4m | AGI 100만: ~16.3m | AGI 1,000만: ~18.1m | AGI 1억: 20.0m (MAX)
  */
 export const computeAgiMoveMeters = (agi: number, jobBonus = 0): number => {
-    const safeAgi = Math.max(1, agi || 10);
-    const agiBonus = Math.log10(safeAgi + 10) * 4.2 + Math.min(5.0, safeAgi / 100);
-    return Math.round(Math.max(8.5, Math.min(30.0, 6.0 + agiBonus + jobBonus)) * 10) / 10;
+    const safeAgi = Math.max(1, agi || 1);
+    const agiRatio = Math.min(1, Math.log10(safeAgi) / 8); // log10(100,000,000) === 8
+    const rawMeters = 5.0 + agiRatio * 15.0 + jobBonus * 0.25;
+    return Math.round(Math.max(5.0, Math.min(20.0, rawMeters)) * 10) / 10;
 };
 
 const inferBg3Mobility = (jobStr: string, isBoss: boolean, agi: number): { moveMeters: number; attackRangeMeters: number } => {
@@ -535,30 +535,60 @@ export const buildBg3EnemyUnits = (
         const isNamedBoss = Boolean((enemy as any).isBoss) || Boolean(enemy.name && /\[보스\]|\[BOSS\]|\[성전 사자\]|\[반역\]|\[국가 지도자\]|\[마신\]/.test(enemy.name));
         const isBoss = isMythic || isNamedBoss;
         const [x, y] = positions[idx] || [arenaW * 0.5, 240];
-        let calcFinalMaxHp = 0;
+        let calcFinal: any = null;
         try {
-            calcFinalMaxHp = calculateFinalStats(enemy as any)?.finalStats?.maxHp || 0;
+            calcFinal = calculateFinalStats(enemy as any)?.finalStats || null;
         } catch {
-            calcFinalMaxHp = 0;
+            calcFinal = null;
         }
-        const maxHp = Math.max(80, Math.floor(enemy.maxHp || 0), Math.floor(enemy.stats?.maxHp || 0), Math.floor(calcFinalMaxHp), Math.floor(enemy.hp || 500));
-        // 전투 등장 시 몬스터는 항상 최대 HP(100%)로 완충되어 등장!
+        const rawAtk = (enemy as any).attack ?? enemy.stats?.str ?? enemy.stats?.int ?? 40;
+        const rawDef = (enemy as any).defense ?? enemy.stats?.def ?? 15;
+        const maxHp = Math.max(
+            80,
+            Math.floor(calcFinal?.maxHp || 0),
+            Math.floor(enemy.maxHp || 0),
+            Math.floor(enemy.stats?.maxHp || 0),
+            Math.floor(enemy.hp || 500)
+        );
+        const maxMp = Math.max(
+            100,
+            Math.floor(calcFinal?.maxMp || 0),
+            Math.floor((enemy as any).maxMp || 0),
+            Math.floor(enemy.stats?.maxMp || 0),
+            1000
+        );
+        // 전투 등장 시 몬스터는 항상 최대 HP/MP(100%)로 완충 + 원래 stats.maxHp 보존(이중 배율 방지)
         const hp = maxHp;
+        const mp = maxMp;
         const syncedEnemy: Enemy = {
             ...enemy,
             hp: maxHp,
             maxHp,
-            stats: enemy.stats ? { ...enemy.stats, hp: maxHp, maxHp } : undefined
+            stats: enemy.stats
+                ? { ...enemy.stats, hp: maxHp, mp: maxMp }
+                : {
+                      hp: maxHp,
+                      maxHp,
+                      mp: maxMp,
+                      maxMp,
+                      str: Math.max(10, Math.floor(calcFinal?.str || rawAtk)),
+                      int: Math.max(10, Math.floor(calcFinal?.int || rawAtk)),
+                      agi: Math.max(10, Math.floor(calcFinal?.agi || (enemy as any).agi || (enemy.level || 1) * 1.1 + 15)),
+                      wis: Math.max(10, Math.floor(calcFinal?.wis || (enemy as any).wis || (enemy.level || 1) * 1.0 + 14)),
+                      def: Math.max(8, Math.floor(calcFinal?.def || rawDef)),
+                      ctrl: Math.max(10, Math.floor(calcFinal?.ctrl || (enemy.level || 1) * 1.0 + 10))
+                  }
         };
-        const rawAtk = (enemy as any).attack ?? enemy.stats?.str ?? enemy.stats?.int ?? 40;
-        const rawDef = (enemy as any).defense ?? enemy.stats?.def ?? 15;
-        const atk = Math.max(20, Math.floor(rawAtk * 1.15));
-        const def = Math.max(8, Math.floor(rawDef * 0.9));
-        const agi = Math.max(10, Math.floor((enemy as any).agi || (enemy.level || 1) * 1.1 + 15));
-        const wis = Math.max(10, Math.floor((enemy as any).wis || (enemy.level || 1) * 1.0 + 14));
+        const str = Math.max(10, Math.floor(calcFinal?.str || enemy.stats?.str || rawAtk));
+        const intStat = Math.max(10, Math.floor(calcFinal?.int || enemy.stats?.int || rawAtk));
+        const agi = Math.max(10, Math.floor(calcFinal?.agi || enemy.stats?.agi || (enemy as any).agi || (enemy.level || 1) * 1.1 + 15));
+        const wis = Math.max(10, Math.floor(calcFinal?.wis || enemy.stats?.wis || (enemy as any).wis || (enemy.level || 1) * 1.0 + 14));
+        const def = Math.max(8, Math.floor(calcFinal?.def || enemy.stats?.def || rawDef));
+        const ctrl = Math.max(10, Math.floor(calcFinal?.ctrl || enemy.stats?.ctrl || (enemy.level || 1) * 1.0 + 10));
+        const atk = Math.max(20, Math.floor(Math.max(str, intStat) * 1.4 + (enemy.level || 1) * 4));
         const mob = inferBg3Mobility(enemy.name || '', isBoss, agi);
-        const weaponZone = resolveWeaponBasicAttackZone(enemy);
-        const passiveBonuses = extractPassiveCombatBonuses(enemy.skills || [], maxHp, (enemy.stats?.maxMp || 1000), (enemy as any).statusEffects);
+        const weaponZone = resolveWeaponBasicAttackZone(syncedEnemy);
+        const passiveBonuses = extractPassiveCombatBonuses(enemy.skills || [], maxHp, maxMp, (enemy as any).statusEffects);
         const sprite = resolveEntityRpgSprite(
             { id: enemy.id || `enemy_${idx}`, name: enemy.name, gender: idx % 2 === 0 ? 'male' : 'female' },
             region,
@@ -576,8 +606,8 @@ export const buildBg3EnemyUnits = (
             level: enemy.level || 1,
             hp,
             maxHp,
-            mp: 100,
-            maxMp: 100,
+            mp,
+            maxMp,
             shieldHp: passiveBonuses.initialShieldHp,
             maxShieldHp: Math.max(passiveBonuses.initialShieldHp, Math.round(maxHp * 0.25)),
             breakGauge: maxBrk,
@@ -588,11 +618,11 @@ export const buildBg3EnemyUnits = (
             passiveReflectPct: passiveBonuses.passiveReflectPct,
             atk,
             def,
-            str: Math.max(10, Math.floor((enemy as any).stats?.str || rawAtk)),
-            int: Math.max(10, Math.floor((enemy as any).stats?.int || rawAtk)),
+            str,
+            int: intStat,
             agi,
             wis,
-            ctrl: Math.max(10, Math.floor((enemy as any).stats?.ctrl || (enemy.level || 1) * 1.0 + 10)),
+            ctrl,
             initiative: agi + wis,
             x,
             y,

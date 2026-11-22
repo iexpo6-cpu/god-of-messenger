@@ -211,8 +211,9 @@ export const syncUnitFromSourceEntity = (unit: Bg3Unit): Bg3Unit => {
         }
     }
 
-    const nextMaxHp = Math.max(unit.maxHp, finalStats?.maxHp || unit.maxHp);
-    const nextMaxMp = Math.max(unit.maxMp, finalStats?.maxMp || unit.maxMp);
+    // 적 유닛은 등장 시 확정된 maxHp를 고정 유지 (패시브 이중 합산으로 maxHp가 부풀어 HP가 100% 미만으로 보이는 현상 원천 차단!)
+    const nextMaxHp = unit.team === 'enemy' ? unit.maxHp : Math.max(unit.maxHp, finalStats?.maxHp || unit.maxHp);
+    const nextMaxMp = unit.team === 'enemy' ? unit.maxMp : Math.max(unit.maxMp, finalStats?.maxMp || unit.maxMp);
 
     return {
         ...unit,
