@@ -2,6 +2,15 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+function safeCopyFile(src, dest) {
+  try {
+    fs.copyFileSync(src, dest);
+  } catch {
+    try { fs.unlinkSync(dest); } catch {}
+    fs.writeFileSync(dest, fs.readFileSync(src));
+  }
+}
+
 function copyRecursiveSync(src, dest) {
   if (!fs.existsSync(src)) return;
   const stats = fs.statSync(src);
@@ -11,7 +20,7 @@ function copyRecursiveSync(src, dest) {
       copyRecursiveSync(path.join(src, childItemName), path.join(dest, childItemName));
     });
   } else {
-    fs.copyFileSync(src, dest);
+    safeCopyFile(src, dest);
   }
 }
 
@@ -41,7 +50,7 @@ copyRecursiveSync(srcDist, distDir);
 
 console.log('[3/4] Syncing src/dist -> project root (for GitHub Pages root hosting)...');
 if (fs.existsSync(path.join(srcDist, 'index.html'))) {
-  fs.copyFileSync(path.join(srcDist, 'index.html'), path.join(rootDir, 'index.html'));
+  safeCopyFile(path.join(srcDist, 'index.html'), path.join(rootDir, 'index.html'));
 }
 if (fs.existsSync(path.join(srcDist, 'assets'))) {
   cleanOldAssetBundles(path.join(rootDir, 'assets'));

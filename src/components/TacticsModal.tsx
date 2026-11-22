@@ -494,8 +494,8 @@ const TacticsModal: React.FC<TacticsModalProps> = memo(({ character, onUpdateCha
               <Grid3X3 className="text-indigo-400" size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-base sm:text-xl text-slate-100">전술 및 진형 설정</h3>
-              <p className="text-[10px] sm:text-xs text-slate-400">파티원의 역할, 위치, 상세 전술을 구성합니다.</p>
+              <h3 className="font-bold text-base sm:text-xl text-slate-100">파티 역할 및 AI 전술 설정</h3>
+              <p className="text-[10px] sm:text-xs text-slate-400">파티원의 전투 역할(탱커/딜러/서포터)과 AI 행동 성향을 구성합니다. (위치 배치는 BG3 무격자 전장에서 자유롭게 이동)</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -988,42 +988,7 @@ const TacticsModal: React.FC<TacticsModalProps> = memo(({ character, onUpdateCha
                         )}
                       </div>
 
-                      {/* Position Selection (Mini) */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">진형 위치 변경 (빈 칸 선택)</label>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 w-fit mx-auto p-2 bg-slate-950 rounded-xl border border-slate-800">
-                          {[0, 1, 2].map(r => (
-                            [0, 1, 2].map(c => {
-                              const isCurrent = member.position.row === r && member.position.col === c;
-                              const otherOccupant = party.find(m => m.position.row === r && m.position.col === c && m.id !== member.id);
-
-                              return (
-                                <button
-                                  key={`${r}-${c}`}
-                                  onClick={() => updatePosition(member.id, r, c)}
-                                  title={otherOccupant ? `${otherOccupant.name} 배치됨` : isCurrent ? '현재 위치' : '배치 가능'}
-                                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg border-2 transition-all flex flex-col items-center justify-center relative ${
-                                    isCurrent
-                                      ? 'bg-indigo-500 border-indigo-300 shadow-lg shadow-indigo-900/40 scale-105 z-10 text-white'
-                                      : otherOccupant
-                                      ? 'bg-slate-900/90 border-slate-700/60 text-slate-500 opacity-60'
-                                      : 'bg-slate-900 border-slate-800 hover:border-slate-500 text-slate-600 hover:text-slate-300'
-                                  }`}
-                                >
-                                  <span className="text-[8px] font-bold">{r === 0 ? '전' : r === 1 ? '중' : '후'}{c + 1}</span>
-                                  {otherOccupant && (
-                                    <span className="text-[6px] text-amber-500 font-bold leading-none truncate max-w-[28px]">
-                                      {otherOccupant.name.slice(0, 2)}
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })
-                          ))}
-                        </div>
-                      </div>
+                      {/* BG3 무격자 자유 이동 도입으로 기존 3x3 고정 위치 그리드 제거 */}
                     </div>
                     )}
                   </div>
@@ -1032,66 +997,15 @@ const TacticsModal: React.FC<TacticsModalProps> = memo(({ character, onUpdateCha
               </div>
             </div>
 
-            {/* Right: Formation Preview & Buff Info */}
+            {/* Right: BG3 무격자 전술 안내 & 역할 버프 정보 */}
             <div className="flex flex-col">
-              <h4 className="text-xs sm:text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 sm:mb-6 flex items-center gap-2">
-                <Grid3X3 size={16} /> 파티 진형 프리뷰
-              </h4>
-              <div className="flex items-center justify-center mb-4 sm:mb-8">
-                <div className="bg-slate-900/50 p-4 sm:p-8 rounded-2xl sm:rounded-[2.5rem] border border-slate-800/50 shadow-inner relative max-w-full">
-                  {/* Grid Labels */}
-                  <div className="absolute -left-6 sm:-left-8 top-6 sm:top-10 bottom-6 sm:bottom-10 flex flex-col justify-between text-[9px] sm:text-[10px] font-bold text-slate-600">
-                    <span className="bg-slate-800 px-1 py-0.5 rounded text-blue-400">전열</span>
-                    <span className="bg-slate-800 px-1 py-0.5 rounded text-amber-400">중열</span>
-                    <span className="bg-slate-800 px-1 py-0.5 rounded text-emerald-400">후열</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-3 sm:gap-5 w-60 h-60 sm:w-72 sm:h-72">
-                    {[0, 1, 2].map(r => (
-                      [0, 1, 2].map(c => {
-                        const membersHere = party.filter(m => m.position.row === r && m.position.col === c);
-                        return (
-                          <div 
-                            key={`${r}-${c}`} 
-                            className={`rounded-xl sm:rounded-2xl border-2 flex flex-col items-center justify-center relative overflow-hidden group transition-all ${
-                              r === 0 ? 'bg-blue-900/5 border-blue-900/20' :
-                              r === 1 ? 'bg-amber-900/5 border-amber-900/20' :
-                              'bg-emerald-900/5 border-emerald-900/20'
-                            } hover:border-slate-500`}
-                          >
-                            <div className="flex flex-wrap items-center justify-center gap-1 sm:gap-1.5 p-1 sm:p-2">
-                              {membersHere.map(m => (
-                                <div 
-                                  key={m.id}
-                                  title={`${m.name} (${m.role})`}
-                                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 flex items-center justify-center shadow-xl transition-transform hover:scale-110 relative ${
-                                    m.role === BattleRole.TANKER ? 'bg-blue-600/30 border-blue-500 text-blue-400' :
-                                    m.role === BattleRole.DEALER ? 'bg-red-600/30 border-red-500 text-red-400' :
-                                    'bg-emerald-600/30 border-emerald-500 text-emerald-400'
-                                  }`}
-                                >
-                                  {m.isPlayer ? <User size={16} /> : <Users size={16} />}
-                                  {/* Small indicator for tactical command */}
-                                  {!m.isPlayer && (
-                                    <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-slate-900 rounded-full border border-slate-700 flex items-center justify-center">
-                                      <div className={`w-1.5 h-1.5 rounded-full ${
-                                        m.role === BattleRole.TANKER ? 'bg-blue-500' :
-                                        m.role === BattleRole.DEALER ? 'bg-red-500' : 'bg-emerald-500'
-                                      }`} />
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                              {membersHere.length === 0 && (
-                                <div className="text-[9px] sm:text-[10px] text-slate-800 font-bold opacity-20 uppercase">Empty</div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })
-                    ))}
-                  </div>
+              <div className="mb-4 sm:mb-6 p-4 rounded-2xl bg-sky-950/30 border border-sky-500/40 space-y-1.5">
+                <div className="text-xs font-black text-sky-300 flex items-center gap-2">
+                  <Zap size={15} className="text-amber-400" /> BG3 무격자 자유 전술 전투 적용 중
                 </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  모든 전투가 무격자 자유 이동 아레나로 통합되어 기존 3×3 고정 진형 배치는 제거되었습니다. 전장에 진입한 뒤 각 캐릭터의 AGI 기반 이동 거리와 무기·스킬 범위(Cone / Square / Target)를 활용해 자유롭게 포지셔닝하세요!
+                </p>
               </div>
               
               {/* Buff & Targeting Info */}

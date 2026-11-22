@@ -14,6 +14,8 @@ import { checkNinjaCombatStyleOwnership } from '../services/ninjaCloneService';
 import { isLegacySkillFormat } from '../services/skillReconfigureService';
 import { getTierBuffScale, getTierAttackScale } from '../services/skillBuffScaleService';
 import { getAuraDisplayLabel, getShinryokuAuraType } from '../services/buffDiminishingManager';
+import { calculateZonePowerMultiplier, getDefaultZoneConfig, getZoneCapsForTier } from '../services/skillZoneService';
+import { SkillZoneConfig, SkillZoneType } from '../types';
 
 import {
   getBuffBaseCap,
@@ -332,6 +334,9 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
     }
   }, [customSkillType]);
   const [customTargetType, setCustomTargetType] = useState<SkillTarget>('single');
+  const [customZoneConfig, setCustomZoneConfig] = useState<SkillZoneConfig>(() =>
+      getDefaultZoneConfig(SkillType.PHYSICAL, 'single', ClassTier.FIRST)
+  );
   const [customPowerRatio, setCustomPowerRatio] = useState<number>(100);
   const [customMpCost, setCustomMpCost] = useState<number>(10);
   const [selectedAilment, setSelectedAilment] = useState<string>(''); 
@@ -436,6 +441,27 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
     }
   }, [isOpen]);
 
+  // 클래스 티어/스킬 유형/단일·광역 변경 시 스킬 범위(ZoneConfig) 자동 클램핑 및 기본값 동기화
+  useEffect(() => {
+      const caps = getZoneCapsForTier(activeTab);
+      const effTarget = customSkillType === SkillType.BUFF ? buffTargetType : customTargetType;
+      const isBuffOrDebuff = customSkillType === SkillType.BUFF || customSkillType === SkillType.DEBUFF || customSkillType === SkillType.HEAL;
+      setCustomZoneConfig(prev => {
+          const def = getDefaultZoneConfig(customSkillType, effTarget, activeTab);
+          const clamp = (v: number | undefined, lo: number, hi: number, fb: number) =>
+              Math.max(lo, Math.min(hi, v ?? fb));
+          return {
+              targetRadius: clamp(prev.targetRadius, caps.minTargetRadius, caps.maxTargetRadius, def.targetRadius || caps.minTargetRadius),
+              zoneType: isBuffOrDebuff ? 'target' : (prev.zoneType || def.zoneType || 'target'),
+              coneLength: clamp(prev.coneLength, caps.minConeLength, caps.maxConeLength, def.coneLength || caps.minConeLength),
+              coneAngle: clamp(prev.coneAngle, caps.minConeAngle, caps.maxConeAngle, def.coneAngle || caps.minConeAngle),
+              squareWidth: clamp(prev.squareWidth, caps.minSquareWidth, caps.maxSquareWidth, def.squareWidth || caps.minSquareWidth),
+              squareLength: clamp(prev.squareLength, caps.minSquareLength, caps.maxSquareLength, def.squareLength || caps.minSquareLength),
+              areaRadius: clamp(prev.areaRadius, caps.minAreaRadius, caps.maxAreaRadius, def.areaRadius || caps.minAreaRadius)
+          };
+      });
+  }, [activeTab, customSkillType, customTargetType, buffTargetType]);
+
   // Clamping logic for all skill types
   useEffect(() => {
       if (creationStep === 'custom') {
@@ -456,6 +482,10 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                     adjustedMax = Math.floor(adjustedMax * 0.65);
                 }
             }
+
+            // BG3 전장 스킬 범위(Zone) 확장에 따른 위력 상한 비례 감산 적용
+            const zoneMult = calculateZonePowerMultiplier(customTargetType, customZoneConfig, activeTab);
+            adjustedMax = Math.max(20, Math.floor(adjustedMax * zoneMult));
 
             if (customPowerRatio > adjustedMax) {
                 setCustomPowerRatio(adjustedMax);
@@ -653,7 +683,7 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
           const finalCost = Math.max(0, cost);
           setCustomMpCost(prev => (prev === finalCost ? prev : finalCost));
       }
-  }, [customPowerRatio, customSkillType, creationStep, customTargetType, buffEffects, buffTargetType, debuffSubType, debuffStatType, debuffStatValue, debuffEffects, debuffAilments, selectedAilment, selectedAilments, attackSkillEffectType, attackDebuffValue, selectedAttackDebuffStat, activeTab, customSkillElement, character.shinryokuType, passiveHasCondition, passiveWeaponCondition, summonCount, summonPowerLevel, summonDuration]);
+  }, [customPowerRatio, customSkillType, creationStep, customTargetType, customZoneConfig, buffEffects, buffTargetType, debuffSubType, debuffStatType, debuffStatValue, debuffEffects, debuffAilments, selectedAilment, selectedAilments, attackSkillEffectType, attackDebuffValue, selectedAttackDebuffStat, activeTab, customSkillElement, character.shinryokuType, passiveHasCondition, passiveWeaponCondition, summonCount, summonPowerLevel, summonDuration]);
 
   useEffect(() => {
       setPassiveCategory('STAT');
@@ -1132,9 +1162,15 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
           finalDescription += ` [부가 효과: ${selectedAilment}]`;
       }
       
+      const effZoneConfig: SkillZoneConfig | undefined =
+          skill.type === SkillType.PASSIVE || skill.type === SkillType.SUMMON || skill.type === SkillType.CLONE
+              ? undefined
+              : { ...customZoneConfig };
+
       // 신력 조각 차감 및 스킬 습득은 onLearnSkill에서 플레이어/동료 구분에 맞추어 안전하게 일괄 처리
       onLearnSkill({ 
           ...skill, 
+          zoneConfig: skill.zoneConfig || effZoneConfig,
           finalSkillSlot: skill.finalSkillSlot || (isFinalActiveTab ? finalNextSlot : undefined),
           consumedShard: skill.consumedShard,
           consumedShardCount: requiredShardCount,
@@ -1801,9 +1837,12 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
       ? getFinalAttackPowerCap(finalBonusSteps, customTargetType === 'aoe', true)
       : (customTargetType === 'aoe' ? Math.floor(currentTierConfig.maxRatio * 0.5) : currentTierConfig.maxRatio);
 
-  const adjustedMaxRatio = isFinalActiveTab
+  const baseAdjustedMaxRatio = isFinalActiveTab
       ? getFinalAttackPowerCap(finalBonusSteps, customTargetType === 'aoe', isNativeElement)
       : (isNativeElement ? rawMaxRatio : Math.floor(rawMaxRatio * 0.65));
+  const zonePowerMult = calculateZonePowerMultiplier(customTargetType, customZoneConfig, activeTab);
+  const adjustedMaxRatio = Math.max(20, Math.floor(baseAdjustedMaxRatio * zonePowerMult));
+  const currentZoneCaps = getZoneCapsForTier(activeTab);
   const isNonElemental = customSkillElement === '무속성';
   const currentRequiredShardCount = getRequiredShardCountForTier(activeTab);
   const requiresShard = (customSkillType === SkillType.PHYSICAL || customSkillType === SkillType.MAGIC) && !isNativeElement && !isNonElemental;
@@ -3262,6 +3301,123 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                             <button onClick={() => setCustomTargetType('aoe')} className={`text-[10px] p-2 rounded border flex flex-col items-center ${customTargetType === 'aoe' ? 'bg-amber-900/40 border-amber-500 text-amber-200' : 'bg-slate-950 border-slate-700 text-slate-500'}`}><Crosshair size={14} className="mb-1"/>광역</button>
                                         </div>
                                         {customTargetType === 'aoe' && <p className="text-[10px] text-red-400 mt-1">* 광역 스킬: {customSkillType === SkillType.DEBUFF ? '제한된 효과' : '위력 상한 감소'}, MP 소모 3배.</p>}
+
+                                        {/* BG3 전장 스킬 범위 (TargetRadius / Cone / Square / Target) 설정 */}
+                                        <div className="mt-2.5 p-2.5 rounded-lg bg-slate-900/90 border border-sky-500/35 space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-black text-sky-300">🎯 전장 스킬 범위 (Zone) 설정</span>
+                                                {(customSkillType === SkillType.PHYSICAL || customSkillType === SkillType.MAGIC) && (
+                                                    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${zonePowerMult < 0.85 ? 'bg-amber-950/80 text-amber-300' : 'bg-emerald-950/80 text-emerald-300'}`}>
+                                                        위력 상한 ×{zonePowerMult.toFixed(2)} ({Math.round((zonePowerMult - 1) * 100)}%)
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {customTargetType === 'single' ? (
+                                                <div>
+                                                    <div className="flex justify-between text-[10px] text-slate-300 mb-0.5">
+                                                        <span>사거리 (TargetRadius)</span>
+                                                        <span className="font-mono text-sky-300 font-bold">{customZoneConfig.targetRadius ?? currentZoneCaps.minTargetRadius}m / 최대 {currentZoneCaps.maxTargetRadius}m</span>
+                                                    </div>
+                                                    <input
+                                                        type="range"
+                                                        min={currentZoneCaps.minTargetRadius}
+                                                        max={currentZoneCaps.maxTargetRadius}
+                                                        step={1}
+                                                        value={customZoneConfig.targetRadius ?? currentZoneCaps.minTargetRadius}
+                                                        onChange={e => setCustomZoneConfig(prev => ({ ...prev, targetRadius: Number(e.target.value) }))}
+                                                        className="w-full accent-sky-400"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    {/* 공격 광역: Cone / Square / Target 선택 가능 | 디버프 광역: Target 고정 */}
+                                                    {customSkillType === SkillType.DEBUFF ? (
+                                                        <div className="text-[10px] text-purple-300 font-bold">
+                                                            광역 Zone: <span className="px-1.5 py-0.5 rounded bg-purple-900/60 border border-purple-400/50">Target (원형 지정 고정)</span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-3 gap-1.5">
+                                                            {([
+                                                                { key: 'cone', label: '📐 Cone (부채꼴)' },
+                                                                { key: 'square', label: '▭ Square (직사각)' },
+                                                                { key: 'target', label: '🎯 Target (원형)' }
+                                                            ] as Array<{ key: SkillZoneType; label: string }>).map(zOpt => (
+                                                                <button
+                                                                    key={zOpt.key}
+                                                                    type="button"
+                                                                    onClick={() => setCustomZoneConfig(prev => ({ ...prev, zoneType: zOpt.key }))}
+                                                                    className={`py-1.5 px-1 rounded text-[10px] font-bold border transition-all ${
+                                                                        (customZoneConfig.zoneType || 'target') === zOpt.key
+                                                                            ? 'bg-sky-600/35 border-sky-400 text-sky-100'
+                                                                            : 'bg-slate-950 border-slate-700 text-slate-400 hover:text-slate-200'
+                                                                    }`}
+                                                                >
+                                                                    {zOpt.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+
+                                                    {(customSkillType !== SkillType.DEBUFF && customZoneConfig.zoneType === 'cone') && (
+                                                        <div className="space-y-1.5">
+                                                            <div>
+                                                                <div className="flex justify-between text-[10px] text-slate-300">
+                                                                    <span>Cone 길이</span>
+                                                                    <span className="font-mono text-sky-300 font-bold">{customZoneConfig.coneLength ?? currentZoneCaps.minConeLength}m (최대 {currentZoneCaps.maxConeLength}m)</span>
+                                                                </div>
+                                                                <input type="range" min={currentZoneCaps.minConeLength} max={currentZoneCaps.maxConeLength} step={1} value={customZoneConfig.coneLength ?? currentZoneCaps.minConeLength} onChange={e => setCustomZoneConfig(prev => ({ ...prev, coneLength: Number(e.target.value) }))} className="w-full accent-sky-400" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex justify-between text-[10px] text-slate-300">
+                                                                    <span>Cone 각도</span>
+                                                                    <span className="font-mono text-sky-300 font-bold">{customZoneConfig.coneAngle ?? currentZoneCaps.minConeAngle}° (최대 {currentZoneCaps.maxConeAngle}°)</span>
+                                                                </div>
+                                                                <input type="range" min={currentZoneCaps.minConeAngle} max={currentZoneCaps.maxConeAngle} step={5} value={customZoneConfig.coneAngle ?? currentZoneCaps.minConeAngle} onChange={e => setCustomZoneConfig(prev => ({ ...prev, coneAngle: Number(e.target.value) }))} className="w-full accent-sky-400" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {(customSkillType !== SkillType.DEBUFF && customZoneConfig.zoneType === 'square') && (
+                                                        <div className="space-y-1.5">
+                                                            <div>
+                                                                <div className="flex justify-between text-[10px] text-slate-300">
+                                                                    <span>Square 가로 폭</span>
+                                                                    <span className="font-mono text-sky-300 font-bold">{customZoneConfig.squareWidth ?? currentZoneCaps.minSquareWidth}m (최대 {currentZoneCaps.maxSquareWidth}m)</span>
+                                                                </div>
+                                                                <input type="range" min={currentZoneCaps.minSquareWidth} max={currentZoneCaps.maxSquareWidth} step={1} value={customZoneConfig.squareWidth ?? currentZoneCaps.minSquareWidth} onChange={e => setCustomZoneConfig(prev => ({ ...prev, squareWidth: Number(e.target.value) }))} className="w-full accent-sky-400" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex justify-between text-[10px] text-slate-300">
+                                                                    <span>Square 세로 길이</span>
+                                                                    <span className="font-mono text-sky-300 font-bold">{customZoneConfig.squareLength ?? currentZoneCaps.minSquareLength}m (최대 {currentZoneCaps.maxSquareLength}m)</span>
+                                                                </div>
+                                                                <input type="range" min={currentZoneCaps.minSquareLength} max={currentZoneCaps.maxSquareLength} step={1} value={customZoneConfig.squareLength ?? currentZoneCaps.minSquareLength} onChange={e => setCustomZoneConfig(prev => ({ ...prev, squareLength: Number(e.target.value) }))} className="w-full accent-sky-400" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {(customSkillType === SkillType.DEBUFF || (customZoneConfig.zoneType || 'target') === 'target') && (
+                                                        <div className="space-y-1.5">
+                                                            <div>
+                                                                <div className="flex justify-between text-[10px] text-slate-300">
+                                                                    <span>시전 사거리 (TargetRadius)</span>
+                                                                    <span className="font-mono text-sky-300 font-bold">{customZoneConfig.targetRadius ?? currentZoneCaps.minTargetRadius}m (최대 {currentZoneCaps.maxTargetRadius}m)</span>
+                                                                </div>
+                                                                <input type="range" min={currentZoneCaps.minTargetRadius} max={currentZoneCaps.maxTargetRadius} step={1} value={customZoneConfig.targetRadius ?? currentZoneCaps.minTargetRadius} onChange={e => setCustomZoneConfig(prev => ({ ...prev, targetRadius: Number(e.target.value) }))} className="w-full accent-sky-400" />
+                                                            </div>
+                                                            <div>
+                                                                <div className="flex justify-between text-[10px] text-slate-300">
+                                                                    <span>폭발/적용 반경 (AreaRadius)</span>
+                                                                    <span className="font-mono text-amber-300 font-bold">{customZoneConfig.areaRadius ?? currentZoneCaps.minAreaRadius}m (최대 {currentZoneCaps.maxAreaRadius}m)</span>
+                                                                </div>
+                                                                <input type="range" min={currentZoneCaps.minAreaRadius} max={currentZoneCaps.maxAreaRadius} step={1} value={customZoneConfig.areaRadius ?? currentZoneCaps.minAreaRadius} onChange={e => setCustomZoneConfig(prev => ({ ...prev, areaRadius: Number(e.target.value) }))} className="w-full accent-amber-400" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                      </div>
                                 )}
 
@@ -4183,6 +4339,32 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                 <button type="button" onClick={() => setBuffTargetType('aoe')} className={`text-xs p-2 rounded border flex flex-col items-center transition-colors ${buffTargetType === 'aoe' ? 'bg-green-900/40 border-green-500 text-green-200 font-bold' : 'bg-slate-950 border-slate-700 text-slate-500'}`}><Crosshair size={14} className="mb-1"/>아군 전체</button>
                                             </div>
                                             <p className="text-[10px] text-blue-400 mt-1">* {buffTargetType === 'single' ? '단일 대상: 수치 효율 높음' : '전체 대상: 수치 효율 낮음, MP 소모 3배'}</p>
+
+                                            {/* 버프 스킬 전장 범위 (단일: TargetRadius / 광역: Target + AreaRadius 고정) */}
+                                            <div className="mt-2 p-2.5 rounded-lg bg-slate-900/90 border border-emerald-500/35 space-y-1.5">
+                                                <div className="flex items-center justify-between text-[10px]">
+                                                    <span className="font-black text-emerald-300">🎯 버프 전장 범위 설정</span>
+                                                    {buffTargetType === 'aoe' && (
+                                                        <span className="px-1.5 py-0.5 rounded bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-bold">Target 고정</span>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <div className="flex justify-between text-[10px] text-slate-300">
+                                                        <span>시전 사거리 (TargetRadius)</span>
+                                                        <span className="font-mono text-emerald-300 font-bold">{customZoneConfig.targetRadius ?? currentZoneCaps.minTargetRadius}m (최대 {currentZoneCaps.maxTargetRadius}m)</span>
+                                                    </div>
+                                                    <input type="range" min={currentZoneCaps.minTargetRadius} max={currentZoneCaps.maxTargetRadius} step={1} value={customZoneConfig.targetRadius ?? currentZoneCaps.minTargetRadius} onChange={e => setCustomZoneConfig(prev => ({ ...prev, zoneType: 'target', targetRadius: Number(e.target.value) }))} className="w-full accent-emerald-400" />
+                                                </div>
+                                                {buffTargetType === 'aoe' && (
+                                                    <div>
+                                                        <div className="flex justify-between text-[10px] text-slate-300">
+                                                            <span>적용 반경 (AreaRadius)</span>
+                                                            <span className="font-mono text-amber-300 font-bold">{customZoneConfig.areaRadius ?? currentZoneCaps.minAreaRadius}m (최대 {currentZoneCaps.maxAreaRadius}m)</span>
+                                                        </div>
+                                                        <input type="range" min={currentZoneCaps.minAreaRadius} max={currentZoneCaps.maxAreaRadius} step={1} value={customZoneConfig.areaRadius ?? currentZoneCaps.minAreaRadius} onChange={e => setCustomZoneConfig(prev => ({ ...prev, zoneType: 'target', areaRadius: Number(e.target.value) }))} className="w-full accent-amber-400" />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="flex gap-2">
                                             <select className="flex-1 bg-slate-900 border border-slate-700 rounded p-1 text-xs text-slate-300 outline-none" value={selectedBuffType} onChange={(e) => setSelectedBuffType(e.target.value)}>

@@ -20,6 +20,8 @@ export interface CombatVFXData {
     frameAnimation?: SkillFrameAnimation;
     /** BG3 무격자 캔버스 등에서 피격 대상의 정확한 화면 좌표(px)를 직접 지정할 때 사용 */
     targetScreenPos?: { x: number; y: number };
+    /** BG3 무격자 전장 스킬 범위 맞춤 크기(px): 광역은 실제 스킬 범위 크기, 단일은 적 토큰 일정 크기 */
+    vfxPixelSize?: number;
 }
 
 // ============================================================================
@@ -1509,7 +1511,7 @@ export const RenderCustomVfxShape: React.FC<RenderCustomVfxShapeProps> = ({
         <canvas
             ref={canvasRef}
             className="w-full h-full pointer-events-none block transform-gpu"
-            style={{ maxWidth: '380px', maxHeight: '380px' }}
+            style={{ maxWidth: '100%', maxHeight: '100%' }}
         />
     );
 };
@@ -1741,8 +1743,8 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
                             ? '50%'
                             : (targetPos ? `${targetPos.y}px` : '50%'),
                         transform: 'translate(-50%, -50%)',
-                        width: vfx.frameAnimation.playMode === 'fullscreen' ? '100%' : (isAoe ? '420px' : '300px'),
-                        height: vfx.frameAnimation.playMode === 'fullscreen' ? '100%' : (isAoe ? '420px' : '300px'),
+                        width: vfx.frameAnimation.playMode === 'fullscreen' ? '100%' : vfx.vfxPixelSize ? `${vfx.vfxPixelSize}px` : (isAoe ? '420px' : '300px'),
+                        height: vfx.frameAnimation.playMode === 'fullscreen' ? '100%' : vfx.vfxPixelSize ? `${vfx.vfxPixelSize}px` : (isAoe ? '420px' : '300px'),
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'
@@ -1795,19 +1797,21 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
             {/* 4. 안티그래비티 60FPS 하이퍼 캔버스 시그니처 이펙트 (커스텀 프레임 애니메이션 재생 중엔 이중 캔버스 부하 방지를 위해 생략) */}
             {vfx.frameAnimation?.renderMode !== 'frame_only' && !(vfx.frameAnimation?.enabled && vfx.frameAnimation.frames?.length > 0) && (
                 <div
-                    className={`flex items-center justify-center ${isAoe ? 'w-96 h-96 sm:w-[440px] sm:h-[440px]' : 'w-80 h-80'}`}
+                    className={`flex items-center justify-center ${vfx.vfxPixelSize ? '' : (isAoe ? 'w-96 h-96 sm:w-[440px] sm:h-[440px]' : 'w-80 h-80')}`}
                     style={
                         targetPos
                             ? {
                                   position: 'absolute',
                                   left: `${targetPos.x}px`,
                                   top: `${targetPos.y}px`,
-                                  transform: `translate(-50%, -50%) scale(${vfx.vfxScale || 1})`,
+                                  ...(vfx.vfxPixelSize ? { width: `${vfx.vfxPixelSize}px`, height: `${vfx.vfxPixelSize}px` } : {}),
+                                  transform: `translate(-50%, -50%) scale(${vfx.vfxPixelSize ? 1 : (vfx.vfxScale || 1)})`,
                                   zIndex: 30
                               }
                             : {
                                   position: 'relative',
-                                  transform: `scale(${vfx.vfxScale || 1})`,
+                                  ...(vfx.vfxPixelSize ? { width: `${vfx.vfxPixelSize}px`, height: `${vfx.vfxPixelSize}px` } : {}),
+                                  transform: `scale(${vfx.vfxPixelSize ? 1 : (vfx.vfxScale || 1)})`,
                                   zIndex: 30
                               }
                     }
@@ -1842,12 +1846,12 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
                             times: [0, 0.14, 0.82, 1],
                             ease: 'easeOut'
                         }}
-                        className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none overflow-hidden px-2 sm:px-6"
+                        className="absolute inset-0 z-40 flex items-center justify-start pointer-events-none overflow-hidden pl-2 sm:pl-5 pr-4"
                     >
-                        {/* 대각선 슬래시 배너 컨테이너 */}
+                        {/* 대각선 슬래시 배너 컨테이너 (전장 중앙을 가리지 않도록 좌측 배치) */}
                         <div
-                            className={`relative w-full max-w-4xl overflow-hidden rounded-2xl border-y-2 transform -skew-y-2 shadow-2xl flex items-center gap-4 sm:gap-7 px-4 sm:px-8 ${
-                                isFinalCutscene ? 'py-4 sm:py-6 border-amber-300' : 'py-3 sm:py-4 border-cyan-300/90'
+                            className={`relative w-full max-w-[300px] sm:max-w-md overflow-hidden rounded-2xl border-y-2 transform -skew-y-2 shadow-2xl flex items-center gap-3 sm:gap-5 px-3 sm:px-5 ${
+                                isFinalCutscene ? 'py-3 sm:py-4 border-amber-300' : 'py-2.5 sm:py-3 border-cyan-300/90'
                             }`}
                             style={{
                                 background: `linear-gradient(125deg, rgba(2, 6, 23, 0.95) 0%, ${theme.primary}44 50%, rgba(2, 6, 23, 0.95) 100%)`,
@@ -2153,8 +2157,10 @@ export const SkillFrameAnimationRenderer: React.FC<SkillFrameAnimationRendererPr
         ctx.globalAlpha = Math.max(0, Math.min(1, (frame.opacity ?? 1) * alphaMultiplier));
         ctx.globalCompositeOperation = BLEND_MODE_MAP[frame.blendMode || 'screen'] || 'screen';
 
-        const w = frame.width || 220;
-        const h = frame.height || 220;
+        const logicalMin = Math.min(cx * 2, cy * 2);
+        const fitFactor = logicalMin > 0 ? (logicalMin * 0.86) / 220 : 1;
+        const w = (frame.width || 220) * fitFactor;
+        const h = (frame.height || 220) * fitFactor;
         ctx.drawImage(img, -w / 2, -h / 2, w, h);
         ctx.restore();
     };

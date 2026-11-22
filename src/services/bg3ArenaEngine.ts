@@ -9,7 +9,11 @@
  */
 
 import { Character, Companion, Enemy, Skill, SkillType } from '../types';
+import { PRESET_ENEMIES } from '../constants';
 import { calculateDamage, calculateFinalStats, getEntityAllCombatSkills } from '../utils';
+import { resolveEffectiveSkillZone, resolveWeaponBasicAttackZone } from './skillZoneService';
+import { MountCombatService } from './mountCombatService';
+import { getAllyMaxBreakGauge, getEnemyMaxBreakGauge } from './shinryokuBreakService';
 import { CityCultureKey, resolveCityCultureKey } from './cityAssetManifest';
 import {
     resolveEntityRpgSprite,
@@ -18,11 +22,35 @@ import {
     SpriteDirection
 } from './rpgSpriteManifest';
 
-export const ARENA_W = 2800;
-export const ARENA_H = 1900;
-export const WAR_ARENA_W = 4200;
-export const WAR_ARENA_H = 2800;
-export const PX_PER_METER = 32; // 1m = 32px (보스전 87.5m×59.4m / 대규모 전쟁 131.2m×87.5m!)
+export type Bg3ArenaTier = 'skirmish' | 'boss' | 'mythic_boss' | 'war';
+
+export const SKIRMISH_ARENA_W = 1536;   // 48m (일반 사냥 · 던전 · 1:1 대련/승급전 — 여유로운 전술 공간!)
+export const SKIRMISH_ARENA_H = 1056;   // 33m
+export const BOSS_ARENA_W = 2880;       // 90m (일반 보스 결전)
+export const BOSS_ARENA_H = 1920;       // 60m
+export const ARENA_W = 4160;            // 130m (신화 보스 · 신계 보스 · 절대신 결전)
+export const ARENA_H = 2880;            // 90m
+export const WAR_ARENA_W = 6080;        // 190m (국가/신계/마계 전면전 · 성전 공방전)
+export const WAR_ARENA_H = 4160;        // 130m
+export const PX_PER_METER = 32;         // 1m = 32px
+
+export const getArenaDimensions = (tier: Bg3ArenaTier): { width: number; height: number } => {
+    if (tier === 'skirmish') return { width: SKIRMISH_ARENA_W, height: SKIRMISH_ARENA_H };
+    if (tier === 'boss') return { width: BOSS_ARENA_W, height: BOSS_ARENA_H };
+    if (tier === 'war') return { width: WAR_ARENA_W, height: WAR_ARENA_H };
+    return { width: ARENA_W, height: ARENA_H }; // mythic_boss
+};
+
+export const isMythicBossEntity = (enemy?: Enemy | null): boolean => {
+    if (!enemy) return false;
+    const id = String(enemy.id || '').toLowerCase();
+    const name = String(enemy.name || '');
+    if (id.startsWith('mythicboss_') || id.startsWith('season_boss_') || id.startsWith('boss_') || id.includes('mythic') || id.includes('ella')) return true;
+    if ((enemy as any).isMythicBoss || (enemy as any).isSeasonalBoss) return true;
+    if (/절대신|태양의 사자|월광의 사자|마신|\[신화\]|\[성전 사자\]/.test(name)) return true;
+    if (Boolean((enemy as any).isBoss) && (((enemy as any).critResist || 0) >= 15 || (enemy.level || 0) >= 3000)) return true;
+    return false;
+};
 
 export type Bg3SurfaceType = 'water' | 'fire' | 'ice' | 'poison' | 'holy' | 'electrified';
 
@@ -55,6 +83,20 @@ export interface Bg3ActiveBuff {
     defMult?: number;
     turns: number;
     color: string;
+    icon?: string;
+    imageUrl?: string;
+    effectSummary?: string;
+    statBonuses?: Record<string, number>;
+}
+
+export interface Bg3StatusEffect {
+    name: string;
+    kind: 'dot' | 'cc' | 'debuff';
+    turns: number;
+    dotRatio?: number;
+    atkDebuffMult?: number;
+    defDebuffMult?: number;
+    color: string;
 }
 
 export interface Bg3Unit {
@@ -63,15 +105,30 @@ export interface Bg3Unit {
     team: 'ally' | 'enemy';
     isPlayer: boolean;
     isBoss: boolean;
+    isMythicBoss?: boolean;
+    isSummon?: boolean;
+    summonTurnsLeft?: number;
+    isDefending?: boolean;
     level: number;
     hp: number;
     maxHp: number;
     mp: number;
     maxMp: number;
+    shieldHp: number;
+    maxShieldHp: number;
+    breakGauge?: number;
+    maxBreakGauge?: number;
+    manaShieldRatio: number; // 0~0.6 (마나 쉴드: 피해의 일정 비율을 MP로 흡수)
+    passiveDmgRedPct: number;
+    passiveLifestealPct: number;
+    passiveReflectPct: number;
     atk: number;
     def: number;
+    str: number;
+    int: number;
     agi: number;
     wis: number;
+    ctrl: number;
     initiative: number; // AGI + WIS
     x: number;
     y: number;
@@ -80,6 +137,7 @@ export interface Bg3Unit {
     remainingMeters: number;
     attackRangeMeters: number;
     meleeThreatMeters: number;
+    weaponLabel: string;
     dir: SpriteDirection;
     hasAction: boolean;
     hasBonusAction: boolean;
@@ -89,12 +147,16 @@ export interface Bg3Unit {
     element: string;
     skills: Skill[];
     activeBuffs: Bg3ActiveBuff[];
+    activeStatuses: Bg3StatusEffect[];
     buffAtkMult: number;
     spriteUrl: string;
     regionKey: RpgSpriteRegionKey;
     genderKey: RpgSpriteGenderKey;
     visualUrl?: string;
     enemyTokenPart?: string;
+    mountName?: string;
+    mountVisualUrl?: string;
+    mountEntity?: Companion;
     sourceEntity: Character | Companion | Enemy;
     sourceCompanionId?: string;
 }
@@ -102,6 +164,7 @@ export interface Bg3Unit {
 export interface Bg3ArenaData {
     width: number;
     height: number;
+    arenaTier: Bg3ArenaTier;
     cultureKey: CityCultureKey;
     obstacles: Bg3Obstacle[];
     initialSurfaces: Bg3SurfacePool[];
@@ -110,10 +173,15 @@ export interface Bg3ArenaData {
 }
 
 export interface Bg3SkillTargeting {
-    shape: 'single' | 'circle' | 'cone';
+    shape: 'single' | 'circle' | 'cone' | 'square';
     rangeMeters: number;
     aoeRadiusMeters: number;
+    coneAngleDeg: number;
+    squareWidthMeters: number;
+    squareLengthMeters: number;
     isSupport: boolean;
+    isSummon: boolean;
+    isDebuff: boolean;
     isRanged: boolean;
     shinryokuType: string;
     vfxColor: string;
@@ -178,9 +246,11 @@ export const generateBg3Arena = (params: {
     title: string;
     subtitle: string;
     isLargeWar?: boolean;
+    arenaTier?: Bg3ArenaTier;
 }): Bg3ArenaData => {
-    const W = params.isLargeWar ? WAR_ARENA_W : ARENA_W;
-    const H = params.isLargeWar ? WAR_ARENA_H : ARENA_H;
+    const tier: Bg3ArenaTier = params.arenaTier || (params.isLargeWar ? 'war' : 'boss');
+    const { width: W, height: H } = getArenaDimensions(tier);
+    const isWar = tier === 'war';
     const cultureKey = resolveCityCultureKey(params.region, params.nation, params.city);
     const isMagye = cultureKey.startsWith('magye') || cultureKey === 'abyssalon';
     const isShingye = cultureKey.startsWith('shingye');
@@ -214,7 +284,7 @@ export const generateBg3Arena = (params: {
         { id: 'obs_chest', x: W * 0.92, y: H * 0.44, radius: 30, kind: 'chest', part: 'chest', blocksMovement: false, label: '전리품 상자' },
     ];
 
-    if (params.isLargeWar) {
+    if (isWar) {
         // 대규모 전쟁 전용 추가 전선 거점 (상·하부 요새 & 추가 바리케이드 & 숲)
         obstacles.push(
             { id: 'obs_war_fort_n1', x: W * 0.33, y: H * 0.30, radius: 56, kind: isShingye ? 'altar' : 'fort', part: isShingye ? 'altar' : 'fort', blocksMovement: false, label: '북부 전초 요새 (방어+20%)', defBonus: 20, healPct: 10 },
@@ -234,7 +304,7 @@ export const generateBg3Arena = (params: {
         { id: 'surf_init_1', x: W * 0.22, y: H * 0.62, radius: 96, type: isMagye ? 'fire' : 'water', turns: 99 },
         { id: 'surf_init_2', x: W * 0.78, y: H * 0.62, radius: 96, type: isMagye ? 'fire' : 'water', turns: 99 },
         { id: 'surf_init_3', x: W * 0.50, y: H * 0.32, radius: 88, type: isShingye ? 'holy' : isMagye ? 'fire' : 'water', turns: 99 },
-        ...(params.isLargeWar
+        ...(isWar
             ? [
                   { id: 'surf_war_1', x: W * 0.36, y: H * 0.48, radius: 92, type: (isMagye ? 'fire' : 'water') as Bg3SurfaceType, turns: 99 },
                   { id: 'surf_war_2', x: W * 0.64, y: H * 0.48, radius: 92, type: (isShingye ? 'holy' : 'water') as Bg3SurfaceType, turns: 99 }
@@ -242,7 +312,69 @@ export const generateBg3Arena = (params: {
             : [])
     ];
 
-    return { width: W, height: H, cultureKey, obstacles, initialSurfaces, title: params.title, subtitle: params.subtitle };
+    return { width: W, height: H, arenaTier: tier, cultureKey, obstacles, initialSurfaces, title: params.title, subtitle: params.subtitle };
+};
+
+/**
+ * 패시브 스킬 및 기존 statusEffects에서 전투 보정치(피해감소 · 흡혈 · 반사 · 실제 MP 비례 마나쉴드량) 정확 추출
+ */
+const extractPassiveCombatBonuses = (skills: Skill[], maxHp: number, maxMp: number, existingStatuses?: any[]) => {
+    let dmgRedPct = 0;
+    let lifestealPct = 0;
+    let reflectPct = 0;
+    let manaShieldRatio = 0;
+    let initialShieldHp = 0;
+
+    // 1. 기존 statusEffects에 이미 부여된 마나 쉴드 / 보호막 수치(val) 계승
+    if (Array.isArray(existingStatuses)) {
+        for (const st of existingStatuses) {
+            if (!st) continue;
+            const n = String(st.name || '');
+            if (/마나\s*쉴드|보호막|쉴드|shield|barrier/i.test(n) && (st.val || 0) > 0) {
+                initialShieldHp += Math.floor(st.val);
+            }
+        }
+    }
+
+    // 2. 패시브 스킬에서 실제 CombatUtils 공식(maxMp * ratio%)으로 마나 쉴드량 계산
+    for (const sk of skills || []) {
+        if (!sk) continue;
+        const txt = `${sk.name || ''} ${sk.description || ''} ${sk.effectFormula || ''}`;
+        const lower = txt.toLowerCase();
+        const msMatch = txt.match(/MANA_SHIELD\]\s*(\d+(?:\.\d+)?)%(?:\s*\(\+(\d+(?:\.\d+)?)%\s*per\s*Lv\))?/i);
+        if (msMatch) {
+            const base = parseFloat(msMatch[1] || '30');
+            const scale = parseFloat(msMatch[2] || '5');
+            const ratio = base + scale * (sk.level || 1);
+            initialShieldHp += Math.floor(maxMp * (ratio / 100));
+            manaShieldRatio = Math.max(manaShieldRatio, 0.35);
+        } else if (/마나\s*쉴드|마력\s*방벽|마나\s*장막|mana\s*shield/.test(lower) && sk.type === SkillType.PASSIVE) {
+            initialShieldHp += Math.floor(maxMp * (0.35 + (sk.level || 1) * 0.05));
+            manaShieldRatio = Math.max(manaShieldRatio, 0.35);
+        } else if (/보호막|방어막|실드|결계/.test(lower) && sk.type === SkillType.PASSIVE) {
+            initialShieldHp += Math.round(maxHp * 0.18);
+        }
+
+        if (sk.type === SkillType.PASSIVE && Array.isArray(sk.passiveEffects)) {
+            for (const pe of sk.passiveEffects) {
+                const t = String(pe.target || '').toLowerCase();
+                const val = Number(pe.value || 0);
+                if (t.includes('피해 감소') || t.includes('받는 피해')) dmgRedPct += val;
+                if (t.includes('흡혈') || t.includes('생명력 흡수')) lifestealPct += val;
+                if (t.includes('반사')) reflectPct += val;
+                if (t.includes('마나 쉴드') || t.includes('마나쉴드')) initialShieldHp += Math.floor((maxMp * val) / 100);
+                else if (t.includes('보호막')) initialShieldHp += Math.round((maxHp * val) / 100);
+            }
+        }
+    }
+
+    return {
+        passiveDmgRedPct: Math.min(60, dmgRedPct),
+        passiveLifestealPct: Math.min(40, lifestealPct),
+        passiveReflectPct: Math.min(35, reflectPct),
+        manaShieldRatio,
+        initialShieldHp
+    };
 };
 
 export const buildBg3AllyUnits = (
@@ -251,7 +383,8 @@ export const buildBg3AllyUnits = (
     region?: string,
     nation?: string,
     arenaW = ARENA_W,
-    arenaH = ARENA_H
+    arenaH = ARENA_H,
+    challengerCompanionId?: string
 ): Bg3Unit[] => {
     const makeUnit = (entity: Character | Companion, isPlayer: boolean, x: number, y: number): Bg3Unit => {
         const calc = calculateFinalStats(entity as any);
@@ -262,12 +395,32 @@ export const buildBg3AllyUnits = (
         const mp = Math.max(0, Math.min(maxMp, Math.floor(entity.stats?.mp || maxMp)));
         const atk = Math.max(20, Math.floor(Math.max(finalStats.str || 0, finalStats.int || 0) * 1.4 + (entity.level || 1) * 4));
         const def = Math.max(10, Math.floor((finalStats.def || 10) * 0.9 + (entity.level || 1) * 1.5));
+        const str = Math.max(10, Math.floor(finalStats.str || 20));
+        const intStat = Math.max(10, Math.floor(finalStats.int || 20));
         const agi = Math.max(10, Math.floor(finalStats.agi || 20));
         const wis = Math.max(10, Math.floor(finalStats.wis || 20));
+        const ctrl = Math.max(10, Math.floor(finalStats.ctrl || 20));
         const jobLabel = String(entity.job || '모험가');
         const mob = inferBg3Mobility(jobLabel, false, agi);
+        const weaponZone = resolveWeaponBasicAttackZone(entity);
         const sprite = resolveEntityRpgSprite(entity, region, nation);
-        const skills = getEntityAllCombatSkills(entity as any).filter(Boolean);
+        const allSkills = getEntityAllCombatSkills(entity as any).filter(Boolean);
+        const passiveBonuses = extractPassiveCombatBonuses(allSkills, maxHp, maxMp, (entity as any).statusEffects);
+        const skills = allSkills.filter(s => s.type !== SkillType.PASSIVE);
+        const activeMount = MountCombatService.getActiveMount(entity as any, player);
+        const validMount = activeMount && ((activeMount.stats?.hp ?? 1) > 0 && !activeMount.isDead) ? activeMount : undefined;
+        const resolveMountVisual = (m?: Companion): string | undefined => {
+            if (!m) return undefined;
+            const direct = (m as any).monsterData?.visualUrl || m.visualUrl || (m as any).imageUrl || (m as any).appearance;
+            if (typeof direct === 'string' && /^(https?:|data:|blob:|\/|\.\/|assets\/)/i.test(direct.trim())) {
+                return direct.trim();
+            }
+            const cleanName = (m.name || '').replace(/\(.*?\)|\[.*?\]/g, '').trim();
+            const preset = PRESET_ENEMIES.find(p => p.name && (p.name === cleanName || cleanName.includes(p.name) || p.name.includes(cleanName)));
+            return preset?.visualUrl;
+        };
+        const resolvedMountVisual = resolveMountVisual(validMount);
+        const maxBrk = getAllyMaxBreakGauge(player, entity as any);
 
         return {
             id: isPlayer ? 'bg3_player' : `bg3_comp_${entity.id}`,
@@ -280,18 +433,30 @@ export const buildBg3AllyUnits = (
             maxHp,
             mp,
             maxMp,
+            shieldHp: passiveBonuses.initialShieldHp,
+            maxShieldHp: Math.max(passiveBonuses.initialShieldHp, Math.round(maxHp * 0.35)),
+            breakGauge: maxBrk,
+            maxBreakGauge: maxBrk,
+            manaShieldRatio: passiveBonuses.manaShieldRatio,
+            passiveDmgRedPct: passiveBonuses.passiveDmgRedPct,
+            passiveLifestealPct: passiveBonuses.passiveLifestealPct,
+            passiveReflectPct: passiveBonuses.passiveReflectPct,
             atk,
             def,
+            str,
+            int: intStat,
             agi,
             wis,
+            ctrl,
             initiative: agi + wis,
             x,
             y,
             radius: 20,
             moveMeters: mob.moveMeters,
             remainingMeters: mob.moveMeters,
-            attackRangeMeters: mob.attackRangeMeters,
-            meleeThreatMeters: 2.2,
+            attackRangeMeters: weaponZone.rangeMeters,
+            meleeThreatMeters: weaponZone.isRanged ? 2.0 : Math.max(2.4, Math.min(3.8, weaponZone.rangeMeters)),
+            weaponLabel: weaponZone.weaponLabel,
             dir: 'up',
             hasAction: true,
             hasBonusAction: true,
@@ -301,7 +466,11 @@ export const buildBg3AllyUnits = (
             element: String((entity as any).shinryokuType || '무속성'),
             skills,
             activeBuffs: [],
+            activeStatuses: [],
             buffAtkMult: 1,
+            mountName: validMount?.name,
+            mountVisualUrl: resolvedMountVisual,
+            mountEntity: validMount,
             spriteUrl: sprite.url,
             regionKey: sprite.regionKey,
             genderKey: sprite.genderKey,
@@ -310,6 +479,13 @@ export const buildBg3AllyUnits = (
             sourceCompanionId: isPlayer ? undefined : entity.id
         };
     };
+
+    if (challengerCompanionId) {
+        const challenger = (player.companions || []).find(c => c.id === challengerCompanionId) || selectedCompanions.find(c => c.id === challengerCompanionId);
+        if (challenger) {
+            return [makeUnit(challenger, false, arenaW * 0.5, arenaH - 220)];
+        }
+    }
 
     const result: Bg3Unit[] = [makeUnit(player, true, arenaW * 0.5, arenaH - 220)];
     const positions: Array<[number, number]> = [
@@ -355,10 +531,25 @@ export const buildBg3EnemyUnits = (
     ];
 
     return ordered.slice(0, 8).map((enemy, idx) => {
-        const isBoss = idx === 0 && (bossIdx >= 0 || ordered.length === 1 || (enemy.maxHp || 0) >= 3000);
+        const isMythic = isMythicBossEntity(enemy);
+        const isNamedBoss = Boolean((enemy as any).isBoss) || Boolean(enemy.name && /\[보스\]|\[BOSS\]|\[성전 사자\]|\[반역\]|\[국가 지도자\]|\[마신\]/.test(enemy.name));
+        const isBoss = isMythic || isNamedBoss;
         const [x, y] = positions[idx] || [arenaW * 0.5, 240];
-        const maxHp = Math.max(80, Math.floor(enemy.maxHp || enemy.hp || 500));
-        const hp = Math.max(1, Math.min(maxHp, Math.floor(enemy.hp || maxHp)));
+        let calcFinalMaxHp = 0;
+        try {
+            calcFinalMaxHp = calculateFinalStats(enemy as any)?.finalStats?.maxHp || 0;
+        } catch {
+            calcFinalMaxHp = 0;
+        }
+        const maxHp = Math.max(80, Math.floor(enemy.maxHp || 0), Math.floor(enemy.stats?.maxHp || 0), Math.floor(calcFinalMaxHp), Math.floor(enemy.hp || 500));
+        // 전투 등장 시 몬스터는 항상 최대 HP(100%)로 완충되어 등장!
+        const hp = maxHp;
+        const syncedEnemy: Enemy = {
+            ...enemy,
+            hp: maxHp,
+            maxHp,
+            stats: enemy.stats ? { ...enemy.stats, hp: maxHp, maxHp } : undefined
+        };
         const rawAtk = (enemy as any).attack ?? enemy.stats?.str ?? enemy.stats?.int ?? 40;
         const rawDef = (enemy as any).defense ?? enemy.stats?.def ?? 15;
         const atk = Math.max(20, Math.floor(rawAtk * 1.15));
@@ -366,35 +557,51 @@ export const buildBg3EnemyUnits = (
         const agi = Math.max(10, Math.floor((enemy as any).agi || (enemy.level || 1) * 1.1 + 15));
         const wis = Math.max(10, Math.floor((enemy as any).wis || (enemy.level || 1) * 1.0 + 14));
         const mob = inferBg3Mobility(enemy.name || '', isBoss, agi);
+        const weaponZone = resolveWeaponBasicAttackZone(enemy);
+        const passiveBonuses = extractPassiveCombatBonuses(enemy.skills || [], maxHp, (enemy.stats?.maxMp || 1000), (enemy as any).statusEffects);
         const sprite = resolveEntityRpgSprite(
             { id: enemy.id || `enemy_${idx}`, name: enemy.name, gender: idx % 2 === 0 ? 'male' : 'female' },
             region,
             nation
         );
 
+        const maxBrk = getEnemyMaxBreakGauge(enemy);
         return {
             id: `bg3_enemy_${enemy.id || idx}`,
             name: enemy.name || `적군 ${idx + 1}`,
             team: 'enemy',
             isPlayer: false,
             isBoss,
+            isMythicBoss: isMythic,
             level: enemy.level || 1,
             hp,
             maxHp,
             mp: 100,
             maxMp: 100,
+            shieldHp: passiveBonuses.initialShieldHp,
+            maxShieldHp: Math.max(passiveBonuses.initialShieldHp, Math.round(maxHp * 0.25)),
+            breakGauge: maxBrk,
+            maxBreakGauge: maxBrk,
+            manaShieldRatio: passiveBonuses.manaShieldRatio,
+            passiveDmgRedPct: passiveBonuses.passiveDmgRedPct,
+            passiveLifestealPct: passiveBonuses.passiveLifestealPct,
+            passiveReflectPct: passiveBonuses.passiveReflectPct,
             atk,
             def,
+            str: Math.max(10, Math.floor((enemy as any).stats?.str || rawAtk)),
+            int: Math.max(10, Math.floor((enemy as any).stats?.int || rawAtk)),
             agi,
             wis,
+            ctrl: Math.max(10, Math.floor((enemy as any).stats?.ctrl || (enemy.level || 1) * 1.0 + 10)),
             initiative: agi + wis,
             x,
             y,
             radius: isBoss ? 26 : 20,
             moveMeters: mob.moveMeters,
             remainingMeters: mob.moveMeters,
-            attackRangeMeters: mob.attackRangeMeters,
-            meleeThreatMeters: isBoss ? 2.8 : 2.1,
+            attackRangeMeters: Math.max(mob.attackRangeMeters, weaponZone.rangeMeters),
+            meleeThreatMeters: isBoss ? 3.2 : 2.3,
+            weaponLabel: weaponZone.weaponLabel,
             dir: 'down',
             hasAction: true,
             hasBonusAction: true,
@@ -402,15 +609,16 @@ export const buildBg3EnemyUnits = (
             stunnedTurns: 0,
             jobLabel: isBoss ? '보스 / 총사령관' : '적 정예병',
             element: String((enemy as any).element || (enemy as any).shinryokuType || '무속성'),
-            skills: (enemy.skills || []).slice(0, 6),
+            skills: (enemy.skills || []).filter(s => s.type !== SkillType.PASSIVE).slice(0, 6),
             activeBuffs: [],
+            activeStatuses: [],
             buffAtkMult: 1,
             spriteUrl: sprite.url,
             regionKey: sprite.regionKey,
             genderKey: sprite.genderKey,
             visualUrl: enemy.visualUrl,
             enemyTokenPart: inferEnemyTokenPart(enemy.name || '', isBoss, region, idx),
-            sourceEntity: enemy
+            sourceEntity: syncedEnemy
         };
     });
 };
@@ -444,47 +652,327 @@ export const getBg3SharedAllyGroup = (order: string[], curIdx: number, units: Bg
 };
 
 /**
- * BG3 스킬 조준 형태 & 속성 VFX 테마 판별
+ * BG3 스킬 조준 형태 (단일 TargetRadius / 광역 Cone · Square · Target) & 무기별 일반공격 범위 판별
  */
 export const getBg3SkillTargeting = (unit: Bg3Unit, skill: Skill | null): Bg3SkillTargeting => {
     const text = `${skill?.name || ''} ${skill?.description || ''} ${unit.element || ''}`.toLowerCase();
-    let shinryokuType = '무속성';
-    let vfxColor = '#f59e0b';
-    if (/화염|불|염|태양|피닉스|flame|fire|sun/.test(text)) { shinryokuType = '화염계'; vfxColor = '#f97316'; }
-    else if (/전격|번개|뇌|볼트|천둥|lightning|thunder/.test(text)) { shinryokuType = '전격계'; vfxColor = '#38bdf8'; }
-    else if (/빙결|얼음|서리|눈|블리자드|ice|frost/.test(text)) { shinryokuType = '빙결계'; vfxColor = '#67e8f9'; }
-    else if (/해수|물|파도|오션|water|ocean/.test(text)) { shinryokuType = '해수계'; vfxColor = '#0ea5e9'; }
-    else if (/초화|독|맹독|베놈|자연|숲|flora|poison/.test(text)) { shinryokuType = '초화계'; vfxColor = '#4ade80'; }
-    else if (/광휘|빛|성|신성|태초|light|holy/.test(text)) { shinryokuType = '광휘계'; vfxColor = '#fde047'; }
-    else if (/암연|어둠|심연|그림자|저주|dark|abyss|shadow/.test(text)) { shinryokuType = '암연계'; vfxColor = '#c084fc'; }
-    else if (/질풍|바람|폭풍|wind|storm/.test(text)) { shinryokuType = '질풍계'; vfxColor = '#2dd4bf'; }
-    else if (/강철|철|대지|지령|steel|earth/.test(text)) { shinryokuType = '강철계'; vfxColor = '#cbd5e1'; }
+    let shinryokuType = (skill as any)?.shinryokuType || '무속성';
+    let vfxColor = skill?.vfxColor || '#f59e0b';
+    if (!skill?.vfxColor) {
+        if (/화염|불|염|태양|피닉스|flame|fire|sun/.test(text)) { shinryokuType = '화염계'; vfxColor = '#f97316'; }
+        else if (/전격|번개|뇌|볼트|천둥|lightning|thunder/.test(text)) { shinryokuType = '전격계'; vfxColor = '#38bdf8'; }
+        else if (/빙결|얼음|서리|눈|블리자드|ice|frost/.test(text)) { shinryokuType = '빙결계'; vfxColor = '#67e8f9'; }
+        else if (/해수|물|파도|오션|water|ocean/.test(text)) { shinryokuType = '해수계'; vfxColor = '#0ea5e9'; }
+        else if (/초화|독|맹독|베놈|자연|숲|flora|poison/.test(text)) { shinryokuType = '초화계'; vfxColor = '#4ade80'; }
+        else if (/광휘|빛|성|신성|태초|light|holy/.test(text)) { shinryokuType = '광휘계'; vfxColor = '#fde047'; }
+        else if (/암연|어둠|심연|그림자|저주|dark|abyss|shadow/.test(text)) { shinryokuType = '암연계'; vfxColor = '#c084fc'; }
+        else if (/질풍|바람|폭풍|wind|storm/.test(text)) { shinryokuType = '질풍계'; vfxColor = '#2dd4bf'; }
+        else if (/강철|철|대지|지령|steel|earth/.test(text)) { shinryokuType = '강철계'; vfxColor = '#cbd5e1'; }
+    }
 
+    // 일반공격: 장착 무기별 고유 사거리 유지, 타겟팅은 항상 단일(single)로 1명만 정확히 공격!
     if (!skill) {
+        const wep = resolveWeaponBasicAttackZone(unit.sourceEntity);
         return {
             shape: 'single',
-            rangeMeters: unit.attackRangeMeters,
+            rangeMeters: wep.rangeMeters,
             aoeRadiusMeters: 0,
+            coneAngleDeg: 60,
+            squareWidthMeters: 0,
+            squareLengthMeters: 0,
             isSupport: false,
-            isRanged: unit.attackRangeMeters >= 3.5,
+            isSummon: false,
+            isDebuff: false,
+            isRanged: wep.isRanged,
             shinryokuType,
             vfxColor
         };
     }
 
+    // [FIX] 물리/마법/버프/디버프/회복 스킬 설명에 '소환' 단어가 들어있어도 소환 스킬로 오인하지 않도록 명시적 타입/플래그만 판정!
+    const isExplicitNonSummon =
+        skill.type === SkillType.PHYSICAL ||
+        skill.type === SkillType.MAGIC ||
+        skill.type === SkillType.BUFF ||
+        skill.type === SkillType.DEBUFF ||
+        skill.type === SkillType.HEAL;
+    const isSummon = Boolean(
+        skill.type === SkillType.SUMMON ||
+            skill.type === SkillType.CLONE ||
+            skill.isSummonSkill ||
+            (!isExplicitNonSummon && /분신술|소환수|정령\s*소환|사역마\s*소환/.test(text))
+    );
     const isSupport = skill.type === SkillType.HEAL || skill.type === SkillType.BUFF;
-    const isAoe = Boolean((skill as any).isAoe || /전체|광역|범위|폭발|메테오|폭풍|파동|일섬|브레스|비|대지/.test(text));
-    const isCone = /브레스|파동|베기|참격|선풍|부채/.test(text) && isAoe;
+    const isDebuff = skill.type === SkillType.DEBUFF;
+
+    if (isSummon) {
+        return {
+            shape: 'circle',
+            rangeMeters: 9.0,
+            aoeRadiusMeters: 2.2,
+            coneAngleDeg: 60,
+            squareWidthMeters: 0,
+            squareLengthMeters: 0,
+            isSupport: false,
+            isSummon: true,
+            isDebuff: false,
+            isRanged: true,
+            shinryokuType,
+            vfxColor: '#38bdf8'
+        };
+    }
+
+    const eff = resolveEffectiveSkillZone(skill);
+    // 장착 무기 기본 사거리를 기준으로 스킬 범위(TargetRadius / ConeLength / SquareLength)에 합산!
+    const wepBonusMeters = resolveWeaponBasicAttackZone(unit.sourceEntity).rangeMeters;
+
+    // 보스 / 신화 보스 몬스터 전용 대형 광역 스킬 범위 자동 승격 & 확장!
+    if (unit.isBoss && !skill.zoneConfig && !isSupport) {
+        const isMyth = Boolean(unit.isMythicBoss);
+        if (/브레스|포효|참격|베기|선풍|파도|날개|폭풍/.test(text)) {
+            return {
+                shape: 'cone',
+                rangeMeters: isMyth ? 24 : 16,
+                aoeRadiusMeters: 0,
+                coneAngleDeg: isMyth ? 135 : 100,
+                squareWidthMeters: 0,
+                squareLengthMeters: 0,
+                isSupport: false,
+                isSummon: false,
+                isDebuff,
+                isRanged: true,
+                shinryokuType,
+                vfxColor
+            };
+        }
+        if (/진격|돌진|창|일섬|관통|광선|레이저|빔|낙뢰|연격/.test(text)) {
+            return {
+                shape: 'square',
+                rangeMeters: isMyth ? 26 : 18,
+                aoeRadiusMeters: 0,
+                coneAngleDeg: 60,
+                squareWidthMeters: isMyth ? 11 : 7,
+                squareLengthMeters: isMyth ? 26 : 18,
+                isSupport: false,
+                isSummon: false,
+                isDebuff,
+                isRanged: true,
+                shinryokuType,
+                vfxColor
+            };
+        }
+        if (/영역|소멸|정화|소용돌이|붕괴|지진|폭발|버스트|메테오|군림|심판|파멸|대지/.test(text) || eff.isAoe) {
+            return {
+                shape: 'circle',
+                rangeMeters: isMyth ? 28 : 20,
+                aoeRadiusMeters: isMyth ? 11.5 : 7.5,
+                coneAngleDeg: 60,
+                squareWidthMeters: 0,
+                squareLengthMeters: 0,
+                isSupport: false,
+                isSummon: false,
+                isDebuff,
+                isRanged: true,
+                shinryokuType,
+                vfxColor
+            };
+        }
+    }
+
+    const shape: Bg3SkillTargeting['shape'] =
+        eff.zoneType === 'cone'
+            ? 'cone'
+            : eff.zoneType === 'square'
+            ? 'square'
+            : eff.zoneType === 'target'
+            ? 'circle'
+            : 'single';
+
+    const rangeMeters =
+        shape === 'cone'
+            ? +(eff.coneLength + wepBonusMeters).toFixed(1)
+            : shape === 'square'
+            ? +(eff.squareLength + wepBonusMeters).toFixed(1)
+            : +(eff.targetRadius + wepBonusMeters).toFixed(1);
 
     return {
-        shape: isCone ? 'cone' : isAoe ? 'circle' : 'single',
-        rangeMeters: isSupport ? 14.0 : isCone ? 10.5 : Math.max(unit.attackRangeMeters, skill.type === SkillType.MAGIC ? 14.5 : 5.5),
-        aoeRadiusMeters: isAoe ? 5.2 : 0,
+        shape,
+        rangeMeters,
+        aoeRadiusMeters: shape === 'circle' ? eff.areaRadius : 0,
+        coneAngleDeg: eff.coneAngle,
+        squareWidthMeters: eff.squareWidth,
+        squareLengthMeters: +(eff.squareLength + wepBonusMeters).toFixed(1),
         isSupport,
-        isRanged: isSupport || skill.type === SkillType.MAGIC || isAoe || unit.attackRangeMeters >= 4.2,
+        isSummon: false,
+        isDebuff,
+        isRanged: isSupport || isDebuff || skill.type === SkillType.MAGIC || shape === 'circle' || rangeMeters >= 5.5,
         shinryokuType,
         vfxColor
     };
+};
+
+/**
+ * Square(회전 직사각형 OBB) 내부 피격 판정
+ */
+export const isPointInSquareZone = (
+    casterX: number,
+    casterY: number,
+    aimX: number,
+    aimY: number,
+    widthPx: number,
+    lengthPx: number,
+    px: number,
+    py: number,
+    padPx = 14
+): boolean => {
+    const ang = Math.atan2(aimY - casterY, aimX - casterX);
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    const dx = px - casterX;
+    const dy = py - casterY;
+    const forward = dx * cos + dy * sin;
+    const lateral = Math.abs(-dx * sin + dy * cos);
+    return forward >= -padPx && forward <= lengthPx + padPx && lateral <= widthPx * 0.5 + padPx;
+};
+
+/**
+ * Cone(가변 길이 · 가변 각도) 내부 피격 판정
+ */
+export const isPointInConeZone = (
+    casterX: number,
+    casterY: number,
+    aimX: number,
+    aimY: number,
+    lengthPx: number,
+    angleDeg: number,
+    px: number,
+    py: number,
+    padPx = 14
+): boolean => {
+    const d = distPx(casterX, casterY, px, py);
+    if (d > lengthPx + padPx) return false;
+    const aimAng = Math.atan2(aimY - casterY, aimX - casterX);
+    let diff = Math.atan2(py - casterY, px - casterX) - aimAng;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    const halfRad = ((angleDeg * Math.PI) / 180) * 0.5;
+    return Math.abs(diff) <= halfRad + 0.12;
+};
+
+/**
+ * 보호막(Shield) 및 마나 쉴드(MP 흡수) + 패시브 피해 감소 통합 계산
+ */
+export const absorbBg3ShieldAndMana = (
+    unit: Bg3Unit,
+    rawDamage: number
+): { hpDamage: number; shieldAbsorbed: number; mpAbsorbed: number; nextShieldHp: number; nextMp: number } => {
+    let rem = Math.max(1, Math.round(rawDamage * (1 - (unit.passiveDmgRedPct || 0) / 100)));
+    let shieldAbsorbed = 0;
+    let mpAbsorbed = 0;
+    let nextShieldHp = unit.shieldHp || 0;
+    let nextMp = unit.mp || 0;
+
+    // 1. 일반 보호막 우선 흡수
+    if (nextShieldHp > 0 && rem > 0) {
+        shieldAbsorbed = Math.min(nextShieldHp, rem);
+        nextShieldHp -= shieldAbsorbed;
+        rem -= shieldAbsorbed;
+    }
+
+    // 2. 마나 쉴드(MP로 잔여 피해 일부 흡수)
+    if ((unit.manaShieldRatio || 0) > 0 && nextMp > 0 && rem > 0) {
+        const wantAbsorb = Math.round(rem * unit.manaShieldRatio);
+        const mpNeeded = Math.max(1, Math.round(wantAbsorb * 0.25));
+        const actualMp = Math.min(nextMp, mpNeeded);
+        mpAbsorbed = Math.min(rem, Math.round(actualMp * 4));
+        nextMp -= actualMp;
+        rem = Math.max(0, rem - mpAbsorbed);
+    }
+
+    return { hpDamage: rem, shieldAbsorbed, mpAbsorbed, nextShieldHp, nextMp };
+};
+
+/**
+ * 소환 스킬 / 닌자 분신 스킬 시전 시 전장에 독립 아군 Bg3Unit 실체화
+ */
+export const createBg3SummonUnits = (
+    caster: Bg3Unit,
+    skill: Skill,
+    spawnX: number,
+    spawnY: number,
+    arenaW: number,
+    arenaH: number
+): Bg3Unit[] => {
+    const sData = skill.summonData;
+    const isNinjaClone = skill.type === SkillType.CLONE || /분신/.test(skill.name || '');
+    const tierStr = String(skill.tier || '').toUpperCase();
+    const maxClones = isNinjaClone ? (tierStr.includes('FINAL') ? 5 : tierStr.includes('LAST') ? 3 : 2) : 3;
+    const count = Math.max(1, Math.min(maxClones, sData?.summonCount || (isNinjaClone ? 2 : 1)));
+    const statMult = isNinjaClone
+        ? (tierStr.includes('FINAL') ? 0.65 : tierStr.includes('LAST') ? 0.5 : 0.35)
+        : (sData?.powerLevel === 'high' ? 0.75 : sData?.powerLevel === 'medium' ? 0.55 : 0.4);
+    const duration = Math.max(2, Math.min(6, sData?.durationTurns || 3));
+    const baseName = sData?.summonName || (isNinjaClone ? `${caster.name}의 분신` : `${caster.name}의 소환수`);
+
+    const spawned: Bg3Unit[] = [];
+    for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count;
+        const sx = Math.max(54, Math.min(arenaW - 54, spawnX + Math.cos(angle) * (count > 1 ? 48 : 0)));
+        const sy = Math.max(54, Math.min(arenaH - 54, spawnY + Math.sin(angle) * (count > 1 ? 48 : 0)));
+        const maxHp = Math.max(200, Math.round(caster.maxHp * statMult));
+        spawned.push({
+            ...caster,
+            id: `bg3_summon_${Date.now()}_${i}_${Math.floor(Math.random() * 999)}`,
+            name: count > 1 ? `${baseName} #${i + 1}` : baseName,
+            isPlayer: false,
+            isBoss: false,
+            isSummon: true,
+            summonTurnsLeft: duration,
+            hp: maxHp,
+            maxHp,
+            mp: Math.round(caster.maxMp * 0.5),
+            maxMp: Math.round(caster.maxMp * 0.5),
+            shieldHp: 0,
+            maxShieldHp: Math.round(maxHp * 0.2),
+            atk: Math.max(30, Math.round(caster.atk * statMult)),
+            def: Math.max(15, Math.round(caster.def * statMult)),
+            x: sx,
+            y: sy,
+            hasAction: true,
+            hasBonusAction: true,
+            hasReaction: true,
+            remainingMeters: caster.moveMeters,
+            jobLabel: isNinjaClone ? '닌자 분신' : '소환수',
+            visualUrl: sData?.summonImageUrl || caster.visualUrl,
+            mountName: undefined,
+            mountVisualUrl: undefined,
+            mountEntity: undefined,
+            activeBuffs: [],
+            activeStatuses: [],
+            // 닌자 분신은 정규 ninjaCloneService 규칙에 따라 일반 공격 전용!
+            skills: isNinjaClone ? [] : caster.skills.filter(s => s.type !== SkillType.SUMMON && s.type !== SkillType.CLONE).slice(0, 3)
+        });
+    }
+    return spawned;
+};
+
+/**
+ * 스킬에서 상태이상(화상/중독/출혈/빙결/기절/속박/디버프) 자동 추출
+ */
+export const extractStatusEffectsFromSkill = (skill: Skill | null): Bg3StatusEffect[] => {
+    if (!skill) return [];
+    const txt = `${skill.name || ''} ${skill.description || ''} ${skill.effectFormula || ''}`;
+    const list: Bg3StatusEffect[] = [];
+    if (/화상/.test(txt)) list.push({ name: '화상', kind: 'dot', turns: 2, dotRatio: 0.06, color: '#f97316' });
+    if (/중독|맹독/.test(txt)) list.push({ name: '중독', kind: 'dot', turns: 3, dotRatio: 0.05, color: '#4ade80' });
+    if (/출혈/.test(txt)) list.push({ name: '출혈', kind: 'dot', turns: 2, dotRatio: 0.06, color: '#f43f5e' });
+    if (/기절|스턴/.test(txt)) list.push({ name: '기절', kind: 'cc', turns: 1, color: '#fbbf24' });
+    if (/빙결|동결/.test(txt)) list.push({ name: '빙결', kind: 'cc', turns: 1, color: '#67e8f9' });
+    if (/속박/.test(txt)) list.push({ name: '속박', kind: 'cc', turns: 1, color: '#a78bfa' });
+    if (skill.type === SkillType.DEBUFF || (skill.debuffEffects && skill.debuffEffects.length > 0)) {
+        list.push({ name: '약화', kind: 'debuff', turns: 3, atkDebuffMult: 0.82, defDebuffMult: 0.82, color: '#c084fc' });
+    }
+    return list;
 };
 
 /**
@@ -545,9 +1033,12 @@ export const calculateBg3Damage = (
     hitChance: number;
     comboName: string | null;
     stunsTarget: boolean;
+    affinityEffect?: string;
+    additionalLogs?: string[];
 } => {
     const base = calculateDamage(attacker.sourceEntity, defender.sourceEntity, skill || undefined, playerCharacter);
     const extra = (base.additionalDamage || []).reduce((sum, a) => sum + (a.damage || 0), 0);
+    const additionalLogs = (base.additionalDamage || []).map(a => a.log).filter(Boolean) as string[];
     let dmg = Math.max(1, (base.damage || 1) + extra);
 
     // 장애물(숲/요새) 보너스
@@ -579,7 +1070,25 @@ export const calculateBg3Damage = (
         comboMult = 1.4;
     }
 
-    dmg = Math.max(1, Math.round(dmg * (attacker.buffAtkMult || 1) * (1 - defBonus / 150) * comboMult));
+    // 버프/디버프 상태이상 & 방어 태세 배율 실반영
+    const atkDebuff = (attacker.activeStatuses || []).reduce((m, s) => m * (s.atkDebuffMult || 1), 1);
+    const defDebuff = (defender.activeStatuses || []).reduce((m, s) => m * (s.defDebuffMult || 1), 1);
+    const defBuff = (defender.activeBuffs || []).reduce((m, b) => m * (b.defMult || 1), 1);
+    const defendMult = defender.isDefending ? 0.55 : 1.0;
+
+    dmg = Math.max(
+        1,
+        Math.round(
+            dmg *
+                (attacker.buffAtkMult || 1) *
+                atkDebuff *
+                (1 / Math.max(0.5, defDebuff)) *
+                (1 / Math.max(0.5, defBuff)) *
+                defendMult *
+                (1 - defBonus / 150) *
+                comboMult
+        )
+    );
     const hitChance = Math.max(55, Math.min(100, Math.round(93 + (attacker.agi - defender.agi) * 0.35 - evaBonus)));
 
     return {
@@ -588,7 +1097,9 @@ export const calculateBg3Damage = (
         isMiss: base.isMiss,
         hitChance,
         comboName,
-        stunsTarget
+        stunsTarget,
+        affinityEffect: (base as any).affinityEffect,
+        additionalLogs
     };
 };
 

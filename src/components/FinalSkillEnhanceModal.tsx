@@ -3,6 +3,7 @@ import { Character, Companion, Skill, SkillType, ClassTier } from '../types';
 import { X, Sparkles, Sword, Shield, Skull, Zap, ChevronRight, CheckCircle2, AlertCircle, ArrowLeft, Plus, RotateCcw } from 'lucide-react';
 import { getNextAvailableFinalSkillSlot } from '../services/finalClassLevelScalingService';
 import { calculateEnhancedSkillMpCost, MP_REDUCTION_PER_LEVEL_PER_STACK } from '../services/aoeSkillEnhanceService';
+import { getZoneCapsForTier, resolveEffectiveSkillZone } from '../services/skillZoneService';
 
 const BUFF_SLOT_OPTIONS = [
     { key: 'STR', label: 'STR +15%' },
@@ -130,6 +131,7 @@ export const FinalSkillEnhanceModal: React.FC<Props> = ({
     const [extraElementalElement, setExtraElementalElement] = useState<string>('화염계');
     const [extraConditionType, setExtraConditionType] = useState<string>('체력 50% 이하 시 받는 피해 20% 감소');
     const [extraBuffZoneType, setExtraBuffZoneType] = useState<'HP' | 'MP'>('HP');
+    const [extraZoneAxis, setExtraZoneAxis] = useState<'targetRadius' | 'coneLength' | 'coneAngle' | 'squareWidth' | 'squareLength' | 'areaRadius'>('targetRadius');
     const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
 
     // 모달이 열리거나 대상 티어가 바뀔 때 선택 상태 초기화
@@ -316,6 +318,33 @@ export const FinalSkillEnhanceModal: React.FC<Props> = ({
         };
 
         let updatedSkillMpCost = selectedSkill.mpCost;
+
+        // 0-B. BG3 전장 스킬 범위 확장 강화 (공격/버프/디버프 공통 · 위력 감소 패널티 없음 · 상한 돌파)
+        if (selectedOption === 'zone_range_expand') {
+            const zCaps = getZoneCapsForTier(tierConfig.tierKey);
+            const effZ = resolveEffectiveSkillZone(selectedSkill);
+            if (!effZ.isAoe) {
+                nextEnhanceData.targetRadiusBonus = (nextEnhanceData.targetRadiusBonus || 0) + zCaps.enhanceStepMeters;
+            } else if (effZ.zoneType === 'cone') {
+                if (extraZoneAxis === 'coneAngle') {
+                    nextEnhanceData.coneAngleBonus = (nextEnhanceData.coneAngleBonus || 0) + zCaps.enhanceStepAngle;
+                } else {
+                    nextEnhanceData.coneLengthBonus = (nextEnhanceData.coneLengthBonus || 0) + zCaps.enhanceStepMeters;
+                }
+            } else if (effZ.zoneType === 'square') {
+                if (extraZoneAxis === 'squareWidth') {
+                    nextEnhanceData.squareWidthBonus = (nextEnhanceData.squareWidthBonus || 0) + zCaps.enhanceStepMeters;
+                } else {
+                    nextEnhanceData.squareLengthBonus = (nextEnhanceData.squareLengthBonus || 0) + zCaps.enhanceStepMeters;
+                }
+            } else {
+                if (extraZoneAxis === 'areaRadius') {
+                    nextEnhanceData.areaRadiusBonus = (nextEnhanceData.areaRadiusBonus || 0) + Math.max(1, Math.round(zCaps.enhanceStepMeters * 0.7));
+                } else {
+                    nextEnhanceData.targetRadiusBonus = (nextEnhanceData.targetRadiusBonus || 0) + zCaps.enhanceStepMeters;
+                }
+            }
+        }
 
         // 0. 공통 MP 소모 감소 강화 (공격/버프/디버프)
         if (selectedOption === 'mp_cost_reduction') {
@@ -1236,6 +1265,88 @@ export const FinalSkillEnhanceModal: React.FC<Props> = ({
                                      </label>
                                  </div>
                              )}
+
+                            {/* [공통] BG3 전장 스킬 범위 확장 강화 (단일: TargetRadius / 광역: Zone별 원하는 축 강화 · 위력 패널티 없음) */}
+                            {(isAttack || isBuff || isDebuff) && (() => {
+                                const effZ = resolveEffectiveSkillZone(selectedSkill);
+                                const zCaps = getZoneCapsForTier(tierConfig.tierKey);
+                                const areaStep = Math.max(1, Math.round(zCaps.enhanceStepMeters * 0.7));
+                                return (
+                                    <label
+                                        onClick={() => {
+                                            setSelectedOption('zone_range_expand');
+                                            if (!effZ.isAoe) setExtraZoneAxis('targetRadius');
+                                            else if (effZ.zoneType === 'cone' && extraZoneAxis !== 'coneLength' && extraZoneAxis !== 'coneAngle') setExtraZoneAxis('coneLength');
+                                            else if (effZ.zoneType === 'square' && extraZoneAxis !== 'squareWidth' && extraZoneAxis !== 'squareLength') setExtraZoneAxis('squareLength');
+                                            else if (effZ.zoneType === 'target' && extraZoneAxis !== 'targetRadius' && extraZoneAxis !== 'areaRadius') setExtraZoneAxis('areaRadius');
+                                        }}
+                                        className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition-all mb-2 ${
+                                            selectedOption === 'zone_range_expand'
+                                                ? 'bg-sky-950/50 border-sky-400 text-sky-100'
+                                                : 'bg-slate-950/70 border-sky-800/60 hover:border-sky-600 text-slate-300'
+                                        }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="enhance_option"
+                                            checked={selectedOption === 'zone_range_expand'}
+                                            onChange={() => setSelectedOption('zone_range_expand')}
+                                            className="mt-1 text-sky-400 focus:ring-0"
+                                        />
+                                        <div className="flex-1 min-w-0 space-y-1.5">
+                                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                                                <span className="text-xs font-black text-sky-300">🎯 스킬 범위 확장 강화 (BG3 전장)</span>
+                                                <span className="text-[10px] text-emerald-300 font-bold bg-emerald-950/70 px-1.5 py-0.5 rounded border border-emerald-500/40">
+                                                    위력 감소 없음 · 상한 돌파
+                                                </span>
+                                            </div>
+                                            {!effZ.isAoe ? (
+                                                <p className="text-[11px] text-slate-300">
+                                                    단일 스킬 사거리(TargetRadius): <strong className="text-sky-300">{effZ.targetRadius}m → {effZ.targetRadius + zCaps.enhanceStepMeters}m (+{zCaps.enhanceStepMeters}m)</strong>
+                                                </p>
+                                            ) : (
+                                                <div className="space-y-1.5">
+                                                    <p className="text-[11px] text-slate-400">
+                                                        현재 광역 Zone: <strong className="text-sky-300 uppercase">{effZ.zoneType}</strong> — 강화할 범위 항목을 선택하세요:
+                                                    </p>
+                                                    <div className="grid grid-cols-2 gap-1.5" onClick={e => e.stopPropagation()}>
+                                                        {effZ.zoneType === 'cone' && (
+                                                            <>
+                                                                <button type="button" onClick={() => { setSelectedOption('zone_range_expand'); setExtraZoneAxis('coneLength'); }} className={`py-1.5 px-2 rounded text-[11px] font-bold border ${selectedOption === 'zone_range_expand' && extraZoneAxis === 'coneLength' ? 'bg-sky-600 border-sky-300 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
+                                                                    Cone 길이 {effZ.coneLength}m → {effZ.coneLength + zCaps.enhanceStepMeters}m
+                                                                </button>
+                                                                <button type="button" onClick={() => { setSelectedOption('zone_range_expand'); setExtraZoneAxis('coneAngle'); }} className={`py-1.5 px-2 rounded text-[11px] font-bold border ${selectedOption === 'zone_range_expand' && extraZoneAxis === 'coneAngle' ? 'bg-sky-600 border-sky-300 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
+                                                                    Cone 각도 {effZ.coneAngle}° → {Math.min(220, effZ.coneAngle + zCaps.enhanceStepAngle)}°
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        {effZ.zoneType === 'square' && (
+                                                            <>
+                                                                <button type="button" onClick={() => { setSelectedOption('zone_range_expand'); setExtraZoneAxis('squareWidth'); }} className={`py-1.5 px-2 rounded text-[11px] font-bold border ${selectedOption === 'zone_range_expand' && extraZoneAxis === 'squareWidth' ? 'bg-sky-600 border-sky-300 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
+                                                                    Square 가로 {effZ.squareWidth}m → {effZ.squareWidth + zCaps.enhanceStepMeters}m
+                                                                </button>
+                                                                <button type="button" onClick={() => { setSelectedOption('zone_range_expand'); setExtraZoneAxis('squareLength'); }} className={`py-1.5 px-2 rounded text-[11px] font-bold border ${selectedOption === 'zone_range_expand' && extraZoneAxis === 'squareLength' ? 'bg-sky-600 border-sky-300 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
+                                                                    Square 세로 {effZ.squareLength}m → {effZ.squareLength + zCaps.enhanceStepMeters}m
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                        {effZ.zoneType === 'target' && (
+                                                            <>
+                                                                <button type="button" onClick={() => { setSelectedOption('zone_range_expand'); setExtraZoneAxis('targetRadius'); }} className={`py-1.5 px-2 rounded text-[11px] font-bold border ${selectedOption === 'zone_range_expand' && extraZoneAxis === 'targetRadius' ? 'bg-sky-600 border-sky-300 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
+                                                                    사거리 {effZ.targetRadius}m → {effZ.targetRadius + zCaps.enhanceStepMeters}m
+                                                                </button>
+                                                                <button type="button" onClick={() => { setSelectedOption('zone_range_expand'); setExtraZoneAxis('areaRadius'); }} className={`py-1.5 px-2 rounded text-[11px] font-bold border ${selectedOption === 'zone_range_expand' && extraZoneAxis === 'areaRadius' ? 'bg-sky-600 border-sky-300 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
+                                                                    적용반경 {effZ.areaRadius}m → {effZ.areaRadius + areaStep}m
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </label>
+                                );
+                            })()}
 
                             {/* 버프 및 회복 스킬 전용 선택지 */}
                             {isBuff && (

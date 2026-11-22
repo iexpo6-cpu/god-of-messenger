@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import CombatInterface from '../CombatInterface';
 import Bg3ArenaCanvas, { Bg3BattleResult } from '../bg3/Bg3ArenaCanvas';
-import { isCoreSrpgCombat } from '../../services/srpgBattleEngine';
+import { Bg3ArenaTier, isMythicBossEntity } from '../../services/bg3ArenaEngine';
 import { CombatState, Character } from '../../types';
 
 interface IsolatedCombatContainerProps {
@@ -46,24 +46,49 @@ const areStatusEffectsEqual = (a: any[] = [], b: any[] = []): boolean => {
 
 export const IsolatedCombatContainer: React.FC<IsolatedCombatContainerProps> = memo(
   ({ combatState, player, onAction, isLoading, narrative, onUpdateCharacter, onResolveSrpgCombat }) => {
-    const useSrpg = Boolean(onResolveSrpgCombat && isCoreSrpgCombat(combatState) && !combatState.isEnded);
+    // [BG3 전면 통합] 모든 전투(사냥 · 던전 · 1:1 대련/승급전 · 보스 결전 · 국가/신계/마계 전쟁)를 100% BG3 무격자 아레나로 진행!
+    const useBg3Unified = Boolean(onResolveSrpgCombat && !combatState.isEnded);
 
-    if (useSrpg && onResolveSrpgCombat) {
-      const cType = String(combatState.type || 'boss');
-      const isLargeWar = ['god_rebellion', 'temple_invasion', 'temple_defense', 'divine_invasion', 'magye_god_slaying', 'magye_temple_invasion', 'magye_rebellion', 'war_battle', 'regional_uprising'].includes(cType);
+    if (useBg3Unified && onResolveSrpgCombat) {
+      const cType = String(combatState.type || 'normal');
+      const isWar = ['god_rebellion', 'temple_invasion', 'temple_defense', 'divine_invasion', 'magye_god_slaying', 'magye_temple_invasion', 'magye_rebellion', 'war_battle', 'regional_uprising'].includes(cType);
+      const hasMythicBoss = (combatState.enemies || []).some(e => isMythicBossEntity(e));
+      const hasExplicitBossEnemy = (combatState.enemies || []).some(
+        e => Boolean((e as any).isBoss) || /\[보스\]|\[BOSS\]|\[성전 사자\]|\[반역\]|\[국가 지도자\]|\[마신\]/.test(e.name || '')
+      );
+      const isBoss = !isWar && (cType.includes('boss') || cType.includes('raid') || hasMythicBoss || hasExplicitBossEnemy);
+      const arenaTier: Bg3ArenaTier = isWar ? 'war' : (isBoss && hasMythicBoss) ? 'mythic_boss' : isBoss ? 'boss' : 'skirmish';
+      const isOneOnOne = Boolean(
+        (combatState as any).isOneOnOne ||
+        cType === 'sparring' ||
+        cType === 'sparring_arena' ||
+        cType === 'class_trial' ||
+        cType === 'final_trial_battle' ||
+        cType === 'tournament' ||
+        cType === 'arena' ||
+        cType === 'transcendent_arena' ||
+        cType === 'exam_mid' ||
+        cType === 'exam_final' ||
+        Boolean((combatState as any).challengerCompanionId)
+      );
+      const canFlee = !isWar && !isBoss && !isOneOnOne && cType !== 'class_trial' && cType !== 'final_trial_battle';
+
       const titleMap: Record<string, string> = {
-        god_rebellion: '절대신 반란전 (BG3 무격자 전술전)',
-        temple_invasion: '신계 성전 정벌전 (BG3 무격자 전술전)',
-        temple_defense: '성전 방어전 (BG3 무격자 전술전)',
-        divine_invasion: '신성 국가 정벌전 (BG3 무격자 전술전)',
-        magye_god_slaying: '천마 대전 — 절대신 토벌 (BG3 무격자 전술전)',
-        magye_temple_invasion: '마계 성전 침공전 (BG3 무격자 전술전)',
-        magye_rebellion: '마계 옥좌 찬탈전 (BG3 무격자 전술전)',
-        war_battle: '국가 전면전 (BG3 무격자 전술전)',
-        regional_uprising: '지역 반란 진압전 (BG3 무격자 전술전)',
+        god_rebellion: '절대신 반란전 (BG3 초광활 전선)',
+        temple_invasion: '신계 성전 정벌전 (BG3 초광활 전선)',
+        temple_defense: '성전 방어전 (BG3 초광활 전선)',
+        divine_invasion: '신성 국가 정벌전 (BG3 초광활 전선)',
+        magye_god_slaying: '천마 대전 — 절대신 토벌 (BG3 초광활 전선)',
+        magye_temple_invasion: '마계 성전 침공전 (BG3 초광활 전선)',
+        magye_rebellion: '마계 옥좌 찬탈전 (BG3 초광활 전선)',
+        war_battle: '국가 전면전 (BG3 초광활 전선)',
+        regional_uprising: '지역 반란 진압전 (BG3 초광활 전선)',
+        sparring: '1:1 전술 대련 (BG3 아레나)',
+        class_trial: '클래스 승급 시련전 (BG3 아레나)',
+        dungeon: '던전 전술 교전 (BG3 아레나)',
       };
-      const primaryEnemyName = combatState.enemies[0]?.name || '보스';
-      const srpgTitle = titleMap[cType] || `보스 전술 결전 — ${primaryEnemyName}`;
+      const primaryEnemyName = combatState.enemies[0]?.name || '적군';
+      const srpgTitle = titleMap[cType] || (isBoss ? (hasMythicBoss ? `신화 보스 결전 — ${primaryEnemyName}` : `보스 전술 결전 — ${primaryEnemyName}`) : `일반 사냥 교전 — ${primaryEnemyName}`);
 
       return (
         <div className="flex-1 flex flex-col relative w-full h-full overflow-hidden isolate p-1 sm:p-2 bg-slate-950">
@@ -75,13 +100,19 @@ export const IsolatedCombatContainer: React.FC<IsolatedCombatContainerProps> = m
             region={player.currentLocation?.region}
             nation={player.currentLocation?.nation}
             city={player.currentLocation?.city}
-            isLargeWar={isLargeWar}
+            isLargeWar={isWar}
+            arenaTier={arenaTier}
+            isOneOnOne={isOneOnOne}
+            challengerCompanionId={(combatState as any).challengerCompanionId}
+            canFlee={canFlee}
+            onUpdateCharacter={onUpdateCharacter}
             onComplete={onResolveSrpgCombat}
             onRetreat={() =>
               onResolveSrpgCombat({
                 isVictory: false,
                 turns: 1,
                 playerFinalHp: Math.max(1, player.stats?.hp || 1),
+                playerFinalMp: Math.max(0, player.stats?.mp || 0),
                 companionFinalHps: {},
                 defeatedEnemyCount: 0
               })
@@ -120,9 +151,10 @@ export const IsolatedCombatContainer: React.FC<IsolatedCombatContainerProps> = m
     // 4. 서사 텍스트 변경 시 리렌더링
     if (prev.narrative !== next.narrative) return false;
 
-    // 5. 플레이어 체력 / 마나 / 상태이상 변경 시 리렌더링
+    // 5. 플레이어 체력 / 마나 / 상태이상 / 인벤토리 변경 시 리렌더링
     if (prev.player?.stats?.hp !== next.player?.stats?.hp) return false;
     if (prev.player?.stats?.mp !== next.player?.stats?.mp) return false;
+    if (prev.player?.inventory !== next.player?.inventory) return false;
     if (!areStatusEffectsEqual(prev.player?.statusEffects, next.player?.statusEffects)) return false;
 
     // 6. 적 유닛들의 체력 상태 검사

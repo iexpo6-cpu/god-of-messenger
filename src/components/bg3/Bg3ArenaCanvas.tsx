@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, ClassTier, Companion, Enemy, JobType, Skill, SkillType } from '../../types';
 import {
+    absorbBg3ShieldAndMana,
     ARENA_H,
     ARENA_W,
+    Bg3ArenaTier,
     Bg3BossTelegraph,
     Bg3Obstacle,
     Bg3SkillTargeting,
@@ -12,12 +14,16 @@ import {
     buildBg3EnemyUnits,
     buildBg3Initiative,
     calculateBg3Damage,
+    createBg3SummonUnits,
     createBg3SurfaceFromSkill,
     distPx,
+    extractStatusEffectsFromSkill,
     findOpportunityAttackers,
     generateBg3Arena,
     getBg3SharedAllyGroup,
     getBg3SkillTargeting,
+    isPointInConeZone,
+    isPointInSquareZone,
     isPointWalkable,
     metersToPx,
     PX_PER_METER,
@@ -39,13 +45,81 @@ import {
 } from '../../services/rpgSpriteManifest';
 import { getCityBackgroundImage } from '../../services/cityBackgroundManifest';
 import { getCachedMonsterSprite, loadTransparentMonsterSprite } from '../../services/monsterCutoutCache';
-import { formatCompactKorean } from '../../utils';
+import { getRegisteredSkillImage } from '../../services/visualManager';
+import { getSkillIconComponent } from '../../services/rpgIconService';
+import { formatCompactKorean, calculateDamage, generateLoot } from '../../utils';
+import {
+    applyShinryokuBreakHit,
+    getAllyMaxBreakGauge,
+    getEnemyMaxBreakGauge,
+    isShinryokuWeaknessHit,
+    isUnitShinryokuBroken,
+    recoverAllyBreakGauge
+} from '../../services/shinryokuBreakService';
+import { checkSkillParticipantsMp } from '../../services/BondSkillService';
 import { MESSENGER_VIDEOS, MESSENGER_VIDEO_DURATIONS, BOSS_ENTRANCE_VIDEOS } from '../../messengerVideoData';
 import { CombatVFXOverlay, combatVfxBus, preloadSkillFrameAnimations } from '../CombatVFX';
 import { SkillSelector } from '../combat/SkillSelector';
+import { ItemSelectionModal } from '../combat/ItemSelectionModal';
 import { CombatQuickSlots } from '../combat/CombatQuickSlots';
 import { CombatShortcutKeybindModal } from '../CombatShortcutKeybindModal';
 import { loadCombatKeybinds, formatKeyDisplay, useCombatKeybindHandler } from '../../services/combatKeybindService';
+import {
+    applyBg3CombatStartPassives,
+    applyBg3ConsumableItem,
+    applyBg3DamageWithShieldAndRevival,
+    applyBg3PostAttackHooks,
+    applyBg3SkillBuffs,
+    applyBg3SkillDebuffs,
+    getBg3UnitDetailedStats,
+    getEchoAftershockDamage,
+    getFocusFusionDamageMultiplier,
+    isBg3ResurrectionSkill,
+    processBg3TurnStart,
+    syncUnitFromSourceEntity
+} from '../../services/bg3CombatSyncBridge';
+
+// 전투불능 동료 무덤(비석) 커스텀 이미지 로더 (향후 assets/visuals/gravestone.png 생성 시 자동 반영, 미존재 시 스타일리시 캔버스 비석 폴백)
+let gravestoneImgCache: HTMLImageElement | null = null;
+let gravestoneImgAttempted = false;
+const getGravestoneImage = (): HTMLImageElement | null => {
+    if (gravestoneImgAttempted) return gravestoneImgCache;
+    gravestoneImgAttempted = true;
+    const base = (import.meta as any).env?.BASE_URL || './';
+    const img = new Image();
+    img.onload = () => {
+        gravestoneImgCache = img;
+    };
+    img.onerror = () => {
+        gravestoneImgCache = null;
+    };
+    img.src = `${base.endsWith('/') ? base : `${base}/`}assets/visuals/gravestone.png`;
+    return null;
+};
+
+// 전리품 드롭 이미지 캐시 (수루룩 드롭 연출용)
+const lootImgCache = new Map<string, HTMLImageElement | null>();
+const getCachedLootImage = (url?: string): HTMLImageElement | null => {
+    if (!url) return null;
+    if (lootImgCache.has(url)) return lootImgCache.get(url) || null;
+    lootImgCache.set(url, null);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => lootImgCache.set(url, img);
+    img.onerror = () => lootImgCache.set(url, null);
+    img.src = url;
+    return null;
+};
+
+const getRarityGlowColor = (rarity?: string): string => {
+    const r = String(rarity || '').toLowerCase();
+    if (r.includes('mythic') || r.includes('신화') || r.includes('절대')) return '#fbbf24';
+    if (r.includes('legend') || r.includes('전설')) return '#f97316';
+    if (r.includes('epic') || r.includes('영웅') || r.includes('유일')) return '#c084fc';
+    if (r.includes('rare') || r.includes('희귀')) return '#38bdf8';
+    if (r.includes('uncommon') || r.includes('고급')) return '#34d399';
+    return '#cbd5e1';
+};
 import {
     BookOpen,
     Bot,
@@ -66,8 +140,19 @@ export interface Bg3BattleResult {
     isVictory: boolean;
     turns: number;
     playerFinalHp: number;
+    playerFinalMp?: number;
     companionFinalHps: Record<string, number>;
+    companionFinalMps?: Record<string, number>;
     defeatedEnemyCount: number;
+    /** 유닛별('player' 또는 companion.id) 사용 스킬 횟수 -> 스킬 숙련도 반영용 */
+    usedSkillsByUnit?: Record<string, Record<string, number>>;
+    /** 유닛별('player' 또는 companion.id) 공격/스킬 행동 횟수 -> 무기 숙련도 반영용 */
+    attackCountByUnit?: Record<string, number>;
+    /** 전투 종료 시 플레이어/동료 잔여 상태이상(버프 포함) -> 전투 종료 후 1턴 감소 반영용 */
+    playerFinalStatusEffects?: any[];
+    companionFinalStatusEffects?: Record<string, any[]>;
+    /** 몬스터 처치 순간 전장에 수루룩 드롭 연출로 이미 굴려진 확정 전리품 목록 */
+    preRolledLoot?: any[];
 }
 
 export interface Bg3ArenaCanvasProps {
@@ -80,11 +165,16 @@ export interface Bg3ArenaCanvasProps {
     nation?: string;
     city?: string;
     isLargeWar?: boolean;
+    arenaTier?: Bg3ArenaTier;
+    isOneOnOne?: boolean;
+    challengerCompanionId?: string;
+    canFlee?: boolean;
+    onUpdateCharacter?: (newChar: Character, logMsg?: string) => void;
     onComplete: (result: Bg3BattleResult) => void;
     onRetreat?: () => void;
 }
 
-type ActionMode = 'move' | 'attack' | 'skill' | 'shove' | 'jump';
+type ActionMode = 'move' | 'attack' | 'skill' | 'shove' | 'jump' | 'item';
 
 interface ProjectileFx {
     id: string;
@@ -175,6 +265,9 @@ const calcDir = (dx: number, dy: number): SpriteDirection => {
     return dy >= 0 ? 'down' : 'up';
 };
 
+const CURSOR_SKILL_TARGET = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="none" stroke="#fbbf24" stroke-width="2.2"/><circle cx="16" cy="16" r="4" fill="none" stroke="#38bdf8" stroke-width="2"/><line x1="16" y1="1" x2="16" y2="8" stroke="#fbbf24" stroke-width="2"/><line x1="16" y1="24" x2="16" y2="31" stroke="#fbbf24" stroke-width="2"/><line x1="1" y1="16" x2="8" y2="16" stroke="#fbbf24" stroke-width="2"/><line x1="24" y1="16" x2="31" y2="16" stroke="#fbbf24" stroke-width="2"/></svg>')}") 16 16, crosshair`;
+const CURSOR_ATTACK_SWORD = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M5 27 L11 21 M8 18 L14 24 M11 21 L26 6 L27 5 L21 6 L6 21 Z" fill="#fb7185" stroke="#fef08a" stroke-width="1.8" stroke-linejoin="round"/></svg>')}") 6 26, pointer`;
+
 export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
     character,
     companions,
@@ -185,13 +278,32 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
     nation,
     city,
     isLargeWar = false,
+    arenaTier,
+    isOneOnOne = false,
+    challengerCompanionId,
+    canFlee = false,
+    onUpdateCharacter,
     onComplete,
     onRetreat
 }) => {
     const resolvedCompanions = useMemo(() => {
-        if (companions && companions.length > 0) return companions;
-        return (character.companions || []).filter(c => c && (c.stats?.hp ?? 1) > 0).slice(0, 6);
-    }, [companions, character.companions]);
+        if (isOneOnOne || challengerCompanionId) return [];
+        const baseList =
+            companions && companions.length > 0
+                ? companions
+                : (character.companions || []).filter(c => c && (c.stats?.hp ?? 1) > 0);
+        // 장착된 탈것 몬스터는 별도 동료 유닛으로 중복 출격하지 않도록 제외 (탈것 자동 협공 1회 전용!)
+        const mountedIds = new Set<string>();
+        if (character.mountedMonster?.id) mountedIds.add(character.mountedMonster.id);
+        if (character.mountedMonsterId) mountedIds.add(character.mountedMonsterId);
+        (character.companions || []).forEach(c => {
+            if (c?.mountedMonster?.id) mountedIds.add(c.mountedMonster.id);
+            if (c?.mountedMonsterId) mountedIds.add(c.mountedMonsterId);
+        });
+        return baseList.filter(c => c && !mountedIds.has(c.id)).slice(0, 6);
+    }, [isOneOnOne, challengerCompanionId, companions, character.companions, character.mountedMonster, character.mountedMonsterId]);
+
+    const resolvedArenaTier: Bg3ArenaTier = arenaTier || (isLargeWar ? 'war' : 'boss');
 
     const arena = useMemo(
         () =>
@@ -201,9 +313,10 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 city: city || character.currentLocation?.city,
                 title,
                 subtitle,
-                isLargeWar
+                isLargeWar: resolvedArenaTier === 'war',
+                arenaTier: resolvedArenaTier
             }),
-        [region, nation, city, character.currentLocation, title, subtitle, isLargeWar]
+        [region, nation, city, character.currentLocation, title, subtitle, resolvedArenaTier]
     );
     const arenaW = arena.width;
     const arenaH = arena.height;
@@ -224,7 +337,8 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             region || character.currentLocation?.region,
             nation || character.currentLocation?.nation,
             arenaW,
-            arenaH
+            arenaH,
+            challengerCompanionId
         );
         const foes = buildBg3EnemyUnits(
             enemies,
@@ -233,7 +347,32 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             arenaW,
             arenaH
         );
-        return [...allies, ...foes];
+        // sourceEntity의 statusEffects / stats를 전투 세션 전용으로 안전하게 복제 후 전투 시작 패시브 적용
+        const cloned = [...allies, ...foes].map(u => {
+            if (!u.sourceEntity) return u;
+            const src: any = u.sourceEntity;
+            const clonedSrc = {
+                ...src,
+                stats: src.stats ? { ...src.stats } : undefined,
+                statusEffects: Array.isArray(src.statusEffects) ? src.statusEffects.map((e: any) => ({ ...e })) : []
+            };
+            return { ...u, sourceEntity: clonedSrc };
+        });
+        const afterPassives = applyBg3CombatStartPassives(cloned).units;
+        // [FIX] 패시브/최종스탯 반영 후에도 모든 몬스터는 전투 시작 시 무조건 HP 100% 완충 보장!
+        return afterPassives.map(u => {
+            if (u.team !== 'enemy') return u;
+            const fullHp = Math.max(u.maxHp, u.hp, 100);
+            if (u.sourceEntity) {
+                (u.sourceEntity as any).hp = fullHp;
+                (u.sourceEntity as any).maxHp = fullHp;
+                if ((u.sourceEntity as any).stats) {
+                    (u.sourceEntity as any).stats.hp = fullHp;
+                    (u.sourceEntity as any).stats.maxHp = fullHp;
+                }
+            }
+            return { ...u, hp: fullHp, maxHp: fullHp };
+        });
     });
     const unitsRef = useRef<Bg3Unit[]>(units);
     unitsRef.current = units;
@@ -254,6 +393,15 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
     const [actionMode, setActionMode] = useState<ActionMode>('move');
     const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
     const [showSkillBook, setShowSkillBook] = useState<boolean>(false);
+    const [showItemModal, setShowItemModal] = useState<boolean>(false);
+    const [pendingItemUse, setPendingItemUse] = useState<{
+        item: any;
+        quantity: number;
+        rangeMeters: number;
+        isEnemyTarget: boolean;
+        isRevive: boolean;
+    } | null>(null);
+    const [hoveringEnemy, setHoveringEnemy] = useState<boolean>(false);
     const [isBusy, setIsBusy] = useState<boolean>(false);
     const isBusyRef = useRef<boolean>(false);
     isBusyRef.current = isBusy;
@@ -262,6 +410,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         setIsBusy(v);
     }, []);
     const aiTurnLockRef = useRef<string>('');
+    const mountAttackedTurnKeyRef = useRef<string>('');
     const mountedRef = useRef<boolean>(true);
     useEffect(() => {
         mountedRef.current = true;
@@ -272,6 +421,13 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
     const [autoBattle, setAutoBattle] = useState<boolean>(false);
     const [fastMode, setFastMode] = useState<boolean>(false);
     const [bannerMsg, setBannerMsg] = useState<string>('무격자 자유 전술 아레나 개시! 바닥을 클릭해 자유롭게 이동하거나 스킬을 선택하세요.');
+    const [combatLogs, setCombatLogs] = useState<Array<{ id: string; round: number; text: string; tone?: 'info' | 'dmg' | 'heal' | 'warn' }>>([
+        { id: 'init_0', round: 1, text: `⚔️ [${title}] 전투 개시! (${Math.round(arenaW / PX_PER_METER)}m × ${Math.round(arenaH / PX_PER_METER)}m 전장)`, tone: 'info' }
+    ]);
+    const [showLogDrawer, setShowLogDrawer] = useState<boolean>(false);
+    const pushCombatLog = useCallback((text: string, tone: 'info' | 'dmg' | 'heal' | 'warn' = 'info', r = 1) => {
+        setCombatLogs(prev => [{ id: `log_${Date.now()}_${Math.random()}`, round: r, text, tone }, ...prev].slice(0, 120));
+    }, []);
     const [battleEnded, setBattleEnded] = useState<'victory' | 'defeat' | null>(null);
     const [reactionPrompt, setReactionPrompt] = useState<ReactionPrompt | null>(null);
     const [zoom, setZoom] = useState<number>(isLargeWar ? 1.55 : 1.25);
@@ -279,9 +435,135 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
     const [activeVideo, setActiveVideo] = useState<{ url: string; duration: number } | null>(null);
     const [combatKeybinds, setCombatKeybinds] = useState<string[]>(() => loadCombatKeybinds());
     const [showKeybindModal, setShowKeybindModal] = useState<boolean>(false);
+    const mountDashAnimsRef = useRef<
+        Array<{
+            id: string;
+            mountName: string;
+            visualUrl?: string;
+            sx: number;
+            sy: number;
+            tx: number;
+            ty: number;
+            startTime: number;
+            duration: number;
+        }>
+    >([]);
+    // 처치 순간 수루룩 전리품 드롭 연출 & 확정 전리품 저장소
+    const preRolledLootRef = useRef<any[]>([]);
+    const lootDropAnimsRef = useRef<
+        Array<{
+            id: string;
+            name: string;
+            imageUrl?: string;
+            rarityColor: string;
+            sx: number;
+            sy: number;
+            tx: number;
+            ty: number;
+            startTime: number;
+            duration: number;
+        }>
+    >([]);
+
+    // 인연 게이지 (동료별 0~100, 매 라운드 +5 / 치명타 +10, 100 도달 시 인연 스킬 해방!)
+    const [bondGauges, setBondGauges] = useState<Record<string, number>>(() => {
+        const init: Record<string, number> = {};
+        resolvedCompanions.forEach(c => {
+            if (c?.id) init[c.id] = 30;
+        });
+        return init;
+    });
+    const chargeBondGauges = useCallback((delta: number) => {
+        setBondGauges(prev => {
+            const next: Record<string, number> = {};
+            Object.keys(prev).forEach(k => {
+                next[k] = Math.min(100, (prev[k] || 0) + delta);
+            });
+            return next;
+        });
+    }, []);
+
+    // QTE (JUST IMPACT 타이밍 바)
+    const [qteEnabled, setQteEnabled] = useState<boolean>(true);
+    const [qtePrompt, setQtePrompt] = useState<{ skillName: string; startTime: number; duration: number } | null>(null);
+    // 💞 인연 합체기 듀얼 visualUrl 컷인 배너 (시전자 + 인연 파트너 초상화가 중앙으로 합체!)
+    const [bondCutIn, setBondCutIn] = useState<{
+        skillName: string;
+        casterName: string;
+        casterVisualUrl?: string;
+        partnerName: string;
+        partnerVisualUrl?: string;
+    } | null>(null);
+    const qteResolveRef = useRef<((res: { grade: 'JUST' | 'GOOD' | 'MISS'; mult: number; extraBreak: number; mpPaybackPct: number }) => void) | null>(null);
+
+    const resolveQteNow = useCallback((forcedGrade?: 'JUST' | 'GOOD' | 'MISS') => {
+        const resolver = qteResolveRef.current;
+        if (!resolver) return;
+        qteResolveRef.current = null;
+        let grade: 'JUST' | 'GOOD' | 'MISS' = forcedGrade || 'GOOD';
+        if (!forcedGrade && qtePrompt) {
+            const elapsed = performance.now() - qtePrompt.startTime;
+            const pos = Math.min(1, Math.max(0, elapsed / qtePrompt.duration));
+            const distFromCenter = Math.abs(pos - 0.5);
+            if (distFromCenter <= 0.13) grade = 'JUST';
+            else if (distFromCenter <= 0.30) grade = 'GOOD';
+            else grade = 'MISS';
+        }
+        setQtePrompt(null);
+        if (grade === 'JUST') resolver({ grade: 'JUST', mult: 1.25, extraBreak: 1, mpPaybackPct: 0.2 });
+        else if (grade === 'GOOD') resolver({ grade: 'GOOD', mult: 1.0, extraBreak: 0, mpPaybackPct: 0 });
+        else resolver({ grade: 'MISS', mult: 0.85, extraBreak: 0, mpPaybackPct: 0 });
+    }, [qtePrompt]);
+
+    const runQteIfEnabled = useCallback(
+        (skillName: string, isAutoOrAi: boolean): Promise<{ grade: 'JUST' | 'GOOD' | 'MISS'; mult: number; extraBreak: number; mpPaybackPct: number }> => {
+            if (!qteEnabled || isAutoOrAi) {
+                return Promise.resolve({ grade: 'GOOD', mult: 1.0, extraBreak: 0, mpPaybackPct: 0 });
+            }
+            return new Promise(resolve => {
+                const dur = 920;
+                qteResolveRef.current = resolve;
+                setQtePrompt({ skillName, startTime: performance.now(), duration: dur });
+                window.setTimeout(() => {
+                    if (qteResolveRef.current === resolve) {
+                        qteResolveRef.current = null;
+                        setQtePrompt(null);
+                        resolve({ grade: 'GOOD', mult: 1.0, extraBreak: 0, mpPaybackPct: 0 });
+                    }
+                }, dur + 40);
+            });
+        },
+        [qteEnabled]
+    );
+
+    useEffect(() => {
+        if (!qtePrompt) return;
+        const onKey = (e: KeyboardEvent) => {
+            if (e.code === 'Space' || e.key === 'Enter') {
+                e.preventDefault();
+                resolveQteNow();
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [qtePrompt, resolveQteNow]);
     const cameraRef = useRef<{ x: number; y: number }>({ x: arenaW * 0.5, y: arenaH - 280 });
     const cameraTargetRef = useRef<{ x: number; y: number }>({ x: arenaW * 0.5, y: arenaH - 280 });
     const panDragRef = useRef<{ dragging: boolean; lastX: number; lastY: number }>({ dragging: false, lastX: 0, lastY: 0 });
+    // 태블릿/모바일 터치 핀치 줌 & 1손가락/2손가락 드래그 카메라 패닝 상태
+    const touchGestureRef = useRef<{
+        mode: 'none' | 'pan' | 'pinch';
+        startX: number;
+        startY: number;
+        lastX: number;
+        lastY: number;
+        moved: boolean;
+        pinchStartDist: number;
+        pinchStartZoom: number;
+    }>({ mode: 'none', startX: 0, startY: 0, lastX: 0, lastY: 0, moved: false, pinchStartDist: 0, pinchStartZoom: 1 });
+    // 스킬 숙련도 & 무기 숙련도 반영용 전투 행동 누적 추적기
+    const usedSkillsByUnitRef = useRef<Record<string, Record<string, number>>>({});
+    const attackCountByUnitRef = useRef<Record<string, number>>({});
 
     const containerRef = useRef<HTMLDivElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -336,6 +618,9 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             if (u.enemyTokenPart) urls.add(getPropAssetUrl('srpg', u.enemyTokenPart));
             if (u.team === 'enemy' && u.visualUrl) {
                 loadTransparentMonsterSprite(u.visualUrl).then(() => alive && setAssetTick(t => t + 1));
+            }
+            if (u.mountVisualUrl) {
+                loadTransparentMonsterSprite(u.mountVisualUrl).then(() => alive && setAssetTick(t => t + 1));
             }
             loadRpgSpriteImage(u.spriteUrl).then(() => alive && setAssetTick(t => t + 1));
         });
@@ -483,21 +768,62 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
 
     const spawnKillBurst = useCallback(
         (target: Bg3Unit) => {
+            const nowTs = performance.now();
             explosionsRef.current.push({
                 id: `kill_${Date.now()}_${Math.random()}`,
                 x: target.x,
                 y: target.y,
                 maxRadius: 96,
                 color: '#f43f5e',
-                startTime: performance.now(),
+                startTime: nowTs,
                 duration: 540
             });
             spawnParticles(target.x, target.y, '#fbbf24', 28, 4.8);
             spawnParticles(target.x, target.y, '#f43f5e', 24, 3.8);
             addFloatText(target.x, target.y - 34, `💀 ${target.name} 처치!`, '#fde047', 1.35);
             triggerShake(13, 340);
+
+            // 몬스터 처치 시 확정 전리품 롤 + 수루룩 전리품 이미지 분수 연출!
+            if (target.team === 'enemy' && target.sourceEntity) {
+                try {
+                    const drops = generateLoot(target.sourceEntity as Enemy, nation || character.currentLocation?.nation, character) || [];
+                    if (drops.length > 0) {
+                        preRolledLootRef.current.push(...drops);
+                        const total = drops.length;
+                        drops.forEach((item: any, idx: number) => {
+                            const spreadAngle = total === 1
+                                ? -Math.PI / 2
+                                : -Math.PI * 0.85 + (Math.PI * 0.7 * idx) / Math.max(1, total - 1);
+                            const dist = 46 + (idx % 3) * 20;
+                            const tx = target.x + Math.cos(spreadAngle) * dist;
+                            const ty = target.y + Math.sin(spreadAngle) * dist * 0.55 + 10;
+                            const imgUrl = item.imageUrl || item.visualUrl || undefined;
+                            if (imgUrl) getCachedLootImage(imgUrl);
+                            lootDropAnimsRef.current.push({
+                                id: `loot_${Date.now()}_${idx}_${Math.random()}`,
+                                name: item.name || '전리품',
+                                imageUrl: imgUrl,
+                                rarityColor: getRarityGlowColor(item.rarity),
+                                sx: target.x,
+                                sy: target.y - 8,
+                                tx,
+                                ty,
+                                startTime: nowTs + idx * 70, // 순식간에 수루룩 퍼지는 스태거!
+                                duration: 2500
+                            });
+                        });
+                        pushCombatLog(
+                            `🎁 [${target.name}] 전리품 드롭: ${drops.map((d: any) => d.name).join(', ')}`,
+                            'heal',
+                            roundNum
+                        );
+                    }
+                } catch {
+                    // ignore safely
+                }
+            }
         },
-        [addFloatText, spawnParticles, triggerShake]
+        [addFloatText, spawnParticles, triggerShake, nation, character, pushCombatLog, roundNum]
     );
 
     const emitDualLayerVfx = useCallback(
@@ -598,7 +924,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     vfxDuration = Math.max(vfxDuration, Math.round((frameSum * loops) / speed) + 180);
                 }
 
-                // 피격 대상(또는 AoE 중심)의 정확한 캔버스 화면 좌표(px) 계산 -> 적이 있는 위치에서 이펙트 폭발!
+                // 피격 대상(또는 AoE 중심)의 정확한 캔버스 화면 좌표(px) + 스킬 범위에 정확히 비례하는 VFX 크기 계산!
                 const impactWorldX = targets.length === 1 ? targets[0].x : centerX;
                 const impactWorldY = targets.length === 1 ? targets[0].y : centerY;
                 const { scale, offsetX, offsetY } = getTransform();
@@ -606,6 +932,17 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     x: Math.max(48, Math.min(viewportSize.w - 48, offsetX + impactWorldX * scale)),
                     y: Math.max(48, Math.min(viewportSize.h - 48, offsetY + impactWorldY * scale))
                 };
+
+                // 단일 스킬: 적 토큰에 맞춘 일정한 크기(136px) / 광역 스킬: 실제 스킬 범위(m)의 화면 px 크기 그대로!
+                let vfxPixelSize = 136;
+                if (targeting.shape === 'circle') {
+                    vfxPixelSize = Math.round(Math.max(180, Math.min(920, metersToPx(targeting.aoeRadiusMeters) * 2 * scale)));
+                } else if (targeting.shape === 'cone') {
+                    vfxPixelSize = Math.round(Math.max(180, Math.min(920, metersToPx(targeting.rangeMeters) * 1.35 * scale)));
+                } else if (targeting.shape === 'square') {
+                    const maxDimM = Math.max(targeting.squareWidthMeters || 5, targeting.squareLengthMeters || 10);
+                    vfxPixelSize = Math.round(Math.max(180, Math.min(920, metersToPx(maxDimM) * scale)));
+                }
 
                 combatVfxBus.emit({
                     id: `bg3_vfx_${Date.now()}`,
@@ -622,7 +959,8 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     vfxShape: skill?.vfxShape,
                     vfxScale: (skill as any)?.vfxScale,
                     frameAnimation,
-                    targetScreenPos
+                    targetScreenPos,
+                    vfxPixelSize
                 });
             }
 
@@ -700,16 +1038,33 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 setBannerMsg('🏆 모든 적을 격파하고 전장을 완전히 제압했습니다!');
                 const playerUnit = nextUnits.find(u => u.isPlayer);
                 const compHps: Record<string, number> = {};
+                const compMps: Record<string, number> = {};
+                const compStatuses: Record<string, any[]> = {};
                 nextUnits.forEach(u => {
-                    if (u.sourceCompanionId) compHps[u.sourceCompanionId] = Math.max(0, u.hp);
+                    if (u.sourceCompanionId) {
+                        compHps[u.sourceCompanionId] = Math.max(0, u.hp);
+                        compMps[u.sourceCompanionId] = Math.max(0, u.mp);
+                        compStatuses[u.sourceCompanionId] = Array.isArray((u.sourceEntity as any)?.statusEffects)
+                            ? [...(u.sourceEntity as any).statusEffects]
+                            : [];
+                    }
                 });
                 window.setTimeout(() => {
                     onComplete({
                         isVictory: true,
                         turns: curRound,
-                        playerFinalHp: Math.max(1, playerUnit?.hp || 1),
+                        playerFinalHp: playerUnit ? Math.max(1, playerUnit.hp) : Math.max(1, character.stats.hp || 1),
+                        playerFinalMp: playerUnit ? Math.max(0, playerUnit.mp) : Math.max(0, character.stats.mp || 0),
                         companionFinalHps: compHps,
-                        defeatedEnemyCount: nextUnits.filter(u => u.team === 'enemy' && u.hp <= 0).length
+                        companionFinalMps: compMps,
+                        defeatedEnemyCount: nextUnits.filter(u => u.team === 'enemy' && u.hp <= 0).length,
+                        usedSkillsByUnit: usedSkillsByUnitRef.current,
+                        attackCountByUnit: attackCountByUnitRef.current,
+                        playerFinalStatusEffects: playerUnit && Array.isArray((playerUnit.sourceEntity as any)?.statusEffects)
+                            ? [...(playerUnit.sourceEntity as any).statusEffects]
+                            : [...(character.statusEffects || [])],
+                        companionFinalStatusEffects: compStatuses,
+                        preRolledLoot: [...preRolledLootRef.current]
                     });
                 }, 900);
                 return true;
@@ -717,13 +1072,34 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             if (aliveAllies.length === 0) {
                 setBattleEnded('defeat');
                 setBannerMsg('💀 아군 부대가 전멸했습니다...');
+                const playerUnit = nextUnits.find(u => u.isPlayer);
+                const compHps: Record<string, number> = {};
+                const compMps: Record<string, number> = {};
+                const compStatuses: Record<string, any[]> = {};
+                nextUnits.forEach(u => {
+                    if (u.sourceCompanionId) {
+                        compHps[u.sourceCompanionId] = Math.max(1, u.hp);
+                        compMps[u.sourceCompanionId] = Math.max(0, u.mp);
+                        compStatuses[u.sourceCompanionId] = Array.isArray((u.sourceEntity as any)?.statusEffects)
+                            ? [...(u.sourceEntity as any).statusEffects]
+                            : [];
+                    }
+                });
                 window.setTimeout(() => {
                     onComplete({
                         isVictory: false,
                         turns: curRound,
-                        playerFinalHp: 1,
-                        companionFinalHps: {},
-                        defeatedEnemyCount: nextUnits.filter(u => u.team === 'enemy' && u.hp <= 0).length
+                        playerFinalHp: playerUnit ? 1 : Math.max(1, character.stats.hp || 1),
+                        playerFinalMp: playerUnit ? Math.max(0, playerUnit.mp) : Math.max(0, character.stats.mp || 0),
+                        companionFinalHps: compHps,
+                        companionFinalMps: compMps,
+                        defeatedEnemyCount: nextUnits.filter(u => u.team === 'enemy' && u.hp <= 0).length,
+                        usedSkillsByUnit: usedSkillsByUnitRef.current,
+                        attackCountByUnit: attackCountByUnitRef.current,
+                        playerFinalStatusEffects: playerUnit && Array.isArray((playerUnit.sourceEntity as any)?.statusEffects)
+                            ? [...(playerUnit.sourceEntity as any).statusEffects]
+                            : [...(character.statusEffects || [])],
+                        companionFinalStatusEffects: compStatuses
                     });
                 }, 900);
                 return true;
@@ -807,60 +1183,127 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             if ((!fromAi && isBusyRef.current) || battleEnded) return;
             const targeting = getBg3SkillTargeting(caster, skill);
             const mpCost = skill?.mpCost || 0;
-            if (mpCost > caster.mp) {
+            if (skill && (skill as any).isBondSkill) {
+                const bondMp = checkSkillParticipantsMp(skill, character, caster.sourceEntity as any);
+                if (!bondMp.isAllowed) {
+                    if (!fromAi) setBannerMsg(bondMp.reason || '인연 스킬 마력이 부족합니다!');
+                    return;
+                }
+            } else if (mpCost > caster.mp) {
                 if (!fromAi) setBannerMsg(`MP가 부족합니다! (필요 MP ${mpCost})`);
                 return;
             }
 
-            // Support skill (Heal / Buff)
-            if (targeting.isSupport && skill) {
+            // 아군 스킬 숙련도 & 무기 숙련도 누적 기록
+            if (caster.team === 'ally') {
+                const actorKey = caster.isPlayer ? 'player' : caster.sourceCompanionId || caster.id;
+                attackCountByUnitRef.current[actorKey] = (attackCountByUnitRef.current[actorKey] || 0) + 1;
+                if (skill?.name) {
+                    if (!usedSkillsByUnitRef.current[actorKey]) usedSkillsByUnitRef.current[actorKey] = {};
+                    usedSkillsByUnitRef.current[actorKey][skill.name] =
+                        (usedSkillsByUnitRef.current[actorKey][skill.name] || 0) + 1;
+                }
+            }
+
+            // Summon / Ninja Clone Skill -> 전장에 실제 독립 아군 유닛으로 소환!
+            if (targeting.isSummon && skill) {
                 setBusySafe(true);
-                const allies = unitsRef.current.filter(u => u.team === caster.team && u.hp > 0);
-                const affected =
-                    targeting.shape !== 'single'
-                        ? allies.filter(a => distPx(a.x, a.y, targetX, targetY) <= metersToPx(Math.max(4.5, targeting.aoeRadiusMeters)))
-                        : [explicitTarget && explicitTarget.team === caster.team ? explicitTarget : caster];
-                const finalTargets = affected.length > 0 ? affected : [caster];
-
-                await emitDualLayerVfx(caster, finalTargets, targetX, targetY, skill, targeting);
-
-                const isHeal = skill.type === SkillType.HEAL;
-                setUnits(prev =>
-                    prev.map(u => {
-                        let next = u;
-                        if (u.id === caster.id) {
-                            next = { ...next, mp: Math.max(0, next.mp - mpCost), hasAction: false };
-                        }
-                        if (finalTargets.some(t => t.id === u.id)) {
-                            if (isHeal) {
-                                const healAmt = Math.max(120, Math.round(next.maxHp * 0.34));
-                                addFloatText(next.x, next.y - 26, `+${formatCompactKorean(healAmt)} HP`, '#4ade80', 1.15);
-                                next = { ...next, hp: Math.min(next.maxHp, next.hp + healAmt) };
-                            } else {
-                                const newBuff = { name: skill.name, atkMult: 1.25, turns: 3, color: targeting.vfxColor };
-                                addFloatText(next.x, next.y - 26, `✨ ${skill.name} (+25%)`, '#fde047', 1.1);
-                                next = {
-                                    ...next,
-                                    buffAtkMult: Math.min(2.0, +(next.buffAtkMult * 1.25).toFixed(2)),
-                                    activeBuffs: [...next.activeBuffs.filter(b => b.name !== skill.name), newBuff]
-                                };
-                            }
-                        }
-                        return next;
-                    })
-                );
-
-                const surf = createBg3SurfaceFromSkill(targetX, targetY, targeting.shinryokuType);
-                if (surf) setSurfaces(prev => [...prev.slice(-10), surf]);
-
-                setBannerMsg(`✨ ${caster.name}의 [${skill.name}] 발동! (${finalTargets.length}명 적용)`);
+                const spawned = createBg3SummonUnits(caster, skill, targetX, targetY, arenaW, arenaH);
+                await emitDualLayerVfx(caster, spawned, targetX, targetY, skill, targeting);
+                setUnits(prev => [
+                    ...prev.map(u => (u.id === caster.id ? { ...u, mp: Math.max(0, u.mp - mpCost), hasAction: false, remainingMeters: 0 } : u)),
+                    ...spawned
+                ]);
+                setInitiativeOrder(prev => [...prev, ...spawned.map(s => s.id)]);
+                spawned.forEach(s => {
+                    addFloatText(s.x, s.y - 26, `✨ ${s.name} 소환!`, '#38bdf8', 1.15);
+                    spawnParticles(s.x, s.y, '#38bdf8', 22, 3.2);
+                });
+                const msg = `🌀 ${caster.name}이(가) [${skill.name}] 발동! ${spawned.map(s => s.name).join(', ')} 전장 합류 (${spawned[0]?.summonTurnsLeft || 3}턴)`;
+                setBannerMsg(msg);
+                pushCombatLog(msg, 'heal', roundNum);
                 setActionMode('move');
                 setSelectedSkill(null);
                 if (!fromAi) setBusySafe(false);
                 return;
             }
 
-            // Offensive targeting
+            // Support skill (Heal / MP Recov / Resurrection / Mana Shield / Cleanse / Buff) — SSOT 정규 엔진 100% 연동
+            if (targeting.isSupport && skill) {
+                setBusySafe(true);
+                const isResurrectSkill = isBg3ResurrectionSkill(skill);
+                const alliesPool = unitsRef.current.filter(u => u.team === caster.team && (isResurrectSkill ? true : u.hp > 0));
+                const affected =
+                    targeting.shape !== 'single'
+                        ? alliesPool.filter(a => distPx(a.x, a.y, targetX, targetY) <= metersToPx(targeting.aoeRadiusMeters) + 4)
+                        : [explicitTarget && explicitTarget.team === caster.team ? explicitTarget : (isResurrectSkill ? alliesPool.find(a => a.hp <= 0) || caster : caster)];
+                const finalTargets = affected.length > 0 ? affected : [caster];
+
+                await emitDualLayerVfx(caster, finalTargets, targetX, targetY, skill, targeting);
+
+                const revivedIds: string[] = [];
+                const collectedLogs: string[] = [];
+                const isAoeSupport = targeting.shape !== 'single';
+
+                const nextSupportUnits = unitsRef.current.map(u => {
+                    let next = { ...u };
+                    if (u.id === caster.id) {
+                        // 스킬 사용 시 잔여 이동 거리 0으로 고정 (스킬 사용 후 추가 이동 불가)
+                        next = { ...next, mp: Math.max(0, next.mp - mpCost), hasAction: false, remainingMeters: 0 };
+                        if (next.sourceEntity && (next.sourceEntity as any).stats) {
+                            (next.sourceEntity as any).stats.mp = next.mp;
+                        }
+                    }
+                    if (finalTargets.some(t => t.id === u.id)) {
+                        const res = applyBg3SkillBuffs(caster, next, skill, isAoeSupport);
+                        next = res.unit;
+                        collectedLogs.push(...res.logs);
+                        if (res.revived) {
+                            revivedIds.push(next.id);
+                            addFloatText(next.x, next.y - 34, `✨ 부활! +${formatCompactKorean(res.healAmount)} HP`, '#fde047', 1.25);
+                            spawnParticles(next.x, next.y, '#fde047', 28, 3.6);
+                        } else if (res.healAmount > 0) {
+                            addFloatText(next.x, next.y - 26, `+${formatCompactKorean(res.healAmount)} HP`, '#4ade80', 1.15);
+                        }
+                        if (res.mpGain > 0) {
+                            addFloatText(next.x, next.y - 40, `+${formatCompactKorean(res.mpGain)} MP`, '#38bdf8', 1.05);
+                        }
+                        if (res.shieldGain > 0) {
+                            addFloatText(next.x, next.y - 46, `🛡️ +${formatCompactKorean(res.shieldGain)}`, '#38bdf8', 1.1);
+                        }
+                        if (!res.revived && res.healAmount === 0 && res.buffApplied) {
+                            addFloatText(next.x, next.y - 26, `✨ ${skill.name}`, '#fde047', 1.05);
+                        }
+                    }
+                    return next;
+                });
+                setUnits(nextSupportUnits);
+
+                // 라운드 도중 부활한 동료는 즉시 이니셔티브 순서에 재합류
+                if (revivedIds.length > 0) {
+                    setInitiativeOrder(prev => {
+                        const missing = revivedIds.filter(id => !prev.includes(id));
+                        return missing.length > 0 ? [...prev, ...missing] : prev;
+                    });
+                }
+
+                const surf = createBg3SurfaceFromSkill(targetX, targetY, targeting.shinryokuType);
+                if (surf) setSurfaces(prev => [...prev.slice(-10), surf]);
+
+                const supMsg = collectedLogs[0] || `✨ ${caster.name}의 [${skill.name}] 발동! (${finalTargets.length}명 적용)`;
+                setBannerMsg(supMsg);
+                if (collectedLogs.length > 0) {
+                    collectedLogs.forEach(l => pushCombatLog(l, 'heal', roundNum));
+                } else {
+                    pushCombatLog(supMsg, 'heal', roundNum);
+                }
+                setActionMode('move');
+                setSelectedSkill(null);
+                if (!fromAi) setBusySafe(false);
+                return;
+            }
+
+            // Offensive / Debuff targeting (Single / Target Circle / Variable Cone / Rotated Square OBB)
             const enemiesAlive = unitsRef.current.filter(u => u.team !== caster.team && u.hp > 0);
             let targets: Bg3Unit[] = [];
             if (targeting.shape === 'single') {
@@ -883,25 +1326,27 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     return;
                 }
                 const rPx = metersToPx(targeting.aoeRadiusMeters);
-                targets = enemiesAlive.filter(e => distPx(e.x, e.y, targetX, targetY) <= rPx + e.radius);
+                targets = enemiesAlive.filter(e => distPx(e.x, e.y, targetX, targetY) <= rPx + 4);
                 if (targets.length === 0) {
                     setBannerMsg('범위 안에 적이 없습니다.');
                     return;
                 }
-            } else {
-                // 60-degree cone
-                const aimAng = Math.atan2(targetY - caster.y, targetX - caster.x);
-                const maxPx = metersToPx(targeting.rangeMeters);
-                targets = enemiesAlive.filter(e => {
-                    const d = distPx(caster.x, caster.y, e.x, e.y);
-                    if (d > maxPx + e.radius) return false;
-                    let diff = Math.atan2(e.y - caster.y, e.x - caster.x) - aimAng;
-                    while (diff > Math.PI) diff -= Math.PI * 2;
-                    while (diff < -Math.PI) diff += Math.PI * 2;
-                    return Math.abs(diff) <= Math.PI / 6 + 0.15;
-                });
+            } else if (targeting.shape === 'square') {
+                const wPx = metersToPx(targeting.squareWidthMeters || 5);
+                const lPx = metersToPx(targeting.squareLengthMeters || 10);
+                targets = enemiesAlive.filter(e => isPointInSquareZone(caster.x, caster.y, targetX, targetY, wPx, lPx, e.x, e.y, 4));
                 if (targets.length === 0) {
-                    setBannerMsg('부채꼴 범위 안에 적이 없습니다.');
+                    setBannerMsg('직사각형(Square) 범위 안에 적이 없습니다.');
+                    return;
+                }
+            } else {
+                // Variable-angle Cone
+                const maxPx = metersToPx(targeting.rangeMeters);
+                targets = enemiesAlive.filter(e =>
+                    isPointInConeZone(caster.x, caster.y, targetX, targetY, maxPx, targeting.coneAngleDeg || 60, e.x, e.y, 4)
+                );
+                if (targets.length === 0) {
+                    setBannerMsg('부채꼴(Cone) 범위 안에 적이 없습니다.');
                     return;
                 }
             }
@@ -911,41 +1356,164 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             const aimY = targets.length === 1 ? targets[0].y : targetY;
             const faceDir = calcDir(aimX - caster.x, aimY - caster.y);
 
+            const isPureDebuffSkill = skill?.type === SkillType.DEBUFF;
+
+            // QTE (JUST IMPACT 타이밍 바 — 수동 공격 스킬 시전 시 발동, 상단 QTE 토글로 ON/OFF 가능)
+            const qteRes =
+                skill && !isPureDebuffSkill && caster.team === 'ally'
+                    ? await runQteIfEnabled(skill.name, fromAi || autoBattle)
+                    : { grade: 'GOOD' as const, mult: 1.0, extraBreak: 0, mpPaybackPct: 0 };
+            if (qteRes.grade === 'JUST') {
+                addFloatText(caster.x, caster.y - 44, '⚡ JUST IMPACT! (×1.25 · 브레이크+1)', '#fde047', 1.25);
+                pushCombatLog(`⚡ [QTE JUST IMPACT!] ${caster.name}의 [${skill?.name}] 위력 1.25배 + MP 20% 페이백!`, 'heal', roundNum);
+            } else if (qteRes.grade === 'MISS') {
+                addFloatText(caster.x, caster.y - 44, 'MISS TIMING (×0.85)', '#94a3b8', 0.95);
+            }
+
+            // 인연 스킬 발동 시: 파트너 스프라이트가 시전자 옆으로 딱 붙어 합류 + 양측 visualUrl 듀얼 합체 컷인 배너 발동!
+            const bondCompId = (skill as any)?.isBondSkill ? (skill as any)?.companionId : undefined;
+            if (bondCompId && skill) {
+                setBondGauges(prev => ({ ...prev, [bondCompId]: 0 }));
+                const partnerUnit = unitsRef.current.find(u => u.sourceCompanionId === bondCompId && u.hp > 0);
+                const partnerObj = (character.companions || []).find(c => c.id === bondCompId);
+                setBondCutIn({
+                    skillName: skill.name,
+                    casterName: caster.name,
+                    casterVisualUrl: caster.visualUrl,
+                    partnerName: partnerUnit?.name || partnerObj?.name || '인연 동료',
+                    partnerVisualUrl: partnerUnit?.visualUrl || partnerObj?.visualUrl
+                });
+                window.setTimeout(() => setBondCutIn(null), 1450);
+
+                // 파트너 스프라이트를 시전자 바로 옆(x+30, y)으로 돌진 합체!
+                if (partnerUnit) {
+                    const joinX = Math.max(48, Math.min(arenaW - 48, caster.x + 30));
+                    const joinY = Math.max(48, Math.min(arenaH - 48, caster.y));
+                    await animateMove(partnerUnit.id, joinX, joinY, true);
+                    spawnParticles((caster.x + joinX) / 2, caster.y, '#f472b6', 28, 3.8);
+                    addFloatText((caster.x + joinX) / 2, caster.y - 36, `💞 인연 공명! [${skill.name}]`, '#f472b6', 1.25);
+                }
+                pushCombatLog(`💞 [인연 합체기 발동!] ${caster.name} × ${partnerUnit?.name || partnerObj?.name || '동료'}의 [${skill.name}]!`, 'heal', roundNum);
+            }
+
             await emitDualLayerVfx(caster, targets, aimX, aimY, skill, targeting);
 
-            let updatedUnits = unitsRef.current.map(u =>
-                u.id === caster.id ? { ...u, dir: faceDir, mp: Math.max(0, u.mp - mpCost), hasAction: false } : u
-            );
+            const effectiveMpCost = Math.max(0, Math.round(mpCost * (1 - qteRes.mpPaybackPct)));
+            let updatedUnits = unitsRef.current.map(u => {
+                if (u.id === caster.id) {
+                    const nextMp = Math.max(0, u.mp - effectiveMpCost);
+                    if (u.sourceEntity && (u.sourceEntity as any).stats) {
+                        (u.sourceEntity as any).stats.mp = nextMp;
+                    }
+                    return {
+                        ...u,
+                        dir: faceDir,
+                        mp: nextMp,
+                        hasAction: false,
+                        // 스킬 사용 시 잔여 이동 거리 0으로 고정 (스킬 사용 후 추가 이동 불가)
+                        remainingMeters: skill ? 0 : u.remainingMeters
+                    };
+                }
+                if (bondCompId && u.sourceCompanionId === bondCompId) {
+                    const nextCompMp = Math.max(0, u.mp - mpCost);
+                    if (u.sourceEntity && (u.sourceEntity as any).stats) {
+                        (u.sourceEntity as any).stats.mp = nextCompMp;
+                    }
+                    return { ...u, mp: nextCompMp };
+                }
+                return u;
+            });
             let totalDmg = 0;
             let kills = 0;
             let comboBanner = '';
+            let anyCritByAlly = false;
 
             for (const target of targets) {
-                const res = calculateBg3Damage(caster, target, skill, arena.obstacles, surfacesRef.current, character);
-                let finalDmg = res.damage;
+                const curTargetObj = updatedUnits.find(u => u.id === target.id) || target;
+                const curCasterObj = updatedUnits.find(u => u.id === caster.id) || caster;
+
+                // 순수 디버프 스킬: CTRL 저항 판정 + 정규 디버프/상태이상 SSOT 적용
+                if (isPureDebuffSkill && skill) {
+                    const debRes = applyBg3SkillDebuffs(curCasterObj, curTargetObj, skill);
+                    debRes.logs.forEach(l => pushCombatLog(l, debRes.resisted ? 'info' : 'warn', roundNum));
+                    if (debRes.resisted) {
+                        addFloatText(target.x, target.y - 26, '🛡️ 저항!', '#94a3b8', 1.05);
+                    } else if (debRes.applied) {
+                        addFloatText(target.x, target.y - 26, `💀 ${skill.name}`, '#f43f5e', 1.1);
+                    }
+                    updatedUnits = updatedUnits.map(u => (u.id === target.id ? debRes.unit : u));
+                    continue;
+                }
+
+                const res = calculateBg3Damage(curCasterObj, curTargetObj, skill, arena.obstacles, surfacesRef.current, character);
+                // 최종강화 [집중 융합]: 광역 스킬로 적 1명만 적중 시 배율 적용 ({ multiplier, logTag } 객체 안전 분해!)
+                const focusRes = skill ? getFocusFusionDamageMultiplier(skill, targets.length) : { multiplier: 1, logTag: '' };
+                const focusMult = typeof focusRes === 'number' ? focusRes : (focusRes?.multiplier || 1);
+                let finalDmg = Math.max(1, Math.round(res.damage * qteRes.mult * focusMult));
+                if (focusMult > 1) {
+                    pushCombatLog(`🎯 [집중 융합] 발동! 단일 대상 피해 ×${focusMult.toFixed(2)}`, 'heal', roundNum);
+                }
+                if (res.affinityEffect && res.affinityEffect.includes('약점')) {
+                    addFloatText(curTargetObj.x, curTargetObj.y - 68, `⚡ 속성 약점!`, '#fde047', 0.95);
+                }
+                if (Array.isArray(res.additionalLogs) && res.additionalLogs.length > 0) {
+                    res.additionalLogs.forEach(l => pushCombatLog(l, 'dmg', roundNum));
+                }
+                if (res.isCrit && curCasterObj.team === 'ally') anyCritByAlly = true;
+
+                // 신력 브레이크 게이지 차감 (약점 신력 타격 시 -1, QTE JUST 시 추가 -1!)
+                const atkElem = targeting.shinryokuType || curCasterObj.element;
+                const isWeakHit = isShinryokuWeaknessHit(atkElem, curTargetObj.element);
+                const breakDmg = (isWeakHit ? 1 : 0) + (isWeakHit ? qteRes.extraBreak : 0);
+                if (breakDmg > 0 && curTargetObj.sourceEntity && !res.isMiss) {
+                    const defMaxBrk =
+                        curTargetObj.team === 'ally'
+                            ? getAllyMaxBreakGauge(character, curTargetObj.sourceEntity as any)
+                            : getEnemyMaxBreakGauge(curTargetObj.sourceEntity as any);
+                    const brkRes = applyShinryokuBreakHit(curTargetObj.sourceEntity as any, breakDmg, defMaxBrk);
+                    if (brkRes.triggeredBreak) {
+                        addFloatText(curTargetObj.x, curTargetObj.y - 60, '💥 신력 브레이크! (피해 1.5배)', '#fbbf24', 1.35);
+                        spawnParticles(curTargetObj.x, curTargetObj.y, '#fbbf24', 30, 4.5);
+                        triggerShake(14, 340);
+                        pushCombatLog(brkRes.log.trim(), 'warn', roundNum);
+                        finalDmg = Math.round(finalDmg * 1.5);
+                    } else if (brkRes.log) {
+                        addFloatText(curTargetObj.x, curTargetObj.y - 52, `🛡️ 약점! 실드 -${breakDmg}`, '#38bdf8', 0.95);
+                    }
+                    updatedUnits = updatedUnits.map(u =>
+                        u.id === curTargetObj.id
+                            ? {
+                                  ...u,
+                                  breakGauge: (curTargetObj.sourceEntity as any).breakGauge ?? u.breakGauge,
+                                  stunnedTurns: brkRes.triggeredBreak ? Math.max(1, u.stunnedTurns) : u.stunnedTurns
+                              }
+                            : u
+                    );
+                }
 
                 // BG3 Reaction: Ally Parry + Counter when enemy attacks!
-                if (target.team === 'ally' && target.hasReaction && !res.isMiss) {
-                    const parry = await askReactionParry(target, caster, finalDmg);
+                if (curTargetObj.team === 'ally' && curTargetObj.hasReaction && !res.isMiss) {
+                    const parry = await askReactionParry(curTargetObj, curCasterObj, finalDmg);
                     setReactionPrompt(null);
                     if (parry) {
                         finalDmg = Math.max(1, Math.round(finalDmg * 0.45));
-                        const counterDmg = Math.max(40, Math.round(target.atk * 0.9));
-                        addFloatText(target.x, target.y - 34, '🟣 신력 패링! (-55%)', '#c084fc', 1.15);
-                        addFloatText(caster.x, caster.y - 30, `⚡ 반격 -${formatCompactKorean(counterDmg)}`, '#38bdf8', 1.15);
+                        const counterDmg = Math.max(40, Math.round(curTargetObj.atk * 0.9));
+                        addFloatText(curTargetObj.x, curTargetObj.y - 34, '🟣 신력 패링! (-55%)', '#c084fc', 1.15);
+                        addFloatText(curCasterObj.x, curCasterObj.y - 30, `⚡ 반격 -${formatCompactKorean(counterDmg)}`, '#38bdf8', 1.15);
                         slashArcsRef.current.push({
                             id: `ctr_${Date.now()}`,
-                            x: caster.x,
-                            y: caster.y,
-                            angle: Math.atan2(caster.y - target.y, caster.x - target.x),
+                            x: curCasterObj.x,
+                            y: curCasterObj.y,
+                            angle: Math.atan2(curCasterObj.y - curTargetObj.y, curCasterObj.x - curTargetObj.x),
                             color: '#c084fc',
                             startTime: performance.now(),
                             duration: 300,
                             scale: 1.2
                         });
+                        const counterApplied = applyBg3DamageWithShieldAndRevival(curCasterObj, counterDmg);
                         updatedUnits = updatedUnits.map(u => {
-                            if (u.id === target.id) return { ...u, hasReaction: false };
-                            if (u.id === caster.id) return { ...u, hp: Math.max(0, u.hp - counterDmg) };
+                            if (u.id === curTargetObj.id) return { ...u, hasReaction: false };
+                            if (u.id === curCasterObj.id) return counterApplied.unit;
                             return u;
                         });
                     }
@@ -956,7 +1524,37 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     continue;
                 }
 
-                totalDmg += finalDmg;
+                const latestTarget = updatedUnits.find(u => u.id === target.id) || curTargetObj;
+                const latestCaster = updatedUnits.find(u => u.id === caster.id) || curCasterObj;
+                const beforeHp = latestTarget.hp || 0;
+
+                // 정규 보호막(CombatShieldService) + 불멸 환생/UNDEAD 사망방지 일괄 처리
+                const dmgApplied = applyBg3DamageWithShieldAndRevival(latestTarget, finalDmg);
+                let hpDmg = dmgApplied.hpDamage;
+                let nextTargetUnit = dmgApplied.unit;
+                let nextCasterUnit = latestCaster;
+
+                // 최종강화 [신력 여진]: 적중 후 추가 폭발 여진 피해 ({ hasAftershock, aftershockDamage } 객체 안전 분해!)
+                const echoRes = skill && nextTargetUnit.hp > 0 ? getEchoAftershockDamage(skill, hpDmg) : { hasAftershock: false, aftershockDamage: 0 };
+                const echoDmg = typeof echoRes === 'number' ? echoRes : (echoRes?.hasAftershock ? echoRes.aftershockDamage : 0);
+                if (echoDmg > 0) {
+                    const echoApplied = applyBg3DamageWithShieldAndRevival(nextTargetUnit, echoDmg);
+                    nextTargetUnit = echoApplied.unit;
+                    hpDmg += echoApplied.hpDamage;
+                    addFloatText(target.x, target.y - 54, `🌊 신력 여진 -${formatCompactKorean(echoApplied.hpDamage)}`, '#a855f7', 1.1);
+                    pushCombatLog(`🌊 [신력 여진] ${target.name}에게 추가 여진 피해 -${formatCompactKorean(echoApplied.hpDamage)}!`, 'dmg', roundNum);
+                }
+
+                if (dmgApplied.shieldAbsorbed > 0) {
+                    addFloatText(target.x, target.y - 44, `🛡️ 보호막 -${formatCompactKorean(dmgApplied.shieldAbsorbed)}`, '#38bdf8', 1.0);
+                }
+                dmgApplied.logs.forEach(l => pushCombatLog(l, dmgApplied.revived ? 'heal' : 'info', roundNum));
+                if (dmgApplied.revived) {
+                    addFloatText(target.x, target.y - 54, `✨ 불사/환생 발동!`, '#fde047', 1.25);
+                    spawnParticles(target.x, target.y, '#fde047', 26, 3.6);
+                }
+
+                totalDmg += hpDmg;
                 if (res.comboName) {
                     comboBanner = res.comboName;
                     addFloatText(target.x, target.y - 48, res.comboName, '#38bdf8', 1.2);
@@ -964,23 +1562,176 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 addFloatText(
                     target.x,
                     target.y - 22,
-                    `${res.isCrit ? 'CRIT! ' : ''}-${formatCompactKorean(finalDmg)}`,
+                    `${res.isCrit ? 'CRIT! ' : ''}-${formatCompactKorean(hpDmg)}`,
                     res.isCrit ? '#fde047' : '#fb7185',
                     res.isCrit ? 1.3 : 1.05
                 );
 
-                const beforeHp = updatedUnits.find(u => u.id === target.id)?.hp || 0;
-                const afterHp = Math.max(0, beforeHp - finalDmg);
-                if (beforeHp > 0 && afterHp <= 0) {
+                // 공격 스킬 부가 디버프/상태이상 SSOT 적용
+                if (skill && nextTargetUnit.hp > 0) {
+                    const secDeb = applyBg3SkillDebuffs(nextCasterUnit, nextTargetUnit, skill);
+                    if (secDeb.applied) {
+                        nextTargetUnit = secDeb.unit;
+                        secDeb.logs.forEach(l => pushCombatLog(l, 'warn', roundNum));
+                    }
+                }
+                if (res.stunsTarget && nextTargetUnit.hp > 0) {
+                    nextTargetUnit = { ...nextTargetUnit, stunnedTurns: Math.max(nextTargetUnit.stunnedTurns, 1) };
+                }
+
+                // 신화/마계 피격·타격 옵션 (ABSORB/DEMONIZE/CURSE_SPREAD/REFLECT) & 장비 상태이상(processEquipmentOnHit)
+                const postHook = applyBg3PostAttackHooks(nextCasterUnit, nextTargetUnit, { damage: hpDmg, isCrit: res.isCrit });
+                nextCasterUnit = postHook.attacker;
+                nextTargetUnit = postHook.target;
+                postHook.logs.forEach(l => pushCombatLog(l, 'info', roundNum));
+
+                // 패시브 흡혈 & 반사 처리
+                const lifestealHeal = nextCasterUnit.passiveLifestealPct > 0 ? Math.round((hpDmg * nextCasterUnit.passiveLifestealPct) / 100) : 0;
+                const reflectDmg = nextTargetUnit.passiveReflectPct > 0 ? Math.round((hpDmg * nextTargetUnit.passiveReflectPct) / 100) : 0;
+                if (lifestealHeal > 0 && nextCasterUnit.hp > 0) {
+                    nextCasterUnit = { ...nextCasterUnit, hp: Math.min(nextCasterUnit.maxHp, nextCasterUnit.hp + lifestealHeal) };
+                    addFloatText(nextCasterUnit.x, nextCasterUnit.y - 26, `🩸 +${formatCompactKorean(lifestealHeal)}`, '#4ade80', 0.95);
+                }
+                if (reflectDmg > 0 && nextCasterUnit.hp > 0) {
+                    const refRes = applyBg3DamageWithShieldAndRevival(nextCasterUnit, reflectDmg);
+                    nextCasterUnit = refRes.unit;
+                    addFloatText(nextCasterUnit.x, nextCasterUnit.y - 40, `⚡ 반사 -${formatCompactKorean(reflectDmg)}`, '#f43f5e', 0.95);
+                }
+
+                if (beforeHp > 0 && nextTargetUnit.hp <= 0) {
                     kills += 1;
                     spawnKillBurst(target);
                 }
 
-                updatedUnits = updatedUnits.map(u =>
-                    u.id === target.id
-                        ? { ...u, hp: afterHp, stunnedTurns: res.stunsTarget ? Math.max(u.stunnedTurns, 1) : u.stunnedTurns }
-                        : u
-                );
+                updatedUnits = updatedUnits.map(u => {
+                    if (u.id === target.id) return nextTargetUnit;
+                    if (u.id === caster.id) return nextCasterUnit;
+                    return u;
+                });
+            }
+
+            // [Item #3] 공격 + 버프 복합 스킬인 경우 범위 내 아군에게 정규 SSOT 버프/회복/마나쉴드/정화 적용!
+            const hasAttackBuff =
+                skill &&
+                (skill.type === SkillType.PHYSICAL || skill.type === SkillType.MAGIC) &&
+                ((Array.isArray(skill.buffEffects) && skill.buffEffects.length > 0) ||
+                    skill.finalEnhanceData?.addedEffect?.type === 'buff' ||
+                    /\[버프:|BUFF:|MANA_SHIELD|마나\s*쉴드/i.test(skill.effectFormula || ''));
+            if (hasAttackBuff && skill) {
+                const buffAllies = updatedUnits.filter(u => {
+                    if (u.team !== caster.team || u.hp <= 0) return false;
+                    // [FIX] 단일 물리/마법 + 버프 스킬은 버프가 전체 아군에 퍼지지 않고 무조건 시전자 본인에게만 적용!
+                    if (targeting.shape === 'single') {
+                        return u.id === caster.id;
+                    }
+                    if (u.id === caster.id) return true;
+                    if (targeting.shape === 'circle') {
+                        return distPx(u.x, u.y, aimX, aimY) <= metersToPx(targeting.aoeRadiusMeters) + 4;
+                    }
+                    if (targeting.shape === 'cone') {
+                        return isPointInConeZone(caster.x, caster.y, aimX, aimY, metersToPx(targeting.rangeMeters), targeting.coneAngleDeg || 60, u.x, u.y, 4);
+                    }
+                    if (targeting.shape === 'square') {
+                        return isPointInSquareZone(caster.x, caster.y, aimX, aimY, metersToPx(targeting.squareWidthMeters || 5), metersToPx(targeting.squareLengthMeters || 10), u.x, u.y, 4);
+                    }
+                    return u.id === caster.id;
+                });
+
+                const effectiveBuffSkill: Skill =
+                    skill.finalEnhanceData?.addedEffect?.type === 'buff' && (!skill.buffEffects || skill.buffEffects.length === 0)
+                        ? {
+                              ...skill,
+                              buffEffects: [
+                                  {
+                                      type: 'STAT_BOOST',
+                                      targetStat: skill.finalEnhanceData.addedEffect.stat || 'STR',
+                                      value: skill.finalEnhanceData.addedEffect.value || 15
+                                  } as any
+                              ]
+                          }
+                        : skill;
+
+                const latestCasterForBuff = updatedUnits.find(u => u.id === caster.id) || caster;
+                const isAoeComposite = targeting.shape !== 'single';
+                const compLogs: string[] = [];
+
+                updatedUnits = updatedUnits.map(u => {
+                    if (!buffAllies.some(a => a.id === u.id)) return u;
+                    const bRes = applyBg3SkillBuffs(latestCasterForBuff, u, effectiveBuffSkill, isAoeComposite);
+                    compLogs.push(...bRes.logs);
+                    if (bRes.healAmount > 0) addFloatText(u.x, u.y - 34, `+${formatCompactKorean(bRes.healAmount)} HP`, '#4ade80', 1.0);
+                    if (bRes.shieldGain > 0) addFloatText(u.x, u.y - 46, `🛡️ +${formatCompactKorean(bRes.shieldGain)}`, '#38bdf8', 1.05);
+                    if (bRes.buffApplied && bRes.healAmount === 0) addFloatText(u.x, u.y - 26, `✨ ${skill.name}`, '#fde047', 1.05);
+                    return bRes.unit;
+                });
+                if (compLogs.length > 0) {
+                    compLogs.forEach(l => pushCombatLog(l, 'heal', roundNum));
+                } else {
+                    pushCombatLog(`✨ [${skill.name}] 부가 버프가 아군 ${buffAllies.length}명에게 적용되었습니다!`, 'heal', roundNum);
+                }
+            }
+
+            if (anyCritByAlly) {
+                chargeBondGauges(10);
+            }
+
+            // [탈것 몬스터 자동 협공!] 장착한 탈것이 있는 아군이 공격(기본/스킬) 시 턴당 정확히 1회만 뛰어나오며 자동 추가 공격!
+            const mountTurnKey = `${roundNum}:${turnIdx}:${caster.id}`;
+            if (caster.team === 'ally' && caster.mountEntity && !isPureDebuffSkill && mountAttackedTurnKeyRef.current !== mountTurnKey) {
+                mountAttackedTurnKeyRef.current = mountTurnKey;
+                const mount = caster.mountEntity;
+                const liveMountTarget =
+                    targets.map(t => updatedUnits.find(u => u.id === t.id)).find(u => u && u.hp > 0) ||
+                    updatedUnits
+                        .filter(u => u.team === 'enemy' && u.hp > 0)
+                        .sort((a, b) => distPx(caster.x, caster.y, a.x, a.y) - distPx(caster.x, caster.y, b.x, b.y))[0];
+
+                if (liveMountTarget) {
+                    mountDashAnimsRef.current.push({
+                        id: `mnt_${Date.now()}_${Math.random()}`,
+                        mountName: mount.name,
+                        visualUrl: caster.mountVisualUrl || (mount as any).monsterData?.visualUrl || mount.visualUrl || (mount as any).appearance,
+                        sx: caster.x - 16,
+                        sy: caster.y - 8,
+                        tx: liveMountTarget.x,
+                        ty: liveMountTarget.y,
+                        startTime: performance.now(),
+                        duration: 540
+                    });
+
+                    const mountAttackSkills = (mount.skills || []).filter(
+                        s => (s.type === SkillType.PHYSICAL || s.type === SkillType.MAGIC) && (s.mpCost || 0) <= (mount.stats?.mp || 9999)
+                    );
+                    const chosenMountSkill =
+                        mountAttackSkills.length > 0 && Math.random() < 0.65
+                            ? mountAttackSkills[Math.floor(Math.random() * mountAttackSkills.length)]
+                            : undefined;
+
+                    const mCalc = calculateDamage(mount as any, liveMountTarget.sourceEntity as any, chosenMountSkill, character);
+                    const rawMountDmg = Math.max(25, Math.round((mCalc.damage || 30) + (mCalc.additionalDamage || []).reduce((s, a) => s + (a.damage || 0), 0)));
+                    const mBeforeHp = liveMountTarget.hp;
+                    const mApplied = applyBg3DamageWithShieldAndRevival(liveMountTarget, rawMountDmg);
+                    totalDmg += mApplied.hpDamage;
+
+                    spawnParticles(liveMountTarget.x, liveMountTarget.y, '#34d399', 18, 3.6);
+                    addFloatText(
+                        liveMountTarget.x,
+                        liveMountTarget.y - 44,
+                        `🐎 ${mount.name} ${chosenMountSkill ? `[${chosenMountSkill.name}] ` : '협공 '}-${formatCompactKorean(mApplied.hpDamage)}`,
+                        '#34d399',
+                        1.15
+                    );
+                    pushCombatLog(
+                        `🐎 [탈것 협공] ${caster.name}의 탈것 [${mount.name}]이(가) 뛰어나와 ${liveMountTarget.name}에게 ${formatCompactKorean(mApplied.hpDamage)} 피해!`,
+                        'dmg',
+                        roundNum
+                    );
+                    if (mBeforeHp > 0 && mApplied.unit.hp <= 0) {
+                        kills += 1;
+                        spawnKillBurst(liveMountTarget);
+                    }
+                    updatedUnits = updatedUnits.map(u => (u.id === liveMountTarget.id ? mApplied.unit : u));
+                }
             }
 
             // Create elemental surface pool
@@ -990,11 +1741,11 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             }
 
             setUnits(updatedUnits);
-            setBannerMsg(
-                `${caster.name}의 [${skill?.name || '기본 공격'}]! 총 ${formatCompactKorean(totalDmg)} 피해${
-                    kills > 0 ? ` (💀 ${kills}명 처치!)` : ''
-                }${comboBanner ? ` · ${comboBanner}` : ''}`
-            );
+            const atkMsg = `${caster.name}의 [${skill?.name || caster.weaponLabel || '기본 공격'}]! 총 ${formatCompactKorean(totalDmg)} 피해${
+                kills > 0 ? ` (💀 ${kills}명 처치!)` : ''
+            }${comboBanner ? ` · ${comboBanner}` : ''}`;
+            setBannerMsg(atkMsg);
+            pushCombatLog(atkMsg, 'dmg', roundNum);
             setActionMode('move');
             setSelectedSkill(null);
             if (!fromAi) setBusySafe(false);
@@ -1075,39 +1826,80 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             nextOrder = buildBg3Initiative(alive);
             nextIdx = 0;
 
-            // Tick buffs, surfaces, and reset action economy
+            // Tick buffs, surfaces, passive turn effects (CombatUtils.processTurnStart & processPassiveTurnEffects), role MP regen, and reset action economy
             setSurfaces(prev => prev.map(s => ({ ...s, turns: s.turns - 1 })).filter(s => s.turns > 0));
-            setUnits(prev =>
-                prev.map(u => {
-                    if (u.hp <= 0) return u;
-                    // Heal on ally_camp / fort / altar / holy surface
-                    let heal = 0;
-                    arena.obstacles.forEach(o => {
-                        if (o.healPct && distPx(u.x, u.y, o.x, o.y) <= o.radius + 26) {
-                            heal = Math.max(heal, Math.round((u.maxHp * o.healPct) / 100));
-                        }
-                    });
-                    const onFire = surfacesRef.current.find(s => s.type === 'fire' && distPx(u.x, u.y, s.x, s.y) <= s.radius);
-                    let burn = onFire ? Math.max(40, Math.round(u.maxHp * 0.06)) : 0;
-                    if (heal > 0) addFloatText(u.x, u.y - 24, `+${formatCompactKorean(heal)} HP`, '#4ade80', 0.95);
-                    if (burn > 0) addFloatText(u.x, u.y - 24, `🔥 -${formatCompactKorean(burn)}`, '#f97316', 0.95);
+            const roundLogs: string[] = [];
+            const working = [...unitsRef.current];
+            for (let idx = 0; idx < working.length; idx++) {
+                const u = working[idx];
+                if (u.hp <= 0) continue;
 
-                    const nextBuffs = u.activeBuffs.map(b => ({ ...b, turns: b.turns - 1 })).filter(b => b.turns > 0);
-                    const nextMult = nextBuffs.reduce((acc, b) => acc * (b.atkMult || 1), 1);
+                // 1. 지형 회복 / 화염 지면
+                let terrainHeal = 0;
+                arena.obstacles.forEach(o => {
+                    if (o.healPct && distPx(u.x, u.y, o.x, o.y) <= o.radius + 26) {
+                        terrainHeal = Math.max(terrainHeal, Math.round((u.maxHp * o.healPct) / 100));
+                    }
+                });
+                const onFire = surfacesRef.current.find(s => s.type === 'fire' && distPx(u.x, u.y, s.x, s.y) <= s.radius);
+                const burn = onFire ? Math.max(40, Math.round(u.maxHp * 0.06)) : 0;
+                if (terrainHeal > 0) addFloatText(u.x, u.y - 24, `+${formatCompactKorean(terrainHeal)} HP`, '#4ade80', 0.95);
+                if (burn > 0) addFloatText(u.x, u.y - 24, `🔥 -${formatCompactKorean(burn)}`, '#f97316', 0.95);
 
-                    return {
-                        ...u,
-                        hp: Math.max(1, Math.min(u.maxHp, u.hp + heal - burn)),
-                        remainingMeters: u.moveMeters,
-                        hasAction: u.stunnedTurns <= 0,
-                        hasBonusAction: u.stunnedTurns <= 0,
-                        hasReaction: true,
-                        stunnedTurns: Math.max(0, u.stunnedTurns - 1),
-                        activeBuffs: nextBuffs,
-                        buffAtkMult: +nextMult.toFixed(2)
-                    };
-                })
-            );
+                // 2. 소환수 수명 차감
+                const nextSummonTurns = u.isSummon ? (u.summonTurnsLeft ?? 1) - 1 : undefined;
+                if (u.isSummon && (nextSummonTurns ?? 0) <= 0) {
+                    addFloatText(u.x, u.y - 26, `💨 ${u.name} 소멸`, '#94a3b8', 1.0);
+                    working[idx] = { ...u, hp: 0, summonTurnsLeft: 0 };
+                    continue;
+                }
+
+                // 3. 역할별 라운드 MP 자연회복 (useGame.ts:5158-5208)
+                let roleMpRegen = 0;
+                const roleStr = String((u.sourceEntity as any)?.battleRole || '');
+                if (roleStr.includes('힐러') || roleStr.includes('버퍼') || roleStr.includes('디버퍼')) {
+                    roleMpRegen = Math.max(1, Math.floor(u.maxMp * 0.015));
+                } else if (roleStr.includes('서포터')) {
+                    roleMpRegen = Math.max(1, Math.floor(u.maxMp * 0.01));
+                } else if (roleStr.includes('올라운더')) {
+                    roleMpRegen = Math.max(1, Math.floor(u.maxMp * 0.005));
+                }
+
+                // 4. 정규 턴 시작 처리 (패시브 재생, 도트 피해(치사 가능), 결계, 턴 차감, 패시브 광역, CC 판정)
+                let nextU: Bg3Unit = {
+                    ...u,
+                    hp: Math.max(0, Math.min(u.maxHp, u.hp + terrainHeal - burn)),
+                    mp: Math.min(u.maxMp, u.mp + roleMpRegen),
+                    isDefending: false,
+                    summonTurnsLeft: nextSummonTurns
+                };
+                const turnStartRes = processBg3TurnStart(nextU, working, character);
+                nextU = turnStartRes.unit;
+                roundLogs.push(...turnStartRes.logs);
+
+                // 패시브 광역 효과로 영향받은 상대 유닛 반영
+                turnStartRes.otherUnitUpdates.forEach((updatedOpp, oppId) => {
+                    const oIdx = working.findIndex(x => x.id === oppId);
+                    if (oIdx >= 0) working[oIdx] = updatedOpp;
+                });
+
+                if (turnStartRes.skipTurn && nextU.hp > 0) {
+                    addFloatText(nextU.x, nextU.y - 34, `⚠️ ${turnStartRes.skipReason || '행동불가'}!`, '#38bdf8', 1.1);
+                }
+
+                working[idx] = {
+                    ...nextU,
+                    remainingMeters: turnStartRes.moveLocked || turnStartRes.skipTurn ? 0 : nextU.moveMeters,
+                    hasAction: !turnStartRes.skipTurn && nextU.stunnedTurns <= 0,
+                    hasBonusAction: !turnStartRes.skipTurn && nextU.stunnedTurns <= 0,
+                    hasReaction: !turnStartRes.skipTurn,
+                    stunnedTurns: turnStartRes.skipTurn ? Math.max(1, nextU.stunnedTurns) : Math.max(0, nextU.stunnedTurns - 1),
+                    buffAtkMult: 1
+                };
+            }
+            setUnits(working);
+            roundLogs.forEach(l => pushCombatLog(l, 'info', nextRound));
+            chargeBondGauges(5);
             setRoundNum(nextRound);
             setInitiativeOrder(nextOrder);
         }
@@ -1220,6 +2012,34 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     return;
                 }
 
+                // 아군 자동전투 AI: 사망 동료 부활 최우선 -> 빈사 아군 회복 우선!
+                if (cur.team === 'ally') {
+                    const deadAlly = unitsRef.current.find(u => u.team === 'ally' && !u.isSummon && u.hp <= 0);
+                    const resSkill = deadAlly
+                        ? cur.skills.find(s => isBg3ResurrectionSkill(s) && (s.mpCost || 0) <= cur.mp)
+                        : undefined;
+                    if (deadAlly && resSkill) {
+                        await cb().executeCombatAction(cur, deadAlly.x, deadAlly.y, resSkill, deadAlly, true);
+                        return;
+                    }
+                    const lowHpAlly = unitsRef.current
+                        .filter(u => u.team === 'ally' && u.hp > 0 && u.hp / Math.max(1, u.maxHp) < 0.55)
+                        .sort((a, b) => a.hp / Math.max(1, a.maxHp) - b.hp / Math.max(1, b.maxHp))[0];
+                    const healSkill = lowHpAlly
+                        ? cur.skills.find(
+                              s =>
+                                  (s.mpCost || 0) <= cur.mp &&
+                                  !isBg3ResurrectionSkill(s) &&
+                                  (s.type === SkillType.HEAL ||
+                                      (Array.isArray(s.buffEffects) && s.buffEffects.some(ef => ef.type === 'HP_RECOV')))
+                          )
+                        : undefined;
+                    if (lowHpAlly && healSkill) {
+                        await cb().executeCombatAction(cur, lowHpAlly.x, lowHpAlly.y, healSkill, lowHpAlly, true);
+                        return;
+                    }
+                }
+
                 // Pick closest opponent
                 targets.sort((a, b) => distPx(cur.x, cur.y, a.x, a.y) - distPx(cur.x, cur.y, b.x, b.y));
                 const target = targets[0];
@@ -1282,11 +2102,11 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                             {
                                 bossId: refreshedCur.id,
                                 bossName: refreshedCur.name,
-                                skillName: '파멸의 신격 강타',
+                                skillName: refreshedCur.isMythicBoss ? '신격 파멸의 천벌' : '파멸의 신격 강타',
                                 x: refreshedTarget.x,
                                 y: refreshedTarget.y,
-                                radiusPx: metersToPx(3.6),
-                                damageMultiplier: 1.45
+                                radiusPx: metersToPx(refreshedCur.isMythicBoss ? 8.5 : 5.5),
+                                damageMultiplier: refreshedCur.isMythicBoss ? 1.65 : 1.45
                             }
                         ]);
                         setBannerMsg(`⚠️ ${refreshedCur.name}이(가) [파멸의 신격 강타]를 예고했습니다! 붉은 원 밖으로 피하세요!`);
@@ -1313,9 +2133,18 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         if (!pt) return;
 
         // Clicking another ally in the shared initiative group switches active unit!
+        // 부활 스킬 선택 중에는 전투불능(hp <= 0) 동료 무덤도 클릭 타겟으로 허용!
+        const isResSkillSelected = actionMode === 'skill' && isBg3ResurrectionSkill(selectedSkill);
+        const clickedDeadAlly = isResSkillSelected
+            ? units.find(u => u.team === 'ally' && u.hp <= 0 && distPx(pt.x, pt.y, u.x, u.y) <= u.radius + 18)
+            : undefined;
         const clickedAlly = units.find(
-            u => u.team === 'ally' && u.hp > 0 && u.id !== activeUnit.id && distPx(pt.x, pt.y, u.x, u.y) <= u.radius + 10
+            u => u.team === 'ally' && u.hp > 0 && u.id !== activeUnit.id && distPx(pt.x, pt.y, u.x, u.y) <= u.radius + 12
         );
+        const clickedSelf =
+            actionMode === 'skill' && distPx(pt.x, pt.y, activeUnit.x, activeUnit.y) <= activeUnit.radius + 12
+                ? activeUnit
+                : undefined;
         if (clickedAlly && actionMode === 'move' && sharedAllyGroup.includes(clickedAlly.id)) {
             setActiveUnitId(clickedAlly.id);
             setBannerMsg(`🔄 공유 이니셔티브 전환: ${clickedAlly.name} 선택!`);
@@ -1331,6 +2160,38 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 return;
             }
             await executeShove(activeUnit, clickedEnemy);
+            return;
+        }
+
+        // Item Targeting Mode (고정 타겟 범위 내 아군/적군/부활 무덤 선택 사용!)
+        if (actionMode === 'item' && pendingItemUse) {
+            const { item, quantity, rangeMeters, isEnemyTarget, isRevive } = pendingItemUse;
+            const clickedItemTarget = isEnemyTarget
+                ? units.find(u => u.team === 'enemy' && u.hp > 0 && distPx(pt.x, pt.y, u.x, u.y) <= u.radius + 18)
+                : units.find(
+                      u =>
+                          u.team === 'ally' &&
+                          (isRevive ? u.hp <= 0 : u.hp > 0) &&
+                          distPx(pt.x, pt.y, u.x, u.y) <= u.radius + 18
+                  );
+            if (!clickedItemTarget) {
+                setBannerMsg(
+                    isEnemyTarget
+                        ? `🎯 [${item.name}] 대상을 클릭하세요! (사거리 ${rangeMeters}m 내 적군)`
+                        : isRevive
+                            ? `🎯 [${item.name}] 부활시킬 동료의 무덤을 클릭하세요! (사거리 ${rangeMeters}m)`
+                            : `🎯 [${item.name}] 사용할 아군(또는 자신)을 클릭하세요! (사거리 ${rangeMeters}m)`
+                );
+                return;
+            }
+            const dM = pxToMeters(distPx(activeUnit.x, activeUnit.y, clickedItemTarget.x, clickedItemTarget.y));
+            if (dM > rangeMeters + 0.5) {
+                setBannerMsg(`아이템 사용 사거리 밖입니다! (최대 ${rangeMeters}m, 현재 ${dM.toFixed(1)}m)`);
+                return;
+            }
+            handleUseInventoryItem(item, quantity, clickedItemTarget.name);
+            setPendingItemUse(null);
+            setActionMode('move');
             return;
         }
 
@@ -1364,7 +2225,8 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 return;
             }
             const useSkill = actionMode === 'skill' ? selectedSkill : null;
-            await executeCombatAction(activeUnit, pt.x, pt.y, useSkill, clickedEnemy || clickedAlly);
+            const explicitTgt = clickedDeadAlly || clickedEnemy || clickedAlly || clickedSelf;
+            await executeCombatAction(activeUnit, pt.x, pt.y, useSkill, explicitTgt);
             return;
         }
 
@@ -1415,6 +2277,145 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
 
         await animateMove(activeUnit.id, pt.x, pt.y, false);
         setIsBusy(false);
+    };
+
+    // 방어 태세 (1턴간 받는 피해 45% 감소 + 소량 보호막 + 신력 실드 +2 복구)
+    const handleDefendStance = () => {
+        if (!activeUnit || !activeUnit.hasAction || isBusy) return;
+        const shAdd = Math.max(80, Math.round(activeUnit.maxHp * 0.1));
+        let brkRecovered = 0;
+        if (activeUnit.sourceEntity) {
+            brkRecovered = recoverAllyBreakGauge(
+                activeUnit.sourceEntity as any,
+                2,
+                getAllyMaxBreakGauge(character, activeUnit.sourceEntity as any)
+            );
+        }
+        addFloatText(
+            activeUnit.x,
+            activeUnit.y - 26,
+            `🛡️ 방어 태세 (-45% · 쉴드 +${formatCompactKorean(shAdd)}${brkRecovered > 0 ? ` · 브레이크+${brkRecovered}` : ''})`,
+            '#38bdf8',
+            1.1
+        );
+        spawnParticles(activeUnit.x, activeUnit.y, '#38bdf8', 18, 2.8);
+        setUnits(prev =>
+            prev.map(u =>
+                u.id === activeUnit.id
+                    ? {
+                          ...u,
+                          hasAction: false,
+                          isDefending: true,
+                          shieldHp: (u.shieldHp || 0) + shAdd,
+                          maxShieldHp: Math.max(u.maxShieldHp || 0, (u.shieldHp || 0) + shAdd),
+                          breakGauge: (activeUnit.sourceEntity as any)?.breakGauge ?? u.breakGauge
+                      }
+                    : u
+            )
+        );
+        const msg = `🛡️ ${activeUnit.name} 방어 태세 돌입! (피해 -45%, 보호막 +${formatCompactKorean(shAdd)}${brkRecovered > 0 ? `, 신력 실드 +${brkRecovered} 복구` : ''})`;
+        setBannerMsg(msg);
+        pushCombatLog(msg, 'info', roundNum);
+    };
+
+    // 실제 인벤토리 소모품 사용 (ItemSelectionModal + 정규 applyConsumableEffect 100% 연동 — 회복·버프·해독·부활·몬스터 포획 지원)
+    const handleUseInventoryItem = (item: any, quantity: number = 1, targetName?: string) => {
+        if (!activeUnit || isBusy || !item) return;
+        const targetAlly =
+            (targetName ? unitsRef.current.find(u => u.team === 'ally' && u.name === targetName) : null) || activeUnit;
+        const targetEnemy =
+            (targetName ? unitsRef.current.find(u => u.team === 'enemy' && u.hp > 0 && u.name === targetName) : null) ||
+            unitsRef.current.find(u => u.team === 'enemy' && u.hp > 0);
+
+        const txt = `${item.name || ''} ${item.description || ''} ${item.effect || ''}`.toLowerCase();
+        const isRevive = /부활|소생|불사/.test(txt);
+
+        let capturedMonsterObj: any;
+        let capturedEnemyId: string | undefined;
+        let revivedAllyId: string | undefined;
+        const itemLogs: string[] = [];
+
+        // React 19 비동기 업데이터 유실 방지: unitsRef.current에서 동기 계산 후 setUnits 전달!
+        const nextUnitsAfterItem = unitsRef.current.map(u => {
+            let next = { ...u };
+            if (u.id === activeUnit.id) {
+                next = { ...next, hasBonusAction: false };
+            }
+            if (u.id === targetAlly.id) {
+                if (isRevive && next.hp <= 0) {
+                    const revHp = Math.max(100, Math.round(next.maxHp * 0.5));
+                    next.hp = revHp;
+                    if (next.sourceEntity) {
+                        (next.sourceEntity as any).isDead = false;
+                        if ((next.sourceEntity as any).stats) (next.sourceEntity as any).stats.hp = revHp;
+                    }
+                    next = syncUnitFromSourceEntity(next);
+                    revivedAllyId = next.id;
+                    addFloatText(next.x, next.y - 28, `✨ 부활! +${formatCompactKorean(revHp)} HP`, '#fde047', 1.2);
+                    itemLogs.push(`✨ [${item.name}] 사용! ${next.name}이(가) 부활했습니다!`);
+                } else {
+                    for (let q = 0; q < Math.max(1, quantity); q++) {
+                        const res = applyBg3ConsumableItem(next, item, targetEnemy);
+                        next = res.user;
+                        itemLogs.push(...res.logs);
+                        if (res.hpGain > 0) addFloatText(next.x, next.y - 28, `🧪 +${formatCompactKorean(res.hpGain)} HP`, '#4ade80', 1.15);
+                        if (res.mpGain > 0) addFloatText(next.x, next.y - 42, `💧 +${formatCompactKorean(res.mpGain)} MP`, '#38bdf8', 1.1);
+                        if (res.isCaptured && res.capturedMonster && targetEnemy) {
+                            capturedMonsterObj = res.capturedMonster;
+                            capturedEnemyId = targetEnemy.id;
+                            addFloatText(targetEnemy.x, targetEnemy.y - 32, `🕸️ 포획 성공!`, '#fde047', 1.3);
+                            break;
+                        }
+                    }
+                }
+            }
+            return next;
+        }).map(u => (capturedEnemyId && u.id === capturedEnemyId ? { ...u, hp: 0 } : u));
+
+        setUnits(nextUnitsAfterItem);
+
+        if (revivedAllyId) {
+            setInitiativeOrder(prev => (prev.includes(revivedAllyId!) ? prev : [...prev, revivedAllyId!]));
+        }
+
+        // 실제 인벤토리 수량 차감 (+ 몬스터 포획 시 character.base.capturedMonsters에 정규 등록!)
+        if (onUpdateCharacter) {
+            let rem = quantity;
+            const nextInv = (character.inventory || [])
+                .map(inv => {
+                    if (rem <= 0 || !inv || inv.name !== item.name) return inv;
+                    const q = inv.quantity || 1;
+                    if (q <= rem) {
+                        rem -= q;
+                        return null;
+                    }
+                    const left = q - rem;
+                    rem = 0;
+                    return { ...inv, quantity: left };
+                })
+                .filter(Boolean) as any[];
+            const nextBase = capturedMonsterObj
+                ? {
+                      ...(character.base || {}),
+                      capturedMonsters: [...((character.base as any)?.capturedMonsters || []), capturedMonsterObj]
+                  }
+                : character.base;
+            const latestPlayerUnit = nextUnitsAfterItem.find(u => u.isPlayer);
+            const syncedPlayerStatuses = Array.isArray((latestPlayerUnit?.sourceEntity as any)?.statusEffects)
+                ? [...(latestPlayerUnit?.sourceEntity as any).statusEffects]
+                : character.statusEffects;
+            onUpdateCharacter({ ...character, inventory: nextInv, base: nextBase as any, statusEffects: syncedPlayerStatuses });
+        }
+
+        const msg = itemLogs[0] || `🎒 ${activeUnit.name}이(가) [${item.name}] x${quantity} 사용! (${targetAlly.name})`;
+        setBannerMsg(msg);
+        if (itemLogs.length > 0) itemLogs.forEach(l => pushCombatLog(l, 'heal', roundNum));
+        else pushCombatLog(msg, 'heal', roundNum);
+        setShowItemModal(false);
+
+        if (capturedEnemyId) {
+            checkBattleOutcome(nextUnitsAfterItem, roundNum);
+        }
     };
 
     // Quick Bonus Action: Potion / Rally
@@ -1542,6 +2543,25 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             ctx.fillStyle = vig;
             ctx.fillRect(0, 0, arenaW, arenaH);
 
+            // 0. 일반 사냥 전용 '도망 구역 (Escape Zone)' 렌더링 (전장 하단 후방)
+            if (canFlee) {
+                const escTop = arenaH - 132;
+                const pulse = 0.16 + Math.abs(Math.sin(now * 0.004)) * 0.12;
+                ctx.save();
+                ctx.fillStyle = `rgba(16, 185, 129, ${pulse})`;
+                ctx.fillRect(24, escTop, arenaW - 48, 110);
+                ctx.strokeStyle = 'rgba(52, 211, 153, 0.85)';
+                ctx.lineWidth = 2.5;
+                ctx.setLineDash([10, 6]);
+                ctx.strokeRect(24, escTop, arenaW - 48, 110);
+                ctx.setLineDash([]);
+                ctx.font = 'bold 14px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#a7f3d0';
+                ctx.fillText('🏃 도망 구역 (이 영역 안으로 이동하면 하단 [도망] 버튼 활성화)', arenaW * 0.5, escTop + 26);
+                ctx.restore();
+            }
+
             // 1. Organic Elemental Surface Pools
             surfacesRef.current.forEach(pool => {
                 const st = SURFACE_COLORS[pool.type] || SURFACE_COLORS.water;
@@ -1609,16 +2629,51 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     ctx.restore();
                 }
 
-                // Skill / Attack Range Circle
-                if (currentTargeting) {
+                // Item Targeting Range Circle (고정 사거리 내 대상 선택!)
+                if (actionMode === 'item' && pendingItemUse) {
+                    const itemRPx = metersToPx(pendingItemUse.rangeMeters);
+                    const ringColor = pendingItemUse.isEnemyTarget ? '#f43f5e' : '#34d399';
                     ctx.save();
-                    ctx.strokeStyle = currentTargeting.vfxColor;
-                    ctx.globalAlpha = 0.55;
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([7, 5]);
+                    ctx.fillStyle = pendingItemUse.isEnemyTarget ? 'rgba(244, 63, 94, 0.08)' : 'rgba(52, 211, 153, 0.08)';
+                    ctx.strokeStyle = ringColor;
+                    ctx.lineWidth = 2.5;
                     ctx.beginPath();
-                    ctx.arc(curActive.x, curActive.y, metersToPx(currentTargeting.rangeMeters), 0, Math.PI * 2);
+                    ctx.arc(curActive.x, curActive.y, itemRPx, 0, Math.PI * 2);
+                    ctx.fill();
                     ctx.stroke();
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = ringColor;
+                    ctx.fillText(`🎒 ${pendingItemUse.item.name} 사거리 ${pendingItemUse.rangeMeters}m`, curActive.x, curActive.y - itemRPx - 8);
+                    ctx.restore();
+                }
+
+                // Skill / Attack TargetRadius (시전 사거리 원 — 점선 대신 선명한 시안 실선 + 사거리 라벨!)
+                if (currentTargeting) {
+                    const trPx = metersToPx(currentTargeting.rangeMeters);
+                    ctx.save();
+                    ctx.fillStyle = 'rgba(56, 189, 248, 0.06)';
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 2.6;
+                    ctx.beginPath();
+                    ctx.arc(curActive.x, curActive.y, trPx, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // 사거리 필 라벨 (원 상단)
+                    const rangeLabel = `시전 사거리 ${currentTargeting.rangeMeters.toFixed(1)}m`;
+                    ctx.font = 'bold 11px sans-serif';
+                    const rTw = ctx.measureText(rangeLabel).width + 14;
+                    ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
+                    ctx.beginPath();
+                    ctx.roundRect(curActive.x - rTw / 2, curActive.y - trPx - 22, rTw, 18, 6);
+                    ctx.fill();
+                    ctx.strokeStyle = '#38bdf8';
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = '#bae6fd';
+                    ctx.fillText(rangeLabel, curActive.x, curActive.y - trPx - 9);
                     ctx.restore();
                 }
 
@@ -1721,36 +2776,185 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 } else if (currentTargeting) {
                     if (currentTargeting.shape === 'circle') {
                         const rPx = metersToPx(currentTargeting.aoeRadiusMeters);
+                        const dM = pxToMeters(distPx(curActive.x, curActive.y, hover.x, hover.y));
+                        const inRange = dM <= currentTargeting.rangeMeters + 0.4;
+                        const areaColor = !inRange ? '#ef4444' : currentTargeting.isSupport ? '#34d399' : '#fb923c';
                         ctx.save();
-                        ctx.fillStyle = `${currentTargeting.vfxColor}33`;
-                        ctx.strokeStyle = currentTargeting.vfxColor;
-                        ctx.lineWidth = 2.5;
+                        // 시전자 -> 타겟 중심 조준선
+                        ctx.strokeStyle = inRange ? 'rgba(56, 189, 248, 0.55)' : 'rgba(239, 68, 68, 0.65)';
+                        ctx.lineWidth = 1.6;
+                        ctx.beginPath();
+                        ctx.moveTo(curActive.x, curActive.y);
+                        ctx.lineTo(hover.x, hover.y);
+                        ctx.stroke();
+
+                        // AreaRadius (효과 적용 범위 원 — TargetRadius와 완벽히 구별되는 채움 + 이중 실선!)
+                        ctx.fillStyle = !inRange
+                            ? 'rgba(239, 68, 68, 0.22)'
+                            : currentTargeting.isSupport
+                                ? 'rgba(52, 211, 153, 0.24)'
+                                : 'rgba(251, 146, 60, 0.26)';
+                        ctx.strokeStyle = areaColor;
+                        ctx.lineWidth = 3;
                         ctx.beginPath();
                         ctx.arc(hover.x, hover.y, rPx, 0, Math.PI * 2);
                         ctx.fill();
                         ctx.stroke();
+                        ctx.lineWidth = 1.2;
+                        ctx.strokeStyle = '#ffffffaa';
+                        ctx.beginPath();
+                        ctx.arc(hover.x, hover.y, Math.max(4, rPx - 4), 0, Math.PI * 2);
+                        ctx.stroke();
+
+                        const areaLabel = inRange
+                            ? `효과 범위 ${currentTargeting.aoeRadiusMeters.toFixed(1)}m`
+                            : `사거리 초과 (${dM.toFixed(1)}m / ${currentTargeting.rangeMeters.toFixed(1)}m)`;
+                        ctx.font = 'bold 11px sans-serif';
+                        const aTw = ctx.measureText(areaLabel).width + 14;
+                        ctx.fillStyle = 'rgba(2, 6, 23, 0.9)';
+                        ctx.beginPath();
+                        ctx.roundRect(hover.x - aTw / 2, hover.y - rPx - 24, aTw, 18, 6);
+                        ctx.fill();
+                        ctx.strokeStyle = areaColor;
+                        ctx.lineWidth = 1.2;
+                        ctx.stroke();
+                        ctx.textAlign = 'center';
+                        ctx.fillStyle = inRange ? '#fed7aa' : '#fecaca';
+                        ctx.fillText(areaLabel, hover.x, hover.y - rPx - 11);
                         ctx.restore();
                     } else if (currentTargeting.shape === 'cone') {
                         const ang = Math.atan2(hover.y - curActive.y, hover.x - curActive.x);
                         const rPx = metersToPx(currentTargeting.rangeMeters);
+                        const halfRad = (((currentTargeting.coneAngleDeg || 60) * Math.PI) / 180) * 0.5;
                         ctx.save();
                         ctx.fillStyle = `${currentTargeting.vfxColor}33`;
                         ctx.strokeStyle = currentTargeting.vfxColor;
                         ctx.lineWidth = 2.5;
                         ctx.beginPath();
                         ctx.moveTo(curActive.x, curActive.y);
-                        ctx.arc(curActive.x, curActive.y, rPx, ang - Math.PI / 6, ang + Math.PI / 6);
+                        ctx.arc(curActive.x, curActive.y, rPx, ang - halfRad, ang + halfRad);
                         ctx.closePath();
                         ctx.fill();
+                        ctx.stroke();
+                        ctx.restore();
+                    } else if (currentTargeting.shape === 'square') {
+                        const ang = Math.atan2(hover.y - curActive.y, hover.x - curActive.x);
+                        const wPx = metersToPx(currentTargeting.squareWidthMeters || 5);
+                        const lPx = metersToPx(currentTargeting.squareLengthMeters || 10);
+                        ctx.save();
+                        ctx.translate(curActive.x, curActive.y);
+                        ctx.rotate(ang);
+                        ctx.fillStyle = `${currentTargeting.vfxColor}33`;
+                        ctx.strokeStyle = currentTargeting.vfxColor;
+                        ctx.lineWidth = 2.5;
+                        ctx.fillRect(0, -wPx / 2, lPx, wPx);
+                        ctx.strokeRect(0, -wPx / 2, lPx, wPx);
+                        ctx.restore();
+                    } else if (currentTargeting.shape === 'single') {
+                        // 단일 스킬/공격 조준 시 타겟 리티클(과녁) 링 렌더링
+                        const pulse = 1 + Math.sin(now * 0.01) * 0.12;
+                        const r = 18 * pulse;
+                        ctx.save();
+                        ctx.strokeStyle = actionMode === 'skill' ? '#fbbf24' : '#f43f5e';
+                        ctx.lineWidth = 2.5;
+                        ctx.beginPath();
+                        ctx.arc(hover.x, hover.y, r, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.arc(hover.x, hover.y, r * 0.45, 0, Math.PI * 2);
                         ctx.stroke();
                         ctx.restore();
                     }
                 }
             }
 
-            // 6. Units (Sorted by Y for 2.5D depth)
-            const sortedUnits = [...unitsRef.current].filter(u => u.hp > 0).sort((a, b) => a.y - b.y);
+            // 6. Units (Sorted by Y for 2.5D depth — 전투불능 동료는 무덤/비석 오브젝트로 유지 표기!)
+            const isResTargetMode = actionMode === 'skill' && isBg3ResurrectionSkill(selectedSkill);
+            const sortedUnits = [...unitsRef.current]
+                .filter(u => u.hp > 0 || (u.team === 'ally' && !u.isSummon))
+                .sort((a, b) => a.y - b.y);
             sortedUnits.forEach(u => {
+                // 전투불능 동료 -> 무덤(비석) 오브젝트 렌더링 (추후 assets/visuals/gravestone.png 생성 시 자동 표시)
+                if (u.hp <= 0 && u.team === 'ally') {
+                    const gx = u.x;
+                    const gy = u.y;
+                    ctx.save();
+
+                    // 부활 스킬 선택 중일 때 황금빛 부활 가능 펄스 링 표시
+                    if (isResTargetMode) {
+                        const pulse = 1 + Math.sin(now * 0.008) * 0.14;
+                        ctx.strokeStyle = 'rgba(250, 204, 21, 0.92)';
+                        ctx.lineWidth = 3;
+                        ctx.setLineDash([7, 5]);
+                        ctx.beginPath();
+                        ctx.ellipse(gx, gy + 10, (u.radius + 10) * pulse, (u.radius + 10) * 0.52 * pulse, 0, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+
+                    // 바닥 그림자 & 흙무덤
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
+                    ctx.beginPath();
+                    ctx.ellipse(gx, gy + 14, 24, 10, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#44403c';
+                    ctx.beginPath();
+                    ctx.ellipse(gx, gy + 10, 20, 8, 0, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    const graveImg = getGravestoneImage();
+                    if (graveImg && graveImg.complete && graveImg.naturalWidth > 0) {
+                        const gw = 48;
+                        const gh = 54;
+                        ctx.drawImage(graveImg, gx - gw / 2, gy - gh + 14, gw, gh);
+                    } else {
+                        // 스타일리시 캔버스 석재 비석 (추후 이미지 생성 전까지 기본 표시)
+                        const stoneGrad = ctx.createLinearGradient(gx - 15, gy - 32, gx + 15, gy + 10);
+                        stoneGrad.addColorStop(0, '#94a3b8');
+                        stoneGrad.addColorStop(0.55, '#64748b');
+                        stoneGrad.addColorStop(1, '#334155');
+                        ctx.fillStyle = stoneGrad;
+                        ctx.strokeStyle = '#1e293b';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(gx - 14, gy + 8);
+                        ctx.lineTo(gx - 14, gy - 16);
+                        ctx.arc(gx, gy - 16, 14, Math.PI, 0, false);
+                        ctx.lineTo(gx + 14, gy + 8);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // 비석 받침대
+                        ctx.fillStyle = '#475569';
+                        ctx.fillRect(gx - 18, gy + 5, 36, 6);
+                        ctx.strokeRect(gx - 18, gy + 5, 36, 6);
+
+                        // 각인 십자가
+                        ctx.strokeStyle = '#cbd5e1';
+                        ctx.lineWidth = 2.2;
+                        ctx.beginPath();
+                        ctx.moveTo(gx, gy - 23);
+                        ctx.lineTo(gx, gy - 5);
+                        ctx.moveTo(gx - 6, gy - 16);
+                        ctx.lineTo(gx + 6, gy - 16);
+                        ctx.stroke();
+                    }
+
+                    // 이름표 & 상태 안내
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.textAlign = 'center';
+                    const label = isResTargetMode ? `✨ ${u.name} (부활 가능)` : `⚰️ ${u.name} (전투불능)`;
+                    ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+                    ctx.fillText(label, gx + 1, gy - 37);
+                    ctx.fillStyle = isResTargetMode ? '#fde047' : '#cbd5e1';
+                    ctx.fillText(label, gx, gy - 38);
+
+                    ctx.restore();
+                    return;
+                }
+
                 let ux = u.x;
                 let uy = u.y;
                 let jumpArcY = 0;
@@ -1899,32 +3103,166 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     } else {
                         drawFallbackChibiSprite(ctx, ux, drawY + 12, 48, u.dir, walkFrame, u.regionKey, u.genderKey);
                     }
+
+                    // 탈것 장착 아군: 캐릭터 좌측 하단에 탈것 visualUrl 원형 메달 상시 표기!
+                    if (u.mountName) {
+                        const mx = ux - u.radius - 7;
+                        const my = drawY - 10;
+                        const mRad = 13;
+                        const mSprite = getCachedMonsterSprite(u.mountVisualUrl);
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(mx, my, mRad + 1.5, 0, Math.PI * 2);
+                        ctx.fillStyle = '#0f172a';
+                        ctx.fill();
+                        if (mSprite) {
+                            ctx.beginPath();
+                            ctx.arc(mx, my, mRad, 0, Math.PI * 2);
+                            ctx.closePath();
+                            ctx.clip();
+                            const sw = mSprite.width || 64;
+                            const sh = mSprite.height || 64;
+                            const sc = Math.max((mRad * 2) / sw, (mRad * 2) / sh);
+                            ctx.drawImage(mSprite.source, mx - (sw * sc) / 2, my - (sh * sc) * 0.45, sw * sc, sh * sc);
+                        } else {
+                            ctx.fillStyle = '#065f46';
+                            ctx.beginPath();
+                            ctx.arc(mx, my, mRad, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.font = '12px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillStyle = '#ecfdf5';
+                            ctx.fillText('🐎', mx, my + 4);
+                        }
+                        ctx.restore();
+                        ctx.save();
+                        ctx.strokeStyle = '#34d399';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(mx, my, mRad, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
                 }
                 ctx.restore();
 
-                // Name + HP Bar + Compact Korean HP Text (만/억/조)
-                const barW = u.isBoss ? 96 : 66;
-                const barY = drawY - (u.isBoss ? 92 : 62);
-                ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-                ctx.fillRect(ux - barW / 2, barY, barW, 8);
+                // Name + HP Bar (12px, 내부에 HP 수치+% 정렬) + MP Bar (10px, 내부에 MP % 정렬) + Shield Bar
+                const barW = u.isBoss ? 116 : 86;
+                const hpBarH = 12;
+                const mpBarH = 10;
+                const barY = drawY - (u.isBoss ? 96 : 68);
                 const hpPct = Math.max(0, Math.min(1, u.hp / Math.max(1, u.maxHp)));
-                ctx.fillStyle = u.team === 'ally' ? '#22c55e' : u.isBoss ? '#f43f5e' : '#ef4444';
-                ctx.fillRect(ux - barW / 2, barY, barW * hpPct, 8);
+                const hpPctInt = Math.round(hpPct * 100);
 
-                // Compact HP readout
-                ctx.font = 'bold 10px sans-serif';
+                // HP 바 배경 & 채움
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+                ctx.fillRect(ux - barW / 2, barY, barW, hpBarH);
+                ctx.fillStyle = u.team === 'ally' ? '#16a34a' : u.isBoss ? '#e11d48' : '#dc2626';
+                ctx.fillRect(ux - barW / 2, barY, barW * hpPct, hpBarH);
+                ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+                ctx.lineWidth = 0.8;
+                ctx.strokeRect(ux - barW / 2, barY, barW, hpBarH);
+
+                // HP 수치 + % 를 HP 칸 내부 정중앙에 깔끔하게 표기!
+                const hpInnerText = (u.shieldHp || 0) > 0
+                    ? `${formatCompactKorean(u.hp)} (${hpPctInt}%) +🛡️${formatCompactKorean(u.shieldHp)}`
+                    : `${formatCompactKorean(u.hp)} (${hpPctInt}%)`;
+                ctx.save();
+                ctx.font = 'bold 9px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillStyle = '#020617';
-                ctx.fillText(formatCompactKorean(u.hp), ux + 1, barY + 18);
-                ctx.fillStyle = '#e2e8f0';
-                ctx.fillText(formatCompactKorean(u.hp), ux, barY + 17);
+                ctx.textBaseline = 'middle';
+                ctx.lineWidth = 2.4;
+                ctx.strokeStyle = 'rgba(2, 6, 23, 0.9)';
+                ctx.strokeText(hpInnerText, ux, barY + hpBarH / 2 + 0.5);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(hpInnerText, ux, barY + hpBarH / 2 + 0.5);
+                ctx.restore();
+
+                // 보호막 / 마나 쉴드 파란 게이지 바 (HP 바 바로 위)
+                if ((u.shieldHp || 0) > 0) {
+                    const shPct = Math.min(1, u.shieldHp / Math.max(1, u.maxShieldHp || u.maxHp));
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.fillRect(ux - barW / 2, barY - 4, barW * shPct, 3.2);
+                }
+
+                // 아군 캐릭터/동료 MP 게이지 바 (HP 바 바로 아래 + 내부에 MP % 정중앙 표기!)
+                if (u.team === 'ally' && u.maxMp > 0) {
+                    const mpY = barY + hpBarH + 1;
+                    const mpPct = Math.max(0, Math.min(1, u.mp / Math.max(1, u.maxMp)));
+                    const mpPctInt = Math.round(mpPct * 100);
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+                    ctx.fillRect(ux - barW / 2, mpY, barW, mpBarH);
+                    ctx.fillStyle = '#2563eb';
+                    ctx.fillRect(ux - barW / 2, mpY, barW * mpPct, mpBarH);
+                    ctx.strokeStyle = 'rgba(147, 197, 253, 0.25)';
+                    ctx.lineWidth = 0.7;
+                    ctx.strokeRect(ux - barW / 2, mpY, barW, mpBarH);
+
+                    ctx.save();
+                    ctx.font = 'bold 8.5px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.lineWidth = 2.2;
+                    ctx.strokeStyle = 'rgba(2, 6, 23, 0.9)';
+                    ctx.strokeText(`MP ${mpPctInt}%`, ux, mpY + mpBarH / 2 + 0.5);
+                    ctx.fillStyle = '#e0f2fe';
+                    ctx.fillText(`MP ${mpPctInt}%`, ux, mpY + mpBarH / 2 + 0.5);
+                    ctx.restore();
+                }
+
+                // 신력 쉴드(브레이크 게이지) 명시적 뱃지 (HP바 우측)
+                const maxBrk = u.maxBreakGauge || 0;
+                if (maxBrk > 0) {
+                    const curBrk = u.breakGauge ?? maxBrk;
+                    const isBroken = isUnitShinryokuBroken((u.sourceEntity as any)?.statusEffects);
+                    const badgeX = ux + barW / 2 + 4;
+                    const badgeY = barY;
+                    const badgeText = isBroken ? '💥BREAK' : `⚡${curBrk}/${maxBrk}`;
+                    ctx.save();
+                    ctx.font = 'bold 9px sans-serif';
+                    const tw = ctx.measureText(badgeText).width + 8;
+                    ctx.fillStyle = isBroken ? 'rgba(153, 27, 27, 0.92)' : u.team === 'ally' ? 'rgba(12, 74, 110, 0.92)' : 'rgba(120, 53, 15, 0.92)';
+                    ctx.strokeStyle = isBroken ? '#f87171' : u.team === 'ally' ? '#38bdf8' : '#fbbf24';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.roundRect(badgeX, badgeY, tw, 13, 4);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.textAlign = 'left';
+                    ctx.fillStyle = isBroken ? '#fef08a' : u.team === 'ally' ? '#e0f2fe' : '#fef3c7';
+                    ctx.fillText(badgeText, badgeX + 4, badgeY + 9.5);
+                    ctx.restore();
+                }
+
+                // 버프/상태이상 캔버스 미니 젬 인디케이터 (상세 아이콘·효과는 좌측 하단 패널 & 마우스 호버 툴팁에서 확인)
+                const buffCount = (u.activeBuffs || []).length;
+                const statusCount = (u.activeStatuses || []).length;
+                if (buffCount > 0 || statusCount > 0) {
+                    const totalDots = Math.min(5, buffCount + statusCount);
+                    const startX = ux - ((totalDots - 1) * 10) / 2;
+                    for (let bi = 0; bi < Math.min(3, buffCount); bi++) {
+                        ctx.fillStyle = u.activeBuffs[bi].color || '#fde047';
+                        ctx.beginPath();
+                        ctx.arc(startX + bi * 10, barY - 22, 3.5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = '#020617';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                    for (let si = 0; si < Math.min(2, statusCount); si++) {
+                        ctx.fillStyle = u.activeStatuses[si].color || '#f43f5e';
+                        ctx.beginPath();
+                        ctx.arc(startX + (Math.min(3, buffCount) + si) * 10, barY - 22, 3.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
 
                 ctx.font = u.isBoss ? 'bold 13px sans-serif' : 'bold 11px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#020617';
-                ctx.fillText(u.name, ux + 1, barY - 4);
+                ctx.fillText(u.name, ux + 1, barY - 5);
                 ctx.fillStyle = u.team === 'ally' ? '#e0f2fe' : u.isBoss ? '#fde047' : '#fecdd3';
-                ctx.fillText(u.name, ux, barY - 5);
+                ctx.fillText(u.name, ux, barY - 6);
 
                 // Hover Damage & Hit Chance Preview over Enemy! (만/억/조 단위)
                 if (hover && curActive && curActive.team === 'ally' && u.team === 'enemy' && distPx(hover.x, hover.y, u.x, u.y) <= u.radius + 30) {
@@ -1945,6 +3283,59 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             });
 
             // 7. Layer B Live On-Field VFX: Projectiles
+            // 6.5 탈것 몬스터 자동 협공 돌진 애니메이션 렌더링!
+            mountDashAnimsRef.current = mountDashAnimsRef.current.filter(anim => now - anim.startTime < anim.duration);
+            mountDashAnimsRef.current.forEach(anim => {
+                const p = Math.min(1, (now - anim.startTime) / anim.duration);
+                const lungeT = p < 0.55 ? p / 0.55 : 1 - (p - 0.55) / 0.45;
+                const ease = 1 - Math.pow(1 - lungeT, 2);
+                const cx = anim.sx + (anim.tx - anim.sx) * ease;
+                const cy = anim.sy + (anim.ty - anim.sy) * ease - Math.sin(lungeT * Math.PI) * 24;
+                const mSprite = getCachedMonsterSprite(anim.visualUrl);
+                const rad = 24;
+
+                ctx.save();
+                ctx.globalAlpha = p > 0.85 ? (1 - p) / 0.15 : 1;
+                ctx.shadowColor = 'rgba(52, 211, 153, 0.85)';
+                ctx.shadowBlur = 16;
+                ctx.beginPath();
+                ctx.arc(cx, cy, rad + 2, 0, Math.PI * 2);
+                ctx.fillStyle = '#064e3b';
+                ctx.fill();
+                ctx.restore();
+
+                ctx.save();
+                ctx.globalAlpha = p > 0.85 ? (1 - p) / 0.15 : 1;
+                if (mSprite) {
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+                    ctx.closePath();
+                    ctx.clip();
+                    const sw = mSprite.width || 64;
+                    const sh = mSprite.height || 64;
+                    const sc = Math.max((rad * 2) / sw, (rad * 2) / sh);
+                    ctx.drawImage(mSprite.source, cx - (sw * sc) / 2, cy - (sh * sc) * 0.45, sw * sc, sh * sc);
+                } else {
+                    ctx.font = 'bold 22px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🐎', cx, cy + 8);
+                }
+                ctx.restore();
+
+                ctx.save();
+                ctx.globalAlpha = p > 0.85 ? (1 - p) / 0.15 : 1;
+                ctx.strokeStyle = '#6ee7b7';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(cx, cy, rad, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#6ee7b7';
+                ctx.fillText(`🐎 ${anim.mountName}`, cx, cy - rad - 6);
+                ctx.restore();
+            });
+
             projectilesRef.current = projectilesRef.current.filter(p => now - p.startTime < p.duration);
             projectilesRef.current.forEach(p => {
                 const t = Math.min(1, (now - p.startTime) / p.duration);
@@ -2026,6 +3417,62 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 ctx.restore();
             });
 
+            // 10.5 전리품 수루룩 드롭 분수 연출 (몬스터 처치 시 실제 전리품 이미지 + 희귀도 발광 카드!)
+            lootDropAnimsRef.current = lootDropAnimsRef.current.filter(ld => now - ld.startTime < ld.duration);
+            lootDropAnimsRef.current.forEach(ld => {
+                if (now < ld.startTime) return;
+                const elapsed = now - ld.startTime;
+                const t = Math.min(1, elapsed / ld.duration);
+                const flyT = Math.min(1, t / 0.24);
+                const easeOut = 1 - Math.pow(1 - flyT, 3);
+                const arcY = t < 0.24
+                    ? Math.sin(flyT * Math.PI) * 52
+                    : t < 0.34
+                        ? Math.sin(((t - 0.24) / 0.1) * Math.PI) * 14
+                        : Math.sin(now * 0.006) * 2.5;
+                const lx = ld.sx + (ld.tx - ld.sx) * easeOut;
+                const ly = ld.sy + (ld.ty - ld.sy) * easeOut - arcY;
+                const alpha = t > 0.82 ? Math.max(0, (1 - t) / 0.18) : 1;
+                const cardSz = 30;
+                const lImg = getCachedLootImage(ld.imageUrl);
+
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.shadowColor = ld.rarityColor;
+                ctx.shadowBlur = 12;
+
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+                ctx.strokeStyle = ld.rarityColor;
+                ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.roundRect(lx - cardSz / 2, ly - cardSz / 2, cardSz, cardSz, 7);
+                ctx.fill();
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+
+                if (lImg && lImg.complete && lImg.naturalWidth > 0) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.roundRect(lx - cardSz / 2 + 2, ly - cardSz / 2 + 2, cardSz - 4, cardSz - 4, 5);
+                    ctx.clip();
+                    ctx.drawImage(lImg, lx - cardSz / 2 + 2, ly - cardSz / 2 + 2, cardSz - 4, cardSz - 4);
+                    ctx.restore();
+                } else {
+                    ctx.font = '16px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🎁', lx, ly + 6);
+                }
+
+                const shortName = ld.name.length > 9 ? `${ld.name.slice(0, 8)}…` : ld.name;
+                ctx.font = 'bold 9.5px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'rgba(2, 6, 23, 0.88)';
+                ctx.fillText(shortName, lx + 1, ly + cardSz / 2 + 12);
+                ctx.fillStyle = ld.rarityColor;
+                ctx.fillText(shortName, lx, ly + cardSz / 2 + 11);
+                ctx.restore();
+            });
+
             // 11. Floating Damage / Combo / Kill Texts
             floatsRef.current = floatsRef.current.filter(f => now - f.startTime < f.duration);
             floatsRef.current.forEach(f => {
@@ -2051,7 +3498,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
 
         rafId = requestAnimationFrame(render);
         return () => cancelAnimationFrame(rafId);
-    }, [viewportSize, getTransform, arena, activeUnitId, actionMode, currentTargeting, selectedSkill, sharedAllyGroup, isBusy, battleEnded, character]);
+    }, [viewportSize, getTransform, arena, activeUnitId, actionMode, currentTargeting, selectedSkill, pendingItemUse, sharedAllyGroup, isBusy, battleEnded, character]);
 
     const aliveInitiativeUnits = useMemo(
         () =>
@@ -2113,6 +3560,22 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         Boolean(isPlayerTurn && !isBusy && !showSkillBook && !showKeybindModal && !reactionPrompt && !activeVideo),
         handleTriggerShortcutSlot
     );
+
+    // 스페이스바(Space)로 즉시 턴 종료 (QTE/모달/입력창이 열려있지 않을 때)
+    useEffect(() => {
+        const onSpaceEndTurn = (e: KeyboardEvent) => {
+            if (e.code !== 'Space') return;
+            const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+            if (!isPlayerTurn || isBusy || battleEnded || qtePrompt || showSkillBook || showItemModal || showKeybindModal || reactionPrompt || activeVideo) {
+                return;
+            }
+            e.preventDefault();
+            advanceTurn();
+        };
+        window.addEventListener('keydown', onSpaceEndTurn);
+        return () => window.removeEventListener('keydown', onSpaceEndTurn);
+    }, [isPlayerTurn, isBusy, battleEnded, qtePrompt, showSkillBook, showItemModal, showKeybindModal, reactionPrompt, activeVideo, advanceTurn]);
 
     return (
         <div className="relative flex flex-col w-full h-full bg-slate-950 text-slate-100 overflow-hidden select-none rounded-xl border border-slate-800/80">
@@ -2206,17 +3669,40 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                         : 'border-rose-800/70 bg-rose-950/40'
                                 }`}
                             >
-                                <div className="flex items-center gap-1">
-                                    <span className={`text-[11px] font-bold truncate max-w-[64px] ${u.team === 'ally' ? 'text-sky-200' : 'text-rose-200'}`}>
-                                        {u.name}
-                                    </span>
-                                    <span className="text-[9px] font-mono text-amber-300/90">{u.initiative}</span>
-                                </div>
-                                <div className="w-16 h-1 bg-slate-800 rounded-full overflow-hidden mt-0.5">
-                                    <div
-                                        className={`h-full ${u.team === 'ally' ? 'bg-emerald-400' : 'bg-rose-500'}`}
-                                        style={{ width: `${Math.max(0, Math.min(100, (u.hp / Math.max(1, u.maxHp)) * 100))}%` }}
-                                    />
+                                <div className="flex items-center gap-1.5">
+                                    {u.visualUrl ? (
+                                        <img
+                                            src={u.visualUrl}
+                                            alt={u.name}
+                                            className={`w-6 h-6 rounded-full object-cover object-top shrink-0 border ${
+                                                u.team === 'ally' ? 'border-sky-400' : u.isBoss ? 'border-amber-400' : 'border-rose-400'
+                                            }`}
+                                        />
+                                    ) : (
+                                        <div
+                                            className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] font-black border ${
+                                                u.team === 'ally'
+                                                    ? 'bg-sky-900 border-sky-400 text-sky-200'
+                                                    : 'bg-rose-900 border-rose-400 text-rose-200'
+                                            }`}
+                                        >
+                                            {u.name.slice(0, 1)}
+                                        </div>
+                                    )}
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-1">
+                                            <span className={`text-[11px] font-bold truncate max-w-[60px] ${u.team === 'ally' ? 'text-sky-200' : 'text-rose-200'}`}>
+                                                {u.name}
+                                            </span>
+                                            <span className="text-[9px] font-mono text-amber-300/90">{u.initiative}</span>
+                                        </div>
+                                        <div className="w-16 h-1 bg-slate-800 rounded-full overflow-hidden mt-0.5">
+                                            <div
+                                                className={`h-full ${u.team === 'ally' ? 'bg-emerald-400' : 'bg-rose-500'}`}
+                                                style={{ width: `${Math.max(0, Math.min(100, (u.hp / Math.max(1, u.maxHp)) * 100))}%` }}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </button>
                         );
@@ -2225,6 +3711,16 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
 
                 {/* 우측 컨트롤 */}
                 <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => setShowLogDrawer(v => !v)}
+                        className={`px-2 py-1 rounded-lg text-xs font-bold border flex items-center gap-1 ${
+                            showLogDrawer ? 'bg-indigo-600/35 border-indigo-400 text-indigo-200' : 'bg-slate-900 border-slate-700 text-slate-300'
+                        }`}
+                        title="전투 상세 로그 패널 열기/닫기"
+                    >
+                        📜 로그
+                    </button>
                     <button
                         type="button"
                         onClick={() => setOverviewMode(v => !v)}
@@ -2246,6 +3742,16 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     </button>
                     <button
                         type="button"
+                        onClick={() => setQteEnabled(v => !v)}
+                        className={`px-2 py-1 rounded-lg text-xs font-bold border flex items-center gap-1 ${
+                            qteEnabled ? 'bg-yellow-500/20 border-yellow-400 text-yellow-300' : 'bg-slate-900 border-slate-700 text-slate-400'
+                        }`}
+                        title="공격 스킬 시전 시 JUST IMPACT 타이밍 바 (1.25배 피해 + 브레이크 추가)"
+                    >
+                        ⚡ QTE
+                    </button>
+                    <button
+                        type="button"
                         onClick={() => setAutoBattle(v => !v)}
                         className={`px-2 py-1 rounded-lg text-xs font-bold border flex items-center gap-1 ${
                             autoBattle ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300' : 'bg-slate-900 border-slate-700 text-slate-300'
@@ -2253,12 +3759,12 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     >
                         <Bot size={13} /> 자동
                     </button>
-                    {onRetreat && (
+                    {canFlee && onRetreat && (
                         <button
                             type="button"
                             onClick={onRetreat}
                             className="p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-rose-300"
-                            title="전장 후퇴"
+                            title="전장 후퇴 (일반 사냥 전용)"
                         >
                             <X size={15} />
                         </button>
@@ -2272,6 +3778,182 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
                     <CombatVFXOverlay />
                 </div>
+
+                {/* 💞 인연 합체기 듀얼 visualUrl 합체 컷인 배너 */}
+                {bondCutIn && (
+                    <div className="pointer-events-none absolute inset-x-0 top-14 z-40 flex items-center justify-center px-4">
+                        <div className="relative flex items-center gap-0 rounded-2xl bg-gradient-to-r from-pink-950/95 via-slate-950/95 to-amber-950/95 border-2 border-pink-400/85 px-4 py-2.5 shadow-[0_0_40px_rgba(244,114,182,0.55)] backdrop-blur-md">
+                            <div
+                                className="flex items-center gap-2 pr-2"
+                                style={{ animation: 'bondLeftIn 320ms cubic-bezier(0.22,1,0.36,1) forwards' }}
+                            >
+                                {bondCutIn.casterVisualUrl ? (
+                                    <img
+                                        src={bondCutIn.casterVisualUrl}
+                                        alt={bondCutIn.casterName}
+                                        className="w-16 h-16 rounded-xl object-cover object-top border-2 border-pink-400 shadow-lg"
+                                    />
+                                ) : (
+                                    <div className="w-16 h-16 rounded-xl bg-pink-900/70 border-2 border-pink-400 flex items-center justify-center text-xl font-black text-pink-200">
+                                        {bondCutIn.casterName.slice(0, 1)}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="px-3 text-center">
+                                <div className="text-[10px] font-black tracking-widest text-pink-300 uppercase">💞 BOND RESONANCE</div>
+                                <div className="text-base sm:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-300 via-amber-200 to-pink-300 whitespace-nowrap">
+                                    {bondCutIn.skillName}
+                                </div>
+                                <div className="text-[11px] font-bold text-slate-200">
+                                    {bondCutIn.casterName} × {bondCutIn.partnerName}
+                                </div>
+                            </div>
+                            <div
+                                className="flex items-center gap-2 pl-2"
+                                style={{ animation: 'bondRightIn 320ms cubic-bezier(0.22,1,0.36,1) forwards' }}
+                            >
+                                {bondCutIn.partnerVisualUrl ? (
+                                    <img
+                                        src={bondCutIn.partnerVisualUrl}
+                                        alt={bondCutIn.partnerName}
+                                        className="w-16 h-16 rounded-xl object-cover object-top border-2 border-amber-300 shadow-lg"
+                                    />
+                                ) : (
+                                    <div className="w-16 h-16 rounded-xl bg-amber-900/70 border-2 border-amber-300 flex items-center justify-center text-xl font-black text-amber-200">
+                                        {bondCutIn.partnerName.slice(0, 1)}
+                                    </div>
+                                )}
+                            </div>
+                            <style>{`
+                                @keyframes bondLeftIn { from { transform: translateX(-44px); opacity: 0.2; } to { transform: translateX(6px); opacity: 1; } }
+                                @keyframes bondRightIn { from { transform: translateX(44px); opacity: 0.2; } to { transform: translateX(-6px); opacity: 1; } }
+                            `}</style>
+                        </div>
+                    </div>
+                )}
+
+                {/* QTE JUST IMPACT 타이밍 바 오버레이 */}
+                {qtePrompt && (
+                    <div
+                        onClick={() => resolveQteNow()}
+                        className="absolute inset-x-0 bottom-24 z-40 flex flex-col items-center justify-center px-4 cursor-pointer select-none"
+                    >
+                        <div className="w-full max-w-md rounded-2xl bg-slate-950/95 border-2 border-amber-400/80 p-3 shadow-2xl backdrop-blur-md">
+                            <div className="flex items-center justify-between text-xs font-black mb-1.5">
+                                <span className="text-amber-300">⚡ JUST IMPACT — {qtePrompt.skillName}</span>
+                                <span className="text-slate-300 text-[10px]">클릭 또는 SPACE!</span>
+                            </div>
+                            <div className="relative h-5 rounded-full bg-slate-900 border border-slate-700 overflow-hidden">
+                                {/* 중앙 황금 JUST 존 */}
+                                <div className="absolute inset-y-0 left-[37%] w-[26%] bg-amber-400/40 border-x-2 border-amber-300" />
+                                <div className="absolute inset-y-0 left-[46%] w-[8%] bg-yellow-300/70" />
+                                {/* 이동 커서 */}
+                                <div
+                                    className="absolute inset-y-0 w-2 bg-white shadow-[0_0_12px_#fde047] rounded-full"
+                                    style={{
+                                        left: '0%',
+                                        animation: `qteSlide ${qtePrompt.duration}ms linear forwards`
+                                    }}
+                                />
+                            </div>
+                            <style>{`@keyframes qteSlide { from { left: 0%; } to { left: 98%; } }`}</style>
+                        </div>
+                    </div>
+                )}
+
+                {/* 💞 인연 게이지 & 준비된 인연 합체기 플로팅 바 (우측 상단, 인연 스킬 보유 시 표시) */}
+                {Array.isArray(character.bondSkills) && character.bondSkills.length > 0 && (
+                    <div className="absolute top-2.5 right-2.5 z-20 flex flex-col gap-1 max-w-[210px] rounded-xl bg-slate-950/85 border border-pink-500/45 p-2 shadow-xl backdrop-blur-sm">
+                        <div className="text-[10px] font-black text-pink-300 flex items-center justify-between">
+                            <span>💞 인연 게이지</span>
+                            <span className="text-[9px] text-slate-400">100% 합체기</span>
+                        </div>
+                        {resolvedCompanions
+                            .filter(c => character.bondSkills?.some(bs => bs.companionId === c.id))
+                            .slice(0, 3)
+                            .map(c => {
+                                const g = bondGauges[c.id] || 0;
+                                const readySkill = g >= 100 ? character.bondSkills?.find(bs => bs.companionId === c.id) : undefined;
+                                return (
+                                    <div key={c.id} className="space-y-0.5">
+                                        <div className="flex items-center justify-between text-[10px]">
+                                            <span className="text-slate-200 font-bold truncate">{c.name}</span>
+                                            <span className={`font-mono font-black ${g >= 100 ? 'text-pink-300 animate-pulse' : 'text-slate-400'}`}>{g}%</span>
+                                        </div>
+                                        <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                                            <div
+                                                className={`h-full transition-all ${g >= 100 ? 'bg-gradient-to-r from-pink-500 to-amber-300' : 'bg-pink-500/80'}`}
+                                                style={{ width: `${Math.min(100, g)}%` }}
+                                            />
+                                        </div>
+                                        {readySkill && isPlayerTurn && activeUnit?.hasAction && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedSkill({ ...(readySkill as any), isBondSkill: true, companionId: c.id });
+                                                    setActionMode('skill');
+                                                    setBannerMsg(`💞 인연 합체기 [${readySkill.name}] 준비! 전장의 적을 클릭해 발동하세요!`);
+                                                }}
+                                                className="w-full mt-0.5 py-0.5 px-1.5 rounded bg-gradient-to-r from-pink-600 to-amber-500 text-white text-[10px] font-black shadow hover:brightness-110"
+                                            >
+                                                💞 {readySkill.name} 발동!
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                    </div>
+                )}
+
+                {/* 태블릿/모바일 친화적 터치 확대·축소 컨트롤 플로팅 바 (좌측 상단) */}
+                <div className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1 rounded-xl bg-slate-950/85 border border-slate-700/80 p-1 shadow-xl backdrop-blur-sm">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setOverviewMode(false);
+                            setZoom(z => Math.max(0.5, +(z - 0.25).toFixed(2)));
+                        }}
+                        className="min-w-[36px] min-h-[36px] px-2 rounded-lg bg-slate-900 hover:bg-slate-800 active:scale-95 text-slate-100 font-black text-base border border-slate-700 flex items-center justify-center"
+                        title="화면 축소 (-)"
+                    >
+                        −
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setOverviewMode(false);
+                            setZoom(isLargeWar ? 1.55 : 1.25);
+                        }}
+                        className="min-h-[36px] px-2 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-amber-300 font-mono font-bold text-xs border border-slate-700/80 flex items-center justify-center"
+                        title="기본 배율로 초기화"
+                    >
+                        {overviewMode ? '전체' : `${Math.round(zoom * 100)}%`}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setOverviewMode(false);
+                            setZoom(z => Math.min(2.6, +(z + 0.25).toFixed(2)));
+                        }}
+                        className="min-w-[36px] min-h-[36px] px-2 rounded-lg bg-slate-900 hover:bg-slate-800 active:scale-95 text-slate-100 font-black text-base border border-slate-700 flex items-center justify-center"
+                        title="화면 확대 (+)"
+                    >
+                        +
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setOverviewMode(v => !v)}
+                        className={`min-h-[36px] px-2.5 rounded-lg text-xs font-bold border flex items-center justify-center ${
+                            overviewMode
+                                ? 'bg-sky-600/30 border-sky-400 text-sky-200'
+                                : 'bg-slate-900 border-slate-700 text-slate-300'
+                        }`}
+                        title="전체 전장 보기 / 유닛 추적"
+                    >
+                        {overviewMode ? '🎯 추적' : '🗺️ 전체'}
+                    </button>
+                </div>
+
                 <canvas
                     ref={canvasRef}
                     onContextMenu={e => e.preventDefault()}
@@ -2296,19 +3978,330 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                             cameraRef.current.x = cameraTargetRef.current.x;
                             cameraRef.current.y = cameraTargetRef.current.y;
                         }
-                        hoverWorldRef.current = screenToWorld(e.clientX, e.clientY);
+                        const wPt = screenToWorld(e.clientX, e.clientY);
+                        hoverWorldRef.current = wPt;
+                        if (wPt) {
+                            const overEnemy = unitsRef.current.some(
+                                u => u.team === 'enemy' && u.hp > 0 && distPx(wPt.x, wPt.y, u.x, u.y) <= u.radius + 18
+                            );
+                            if (overEnemy !== hoveringEnemy) setHoveringEnemy(overEnemy);
+                        }
                     }}
                     onMouseLeave={() => {
                         panDragRef.current.dragging = false;
                         hoverWorldRef.current = null;
+                        if (hoveringEnemy) setHoveringEnemy(false);
                     }}
-                    onClick={handleCanvasClick}
+                    onTouchStart={e => {
+                        const tg = touchGestureRef.current;
+                        if (e.touches.length === 2) {
+                            const t0 = e.touches[0];
+                            const t1 = e.touches[1];
+                            const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+                            tg.mode = 'pinch';
+                            tg.pinchStartDist = Math.max(10, dist);
+                            tg.pinchStartZoom = overviewMode ? 1.0 : zoom;
+                            tg.lastX = (t0.clientX + t1.clientX) / 2;
+                            tg.lastY = (t0.clientY + t1.clientY) / 2;
+                            tg.moved = true;
+                            setOverviewMode(false);
+                        } else if (e.touches.length === 1) {
+                            const t = e.touches[0];
+                            tg.mode = 'pan';
+                            tg.startX = t.clientX;
+                            tg.startY = t.clientY;
+                            tg.lastX = t.clientX;
+                            tg.lastY = t.clientY;
+                            tg.moved = false;
+                        }
+                    }}
+                    onTouchMove={e => {
+                        const tg = touchGestureRef.current;
+                        if (e.touches.length === 2 && tg.mode === 'pinch') {
+                            const t0 = e.touches[0];
+                            const t1 = e.touches[1];
+                            const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+                            const ratio = dist / Math.max(10, tg.pinchStartDist);
+                            const nextZoom = Math.max(0.5, Math.min(2.6, +(tg.pinchStartZoom * ratio).toFixed(2)));
+                            setZoom(nextZoom);
+
+                            const midX = (t0.clientX + t1.clientX) / 2;
+                            const midY = (t0.clientY + t1.clientY) / 2;
+                            const dx = midX - tg.lastX;
+                            const dy = midY - tg.lastY;
+                            tg.lastX = midX;
+                            tg.lastY = midY;
+                            const { scale } = getTransform();
+                            cameraTargetRef.current.x = Math.max(120, Math.min(arenaW - 120, cameraTargetRef.current.x - dx / scale));
+                            cameraTargetRef.current.y = Math.max(120, Math.min(arenaH - 120, cameraTargetRef.current.y - dy / scale));
+                            cameraRef.current.x = cameraTargetRef.current.x;
+                            cameraRef.current.y = cameraTargetRef.current.y;
+                        } else if (e.touches.length === 1 && tg.mode === 'pan') {
+                            const t = e.touches[0];
+                            const totalMove = Math.hypot(t.clientX - tg.startX, t.clientY - tg.startY);
+                            if (totalMove > 12) {
+                                tg.moved = true;
+                                setOverviewMode(false);
+                                const dx = t.clientX - tg.lastX;
+                                const dy = t.clientY - tg.lastY;
+                                const { scale } = getTransform();
+                                cameraTargetRef.current.x = Math.max(120, Math.min(arenaW - 120, cameraTargetRef.current.x - dx / scale));
+                                cameraTargetRef.current.y = Math.max(120, Math.min(arenaH - 120, cameraTargetRef.current.y - dy / scale));
+                                cameraRef.current.x = cameraTargetRef.current.x;
+                                cameraRef.current.y = cameraTargetRef.current.y;
+                            }
+                            tg.lastX = t.clientX;
+                            tg.lastY = t.clientY;
+                        }
+                    }}
+                    onTouchEnd={() => {
+                        window.setTimeout(() => {
+                            touchGestureRef.current.mode = 'none';
+                            touchGestureRef.current.moved = false;
+                        }, 60);
+                    }}
+                    onClick={e => {
+                        if (touchGestureRef.current.moved) return;
+                        handleCanvasClick(e);
+                    }}
                     onWheel={e => {
                         setOverviewMode(false);
-                        setZoom(z => Math.max(0.6, Math.min(2.2, +(z + (e.deltaY < 0 ? 0.12 : -0.12)).toFixed(2))));
+                        setZoom(z => Math.max(0.5, Math.min(2.6, +(z + (e.deltaY < 0 ? 0.14 : -0.14)).toFixed(2))));
                     }}
-                    className="block w-full h-full cursor-crosshair"
+                    style={{
+                        cursor:
+                            actionMode === 'skill'
+                                ? CURSOR_SKILL_TARGET
+                                : actionMode === 'attack' || (actionMode === 'move' && hoveringEnemy)
+                                ? CURSOR_ATTACK_SWORD
+                                : 'pointer'
+                    }}
+                    className="block w-full h-full touch-none"
                 />
+
+                {/* [Item #4 & #7] 좌측 하단 현재 턴 캐릭터 전체 스탯(버프 포함) + 스킬 아이콘 버프 바 & 호버 툴팁 */}
+                {activeUnit && (
+                    <div className="absolute bottom-3 left-3 z-20 w-64 sm:w-72 max-w-[82vw] rounded-xl bg-slate-950/90 border border-slate-700/85 p-2.5 shadow-2xl backdrop-blur-md space-y-2">
+                        {/* 캐릭터 헤더 */}
+                        <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-1.5">
+                            <div className="flex items-center gap-2 min-w-0">
+                                {activeUnit.visualUrl ? (
+                                    <img
+                                        src={activeUnit.visualUrl}
+                                        alt={activeUnit.name}
+                                        className="w-8 h-8 rounded-full object-cover object-top border border-amber-400/70 shrink-0"
+                                    />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-full bg-slate-800 border border-amber-400/60 flex items-center justify-center text-xs font-black text-amber-300 shrink-0">
+                                        {activeUnit.name.slice(0, 1)}
+                                    </div>
+                                )}
+                                <div className="min-w-0">
+                                    <div className="text-xs font-black text-white truncate">{activeUnit.name}</div>
+                                    <div className="text-[10px] text-slate-400 truncate">Lv.{activeUnit.level} · {activeUnit.jobLabel}</div>
+                                    {activeUnit.mountName && (
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                            {activeUnit.mountVisualUrl && (
+                                                <img
+                                                    src={activeUnit.mountVisualUrl}
+                                                    alt={activeUnit.mountName}
+                                                    className="w-4 h-4 rounded-full object-cover object-top border border-emerald-400/80 shrink-0"
+                                                />
+                                            )}
+                                            <span className="text-[9px] font-bold text-emerald-300 truncate">🐎 {activeUnit.mountName}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                                {(activeUnit.maxBreakGauge || 0) > 0 && (
+                                    <span className="text-[10px] font-black text-amber-300 bg-amber-950/80 border border-amber-500/50 px-1.5 py-0.5 rounded">
+                                        ⚡ 신력쉴드 {activeUnit.breakGauge ?? activeUnit.maxBreakGauge}/{activeUnit.maxBreakGauge}
+                                    </span>
+                                )}
+                                {(activeUnit.shieldHp || 0) > 0 && (
+                                    <span className="text-[10px] font-bold text-cyan-300 bg-cyan-950/80 border border-cyan-500/50 px-1.5 py-0.5 rounded">
+                                        🛡️ +{formatCompactKorean(activeUnit.shieldHp)}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* HP / MP 게이지 + 퍼센트(%) 명시적 표기 */}
+                        {(() => {
+                            const hpPct = Math.round((activeUnit.hp / Math.max(1, activeUnit.maxHp)) * 100);
+                            const mpPct = Math.round((activeUnit.mp / Math.max(1, activeUnit.maxMp)) * 100);
+                            return (
+                                <div className="space-y-1 text-[10px] font-mono">
+                                    <div>
+                                        <div className="flex justify-between text-emerald-300 font-bold mb-0.5">
+                                            <span>HP {formatCompactKorean(activeUnit.hp)} / {formatCompactKorean(activeUnit.maxHp)}</span>
+                                            <span>{hpPct}%</span>
+                                        </div>
+                                        <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                                            <div className="h-full bg-emerald-500 transition-all" style={{ width: `${Math.min(100, hpPct)}%` }} />
+                                        </div>
+                                    </div>
+                                    {activeUnit.team === 'ally' && activeUnit.maxMp > 0 && (
+                                        <div>
+                                            <div className="flex justify-between text-sky-300 font-bold mb-0.5">
+                                                <span>MP {formatCompactKorean(activeUnit.mp)} / {formatCompactKorean(activeUnit.maxMp)}</span>
+                                                <span>{mpPct}%</span>
+                                            </div>
+                                            <div className="h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                                                <div className="h-full bg-sky-500 transition-all" style={{ width: `${Math.min(100, mpPct)}%` }} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
+
+                        {/* 전체 능력치 + 파생 전투 스탯 그리드 (정규 calculateFinalStats + calculateDerivedStats 실시간 반영!) */}
+                        {(() => {
+                            const snap = getBg3UnitDetailedStats(activeUnit);
+                            const fStats = snap?.finalStats;
+                            const diffs = snap?.statDiffs;
+                            const derived = snap?.derived;
+                            const rows = [
+                                { label: 'STR', val: fStats?.str ?? activeUnit.str, diff: diffs?.str ?? 0, color: 'text-rose-300' },
+                                { label: 'INT', val: fStats?.int ?? activeUnit.int, diff: diffs?.int ?? 0, color: 'text-sky-300' },
+                                { label: 'AGI', val: fStats?.agi ?? activeUnit.agi, diff: diffs?.agi ?? 0, color: 'text-emerald-300' },
+                                { label: 'WIS', val: fStats?.wis ?? activeUnit.wis, diff: diffs?.wis ?? 0, color: 'text-indigo-300' },
+                                { label: 'DEF', val: fStats?.def ?? activeUnit.def, diff: diffs?.def ?? 0, color: 'text-amber-300' },
+                                { label: 'CTRL', val: fStats?.ctrl ?? activeUnit.ctrl, diff: diffs?.ctrl ?? 0, color: 'text-purple-300' }
+                            ];
+                            return (
+                                <div className="space-y-1.5">
+                                    <div className="grid grid-cols-3 gap-1 text-[10px] font-mono">
+                                        {rows.map(r => (
+                                            <div key={r.label} className="bg-slate-900/85 border border-slate-800 rounded-md px-1.5 py-1 flex flex-col">
+                                                <span className="text-[9px] text-slate-500 font-bold">{r.label}</span>
+                                                <span className={`font-black leading-tight ${r.diff > 0 ? 'text-amber-300' : r.diff < 0 ? 'text-rose-400' : r.color}`}>
+                                                    {formatCompactKorean(Math.round(r.val))}
+                                                    {r.diff !== 0 && (
+                                                        <span className={`text-[8px] ml-0.5 ${r.diff > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                            ({r.diff > 0 ? `+${formatCompactKorean(r.diff)}` : formatCompactKorean(r.diff)})
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {derived && (
+                                        <div className="grid grid-cols-4 gap-1 text-[9px] font-mono bg-slate-900/60 border border-slate-800/80 rounded-md px-1.5 py-1">
+                                            <div><span className="text-slate-500">물공</span> <span className="text-rose-200 font-bold">{formatCompactKorean(Math.round(derived.pAtk || 0))}</span></div>
+                                            <div><span className="text-slate-500">마공</span> <span className="text-sky-200 font-bold">{formatCompactKorean(Math.round(derived.mAtk || 0))}</span></div>
+                                            <div><span className="text-slate-500">물방</span> <span className="text-amber-200 font-bold">{formatCompactKorean(Math.round(derived.pDef || 0))}</span></div>
+                                            <div><span className="text-slate-500">마방</span> <span className="text-indigo-200 font-bold">{formatCompactKorean(Math.round(derived.mDef || 0))}</span></div>
+                                            <div className="col-span-2"><span className="text-slate-500">치명</span> <span className="text-yellow-300 font-bold">{Math.round(derived.critChance || 0)}%</span></div>
+                                            <div><span className="text-slate-500">명중</span> <span className="text-emerald-300 font-bold">{Math.round(derived.accuracy || 0)}</span></div>
+                                            <div><span className="text-slate-500">회피</span> <span className="text-cyan-300 font-bold">{Math.round(derived.evasion || 0)}</span></div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
+
+                        {/* 별도 버프 & 상태이상 영역 (CombatInterface 스타일 스킬 아이콘 + 마우스 호버 툴팁!) */}
+                        <div className="border-t border-slate-800/90 pt-1.5">
+                            <div className="text-[9px] font-bold text-slate-400 mb-1 flex items-center justify-between">
+                                <span>적용 중인 버프 / 상태이상</span>
+                                {activeUnit.buffAtkMult > 1 && (
+                                    <span className="text-amber-300 font-mono">공격 배율 ×{activeUnit.buffAtkMult.toFixed(2)}</span>
+                                )}
+                            </div>
+                            {(activeUnit.activeBuffs || []).length === 0 && (activeUnit.activeStatuses || []).length === 0 ? (
+                                <div className="text-[10px] text-slate-500 italic">적용 중인 버프 없음</div>
+                            ) : (
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    {(activeUnit.activeBuffs || []).map(b => {
+                                        const regImg = getRegisteredSkillImage(b.name) || b.imageUrl;
+                                        const IconComp = getSkillIconComponent(b.icon || 'Sparkles');
+                                        return (
+                                            <div key={b.name} className="relative group">
+                                                <div
+                                                    className="w-8 h-8 rounded-lg border-2 border-amber-400/80 bg-slate-900 overflow-hidden flex items-center justify-center shadow-md cursor-help"
+                                                    style={{ boxShadow: `0 0 8px ${b.color || '#fbbf24'}55` }}
+                                                >
+                                                    {regImg ? (
+                                                        <img src={regImg} alt={b.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <IconComp size={15} className="text-amber-300" />
+                                                    )}
+                                                    <span className="absolute -bottom-1 -right-1 px-1 rounded bg-slate-950 border border-amber-400 text-[8px] font-black text-amber-300 leading-tight">
+                                                        {b.turns}T
+                                                    </span>
+                                                </div>
+                                                {/* 마우스 호버 상세 버프 효과 툴팁 */}
+                                                <div className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full left-0 mb-2 w-52 p-2 rounded-xl bg-slate-950/98 border border-amber-400/70 shadow-2xl z-50 text-[10px]">
+                                                    <div className="flex items-center justify-between gap-1 font-black text-amber-300 mb-0.5">
+                                                        <span className="truncate">{b.name}</span>
+                                                        <span className="text-emerald-300 shrink-0">{b.turns}턴 남음</span>
+                                                    </div>
+                                                    <div className="text-slate-200 leading-snug">
+                                                        {b.effectSummary || `공격 배율 ×${(b.atkMult || 1).toFixed(2)}`}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {(activeUnit.activeStatuses || []).map(s => (
+                                        <div key={s.name} className="relative group">
+                                            <div className="w-8 h-8 rounded-lg border-2 border-rose-500/80 bg-rose-950/70 flex items-center justify-center text-[10px] font-black text-rose-200 cursor-help">
+                                                {s.name.slice(0, 2)}
+                                                <span className="absolute -bottom-1 -right-1 px-1 rounded bg-slate-950 border border-rose-400 text-[8px] font-black text-rose-300 leading-tight">
+                                                    {s.turns}T
+                                                </span>
+                                            </div>
+                                            <div className="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity absolute bottom-full left-0 mb-2 w-44 p-2 rounded-xl bg-slate-950/98 border border-rose-500/70 shadow-2xl z-50 text-[10px]">
+                                                <div className="font-black text-rose-300">{s.name} ({s.turns}턴 남음)</div>
+                                                <div className="text-slate-300">
+                                                    {s.kind === 'dot' ? '매 라운드 지속 피해' : s.kind === 'cc' ? '행동 불가 (CC)' : '능력치 약화 디버프'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* 접이식 상세 전투 로그 드로어 (우측 슬라이드 / 모바일 하단 시트) */}
+                {showLogDrawer && (
+                    <div className="absolute top-2 right-2 bottom-2 w-72 sm:w-80 max-w-[90vw] z-30 rounded-2xl bg-slate-950/92 border border-indigo-500/50 backdrop-blur-md shadow-2xl flex flex-col overflow-hidden">
+                        <div className="px-3 py-2 border-b border-slate-800 flex items-center justify-between">
+                            <span className="text-xs font-black text-indigo-300">📜 전술 전투 상세 로그</span>
+                            <button
+                                type="button"
+                                onClick={() => setShowLogDrawer(false)}
+                                className="text-slate-400 hover:text-white p-1"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 text-[11px] leading-relaxed">
+                            {combatLogs.map(log => (
+                                <div
+                                    key={log.id}
+                                    className={`px-2 py-1 rounded-lg border ${
+                                        log.tone === 'dmg'
+                                            ? 'bg-rose-950/35 border-rose-800/50 text-rose-200'
+                                            : log.tone === 'heal'
+                                            ? 'bg-emerald-950/35 border-emerald-800/50 text-emerald-200'
+                                            : log.tone === 'warn'
+                                            ? 'bg-amber-950/35 border-amber-800/50 text-amber-200'
+                                            : 'bg-slate-900/70 border-slate-800 text-slate-300'
+                                    }`}
+                                >
+                                    <span className="text-[9px] font-mono text-slate-500 mr-1.5">[R{log.round}]</span>
+                                    {log.text}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* 광활한 전장 클릭 이동 미니맵 (우측 하단) */}
                 <div
@@ -2409,10 +4402,30 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                 <span className="text-xs font-black text-white">{activeUnit.name}</span>
                                 <span className="text-[10px] text-slate-400">{activeUnit.jobLabel}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] font-mono mt-0.5">
+                            <div className="flex items-center gap-2 text-[10px] font-mono mt-0.5 flex-wrap">
                                 <span className="text-emerald-400">HP {formatCompactKorean(activeUnit.hp)}/{formatCompactKorean(activeUnit.maxHp)}</span>
                                 <span className="text-sky-400">MP {formatCompactKorean(activeUnit.mp)}/{formatCompactKorean(activeUnit.maxMp)}</span>
+                                {(activeUnit.shieldHp || 0) > 0 && (
+                                    <span className="text-cyan-300 font-bold bg-cyan-950/70 px-1.5 py-0.2 rounded border border-cyan-500/50">
+                                        🛡️ 마나쉴드 +{formatCompactKorean(activeUnit.shieldHp)}
+                                    </span>
+                                )}
                             </div>
+                            {/* 적용 중인 버프 & 상태이상 남은 턴수 명확 표시 */}
+                            {((activeUnit.activeBuffs || []).length > 0 || (activeUnit.activeStatuses || []).length > 0) && (
+                                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                    {(activeUnit.activeBuffs || []).map(b => (
+                                        <span key={b.name} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-400/50 text-amber-200">
+                                            ✨ {b.name} · {b.turns}턴 남음
+                                        </span>
+                                    ))}
+                                    {(activeUnit.activeStatuses || []).map(s => (
+                                        <span key={s.name} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-950/70 border border-rose-400/50 text-rose-200">
+                                            ⚠️ {s.name} · {s.turns}턴
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                         <div className="flex items-center gap-1 text-[10px] font-bold">
                             <span
@@ -2454,7 +4467,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     <div className="text-xs text-slate-400">전투 진행 중...</div>
                 )}
 
-                {/* 중앙: BG3 전투 커맨드 & 스킬 핫바 */}
+                {/* 중앙: BG3 핵심 전투 커맨드 (자유이동 · 전체 스킬창 · 밀치기 · 도약 · 방어 · 아이템) */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                     <button
                         type="button"
@@ -2469,41 +4482,6 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     >
                         <Footprints size={13} /> 자유이동
                     </button>
-                    <button
-                        type="button"
-                        disabled={!isPlayerTurn || isBusy || !activeUnit?.hasAction}
-                        onClick={() => {
-                            setActionMode('attack');
-                            setSelectedSkill(null);
-                        }}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 disabled:opacity-40 ${
-                            actionMode === 'attack' ? 'bg-rose-600 border-rose-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-200'
-                        }`}
-                    >
-                        <Sword size={13} /> 기본공격
-                    </button>
-
-                    {/* 빠른 스킬 4종 */}
-                    {activePlayerSkills.map(sk => (
-                        <button
-                            key={sk.id}
-                            type="button"
-                            disabled={!isPlayerTurn || isBusy || !activeUnit?.hasAction || (sk.mpCost || 0) > (activeUnit?.mp || 0)}
-                            onClick={() => {
-                                setSelectedSkill(sk);
-                                setActionMode('skill');
-                            }}
-                            className={`px-2 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 disabled:opacity-40 max-w-[116px] truncate ${
-                                actionMode === 'skill' && selectedSkill?.id === sk.id
-                                    ? 'bg-amber-600 border-amber-300 text-white'
-                                    : 'bg-slate-900 border-amber-500/40 text-amber-200 hover:bg-amber-950/50'
-                            }`}
-                            title={`${sk.name} (MP ${sk.mpCost || 0})`}
-                        >
-                            <Sparkles size={12} className="shrink-0" />
-                            <span className="truncate">{sk.name}</span>
-                        </button>
-                    ))}
 
                     {/* CombatInterface와 동일한 전체 스킬창 열기! */}
                     <button
@@ -2512,10 +4490,10 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                         onClick={() => setShowSkillBook(true)}
                         className="px-2.5 py-1.5 rounded-lg text-xs font-black bg-indigo-600 hover:bg-indigo-500 border border-indigo-400 text-white flex items-center gap-1 disabled:opacity-40"
                     >
-                        <BookOpen size={13} /> 전체 스킬창
+                        <BookOpen size={13} /> 스킬
                     </button>
 
-                    {/* BG3 보조행동: 밀치기 / 도약 / 물약 */}
+                    {/* BG3 보조행동: 밀치기 / 도약 / 방어 / 아이템 */}
                     <button
                         type="button"
                         disabled={!isPlayerTurn || isBusy || !activeUnit?.hasBonusAction}
@@ -2538,20 +4516,65 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     </button>
                     <button
                         type="button"
-                        disabled={!isPlayerTurn || isBusy || !activeUnit?.hasBonusAction}
-                        onClick={handleBonusPotion}
-                        className="px-2 py-1.5 rounded-lg text-xs font-bold bg-slate-900 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-950/60 flex items-center gap-1 disabled:opacity-40"
+                        disabled={!isPlayerTurn || isBusy || !activeUnit?.hasAction}
+                        onClick={handleDefendStance}
+                        className="px-2 py-1.5 rounded-lg text-xs font-bold bg-slate-900 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-950/60 flex items-center gap-1 disabled:opacity-40"
                     >
-                        <Heart size={12} /> 고양
+                        <Shield size={12} /> 방어
                     </button>
                     <button
                         type="button"
-                        disabled={!isPlayerTurn || isBusy || !activeUnit?.hasAction}
-                        onClick={handleDash}
-                        className="px-2 py-1.5 rounded-lg text-xs font-bold bg-slate-900 border border-sky-500/50 text-sky-300 hover:bg-sky-950/60 flex items-center gap-1 disabled:opacity-40"
+                        disabled={!isPlayerTurn || isBusy || !activeUnit?.hasBonusAction}
+                        onClick={() => setShowItemModal(true)}
+                        className="px-2 py-1.5 rounded-lg text-xs font-bold bg-slate-900 border border-amber-500/50 text-amber-300 hover:bg-amber-950/60 flex items-center gap-1 disabled:opacity-40"
                     >
-                        <Zap size={12} /> 질주
+                        🎒 아이템
                     </button>
+                    {canFlee && onRetreat && (() => {
+                        const inEscapeZone = Boolean(activeUnit && activeUnit.y >= arenaH - 142);
+                        const aliveEnemiesForFlee = units.filter(u => u.team === 'enemy' && u.hp > 0);
+                        const avgEnemyAgi =
+                            aliveEnemiesForFlee.length > 0
+                                ? aliveEnemiesForFlee.reduce((s, e) => s + (e.agi || 20), 0) / aliveEnemiesForFlee.length
+                                : 20;
+                        const fleeChance = Math.round(
+                            Math.max(15, Math.min(90, 50 + ((activeUnit?.agi || 20) - avgEnemyAgi) * 0.5))
+                        );
+                        return (
+                            <button
+                                type="button"
+                                disabled={!isPlayerTurn || isBusy || !inEscapeZone}
+                                onClick={() => {
+                                    if (!activeUnit || !inEscapeZone) return;
+                                    const roll = Math.random() * 100;
+                                    if (roll < fleeChance) {
+                                        pushCombatLog(`🏃 ${activeUnit.name} 도주 성공! (성공률 ${fleeChance}%)`, 'heal', roundNum);
+                                        onRetreat();
+                                    } else {
+                                        addFloatText(activeUnit.x, activeUnit.y - 30, `❌ 도주 실패! (${fleeChance}%)`, '#f43f5e', 1.15);
+                                        const failMsg = `❌ ${activeUnit.name}이(가) 도주에 실패하여 주행동을 소모했습니다! (성공률 ${fleeChance}%)`;
+                                        setBannerMsg(failMsg);
+                                        pushCombatLog(failMsg, 'warn', roundNum);
+                                        setUnits(prev =>
+                                            prev.map(u => (u.id === activeUnit.id ? { ...u, hasAction: false, remainingMeters: 0 } : u))
+                                        );
+                                    }
+                                }}
+                                title={
+                                    inEscapeZone
+                                        ? `도망 구역에 도달했습니다! (AGI 기반 도주 성공률 ${fleeChance}%)`
+                                        : '전장 하단의 초록색 [도망 구역] 안으로 이동하면 활성화됩니다.'
+                                }
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-black border flex items-center gap-1 transition-all ${
+                                    inEscapeZone
+                                        ? 'bg-emerald-600 hover:bg-emerald-500 border-emerald-300 text-white shadow-lg shadow-emerald-900/50 animate-pulse'
+                                        : 'bg-slate-900 border-slate-700 text-slate-500 opacity-50 cursor-not-allowed'
+                                }`}
+                            >
+                                🏃 도망 {inEscapeZone ? `(${fleeChance}%)` : ''}
+                            </button>
+                        );
+                    })()}
                 </div>
 
                 {/* 우측: 턴 종료 */}
@@ -2582,6 +4605,35 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                             onClose={() => setShowSkillBook(false)}
                         />
                     </div>
+                </div>
+            )}
+
+            {/* 실제 인벤토리 소모품 사용 모달 (ItemSelectionModal 연동) */}
+            {showItemModal && (
+                <div className="fixed inset-0 z-[325] flex items-center justify-center bg-black/75 backdrop-blur-sm p-3">
+                    <ItemSelectionModal
+                        items={(character.inventory || []).filter(it => it && (it.type === 'Consumable' || /포션|물약|영약|해독|부활|회복|포획|그물/.test(it.name || '')))}
+                        onSelect={(item: any, quantity: number = 1) => {
+                            const txt = `${item?.name || ''} ${item?.description || ''} ${item?.effect || ''}`.toLowerCase();
+                            const isEnemyTarget = /포획|그물|폭탄|독병|수류탄|투척/.test(txt);
+                            const isRevive = /부활|소생|불사/.test(txt);
+                            const rangeMeters = isEnemyTarget ? 8.5 : 6.5;
+                            setShowItemModal(false);
+                            setPendingItemUse({ item, quantity, rangeMeters, isEnemyTarget, isRevive });
+                            setActionMode('item');
+                            setSelectedSkill(null);
+                            setBannerMsg(
+                                isEnemyTarget
+                                    ? `🎒 [${item.name}] 사거리 ${rangeMeters}m 내의 적군을 클릭하세요!`
+                                    : isRevive
+                                        ? `🎒 [${item.name}] 사거리 ${rangeMeters}m 내의 전투불능 동료 무덤을 클릭하세요!`
+                                        : `🎒 [${item.name}] 사거리 ${rangeMeters}m 내의 아군(또는 본인)을 클릭하세요!`
+                            );
+                        }}
+                        onClose={() => setShowItemModal(false)}
+                        partyMembers={units.filter(u => u.team === 'ally').map(u => ({ name: u.name, hp: u.hp, maxHp: u.maxHp }))}
+                        enemies={units.filter(u => u.team === 'enemy' && u.hp > 0).map(u => ({ name: u.name, hp: u.hp, maxHp: u.maxHp }))}
+                    />
                 </div>
             )}
 

@@ -757,6 +757,7 @@ export interface Skill {
   frameAnimation?: SkillFrameAnimation; // [NEW] 플레이어 커스텀 프레임별 이펙트 애니메이션
   finalSkillSlot?: number; // [NEW] 파이널 클래스 생성 슬롯 번호 (1-based, 1~5는 1000레벨 슬롯, 6~10은 2000레벨 슬롯)
   finalEnhanceData?: FinalSkillEnhanceData; // [NEW] 파이널 클래스 슬롯 소모 스킬 강화 데이터
+  zoneConfig?: SkillZoneConfig; // [NEW] BG3 무격자 전장 스킬 사거리 & 광역 Zone(Cone/Square/Target) 설정
   isSummonSkill?: boolean; // [NEW] 소환 스킬 여부
   summonData?: {
     summonCount: number; // 소환 수량 (세컨드: 1, 라스트: 1~2, 파이널: 1~3)
@@ -768,9 +769,36 @@ export interface Skill {
   };
 }
 
+export type SkillZoneType = 'cone' | 'square' | 'target';
+
+export interface SkillZoneConfig {
+  /** 단일 스킬 또는 Target 존의 사거리 (m) */
+  targetRadius?: number;
+  /** 광역 스킬 존 형태 (공격: cone | square | target, 버프/디버프: target 고정) */
+  zoneType?: SkillZoneType;
+  /** Cone 존 길이 (m) */
+  coneLength?: number;
+  /** Cone 존 각도 (deg, 30~180) */
+  coneAngle?: number;
+  /** Square 존 가로 폭 (m) */
+  squareWidth?: number;
+  /** Square 존 세로 길이 (m) */
+  squareLength?: number;
+  /** Target 존 폭발/적용 반경 (m) */
+  areaRadius?: number;
+}
+
 export interface FinalSkillEnhanceData {
   totalEnhanceCount: number; // 총 누적 강화 횟수
   allocatedSlots: number[]; // 소모된 파이널 클래스 슬롯 번호 목록
+
+  // BG3 전장 스킬 범위 확장 강화 (powerRatio 패널티 없이 순수 범위 확장 + 상한 돌파)
+  targetRadiusBonus?: number;
+  coneLengthBonus?: number;
+  coneAngleBonus?: number;
+  squareWidthBonus?: number;
+  squareLengthBonus?: number;
+  areaRadiusBonus?: number;
   
   // 공격 스킬 전용 강화
   levelScaleBonus?: number; // 계수 한계 돌파 (강화 횟수당 +50% 증가)

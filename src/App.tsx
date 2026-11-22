@@ -3,9 +3,14 @@ import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } fr
 import { useGame, createInitialParticipantStates } from './hooks/useGame';
 import { useElixirTimer } from './hooks/useElixirTimer';
 import { GameProvider } from './context/GameContext';
-import { Character, Companion, Skill, BondSkill, SkillType, DivineDiplomacyStatus, DiplomaticStatus, ClassTier,SimpleStudent, Item, ItemRarity, Stats, WeaponType, CapturedMonster, Location, Enemy, CombatState, MercenaryRank, Quest, JobType, MilitaryRank, RelationType, InterviewData, CombatStyle, TrainerBranch, BaseDefenseReportData } from './types';
+import { Character, Companion, Skill, BondSkill, SkillType, BattleRole, DivineDiplomacyStatus, DiplomaticStatus, ClassTier,SimpleStudent, Item, ItemRarity, Stats, WeaponType, CapturedMonster, Location, Enemy, CombatState, MercenaryRank, Quest, JobType, MilitaryRank, RelationType, InterviewData, CombatStyle, TrainerBranch, BaseDefenseReportData } from './types';
 import { FACILITIES_INFO, ENHANCEMENT_CAPS,START_DATE, SELL_PRICES, BASE_LEVEL_CONFIG, INITIAL_BASE, ENHANCEMENT_CONFIG, MAX_STORAGE_SIZE, MAX_PARTY_SIZE, BASE_RESIDENT_LIMIT, FACILITY_UPGRADE_CONFIG, WORLD_GEOGRAPHY, MERCENARY_RANK_SCORE, TEMPLE_MESSENGER_MAP, BASE_MONSTERS, BASE_UPGRADE_COSTS, FACILITY_CONSTRUCTION_COSTS, BASE_GRID_EXPANSION_COSTS, COMBAT_STYLE_CONFIG } from './constants';
-import { calculateItemPrice, addMasteryExp, addDays, applyConsumableEffect,generateLevelByRank,generateCompanionStats, generateNameWithSurname, calculateFinalStats, getYear,generateName, getTierByLevel, generateEnemyStats, getRegionByNation, calculateInventorySize, generateDefaultVisualUrl, getRaceByNation, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalWorkshopCapacity, calculateTotalLabLevel, calculateTotalTrainingLevel, gainProfessionExp, unassignFromTraining, assignRandomCombatStyle, getFacilityTrainingLimit, getTrainerBranchMultiplier, addTrainerExpToAssignedTrainers, generateProceduralEnemy, calculateResearcherBonus, getRequiredExp, calculateItemCPDelta, findAvailableBattlePosition, checkWeaponMasteryEquipRequirement, generateLoot } from './utils';
+import { calculateItemPrice, addMasteryExp, addDays, applyConsumableEffect,generateLevelByRank,generateCompanionStats, generateNameWithSurname, calculateFinalStats, getYear,generateName, getTierByLevel, generateEnemyStats, getRegionByNation, calculateInventorySize, generateDefaultVisualUrl, getRaceByNation, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalWorkshopCapacity, calculateTotalLabLevel, calculateTotalTrainingLevel, gainProfessionExp, unassignFromTraining, assignRandomCombatStyle, getFacilityTrainingLimit, getTrainerBranchMultiplier, addTrainerExpToAssignedTrainers, generateProceduralEnemy, calculateResearcherBonus, getRequiredExp, calculateItemCPDelta, findAvailableBattlePosition, checkWeaponMasteryEquipRequirement, generateLoot, getWeaponTypeFromItem, calculateRewardBonuses, getWeaponMasteryMultiplier, getSkillMasteryMultiplier } from './utils';
+import { MountCombatService } from './services/mountCombatService';
+import { tickPostCombatStatusEffects } from './services/bg3CombatSyncBridge';
+import { updateBondSkillMastery } from './services/combatUtils';
+import { applySparringManualCombatResult } from './services/sparringCombatService';
+import { rollSuddenPostCombatEvent } from './services/suddenEventService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { chatWithCompanion, generateInterviewQuestions } from './services/geminiService';
 import CharacterSheet from './components/CharacterSheet';
@@ -3816,7 +3821,8 @@ useEffect(() => {
           isAttackWithDebuff: skillData.isAttackWithDebuff,
           debuffStat: skillData.debuffStat,
           debuffValue: skillData.debuffValue,
-          finalSkillSlot: skillData.finalSkillSlot
+          finalSkillSlot: skillData.finalSkillSlot,
+          zoneConfig: skillData.zoneConfig
       } as any;
 
       if (targetEntity) {
@@ -7103,29 +7109,67 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                 onResolveSrpgCombat={(srpgResult) => {
                                     const defeated = combatState.enemies || [];
                                     const initialStates = createInitialParticipantStates(character);
-                                    const expGain = srpgResult.isVictory
-                                        ? defeated.reduce((acc, e) => acc + Math.max(150, (e as any).expReward || (e.level || 1) * 180), 0)
+                                    // 전투 중 마신 비약(경험치/골드 비약 등)까지 포함하여 배율(expMultiplier/goldMultiplier) 100% 반영!
+                                    const charForRewardCalc: Character = {
+                                        ...character,
+                                        statusEffects: srpgResult.playerFinalStatusEffects ?? character.statusEffects
+                                    };
+                                    const rewardBonuses = calculateRewardBonuses(charForRewardCalc);
+                                    const curRegion = character.currentLocation?.region || '';
+                                    const isSpecialRealm = curRegion.includes('신계') || curRegion.includes('마계');
+                                    const baseExpGain = srpgResult.isVictory
+                                        ? defeated.reduce((acc, e) => {
+                                              const lv = Math.max(1, e.level || 1);
+                                              const isBossMob = Boolean((e as any).isBoss) || /\[BOSS\]|\[보스\]|\[신화\]/.test(e.name || '');
+                                              const raw = (e as any).expReward || lv * (isBossMob ? 1800 : 180) * (isSpecialRealm ? 5 : 1);
+                                              return acc + Math.max(150, Math.round(raw));
+                                          }, 0)
                                         : 0;
-                                    const goldGain = srpgResult.isVictory
-                                        ? defeated.reduce((acc, e) => acc + Math.max(500, (e as any).goldReward || (e.level || 1) * 320), 0)
+                                    const baseGoldGain = srpgResult.isVictory
+                                        ? defeated.reduce((acc, e) => {
+                                              const lv = Math.max(1, e.level || 1);
+                                              const isBossMob = Boolean((e as any).isBoss) || /\[BOSS\]|\[보스\]|\[신화\]/.test(e.name || '');
+                                              const raw = (e as any).goldReward || lv * (isBossMob ? 3200 : 320) * (isSpecialRealm ? 5 : 1);
+                                              return acc + Math.max(500, Math.round(raw));
+                                          }, 0)
                                         : 0;
-                                    const accumulatedLoot: Item[] = srpgResult.isVictory
-                                        ? defeated.flatMap(e => generateLoot(e, character.currentLocation?.nation, character) || [])
+                                    const expGain = Math.round(
+                                        baseExpGain *
+                                            (1 + (rewardBonuses?.expBonus || 0) / 100) *
+                                            Math.max(1, rewardBonuses?.expMultiplier || 1)
+                                    );
+                                    const goldGain = Math.round(
+                                        baseGoldGain *
+                                            (1 + (rewardBonuses?.goldBonus || 0) / 100) *
+                                            Math.max(1, rewardBonuses?.goldMultiplier || 1)
+                                    );
+                                    // 처치 순간 전장에 수루룩 드롭 연출로 이미 굴려진 확정 전리품이 있으면 100% 그대로 지급 (가방 최대 용량 체크 포함!)
+                                    const rawAccumulatedLoot: Item[] = srpgResult.isVictory
+                                        ? Array.isArray(srpgResult.preRolledLoot) && srpgResult.preRolledLoot.length > 0
+                                            ? srpgResult.preRolledLoot
+                                            : defeated.flatMap(e => generateLoot(e, character.currentLocation?.nation, charForRewardCalc) || [])
                                         : [];
+                                    const maxBagSize = calculateInventorySize(character.stats);
+                                    const availableSlots = Math.max(0, maxBagSize - (character.inventory?.length || 0));
+                                    const accumulatedLoot: Item[] = rawAccumulatedLoot.slice(0, availableSlots);
 
-                                    const applyExpWithLevelUp = <T extends { level: number; currentExp: number; maxExp: number; stats: Stats }>(
+                                    const applyExpWithLevelUp = <T extends { level: number; currentExp: number; maxExp: number; stats: Stats; statPoints?: number }>(
                                         entity: T,
                                         gain: number
-                                    ): T => {
-                                        if (gain <= 0) return entity;
+                                    ): { entity: T; leveledUp: boolean } => {
+                                        if (gain <= 0) return { entity, leveledUp: false };
                                         let lvl = entity.level || 1;
                                         let curExp = (entity.currentExp || 0) + gain;
                                         let reqExp = entity.maxExp || getRequiredExp(lvl);
                                         const nextStats = { ...entity.stats };
+                                        let nextStatPoints = entity.statPoints || 0;
+                                        let leveledUp = false;
                                         while (curExp >= reqExp && lvl < 9999) {
                                             curExp -= reqExp;
                                             lvl += 1;
+                                            leveledUp = true;
                                             reqExp = getRequiredExp(lvl);
+                                            nextStatPoints += 5; // 정규 레벨업 스탯 포인트 지급!
                                             nextStats.maxHp = Math.round((nextStats.maxHp || 100) * 1.03 + 25);
                                             nextStats.maxMp = Math.round((nextStats.maxMp || 50) * 1.02 + 10);
                                             nextStats.str = (nextStats.str || 10) + 3;
@@ -7134,38 +7178,305 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                             nextStats.wis = (nextStats.wis || 10) + 3;
                                             nextStats.def = (nextStats.def || 10) + 2;
                                         }
-                                        return { ...entity, level: lvl, currentExp: curExp, maxExp: reqExp, stats: nextStats };
+                                        return {
+                                            entity: { ...entity, level: lvl, currentExp: curExp, maxExp: reqExp, stats: nextStats, statPoints: nextStatPoints },
+                                            leveledUp
+                                        };
                                     };
 
-                                    const updatedPlayerBase = applyExpWithLevelUp(
+                                    // SRPG(BG3) 전투 중 사용한 스킬 숙련도 & 장착 무기 숙련도 반영 (비약/장비 배율 + 인연 스킬 숙련도 포함)
+                                    const applyCombatMastery = <T extends Character | Companion>(entity: T, actorKey: string): T => {
+                                        let nextEntity: any = { ...entity };
+                                        const usedSkillsMap = srpgResult.usedSkillsByUnit?.[actorKey] || {};
+                                        const skillMult = Math.max(1, getSkillMasteryMultiplier(nextEntity));
+                                        const wepMult = Math.max(1, getWeaponMasteryMultiplier(nextEntity));
+
+                                        // 1. 스킬 숙련도 & 인연 스킬 숙련도 누적 (사용 1회당 +1 × 비약/장비 배율)
+                                        if (Object.keys(usedSkillsMap).length > 0) {
+                                            const perUseGain = Math.max(1, Math.round((nextEntity.isPotentialLocked ? 2 : 1) * skillMult));
+                                            if (Array.isArray(nextEntity.skills)) {
+                                                nextEntity.skills = nextEntity.skills.map((sk: Skill) => {
+                                                    const uses = usedSkillsMap[sk.name] || 0;
+                                                    if (uses <= 0) return sk;
+                                                    let sLvl = sk.level || 1;
+                                                    let sMas = (sk.currentMastery || 0) + uses * perUseGain;
+                                                    while (sMas >= 100 && sLvl < 10) {
+                                                        sMas -= 100;
+                                                        sLvl += 1;
+                                                    }
+                                                    return { ...sk, level: sLvl, currentMastery: sMas };
+                                                });
+                                            }
+                                            Object.entries(usedSkillsMap).forEach(([skName, uses]) => {
+                                                for (let ui = 0; ui < uses; ui++) {
+                                                    updateBondSkillMastery(nextEntity, skName);
+                                                }
+                                            });
+                                        }
+
+                                        // 2. 장착 무기 / 보조무기 숙련도 누적 (처치 적당 일반 +1 / 보스 +2 × 비약/장비 배율)
+                                        if (srpgResult.isVictory && (nextEntity.stats?.hp || 0) > 0 && nextEntity.equipment) {
+                                            const wepExpGain = defeated.reduce(
+                                                (sum, en) => sum + ((en as any)?.isBoss || combatState.type === 'boss' ? 2 : 1),
+                                                0
+                                            );
+                                            const finalWepGain = Math.max(1, Math.round(wepExpGain * wepMult));
+                                            const mainWep = nextEntity.equipment.weapon || nextEntity.equipment.Weapon;
+                                            const subWep = nextEntity.equipment.subWeapon || nextEntity.equipment.SubWeapon;
+                                            if (mainWep) {
+                                                const wType = getWeaponTypeFromItem(mainWep);
+                                                if (wType) {
+                                                    nextEntity = addMasteryExp(nextEntity, wType, finalWepGain).char;
+                                                }
+                                            }
+                                            if (subWep) {
+                                                const subType = getWeaponTypeFromItem(subWep);
+                                                if (subType) {
+                                                    nextEntity = addMasteryExp(nextEntity, subType, finalWepGain).char;
+                                                }
+                                            }
+                                        }
+
+                                        // 3. 역할 숙련도 실전 상승 (useGame.ts grantPartyRoleMastery 100% 동기화)
+                                        const role = nextEntity.battleRole;
+                                        if (role && role !== BattleRole.NONE && (nextEntity.stats?.hp || 0) > 0) {
+                                            nextEntity.roleInactivityDays = { ...(nextEntity.roleInactivityDays || {}), [role]: 0 };
+                                            if (srpgResult.isVictory) {
+                                                const curProf = (nextEntity.roleProficiency || {})[role] || 0;
+                                                if (curProf < 100) {
+                                                    nextEntity.roleProficiency = {
+                                                        ...(nextEntity.roleProficiency || {}),
+                                                        [role]: Math.min(100, curProf + 1)
+                                                    };
+                                                }
+                                            }
+                                        }
+
+                                        return nextEntity as T;
+                                    };
+
+                                    // [FIX] 기본 stats.maxHp가 아니라 calculateFinalStats()의 finalStats.maxHp/maxMp 기준으로 HP/MP 보존!
+                                    const playerFinalCalc = calculateFinalStats(character).finalStats;
+                                    const playerMaxHpFinal = Math.max(character.stats.maxHp || 100, playerFinalCalc.maxHp || 100);
+                                    const playerMaxMpFinal = Math.max(character.stats.maxMp || 50, playerFinalCalc.maxMp || 50);
+
+                                    const playerLvlRes = applyExpWithLevelUp(
                                         {
                                             ...character,
                                             money: (character.money || 0) + goldGain,
                                             inventory: [...(character.inventory || []), ...accumulatedLoot],
+                                            statusEffects: tickPostCombatStatusEffects(
+                                                srpgResult.playerFinalStatusEffects ?? character.statusEffects
+                                            ),
                                             stats: {
                                                 ...character.stats,
-                                                hp: Math.max(1, Math.min(character.stats.maxHp, srpgResult.playerFinalHp))
+                                                hp: Math.max(1, Math.min(playerMaxHpFinal, srpgResult.playerFinalHp)),
+                                                mp: typeof srpgResult.playerFinalMp === 'number'
+                                                    ? Math.max(0, Math.min(playerMaxMpFinal, srpgResult.playerFinalMp))
+                                                    : character.stats.mp
                                             }
                                         },
                                         expGain
                                     );
+                                    let updatedPlayerBase = applyCombatMastery(playerLvlRes.entity, 'player');
+                                    if (playerLvlRes.leveledUp) {
+                                        const postLvlFinal = calculateFinalStats(updatedPlayerBase).finalStats;
+                                        updatedPlayerBase = {
+                                            ...updatedPlayerBase,
+                                            stats: {
+                                                ...updatedPlayerBase.stats,
+                                                hp: Math.max(updatedPlayerBase.stats.hp, postLvlFinal.maxHp || updatedPlayerBase.stats.maxHp),
+                                                mp: Math.max(updatedPlayerBase.stats.mp, postLvlFinal.maxMp || updatedPlayerBase.stats.maxMp)
+                                            }
+                                        };
+                                    }
 
-                                    const updatedChar: Character = {
+                                    let updatedChar: Character = {
                                         ...updatedPlayerBase,
                                         companions: (character.companions || []).map(c => {
+                                            const cFinal = calculateFinalStats(c).finalStats;
+                                            const cMaxHpFinal = Math.max(c.stats.maxHp || 100, cFinal.maxHp || 100);
+                                            const cMaxMpFinal = Math.max(c.stats.maxMp || 50, cFinal.maxMp || 50);
                                             const finalHp = srpgResult.companionFinalHps[c.id];
-                                            const withHp = typeof finalHp === 'number'
-                                                ? {
-                                                      ...c,
-                                                      stats: {
-                                                          ...c.stats,
-                                                          hp: Math.max(1, Math.min(c.stats.maxHp, finalHp))
-                                                      }
-                                                  }
-                                                : c;
-                                            return srpgResult.isVictory ? applyExpWithLevelUp(withHp, Math.round(expGain * 0.85)) : withHp;
+                                            const finalMp = srpgResult.companionFinalMps?.[c.id];
+                                            const withHp = {
+                                                ...c,
+                                                statusEffects: tickPostCombatStatusEffects(
+                                                    srpgResult.companionFinalStatusEffects?.[c.id] ?? c.statusEffects
+                                                ),
+                                                stats: {
+                                                    ...c.stats,
+                                                    hp: typeof finalHp === 'number' ? Math.max(1, Math.min(cMaxHpFinal, finalHp)) : c.stats.hp,
+                                                    mp: typeof finalMp === 'number' ? Math.max(0, Math.min(cMaxMpFinal, finalMp)) : c.stats.mp
+                                                }
+                                            };
+                                            const cLvlRes = srpgResult.isVictory && (typeof finalHp !== 'number' || finalHp > 0)
+                                                ? applyExpWithLevelUp(withHp, expGain)
+                                                : { entity: withHp, leveledUp: false };
+                                            let nextComp = applyCombatMastery(cLvlRes.entity, c.id);
+                                            if (cLvlRes.leveledUp) {
+                                                const postCompFinal = calculateFinalStats(nextComp).finalStats;
+                                                nextComp = {
+                                                    ...nextComp,
+                                                    stats: {
+                                                        ...nextComp.stats,
+                                                        hp: Math.max(nextComp.stats.hp, postCompFinal.maxHp || nextComp.stats.maxHp),
+                                                        mp: Math.max(nextComp.stats.mp, postCompFinal.maxMp || nextComp.stats.maxMp)
+                                                    }
+                                                };
+                                            }
+                                            return nextComp;
                                         })
                                     };
+
+                                    // 4. 승리 시 도감(표준 스키마), 퀘스트/용병/군부 임무, 전투계열 숙련도, 탈것 경험치, 특수 컨텍스트 후속 훅 일괄 갱신
+                                    let suddenEvent: any = null;
+                                    if (srpgResult.isVictory) {
+                                        // 4-1. 몬스터 도감 표준 스키마 등록 (encountered / defeatedCount)
+                                        const nextBestiary: Record<string, any> = { ...(updatedChar.bestiary || {}) };
+                                        defeated.forEach(en => {
+                                            if (!en?.name) return;
+                                            const cleanName = en.name.replace(/^\[BOSS\]\s*|^\[보스\]\s*/i, '').trim();
+                                            const prevB = nextBestiary[cleanName] || {
+                                                name: cleanName,
+                                                encountered: true,
+                                                defeatedCount: 0,
+                                                killCount: 0,
+                                                firstEncounteredDate: character.date || '',
+                                                visualUrl: en.visualUrl,
+                                                level: en.level
+                                            };
+                                            nextBestiary[cleanName] = {
+                                                ...prevB,
+                                                encountered: true,
+                                                defeatedCount: (prevB.defeatedCount || prevB.killCount || 0) + 1,
+                                                killCount: (prevB.killCount || prevB.defeatedCount || 0) + 1,
+                                                level: Math.max(prevB.level || 1, en.level || 1),
+                                                visualUrl: en.visualUrl || prevB.visualUrl
+                                            };
+                                        });
+                                        updatedChar.bestiary = nextBestiary;
+
+                                        // 4-2. 전투계열 숙련도(combatStyleProgress) 상승
+                                        const curStyle = updatedChar.combatStyle;
+                                        if (curStyle && defeated.length > 0) {
+                                            const prevProg = (updatedChar as any).combatStyleProgress || {};
+                                            (updatedChar as any).combatStyleProgress = {
+                                                ...prevProg,
+                                                [curStyle]: (prevProg[curStyle] || 0) + defeated.length
+                                            };
+                                        }
+
+                                        // 4-3. 일반/용병/군부 퀘스트 처치 진행도 반영
+                                        if (Array.isArray((updatedChar as any).quests) && (updatedChar as any).quests.length > 0 && defeated.length > 0) {
+                                            (updatedChar as any).quests = (updatedChar as any).quests.map((q: any) => {
+                                                if (q.status !== 'Active') return q;
+                                                let added = 0;
+                                                defeated.forEach(en => {
+                                                    const tName = (q.targetMonster || q.targetName || '').toLowerCase();
+                                                    const eName = (en.name || '').toLowerCase();
+                                                    if ((tName && eName.includes(tName)) || q.type === 'Subjugation') added += 1;
+                                                });
+                                                if (added <= 0) return q;
+                                                return { ...q, currentCount: Math.min(q.requiredCount || 1, (q.currentCount || 0) + added) };
+                                            });
+                                        }
+                                        if (updatedChar.mercenaryData?.activeQuests?.length && defeated.length > 0) {
+                                            updatedChar.mercenaryData = {
+                                                ...updatedChar.mercenaryData,
+                                                activeQuests: updatedChar.mercenaryData.activeQuests.map((mq: any) => {
+                                                    let add = 0;
+                                                    defeated.forEach(en => {
+                                                        const t = String(mq.targetMonster || mq.targetName || '').toLowerCase();
+                                                        if (!t || (en.name || '').toLowerCase().includes(t)) add += 1;
+                                                    });
+                                                    return add > 0 ? { ...mq, currentAmount: Math.min(mq.targetAmount || mq.requiredCount || 1, (mq.currentAmount || 0) + add) } : mq;
+                                                })
+                                            };
+                                        }
+                                        if ((updatedChar as any).militaryData?.activeMissions?.length && defeated.length > 0) {
+                                            (updatedChar as any).militaryData = {
+                                                ...(updatedChar as any).militaryData,
+                                                activeMissions: (updatedChar as any).militaryData.activeMissions.map((mm: any) => ({
+                                                    ...mm,
+                                                    currentAmount: Math.min(mm.targetAmount || 1, (mm.currentAmount || 0) + defeated.length)
+                                                }))
+                                            };
+                                        }
+
+                                        // 4-4. 특수 전투 컨텍스트 후속 훅 (클래스 승급전 / 학교 시험 / 대련 / 무한 심연의 탑 / 성전·신좌 / 현상수배 / 돌발 이벤트)
+                                        const cType = String(combatState.type || '');
+                                        const challengerId = (combatState as any).challengerCompanionId;
+                                        if (cType === 'class_trial') {
+                                            if (challengerId) {
+                                                updatedChar.companions = (updatedChar.companions || []).map(c => {
+                                                    if (c.id !== challengerId) return c;
+                                                    const cTier = c.classTier;
+                                                    const nextC: any = { ...c };
+                                                    if (cTier === ClassTier.NONE) nextC.hasClearedFirstTrial = true;
+                                                    else if (cTier === ClassTier.FIRST) nextC.hasClearedSecondTrial = true;
+                                                    else if (cTier === ClassTier.SECOND) nextC.hasClearedLastTrial = true;
+                                                    else if (cTier === ClassTier.LAST) nextC.hasClearedFinalTrial = true;
+                                                    return nextC;
+                                                });
+                                            } else {
+                                                const curTier = updatedChar.classTier;
+                                                if (curTier === ClassTier.NONE) (updatedChar as any).hasClearedFirstTrial = true;
+                                                else if (curTier === ClassTier.FIRST) (updatedChar as any).hasClearedSecondTrial = true;
+                                                else if (curTier === ClassTier.SECOND) (updatedChar as any).hasClearedLastTrial = true;
+                                                else if (curTier === ClassTier.LAST) (updatedChar as any).hasClearedFinalTrial = true;
+                                            }
+                                        } else if (cType === 'exam_mid' && (updatedChar as any).schoolData) {
+                                            (updatedChar as any).schoolData = { ...(updatedChar as any).schoolData, midtermPassed: true };
+                                        } else if (cType === 'exam_final' && (updatedChar as any).schoolData) {
+                                            (updatedChar as any).schoolData = { ...(updatedChar as any).schoolData, finalPassed: true };
+                                        } else if (cType === 'sparring_arena' || cType === 'sparring') {
+                                            try {
+                                                const sparringPartner = defeated[0];
+                                                if (sparringPartner) {
+                                                    const sparRes = applySparringManualCombatResult(updatedChar, sparringPartner as any, true);
+                                                    if (sparRes?.updatedCharacter) {
+                                                        updatedChar = sparRes.updatedCharacter;
+                                                    }
+                                                }
+                                            } catch {
+                                                // ignore
+                                            }
+                                        } else if (cType === 'abyss_tower_mob' || cType === 'abyss_tower_boss') {
+                                            const curFloor = (updatedChar as any).abyssTowerFloor || 1;
+                                            if (cType === 'abyss_tower_boss') {
+                                                (updatedChar as any).abyssTowerFloor = curFloor + 1;
+                                                (updatedChar as any).abyssTowerMaxFloor = Math.max((updatedChar as any).abyssTowerMaxFloor || 1, curFloor + 1);
+                                            }
+                                        } else if (cType === 'god_rebellion' || cType === 'magye_god_slaying') {
+                                            (updatedChar as any).isGodDefeated = true;
+                                        } else if (cType === 'wanted_battle' || cType === 'bounty_hunt') {
+                                            if (updatedChar.currentLocation?.city) {
+                                                const cleared = new Set<string>((updatedChar as any).wantedClearanceCities || []);
+                                                cleared.add(updatedChar.currentLocation.city);
+                                                (updatedChar as any).wantedClearanceCities = Array.from(cleared);
+                                            }
+                                        } else if (!cType || cType === 'normal' || cType === 'hunting' || cType === 'dungeon') {
+                                            try {
+                                                suddenEvent = rollSuddenPostCombatEvent(
+                                                    updatedChar,
+                                                    defeated,
+                                                    expGain,
+                                                    cType || 'normal',
+                                                    (combatState as any).dungeonId
+                                                );
+                                            } catch {
+                                                suddenEvent = null;
+                                            }
+                                        }
+
+                                        // 4-5. 탑승 탈것 경험치 분배
+                                        try {
+                                            MountCombatService.distributeKillExpToMounts(updatedChar, expGain);
+                                        } catch {
+                                            // ignore
+                                        }
+                                    }
 
                                     const finalStates = createInitialParticipantStates(updatedChar);
                                     setCharacter(updatedChar);
@@ -7196,8 +7507,13 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                         dungeonId: (combatState as any).dungeonId,
                                         lastEnemies: defeated,
                                         targetCity: character.currentLocation?.city,
-                                        targetNation: character.currentLocation?.nation
-                                    });
+                                        targetNation: character.currentLocation?.nation,
+                                        expMultiplier: rewardBonuses?.expMultiplier || 1,
+                                        goldMultiplier: rewardBonuses?.goldMultiplier || 1,
+                                        expBonus: rewardBonuses?.expBonus || 0,
+                                        goldBonus: rewardBonuses?.goldBonus || 0,
+                                        suddenEvent
+                                    } as any);
                                 }}
                             />
                         </Suspense>

@@ -19,12 +19,12 @@ export const ItemSelectionModal = memo(({
     const groupedItems = items.reduce((acc: any[], item) => {
         const existing = acc.find(i => i.name === item.name);
         if (existing) {
-            existing.count += item.count || 1;
+            existing.count += item.quantity ?? item.count ?? 1;
             existing.instances.push(item);
         } else {
             acc.push({
                 name: item.name,
-                count: item.count || 1,
+                count: item.quantity ?? item.count ?? 1,
                 grade: item.grade || item.itemData?.grade || 'B',
                 imageUrl: item.imageUrl || item.itemData?.visualUrl,
                 instances: [item],

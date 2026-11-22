@@ -1306,6 +1306,7 @@ export const WarTacticsModal: React.FC<WarTacticsModalProps> = ({
                                 subtitle={isRaid ? '최종 수도 결전 · 적 사령관 격파' : `현재 점유율 ${currentOccupation}% → 승리 시 ${Math.min(100, currentOccupation + expectedGain)}%`}
                                 nation={targetNation}
                                 isLargeWar={true}
+                                arenaTier="war"
                                 onComplete={(res) => {
                                     if (res.isVictory) {
                                         handleWarVictory(true);

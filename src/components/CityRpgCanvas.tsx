@@ -834,12 +834,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             const canvas = canvasRef.current;
             const ctx = canvas?.getContext('2d');
             if (ctx) {
-                // 도시 배경 일러스트가 은은하게 비쳐 보이도록 캔버스 배경을 투명하게 클리어
-                ctx.clearRect(0, 0, viewW, viewH);
-                if (!backgroundImageUrl) {
-                    ctx.fillStyle = '#090d16';
-                    ctx.fillRect(0, 0, viewW, viewH);
-                }
+                // 깔끔한 단색 다크 배경으로 초기화 (흐릿한 도시 일러스트 투과 제거)
+                ctx.fillStyle = '#090d16';
+                ctx.fillRect(0, 0, viewW, viewH);
 
                 const camX = cameraRef.current.x;
                 const camY = cameraRef.current.y;
@@ -853,9 +850,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 ctx.translate(-camX, -camY);
                 ctx.imageSmoothingEnabled = false;
 
-                // Layer 1: 고품질 AI 지형 타일 PNG 우선 렌더링 (배경 이미지가 있을 경우 0.76 투명도로 은은하게 투과)
+                // Layer 1: 고품질 AI 지형 타일 PNG 100% 선명하게 렌더링
                 ctx.save();
-                ctx.globalAlpha = backgroundImageUrl ? 0.76 : 1;
+                ctx.globalAlpha = 1;
                 const aiGround = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'ground'));
                 const aiRoad = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'road'));
                 const aiPlaza = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'plaza'));
@@ -1527,28 +1524,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     return (
         <div
             ref={containerRef}
-            className="relative w-full flex-1 min-h-[320px] sm:min-h-[500px] rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl bg-slate-950/75 select-none"
+            className="relative w-full flex-1 min-h-[320px] sm:min-h-[500px] rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl bg-slate-950 select-none"
         >
-            {/* 도시별 고화질 배경 일러스트 레이어 (바닥 타일 너머로 은은하게 투과 + 시간대 필터 연동) */}
-            {backgroundImageUrl && (
-                <img
-                    key={backgroundImageUrl}
-                    src={backgroundImageUrl}
-                    alt={`${city} 배경`}
-                    onError={(e) => {
-                        const target = e.currentTarget;
-                        if (backgroundRawUrl && !target.dataset.triedRelative) {
-                            target.dataset.triedRelative = 'true';
-                            target.src = `./${backgroundRawUrl.replace(/^\.?\//, '')}`;
-                        } else if (backgroundFallbackUrl && !target.dataset.triedFallback) {
-                            target.dataset.triedFallback = 'true';
-                            target.src = backgroundFallbackUrl;
-                        }
-                    }}
-                    className={`pointer-events-none select-none absolute inset-0 w-full h-full object-cover object-center opacity-90 transition-all duration-700 ${backgroundFilterClass}`}
-                />
-            )}
-
             <canvas
                 ref={canvasRef}
                 width={canvasSize.width}
