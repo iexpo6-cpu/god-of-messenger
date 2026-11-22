@@ -1,0 +1,510 @@
+================================================================================
+신의 사자 RPG — 쯔꾸르 2D 도시 건물·소품 3x2 대규모 확장팩 프롬프트 모음 (총 34장)
+================================================================================
+[구성]
+- PART 1. 아시아 세분화 4종 (동남아 / 남아시아·인도 / 중앙아시아·몽골 / 중동)
+- PART 2. 유럽 세분화 3종 (남유럽 / 북유럽 / 동유럽)  ※ 서유럽은 기존 europe.png 활용
+- PART 3. 아프리카 세분화 3종 (북아프리카 / 서·동아프리카 / 남아프리카)
+- PART 4. 신계 성전별 13종 (양의 기운 6 / 음의 기운 6 / 무의 궁 1)  ※ 신의 거처는 기존 shingye.png 활용
+- PART 5. 마계 도시별 11종 (임페리얼 제국 11개 도시)  ※ 수도 임페리얼은 기존 magye.png 활용
+
+[사용 방법]
+1. 원하는 항목의 프롬프트를 복사해 Gemini 이미지 생성으로 생성한 뒤 `raw_tilesets/` 폴더에 안내된 파일명으로 저장하세요.
+2. 34장을 한꺼번에 다 만들지 않고 3~5장씩 나눠서 넣으셔도 됩니다! (아직 안 넣은 지역은 기존 상위 문화권 에셋으로 자동 폴백됩니다.)
+3. 넣으신 뒤 채팅에 "확장팩 넣었어 적용해줘"라고 말씀해 주시면 Connected Components(CC-6) 스마트 분리 + 빌드까지 한 번에 반영해 드립니다.
+
+================================================================================
+[PART 1] 아시아 세분화 (4장)
+================================================================================
+
+--------------------------------------------------------------------------------
+1-1. 동남아시아 (태국·베트남·필리핀·인도네시아·말레이시아·싱가포르) — 파일명: southeast_asia.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand Southeast Asian golden-spired royal Wat temple palace (tiered red-and-gold curved roofs, ornate gilded spire).
+- Top-center: Traditional Southeast Asian teakwood merchant shop with overhanging curved eaves and colorful silk fabric banners.
+- Top-right: Tropical Southeast Asian stilted timber town house with terracotta tiled roof and shuttered veranda.
+- Bottom-left: Lush tropical palm and banyan tree cluster with bright green fronds.
+- Bottom-center: Carved sandstone lotus-and-naga water fountain with clear emerald water.
+- Bottom-right: Ornate gilded Southeast Asian hanging silk temple lantern on carved teak post.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+1-2. 남아시아 / 인도 — 파일명: south_asia.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand Indian white marble and red sandstone Mughal palace (ornate onion domes, arched portico, golden finials).
+- Top-center: Vibrant Indian spice and textile bazaar shop with scalloped arches and saffron-crimson fabric canopy.
+- Top-right: Traditional Rajasthani warm ochre sandstone courtyard house with carved jharokha balconies.
+- Bottom-left: Sacred Indian banyan tree with wide lush canopy and aerial roots.
+- Bottom-center: Carved marble lotus step-well fountain with turquoise water.
+- Bottom-right: Ornate brass Indian diya temple lamp post with warm glowing flames.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+1-3. 중앙아시아 / 몽골 — 파일명: central_asia.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand Mongol Khan golden royal palace ger / steppe citadel pavilion (ornate white-and-gold felt dome with crimson banners and horsehair standards).
+- Top-center: Silk Road caravan trading post pavilion with patterned woven rugs and timber awning.
+- Top-right: Traditional decorated white Mongolian yurt (ger) residential dwelling with painted red wooden door.
+- Bottom-left: Hardy golden-green Central Asian steppe birch tree.
+- Bottom-center: Carved stone steppe spring well fountain with clear blue water.
+- Bottom-right: Iron steppe fire brazier lantern post hung with blue-and-gold silk ribbons.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+1-4. 중동 (사우디·UAE·이스라엘·이란·터키) — 파일명: middle_east.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand Middle Eastern golden-domed Arabian / Persian palace (turquoise mosaic arches, tall slender minarets, white limestone).
+- Top-center: Bustling Arabian souk merchant shop with colorful patterned carpets and striped awning.
+- Top-right: Traditional sandstone flat-roofed Middle Eastern house with horseshoe arches and blue-tiled trim.
+- Bottom-left: Tall desert date palm tree with golden date clusters.
+- Bottom-center: Octagonal turquoise-and-gold Islamic mosaic courtyard fountain.
+- Bottom-right: Ornate pierced-brass Arabian street lantern glowing warmly on stone pillar.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+================================================================================
+[PART 2] 유럽 세분화 (3장)  ※ 서유럽은 기존 europe.png 활용
+================================================================================
+
+--------------------------------------------------------------------------------
+2-1. 남유럽 / 지중해 (이탈리아·스페인·포르투갈·그리스) — 파일명: southern_europe.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand Mediterranean Renaissance cathedral / classical marble basilica (terracotta dome, white marble columns, sunlit arches).
+- Top-center: Sunny Italian-Spanish stucco merchant shop and café with terracotta tile roof and striped awning.
+- Top-right: Warm Mediterranean ochre-and-white stone villa house with wrought-iron balcony and flower boxes.
+- Bottom-left: Tall slender Mediterranean cypress and olive tree cluster.
+- Bottom-center: Ornate Roman white marble tiered plaza fountain with sparkling azure water.
+- Bottom-right: Vintage Mediterranean bronze street lamp post with warm glass lantern.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-2. 북유럽 / 노르딕 (스웨덴·노르웨이·덴마크·핀란드) — 파일명: northern_europe.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand Nordic royal timber-and-stone great hall / stave castle (steep dark slate roofs, carved dragon gables, snow-dusted eaves).
+- Top-center: Nordic harbor trading post shop with red-painted timber siding and steep shingled roof.
+- Top-right: Cozy Scandinavian log-and-stone town house with snow-dusted roof and glowing amber windows.
+- Bottom-left: Tall snow-dusted northern evergreen pine tree.
+- Bottom-center: Carved gray granite Nordic runestone water fountain with icy blue water.
+- Bottom-right: Forged black iron Nordic torch street lamp with warm glowing fire.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-3. 동유럽 / 슬라브 (러시아·폴란드·우크라이나·헝가리·체코·루마니아) — 파일명: eastern_europe.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand Eastern European imperial palace cathedral (colorful gilded onion domes, crimson-and-white brick towers).
+- Top-center: Ornate Prague/Slavic baroque brick merchant guild house with steep copper-green roof.
+- Top-right: Traditional Eastern European carved timber and painted plaster town house with steep gabled roof.
+- Bottom-left: Slender white-barked Slavic silver birch tree with golden-green leaves.
+- Bottom-center: Classical Eastern European dark granite and bronze plaza fountain.
+- Bottom-right: Gothic wrought-iron double-globe Eastern European street lamp post.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+================================================================================
+[PART 3] 아프리카 세분화 (3장)
+================================================================================
+
+--------------------------------------------------------------------------------
+3-1. 북아프리카 (이집트·모로코) — 파일명: north_africa.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand North African Egyptian-Moroccan sandstone palace temple (golden winged sun relief, twin obelisks, blue-tiled dome).
+- Top-center: Vibrant Moroccan souk bazaar shop with terracotta arches, woven rugs, and brass lanterns.
+- Top-right: Sun-baked North African desert courtyard house with whitewashed dome and carved wooden screens.
+- Bottom-left: Tall oasis palm tree cluster with lush green fronds.
+- Bottom-center: Carved sandstone lotus oasis fountain with sparkling blue-green water.
+- Bottom-right: Ornate Moroccan stained-glass brass street lantern on sandstone pillar.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+3-2. 서·동아프리카 사바나 (나이지리아·케냐) — 파일명: west_africa.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand West African Sudano-Sahelian terracotta royal citadel palace (sculpted adobe spires, timber beams, golden sun crests).
+- Top-center: Lively African artisan market pavilion with colorful kente-patterned fabric canopy and carved crafts.
+- Top-right: Cozy circular ochre-clay savanna house with neat woven thatched conical roof and painted patterns.
+- Bottom-left: Iconic wide-trunked African baobab tree with lush green crown.
+- Bottom-center: Carved warm stone savanna water spring basin surrounded by pebbles.
+- Bottom-right: Hand-carved wooden tribal totem torch lantern with warm flame.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+3-3. 남아프리카 (남아공) — 파일명: south_africa.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand Cape Town Victorian-fantasy stone citadel guild hall (sandstone colonnade, clock tower, emerald copper roof).
+- Top-center: Coastal South African merchant trading house with colorful Bo-Kaap style turquoise facade and awning.
+- Top-right: Bright coral-and-amber painted South African town house with neat pitched roof and garden veranda.
+- Bottom-left: Blooming violet-purple South African jacaranda tree.
+- Bottom-center: Carved coastal granite plaza fountain with bronze lion spouts.
+- Bottom-right: Classic Victorian cast-iron coastal street lamp with warm glow.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+================================================================================
+[PART 4] 신계 성전별 13종  ※ '신의 거처'는 기존 shingye.png 활용
+================================================================================
+
+--------------------------------------------------------------------------------
+4-1. 태양의 사자의 성전 — 파일명: shingye_sun.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand Solar Angelic Sun Temple (radiant pure gold dome, white marble colonnade, glowing sun-disc crest).
+- Top-center: Celestial sun-priest relic pavilion with amber-gold silk banners and white stone arches.
+- Top-right: Sunlit ivory-and-gold angel sanctuary residence with arched golden windows.
+- Bottom-left: Radiant celestial tree with shimmering golden-amber leaves.
+- Bottom-center: Sun-carved golden marble fountain brimming with luminous amber-blue holy water.
+- Bottom-right: Floating golden sun-orb street lantern pillar.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-2. 광휘의 사자의 성소 — 파일명: shingye_light.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Radiant Prism Cathedral of Pure Light (pearlescent white crystal spires, rainbow stained-glass rose window, halo rings).
+- Top-center: Luminous crystal relic hall with silver-white pillars and glowing prismatic canopy.
+- Top-right: Pure white marble-and-crystal angelic shrine house with glowing pastel-light windows.
+- Bottom-left: Ethereal crystalline tree with shimmering white-and-cyan radiant leaves.
+- Bottom-center: Prismatic crystal fountain radiating sparkling rainbow-white holy water.
+- Bottom-right: Slender silver-crystal prism light beacon street lamp.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-3. 초화의 사자의 성초 — 파일명: shingye_flora.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Celestial Emerald Blossom Temple (white marble sanctuary intertwined with blooming pink-and-gold divine vines and flower dome).
+- Top-center: Heavenly botanical apothecary pavilion draped in glowing pastel flowers and ivy.
+- Top-right: Ivory garden temple cottage with emerald leaf-tiled roof and flower balconies.
+- Bottom-left: Divine blossoming celestial sakura-and-emerald sacred tree.
+- Bottom-center: Blooming white marble flower-chalice fountain with clear emerald spring water.
+- Bottom-right: Vine-wrapped ivory street lamp with glowing blossom-shaped lantern.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-4. 화염의 사자의 성화 — 파일명: shingye_flame.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Sacred Phoenix Flame Cathedral (white marble and burnished gold temple topped with a blazing golden-crimson eternal flame altar).
+- Top-center: Divine Forge & Relic Hall with crimson-gold arches and glowing sacred embers.
+- Top-right: Warm ivory-and-crimson sanctuary house with golden flame roof trim.
+- Bottom-left: Sacred phoenix-flame autumn tree with glowing crimson-and-gold leaves.
+- Bottom-center: Golden-rimmed sacred fire-and-water chalice fountain glowing with warm amber light.
+- Bottom-right: Ornate white-marble and gold eternal flame brazier street lamp.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-5. 해수의 사자의 성수전 — 파일명: shingye_ocean.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Celestial Ocean & Coral Palace (pearlescent seashell dome, aquamarine crystal pillars, cascading holy waterfalls).
+- Top-center: Heavenly pearl-and-aqua sanctuary shop pavilion with turquoise wave-patterned canopy.
+- Top-right: White pearl-stone sanctuary house with sea-blue curved tile roof and coral trim.
+- Bottom-left: Luminous celestial coral-blossom tree in aqua and pearl tones.
+- Bottom-center: Giant carved pearl-shell fountain overflowing with sparkling cerulean holy water.
+- Bottom-right: Pearl-and-gold trident street lamp holding a glowing aqua orb.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-6. 전격의 사자의 성전 — 파일명: shingye_thunder.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Celestial Thunder Spire Temple (tall platinum-and-gold lightning-rod spires, crackling cyan-gold arcs, white marble bastion).
+- Top-center: Storm-forged angelic armory pavilion with electric-blue banners and gold trim.
+- Top-right: Sleek platinum-and-white sanctuary house with glowing electric-cyan windows.
+- Bottom-left: Luminous silver-barked sky tree crackling with tiny golden-blue sparks.
+- Bottom-center: Platinum-and-marble celestial fountain energized with glowing cyan water.
+- Bottom-right: Tall platinum lightning-coil street lamp with bright cyan-gold orb.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-7. 월광의 사자의 성 — 파일명: shingye_moon.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Celestial Moonlight Silver Castle (crescent-moon silver spires, deep indigo starry domes, luminous pale-silver marble walls).
+- Top-center: Moonlit astrological observatory shop with silver filigree and midnight-blue awning.
+- Top-right: Graceful pale-silver stone sanctuary house with deep indigo roof and glowing moonlight windows.
+- Bottom-left: Ethereal silver-leaved moonlight willow tree.
+- Bottom-center: Crescent-moon silver marble fountain filled with glowing starry indigo water.
+- Bottom-right: Crescent-shaped silver street lamp cradling a soft glowing moon orb.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-8. 질풍의 사자의 질풍전 — 파일명: shingye_wind.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Celestial Sky-Wind Temple (soaring white marble wind-mill spire with golden sails, mint-green crystal domes, fluttering sky banners).
+- Top-center: Breezy sky-merchant pavilion with billowing mint-and-white sailcloth canopy.
+- Top-right: Airy white-stone sanctuary house with mint-teal shingled roof and wind chimes.
+- Bottom-left: Wind-swept celestial emerald-mint sky tree.
+- Bottom-center: Swirling spiral-carved white marble wind-water fountain with misty cyan spray.
+- Bottom-right: Slender winged silver street lamp with glowing mint-white wind orb.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-9. 빙결의 사자의 빙궁 — 파일명: shingye_ice.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Celestial Crystal Ice Palace (translucent glacial-blue spires, frosted white marble arches, snowflake crystal crest).
+- Top-center: Frost-crystal sanctuary pavilion with icicle eaves and pale-blue silk banners.
+- Top-right: Frosted ivory-and-ice crystal cottage with shimmering glacier-blue roof.
+- Bottom-left: Sparkling frost-covered silver-blue crystal pine tree.
+- Bottom-center: Frozen crystal snowflake fountain with glowing glacial-cyan water.
+- Bottom-right: Carved ice-crystal street lantern pillar glowing with cool pale-blue light.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-10. 강철의 사자의 강성 — 파일명: shingye_steel.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Celestial Platinum & Steel Fortress Citadel (gleaming silver-steel battlements, gold-trimmed bastion towers, sacred shield emblem).
+- Top-center: Heavenly Steel-Forge armory hall with silver-blue gabled roof and anvil crest.
+- Top-right: Fortified white-stone and brushed-steel sanctuary quarters with neat metal roof.
+- Bottom-left: Resilient silver-barked ironwood tree with gleaming blue-green foliage.
+- Bottom-center: Octagonal polished steel-and-marble sanctuary fountain with clear water.
+- Bottom-right: Forged silver-steel armored knight street lamp post with crisp white light.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-11. 지령의 사자의 궁궐 — 파일명: shingye_earth.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Celestial Earth-Spirit Monolith Palace (stepped warm topaz-gold and ivory megalith temple inlaid with glowing amber-emerald gems).
+- Top-center: Sacred Earth-Crystal craft hall with sandstone arches and amber awnings.
+- Top-right: Warm carved limestone-and-amber sanctuary house with mossy gold-trimmed roof.
+- Bottom-left: Ancient sacred golden-olive and amber-gem tree.
+- Bottom-center: Carved monolithic stone-and-gold spring fountain with clear emerald-blue water.
+- Bottom-right: Carved rune-stone pillar street lamp topped with glowing amber topaz crystal.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-12. 암연의 사자의 심연 — 파일명: shingye_abyss.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Sacred Celestial Nebula-Abyss Temple (deep obsidian-and-silver marble cathedral with glowing violet-starlight halo arches).
+- Top-center: Celestial twilight archive pavilion with deep purple-and-silver banners.
+- Top-right: Sleek dark-slate and silver-trimmed twilight sanctuary house with violet glowing windows.
+- Bottom-left: Mystical starlit indigo-and-violet celestial tree.
+- Bottom-center: Obsidian-and-silver chalice fountain filled with glowing starry violet water.
+- Bottom-right: Tall silver-obsidian street lamp cradling a glowing violet nebula orb.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-13. 무의 궁궐 — 파일명: shingye_void.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial sanctuary asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Transcendent Palace of Nothingness (ethereal floating translucent white-glass and pale-silver geometric spire palace with orbiting cosmic rings).
+- Top-center: Minimalist pearlescent-glass celestial pavilion with subtle iridescent aura.
+- Top-right: Serene translucent white-marble and crystal dome dwelling with soft silver glow.
+- Bottom-left: Ethereal spectral white-and-silver glass-leaf sacred tree.
+- Bottom-center: Floating silver ring fountain suspending a shimmering pool of starlight liquid.
+- Bottom-right: Floating minimalist silver-crystal prism street beacon.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+================================================================================
+[PART 5] 마계 도시별 11종  ※ 수도 '임페리얼'은 기존 magye.png 활용
+================================================================================
+
+--------------------------------------------------------------------------------
+5-1. 눌바리온 (공허·안개 성채) — 파일명: magye_nulbarion.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy demon city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Void-mist dark obsidian citadel fortress (jagged slate towers, floating pale-cyan void crystals, shadowy arches).
+- Top-center: Dimly lit demon-realm curio shop with tattered indigo awning and eerie lantern.
+- Top-right: Weathered dark-gray stone gothic town house with faint cyan-lit windows.
+- Bottom-left: Twisted pale-gray deadwood tree wreathed in faint cyan mist leaves.
+- Bottom-center: Cracked dark basalt fountain overflowing with glowing pale-teal void water.
+- Bottom-right: Twisted black-iron street lamp glowing with eerie pale-cyan flame.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+5-2. 딜리리움 (광기·환상 시계탑 도시) — 파일명: magye_delirium.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy demon city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Whimsical-eerie crooked gothic clocktower palace (tilted violet spires, giant glowing golden clock face, spiral stairs).
+- Top-center: Eccentric purple-and-gold illusionist bazaar shop with striped jester-style awning.
+- Top-right: Slightly crooked storybook dark-violet gothic house with glowing magenta-gold windows.
+- Bottom-left: Surreal twisted purple-and-teal dreamscape tree with glowing orbs.
+- Bottom-center: Whimsical swirling purple marble fountain with glowing neon-violet liquid.
+- Bottom-right: Curved spiral iron street lamp holding a glowing violet-gold lantern.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+5-3. 노크티아 (영원한 밤·고딕 성채) — 파일명: magye_noctia.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy demon city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Elegant nocturnal gothic vampire-noble castle (needle-sharp midnight-blue spires, silver bat-wing crests, tall stained-glass arches).
+- Top-center: Aristocratic midnight-velvet demon boutique shop with dark-navy awning and silver trim.
+- Top-right: Refined dark-slate gothic townhouse with wrought-iron balconies and pale-gold windows.
+- Bottom-left: Tall nocturnal cypress tree with deep midnight-indigo foliage.
+- Bottom-center: Ornate dark-marble gargoyle plaza fountain with shimmering silver-blue water.
+- Bottom-right: Victorian gothic black-iron street lamp with pale blue-white moonlit glow.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+5-4. 엔드라실 (타락한 흑세계수 도시) — 파일명: magye_endrasil.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy demon city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Corrupted Black World-Tree Citadel (massive dark-barked ancient tree fused with obsidian temple halls and glowing crimson-purple sap veins).
+- Top-center: Dark-wood root-woven merchant den with glowing violet mushrooms on roof.
+- Top-right: Hollowed dark-bark demon forest dwelling with glowing amber-purple windows.
+- Bottom-left: Twisted dark-barked tree with deep crimson-and-violet autumn foliage.
+- Bottom-center: Root-entwined dark stone basin fountain filled with glowing purple spring water.
+- Bottom-right: Gnarled dark-root street post suspending a glowing crimson-violet spore lantern.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+5-5. 세라피엘 몰락지 (타락천사 폐허 성당 도시) — 파일명: magye_seraphiel.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy demon city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Fallen Angel Ruined Grand Cathedral (cracked white-and-black marble spires, broken golden halo arch, glowing crimson-violet runes).
+- Top-center: Relic-scavenger stone chapel shop patched with crimson cloth canopy.
+- Top-right: Weathered ruined-marble gothic house rebuilt with dark timber and warm lit windows.
+- Bottom-left: Scorched pale-white ancient tree with faint crimson-gold embers on branches.
+- Bottom-center: Cracked fallen-angel wing marble fountain with glowing violet-blue water.
+- Bottom-right: Broken marble pillar topped with a black-iron crimson fire lantern.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+5-6. 카르나쥬 (피와 강철의 전쟁 요새 도시) — 파일명: magye_carnage.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy demon city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Brutal Iron & Blood War Fortress Citadel (spiked dark-steel battlements, crimson war banners, roaring furnace chimneys).
+- Top-center: Demon war-forge blacksmith & weapon shop with iron roof and glowing forge fire.
+- Top-right: Heavy iron-plated dark-stone warrior barracks house with spiked eaves.
+- Bottom-left: Charred iron-thorn tree with dark crimson leaves.
+- Bottom-center: Spiked iron cauldron fountain bubbling with glowing crimson war-fire light.
+- Bottom-right: Heavy spiked-iron war brazier street post burning with bright orange-red flames.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+5-7. 인페르노스 (용암과 유황의 지옥화염 도시) — 파일명: magye_infernos.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy demon city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Infernal Volcanic Magma Citadel (jagged black obsidian fortress with glowing molten lava waterfalls and blazing demon horns).
+- Top-center: Hellfire alchemy & obsidian-smith shop with glowing magma-cracked stone walls.
+- Top-right: Basalt-and-obsidian demon residence with ember-glowing windows and iron roof.
+- Bottom-left: Volcanic charred ash-tree with glowing orange-amber ember leaves.
+- Bottom-center: Carved black obsidian fountain overflowing with glowing molten orange magma.
+- Bottom-right: Black obsidian pillar topped with a roaring hellfire cage lantern.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+5-8. 베놈가든 (독버섯·연금술 정원 도시) — 파일명: magye_venomgarden.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy demon city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Alchemical Venom-Garden Conservatory Palace (dark wrought-iron greenhouse domes, glowing neon-emerald toxic crystals, giant purple vines).
+- Top-center: Demon poison-apothecary shop with giant spotted mushroom roof and glowing green flasks.
+- Top-right: Dark-stone cottage overgrown with luminous toxic-green moss and violet blooms.
+- Bottom-left: Giant glowing bioluminescent emerald-and-violet mushroom tree cluster.
+- Bottom-center: Mossy dark-stone cauldron fountain bubbling with bright neon-green alchemical liquid.
+- Bottom-right: Twisted vine iron street post holding a glowing neon-green spore lantern.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+5-9. 크로노폴 (황동 톱니·시간왜곡 스팀펑크 마계 도시) — 파일명: magye_chronopol.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark steampunk fantasy city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Dark Steampunk Brass-Gear Grand Observatory Citadel (giant interlocking bronze clockwork gears, copper domes, glowing cyan-gold time core).
+- Top-center: Brass-and-dark-brick clockwork artificer shop with steam pipes and gear sign.
+- Top-right: Victorian dark-steampunk town house with copper chimney pipes and warm amber windows.
+- Bottom-left: Mechanical bronze-and-crystal clockwork tree with glowing golden leaves.
+- Bottom-center: Intricate brass astrolabe-and-gear fountain with glowing blue chronal water.
+- Bottom-right: Ornate brass-and-iron steampunk gas street lamp with glowing cyan-gold bulb.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+5-10. 블러드문 (붉은 달·진홍 수정 고딕 도시) — 파일명: magye_bloodmoon.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy demon city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Crimson Blood-Moon Gothic Castle (soaring black-stone towers, glowing ruby-crimson crystal spires, giant red crescent crest).
+- Top-center: Crimson-draped gothic wine & relic parlor shop with ruby-red awning.
+- Top-right: Aristocratic black-and-crimson gothic mansion house with blood-red tiled roof.
+- Bottom-left: Dark-barked gothic tree with rich blood-crimson weeping leaves.
+- Bottom-center: Carved black-marble goblet fountain overflowing with shimmering ruby-red liquid.
+- Bottom-right: Crimson-crescent wrought-iron street lamp glowing with warm ruby light.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+5-11. 네크로폴리스 (백골·영혼불꽃 망자의 도시) — 파일명: magye_necropolis.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy necropolis city asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct assets evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand Soul-Flame Necropolis Mausoleum Cathedral (pale-bone and dark-granite gothic spires, glowing spectral turquoise soul-fire braziers).
+- Top-center: Spectral necromancer soul-reliquary shop with dark slate roof and teal soul lanterns.
+- Top-right: Ancient carved dark-stone crypt townhouse with pale-teal glowing windows.
+- Bottom-left: Pale bone-white gnarled tree with eerie glowing turquoise spirit leaves.
+- Bottom-center: Carved dark-granite soul-well fountain swirling with glowing spectral cyan mist.
+- Bottom-right: Gothic iron lantern post burning with bright ghostly turquoise soul-flame.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.

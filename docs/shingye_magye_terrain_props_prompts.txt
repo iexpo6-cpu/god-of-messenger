@@ -1,0 +1,679 @@
+================================================================================
+신의 사자 RPG — 신계 성전별(13) & 마계 도시별(11) 전용 바닥 타일 + 소품 프롬프트 모음
+================================================================================
+[구성]
+- PART 1. 신계 성전별 전용 바닥 타일셋 13장 (`terrain_shingye_*.png`, 각 3x2 = 6 정사각형 타일)
+- PART 2. 신계 성전별 전용 오브젝트/소품 팩 13장 (`props_shingye_*.png`, 각 3x2 = 6 투명 소품)
+- PART 3. 마계 도시별 전용 바닥 타일셋 11장 (`terrain_magye_*.png`, 각 3x2 = 6 정사각형 타일)
+- PART 4. 마계 도시별 전용 오브젝트/소품 팩 11장 (`props_magye_*.png`, 각 3x2 = 6 투명 소품)
+
+※ '신의 거처'는 기존 terrain_shingye.png / '임페리얼'은 기존 terrain_magye.png 활용!
+※ 모든 팩은 원하는 만큼 일부만 먼저 `raw_tilesets/`에 넣으셔도 바로 적용됩니다. (미생성 도시는 상위 신계/마계 기본 타일·소품으로 자동 폴백)
+
+================================================================================
+[PART 1] 신계 성전별 전용 바닥 타일셋 (13장)
+순서: 기본 바닥 / 일반 도로 / 중앙 광장 / 왕도(카펫) / 외곽 성벽 / 수면
+================================================================================
+
+--------------------------------------------------------------------------------
+1-1. 태양의 사자의 성전 — 파일명: terrain_shingye_sun.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Warm sunlit ivory-gold marble floor with subtle solar light shimmer (flat top-down orthographic).
+- Top-center square tile: Polished golden-trimmed white limestone sanctuary pathway tiles (flat top-down orthographic).
+- Top-right square tile: Radiant sun-emblem gold-and-marble celestial plaza mosaic tile (flat top-down orthographic).
+- Bottom-left square tile: Regal sunlit amber-gold ceremonial carpet road with crimson-gold edges (flat top-down orthographic).
+- Bottom-center square tile: White marble and burnished gold solar sanctuary balustrade wall (top-down RPG wall tile).
+- Bottom-right square tile: Luminous golden-aqua holy solar spring water with bright sunlit sparkles (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-2. 광휘의 사자의 성소 — 파일명: terrain_shingye_light.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Pearlescent pure-white crystal marble floor with faint iridescent pastel-rainbow glints (flat top-down orthographic).
+- Top-center square tile: Gleaming silver-white prismatic crystal sanctuary road tiles (flat top-down orthographic).
+- Top-right square tile: Stained-glass prism starlight marble plaza mosaic tile (flat top-down orthographic).
+- Bottom-left square tile: Luminous pearl-white and iridescent silver-gold celestial carpet road (flat top-down orthographic).
+- Bottom-center square tile: Faceted pure white crystal and silver sanctuary wall (top-down RPG wall tile).
+- Bottom-right square tile: Radiant crystal-clear prism holy water sparkling with rainbow-white light (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-3. 초화의 사자의 성초 — 파일명: terrain_shingye_flora.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Heavenly lush emerald-mint garden lawn dotted with glowing pastel pink and gold petals (flat top-down orthographic).
+- Top-center square tile: Ivory marble stepping-stone garden path bordered by delicate moss and tiny blooms (flat top-down orthographic).
+- Top-right square tile: White marble floral-vine inlaid celestial sanctuary plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Woven emerald-and-blossom-pink royal floral carpet road with gold trim (flat top-down orthographic).
+- Bottom-center square tile: White marble wall entwined with blooming heavenly roses and emerald ivy (top-down RPG wall tile).
+- Bottom-right square tile: Crystal emerald-turquoise garden spring water with floating pink lotus petals (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-4. 화염의 사자의 성화 — 파일명: terrain_shingye_flame.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Warm cream-and-terracotta sacred stone floor with subtle glowing golden ember veins (flat top-down orthographic).
+- Top-center square tile: Burnished gold and red-marble sacred temple brick road (flat top-down orthographic).
+- Top-right square tile: Phoenix-crest ivory and crimson-gold inlaid sanctuary plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Blazing crimson-and-gold sacred phoenix silk carpet road (flat top-down orthographic).
+- Bottom-center square tile: Ivory marble and gilded bronze fire-temple fortress wall (top-down RPG wall tile).
+- Bottom-right square tile: Radiant sacred golden-amber liquid light pool with shimmering warm ripples (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-5. 해수의 사자의 성수전 — 파일명: terrain_shingye_ocean.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Pearlescent sea-glass and pale aquamarine marble floor with gentle wave texture (flat top-down orthographic).
+- Top-center square tile: Polished mother-of-pearl and turquoise coastal sanctuary flagstone path (flat top-down orthographic).
+- Top-right square tile: Ornate seashell-and-wave mosaic aqua marble plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Deep cerulean-and-pearl embroidered royal ocean carpet road (flat top-down orthographic).
+- Bottom-center square tile: White coral-marble and aquamarine crystal sanctuary wall (top-down RPG wall tile).
+- Bottom-right square tile: Sparkling celestial deep-cyan holy ocean water with luminous seafoam ripples (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-6. 전격의 사자의 성전 — 파일명: terrain_shingye_thunder.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Sleek pale-silver and storm-gray celestial stone floor with faint glowing cyan-gold circuit cracks (flat top-down orthographic).
+- Top-center square tile: Platinum-trimmed slate temple pathway tiles with crisp geometric lines (flat top-down orthographic).
+- Top-right square tile: Electric-blue and gold lightning-crest inlaid marble plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Royal electric-indigo and bright gold lightning-embroidered carpet road (flat top-down orthographic).
+- Bottom-center square tile: Brushed platinum and storm-marble bastion wall with golden conduits (top-down RPG wall tile).
+- Bottom-right square tile: Charged luminous electric-cyan holy water crackling with bright white-gold ripples (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-7. 월광의 사자의 성 — 파일명: terrain_shingye_moon.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Soft pale-silver and twilight-blue moonstone floor sprinkled with tiny silver starlight flecks (flat top-down orthographic).
+- Top-center square tile: Polished silver-gray lunar flagstone road with indigo mortar (flat top-down orthographic).
+- Top-right square tile: Crescent-moon and starlight silver inlaid indigo marble plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Midnight-indigo velvet carpet road with glowing silver crescent borders (flat top-down orthographic).
+- Bottom-center square tile: Pale silver marble and deep indigo moonlit castle wall (top-down RPG wall tile).
+- Bottom-right square tile: Dreamy glowing midnight-blue mirror lake reflecting silver starlight (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-8. 질풍의 사자의 질풍전 — 파일명: terrain_shingye_wind.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Airy pale-mint and ivory cloud-stone floor with gentle swirling breeze patterns (flat top-down orthographic).
+- Top-center square tile: Smooth pale-jade and white wind-carved sanctuary pathway tiles (flat top-down orthographic).
+- Top-right square tile: Swirling compass-rose mint-and-gold marble sky-plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Silky emerald-mint and white feather-trimmed royal carpet road (flat top-down orthographic).
+- Bottom-center square tile: White marble and pale-teal wind-temple parapet wall (top-down RPG wall tile).
+- Bottom-right square tile: Misty swirling sky-cyan and white cloud-stream water surface (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-9. 빙결의 사자의 빙궁 — 파일명: terrain_shingye_ice.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Frosted sparkling snow-and-ice crystal ground with pale glacier-blue sheen (flat top-down orthographic).
+- Top-center square tile: Polished translucent ice-brick and white-marble frozen sanctuary pathway (flat top-down orthographic).
+- Top-right square tile: Intricate snowflake crystal inlaid pale-blue ice palace plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Frost-blue and pure silver snowflake-embroidered royal carpet road (flat top-down orthographic).
+- Bottom-center square tile: Faceted translucent glacial-blue ice crystal fortress wall (top-down RPG wall tile).
+- Bottom-right square tile: Shimmering icy-teal glacial spring water with tiny floating frost crystals (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-10. 강철의 사자의 강성 — 파일명: terrain_shingye_steel.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Brushed silver-steel and pale granite fortress floor plates with clean rivets (flat top-down orthographic).
+- Top-center square tile: Heavy interlocking steel-gray and white marble military sanctuary road (flat top-down orthographic).
+- Top-right square tile: Gleaming silver-steel and gold shield-crest inlaid citadel plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Royal steel-blue and silver-gold armored ceremonial carpet road (flat top-down orthographic).
+- Bottom-center square tile: Reinforced gleaming platinum-steel and marble bastion battlement wall (top-down RPG wall tile).
+- Bottom-right square tile: Crisp reflective silver-blue mirror-steel holy water pool (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-11. 지령의 사자의 궁궐 — 파일명: terrain_shingye_earth.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Warm golden-ochre limestone and mossy ancient earth-sanctuary floor with tiny amber gems (flat top-down orthographic).
+- Top-center square tile: Heavy carved sandstone-and-gold megalith pathway slabs (flat top-down orthographic).
+- Top-right square tile: Geometric amber-topaz and ivory monolith mosaic plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Rich earth-amber and gold woven royal sanctuary carpet road (flat top-down orthographic).
+- Bottom-center square tile: Ancient carved limestone and glowing topaz-inlaid monolith wall (top-down RPG wall tile).
+- Bottom-right square tile: Clear emerald-teal mineral spring water shimmering over golden pebbles (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-12. 암연의 사자의 심연 — 파일명: terrain_shingye_abyss.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Deep midnight-slate and polished obsidian sanctuary floor dusted with glowing violet starlight (flat top-down orthographic).
+- Top-center square tile: Dark silver-trimmed slate pathway inlaid with faint lavender celestial runes (flat top-down orthographic).
+- Top-right square tile: Cosmic violet nebula and silver-ring inlaid dark marble plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Deep royal-violet velvet carpet road with silver starlight trim (flat top-down orthographic).
+- Bottom-center square tile: Dark obsidian and silver filigree twilight sanctuary wall (top-down RPG wall tile).
+- Bottom-right square tile: Glowing starry deep-violet celestial nebula pool surface (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+1-13. 무의 궁궐 — 파일명: terrain_shingye_void.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Ethereal mist-white frosted glass floor with ultra-clean pale silver geometric lines (flat top-down orthographic).
+- Top-center square tile: Translucent pearl-silver minimalist celestial walkway tiles (flat top-down orthographic).
+- Top-right square tile: Concentric silver-and-white cosmic ring minimalist plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Luminous sheer silver-white and pale-platinum transcendent carpet road (flat top-down orthographic).
+- Bottom-center square tile: Smooth minimalist white-glass and pale-silver floating wall (top-down RPG wall tile).
+- Bottom-right square tile: Shimmering liquid-silver and starlight mirror-void water surface (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+================================================================================
+[PART 2] 신계 성전별 전용 오브젝트·소품 팩 (13장, 각 3x2 = 6개 투명 소품)
+순서: 상징 석상/조형물 / 성전 제단·비석 / 속성 크리스탈·화로 / 성전 깃발 / 성전 벤치·장식 / 성전 아치·게이트
+================================================================================
+
+--------------------------------------------------------------------------------
+2-1. 태양의 사자 소품 — 파일명: props_shingye_sun.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Golden solar angel statue holding a radiant sun disc on white marble pedestal.
+- Top-center: Ornate white-marble and gold sun-dial sacred altar monument.
+- Top-right: Glowing golden-amber sun crystal cluster on carved marble base.
+- Bottom-left: Tall white-and-gold solar heraldic banner pole.
+- Bottom-center: Sun-carved white marble and gold sanctuary garden bench.
+- Bottom-right: Grand golden sun-ray marble ceremonial archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-2. 광휘의 사자 소품 — 파일명: props_shingye_light.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Luminous white-crystal angel statue with prismatic halo on pearl pedestal.
+- Top-center: Floating prism-crystal light obelisk monument.
+- Top-right: Cluster of shimmering rainbow-white prism crystals.
+- Bottom-left: Iridescent pearl-white and silver celestial banner pole.
+- Bottom-center: Elegant pearlescent-marble and silver sanctuary bench.
+- Bottom-right: Radiant stained-glass crystal archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-3. 초화의 사자 소품 — 파일명: props_shingye_flora.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Marble floral-goddess statue draped in blooming golden vines.
+- Top-center: Lush white-marble celestial flowerbed bursting with glowing pink-and-gold blossoms.
+- Top-right: Glowing emerald-blossom sacred planter urn.
+- Bottom-left: Vine-wrapped ivory banner pole with emerald leaf crest.
+- Bottom-center: Carved ivory-and-vine garden sanctuary bench.
+- Bottom-right: Blooming rose-and-marble floral garden archway trellis.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-4. 화염의 사자 소품 — 파일명: props_shingye_flame.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Golden phoenix statue spreading wings atop a white marble pedestal.
+- Top-center: Sacred eternal-flame marble-and-gold altar pedestal.
+- Top-right: Ornate gilded fire brazier burning with bright golden-crimson flames.
+- Bottom-left: Crimson-and-gold phoenix emblem temple banner pole.
+- Bottom-center: Ivory marble bench with gilded flame armrests.
+- Bottom-right: Grand crimson-gold marble archway topped with twin flame bowls.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-5. 해수의 사자 소품 — 파일명: props_shingye_ocean.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Pearl-marble sea-guardian statue holding a golden trident.
+- Top-center: Giant glowing pearl nestled inside an open marble clam altar.
+- Top-right: Cluster of luminous aquamarine coral and sea-crystals.
+- Bottom-left: Turquoise wave-crest celestial banner pole.
+- Bottom-center: Carved white coral-and-pearl sanctuary bench.
+- Bottom-right: Ornate seashell-and-aqua-crystal ceremonial archway.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-6. 전격의 사자 소품 — 파일명: props_shingye_thunder.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Platinum winged-valkyrie statue holding a lightning spear.
+- Top-center: Floating platinum lightning-coil obelisk crackling with cyan arcs.
+- Top-right: Glowing electric-cyan and gold thunder crystal cluster.
+- Bottom-left: Electric-blue and platinum lightning-bolt banner pole.
+- Bottom-center: Sleek platinum-and-marble sanctuary bench.
+- Bottom-right: High platinum-and-gold lightning-spire archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-7. 월광의 사자 소품 — 파일명: props_shingye_moon.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Silver-marble moon-maiden statue beneath a floating crescent halo.
+- Top-center: Silver celestial armillary sphere / lunar astrolabe monument.
+- Top-right: Glowing pale-silver and indigo moonstone crystal cluster.
+- Bottom-left: Midnight-blue banner pole embroidered with silver crescent moon.
+- Bottom-center: Graceful silver-filigree and pale-marble moonlight bench.
+- Bottom-right: Crescent-moon silver marble archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-8. 질풍의 사자 소품 — 파일명: props_shingye_wind.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Winged white-marble sky-seraph statue with flowing ribbons.
+- Top-center: Miniature ornate celestial marble wind-vane totem pillar.
+- Top-right: Glowing pale-mint wind-crystal cluster with swirling breeze aura.
+- Bottom-left: Billowing mint-and-white feathered sky banner pole.
+- Bottom-center: Airy carved ivory-and-mint sanctuary bench.
+- Bottom-right: Winged white-marble and teal sky-wind archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-9. 빙결의 사자 소품 — 파일명: props_shingye_ice.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Sculpted translucent ice-crystal angel statue on frosted pedestal.
+- Top-center: Giant glowing snowflake ice-crystal obelisk.
+- Top-right: Cluster of shimmering glacial-blue icicle crystals.
+- Bottom-left: Frost-blue and silver snowflake emblem banner pole.
+- Bottom-center: Carved frosted-marble and ice-crystal bench.
+- Bottom-right: Translucent crystal-ice archway lined with sparkling icicles.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-10. 강철의 사자 소품 — 파일명: props_shingye_steel.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Gleaming silver-steel paladin knight statue with tower shield.
+- Top-center: Sacred platinum anvil and crossed-swords monument.
+- Top-right: Polished silver-steel glowing forge brazier.
+- Bottom-left: Steel-blue and silver shield-crest fortress banner pole.
+- Bottom-center: Heavy riveted silver-steel and marble sanctuary bench.
+- Bottom-right: Fortified platinum-steel ceremonial archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-11. 지령의 사자 소품 — 파일명: props_shingye_earth.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Ancient carved stone-and-gold earth-guardian golem statue.
+- Top-center: Carved monolithic runestone pillar inlaid with glowing amber topaz.
+- Top-right: Cluster of giant golden-amber topaz earth crystals.
+- Bottom-left: Ochre-and-gold mountain-crest sanctuary banner pole.
+- Bottom-center: Solid carved limestone-and-moss monolithic bench.
+- Bottom-right: Massive carved sandstone-and-gold megalith archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-12. 암연의 사자 소품 — 파일명: props_shingye_abyss.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Dark-obsidian and silver veiled twilight-angel statue.
+- Top-center: Floating obsidian-and-silver starlight obelisk with violet runes.
+- Top-right: Cluster of glowing cosmic-violet nebula crystals.
+- Bottom-left: Deep-violet and silver star-crest celestial banner pole.
+- Bottom-center: Sleek black-obsidian and silver-filigree sanctuary bench.
+- Bottom-right: Obsidian-and-silver halo archway gate glowing with violet light.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+2-13. 무의 궁궐 소품 — 파일명: props_shingye_void.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art celestial prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Abstract floating white-marble and silver halo-ring sculpture.
+- Top-center: Hovering translucent glass polyhedron monolith monument.
+- Top-right: Floating cluster of pure-white spectral prism shards.
+- Bottom-left: Minimalist sheer silver-white transcendent banner pole.
+- Bottom-center: Sleek minimalist curved white-marble floating bench.
+- Bottom-right: Ethereal glowing silver-ring dimensional archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+================================================================================
+[PART 3] 마계 도시별 전용 바닥 타일셋 (11장)
+순서: 기본 바닥 / 일반 도로 / 중앙 광장 / 왕도(카펫) / 외곽 성벽 / 수면·용암·독늪
+================================================================================
+
+--------------------------------------------------------------------------------
+3-1. 눌바리온 (공허·안개) — 파일명: terrain_magye_nulbarion.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Dark weathered ash-slate ground veiled with faint pale-cyan mist cracks (flat top-down orthographic).
+- Top-center square tile: Cracked dark-gray obsidian cobblestone road with subtle teal dust (flat top-down orthographic).
+- Top-right square tile: Ancient dark-slate void-rune circular plaza stone tile (flat top-down orthographic).
+- Bottom-left square tile: Tattered dark-teal and charcoal imperial carpet road with silver trim (flat top-down orthographic).
+- Bottom-center square tile: Jagged dark-slate and black-iron void-citadel wall (top-down RPG wall tile).
+- Bottom-right square tile: Eerie glowing pale-teal abyssal void-mist water surface (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+3-2. 딜리리움 (광기·환상) — 파일명: terrain_magye_delirium.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Surreal dark-plum and twilight-violet dreamscape stone ground with tiny golden dust (flat top-down orthographic).
+- Top-center square tile: Eccentric purple-and-charcoal checkerboard gothic cobblestone street (flat top-down orthographic).
+- Top-right square tile: Whimsical clock-face and spiral-inlaid purple marble plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Royal violet-and-gold striped illusionist velvet carpet road (flat top-down orthographic).
+- Bottom-center square tile: Ornate dark-violet gothic stone wall with crooked golden trim (top-down RPG wall tile).
+- Bottom-right square tile: Swirling luminous neon-violet and indigo dream-liquid pool (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+3-3. 노크티아 (영원한 밤·고딕) — 파일명: terrain_magye_noctia.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Dark moonlit midnight-blue turf and damp dark stone ground (flat top-down orthographic).
+- Top-center square tile: Sleek rain-slicked nocturnal dark-navy gothic cobblestone road (flat top-down orthographic).
+- Top-right square tile: Aristocratic dark-marble and silver gothic rose-pattern plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Deep midnight-velvet and silver-trimmed aristocratic carpet road (flat top-down orthographic).
+- Bottom-center square tile: Elegant black-slate gothic castle wall with wrought-iron cresting (top-down RPG wall tile).
+- Bottom-right square tile: Still midnight-indigo moonlit canal water with crisp silver ripples (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+3-4. 엔드라실 (흑세계수) — 파일명: terrain_magye_endrasil.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Dark forest soil woven with black tree roots and faint glowing violet moss (flat top-down orthographic).
+- Top-center square tile: Dark-wood bark planks and mossy basalt forest pathway (flat top-down orthographic).
+- Top-right square tile: Root-carved dark-stone plaza tile inlaid with glowing crimson-purple sap lines (flat top-down orthographic).
+- Bottom-left square tile: Deep burgundy-and-violet dark-forest ceremonial carpet road (flat top-down orthographic).
+- Bottom-center square tile: Intertwined black-bark ancient roots and thorny obsidian hedge wall (top-down RPG wall tile).
+- Bottom-right square tile: Glowing dark-purple corrupted forest sap-pond water surface (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+3-5. 세라피엘 몰락지 (타락천사 폐허) — 파일명: terrain_magye_seraphiel.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Cracked weathered ash-white marble ground stained with dark soot and rubble (flat top-down orthographic).
+- Top-center square tile: Broken pale-stone cathedral flagstone path with dark moss in cracks (flat top-down orthographic).
+- Top-right square tile: Fractured white-and-black fallen-angel mosaic plaza tile with faint crimson runes (flat top-down orthographic).
+- Bottom-left square tile: Faded crimson-and-gold frayed cathedral carpet road (flat top-down orthographic).
+- Bottom-center square tile: Cracked ruined pale-marble and blackened iron cathedral wall (top-down RPG wall tile).
+- Bottom-right square tile: Dark shadowed rainwater pool reflecting faint violet-crimson light (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+3-6. 카르나쥬 (피와 강철의 전쟁요새) — 파일명: terrain_magye_carnage.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Scorched dark-iron gravel and cracked red-brown battlefield earth (flat top-down orthographic).
+- Top-center square tile: Heavy riveted black-iron grating and dark basalt war-road (flat top-down orthographic).
+- Top-right square tile: Dark steel-and-crimson battle-arena stone plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Bold blood-crimson and dark-iron armored war-banner road (flat top-down orthographic).
+- Bottom-center square tile: Spiked heavy black-iron and dark granite war-fortress wall (top-down RPG wall tile).
+- Bottom-right square tile: Glowing molten-red forge-slag and dark iron trench surface (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+3-7. 인페르노스 (용암과 유황) — 파일명: terrain_magye_infernos.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Blackened volcanic basalt crust with faint glowing orange-red magma cracks (flat top-down orthographic).
+- Top-center square tile: Forged obsidian brick road bordered by warm glowing embers (flat top-down orthographic).
+- Top-right square tile: Obsidian hellfire-sigil plaza tile etched with glowing orange magma lines (flat top-down orthographic).
+- Bottom-left square tile: Fiery crimson-orange and black-gold infernal carpet road (flat top-down orthographic).
+- Bottom-center square tile: Jagged volcanic obsidian fortress wall glowing softly at crevices (top-down RPG wall tile).
+- Bottom-right square tile: Bright bubbling molten orange-yellow lava magma surface (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+3-8. 베놈가든 (독버섯·연금술) — 파일명: terrain_magye_venomgarden.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Damp dark-purple swamp moss ground dotted with tiny glowing neon-green spores (flat top-down orthographic).
+- Top-center square tile: Moss-covered dark-stone alchemical garden stepping path (flat top-down orthographic).
+- Top-right square tile: Dark-slate alchemy-circle plaza tile inlaid with luminous emerald veins (flat top-down orthographic).
+- Bottom-left square tile: Deep violet-and-emerald botanical silk carpet road (flat top-down orthographic).
+- Bottom-center square tile: Dark wrought-iron and toxic-moss overgrown garden wall (top-down RPG wall tile).
+- Bottom-right square tile: Bubbling luminous neon-emerald alchemical venom-pond surface (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+3-9. 크로노폴 (황동 스팀펑크) — 파일명: terrain_magye_chronopol.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Riveted dark-bronze and weathered charcoal metal floor plates (flat top-down orthographic).
+- Top-center square tile: Victorian dark-brick and brass-railed steampunk city street (flat top-down orthographic).
+- Top-right square tile: Intricate inlaid brass clockwork-gear and dark-stone plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Deep mahogany-and-brass gear-embroidered royal carpet road (flat top-down orthographic).
+- Bottom-center square tile: Heavy copper-piped dark brick and brass steampunk wall (top-down RPG wall tile).
+- Bottom-right square tile: Glowing cyan-blue chronal energy canal water with subtle golden reflections (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+3-10. 블러드문 (붉은 달·고딕) — 파일명: terrain_magye_bloodmoon.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Dark charcoal-crimson stone ground scattered with dried deep-red rose petals (flat top-down orthographic).
+- Top-center square tile: Polished black-and-ruby gothic cobblestone boulevard (flat top-down orthographic).
+- Top-right square tile: Crimson crescent-moon inlaid black marble plaza mosaic tile (flat top-down orthographic).
+- Bottom-left square tile: Rich blood-ruby velvet carpet road with black-gold gothic trim (flat top-down orthographic).
+- Bottom-center square tile: Gothic black-stone wall topped with crimson crystal finials (top-down RPG wall tile).
+- Bottom-right square tile: Shimmering dark-crimson ruby-tinted moonlit water pool (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+--------------------------------------------------------------------------------
+3-11. 네크로폴리스 (백골·영혼불꽃) — 파일명: terrain_magye_necropolis.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Pale-ash graveyard soil and weathered gray tombstones paving (flat top-down orthographic).
+- Top-center square tile: Ancient carved gray-granite necropolis flagstone road with faint teal glow (flat top-down orthographic).
+- Top-right square tile: Dark granite soul-circle inlaid mausoleum plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Dark charcoal-and-spectral-teal embroidered ceremonial carpet road (flat top-down orthographic).
+- Bottom-center square tile: Carved pale-bone and dark-granite gothic crypt wall (top-down RPG wall tile).
+- Bottom-right square tile: Glowing spectral turquoise-cyan river of souls water surface (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture.
+
+================================================================================
+[PART 4] 마계 도시별 전용 오브젝트·소품 팩 (11장, 각 3x2 = 6개 투명 소품)
+순서: 상징 석상/조형물 / 도시 비석·장치 / 속성 크리스탈·화로 / 세력 깃발 / 도시 벤치·장식 / 도시 아치·게이트
+================================================================================
+
+--------------------------------------------------------------------------------
+4-1. 눌바리온 소품 — 파일명: props_magye_nulbarion.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Cloaked obsidian void-wraith statue on cracked slate pedestal.
+- Top-center: Floating dark-obsidian void obelisk with pale-cyan runes.
+- Top-right: Cluster of eerie glowing pale-teal void crystals.
+- Bottom-left: Tattered dark-charcoal and cyan void banner pole.
+- Bottom-center: Weathered dark-slate gothic stone bench.
+- Bottom-right: Jagged obsidian void archway gate with drifting cyan mist.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-2. 딜리리움 소품 — 파일명: props_magye_delirium.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Whimsical dark-violet jester-mask statue on spiral stone pedestal.
+- Top-center: Crooked giant glowing golden-purple standing grandfather clock monument.
+- Top-right: Floating cluster of glowing neon-violet dream crystals.
+- Bottom-left: Purple-and-gold striped harlequin banner pole.
+- Bottom-center: Quirky curved dark-purple wrought-iron park bench.
+- Bottom-right: Crooked storybook violet-and-gold archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-3. 노크티아 소품 — 파일명: props_magye_noctia.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Elegant dark-stone winged gargoyle statue on gothic plinth.
+- Top-center: Ornate silver-and-black gothic sundial / nocturnal monument.
+- Top-right: Tall black-iron gothic candelabra glowing with pale blue flames.
+- Bottom-left: Midnight-navy velvet banner pole with silver bat-wing crest.
+- Bottom-center: Victorian black wrought-iron aristocratic garden bench.
+- Bottom-right: Tall wrought-iron gothic estate archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-4. 엔드라실 소품 — 파일명: props_magye_endrasil.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Twisted dark-wood forest-spirit totem carved with glowing purple eyes.
+- Top-center: Ancient black-bark runic tree stump altar with crimson-violet sap.
+- Top-right: Cluster of giant glowing violet-and-crimson dark-forest mushrooms.
+- Bottom-left: Gnarled dark-branch banner pole hung with burgundy tapestry.
+- Bottom-center: Carved dark-root and mossy stone forest bench.
+- Bottom-right: Intertwined black-tree-root natural archway gate with glowing purple vines.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-5. 세라피엘 몰락지 소품 — 파일명: props_magye_seraphiel.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Cracked fallen-angel marble statue with one broken wing.
+- Top-center: Shattered marble cathedral pillar bound with black iron chains.
+- Top-right: Blackened stone altar brazier burning with violet-crimson fire.
+- Bottom-left: Tattered crimson-and-white fallen-sanctuary banner pole.
+- Bottom-center: Cracked weathered white-marble cathedral bench.
+- Bottom-right: Half-ruined gothic marble archway with broken golden halo.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-6. 카르나쥬 소품 — 파일명: props_magye_carnage.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Brutal dark-iron demon warlord statue holding a greatsword.
+- Top-center: Spiked iron weapon rack displaying glowing crimson demon blades.
+- Top-right: Heavy spiked iron war-furnace brazier roaring with red-orange flames.
+- Bottom-left: Crimson war-flag pole topped with spiked iron skull emblem.
+- Bottom-center: Heavy riveted black-iron and dark-stone warrior bench.
+- Bottom-right: Spiked iron-and-chain war-fortress archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-7. 인페르노스 소품 — 파일명: props_magye_infernos.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Volcanic obsidian demon-hound statue with glowing magma eyes.
+- Top-center: Cracked black obsidian magma-vent pillar glowing orange inside.
+- Top-right: Cluster of blazing orange-red volcanic fire crystals.
+- Bottom-left: Scorched crimson-orange hellfire banner on obsidian pole.
+- Bottom-center: Carved black volcanic basalt stone bench with glowing ember veins.
+- Bottom-right: Horned black-obsidian archway gate wreathed in hellfire.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-8. 베놈가든 소품 — 파일명: props_magye_venomgarden.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Mossy dark-stone serpent statue coiling around a glowing green orb.
+- Top-center: Bubbling iron alchemist cauldron overflowing with neon-green vapor.
+- Top-right: Cluster of luminous neon-emerald and purple toxic mushrooms.
+- Bottom-left: Vine-entwined dark-iron banner pole with emerald flask emblem.
+- Bottom-center: Wrought-iron botanical garden bench overgrown with glowing moss.
+- Bottom-right: Twisted dark-iron greenhouse archway draped in glowing green vines.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-9. 크로노폴 소품 — 파일명: props_magye_chronopol.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark steampunk prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Brass clockwork automaton knight statue on copper-trimmed plinth.
+- Top-center: Intricate spinning brass astrolabe and gear-tower monument.
+- Top-right: Glowing cyan chronal-energy tesla coil capsule on brass base.
+- Bottom-left: Brass-pole steampunk banner with golden gear crest.
+- Bottom-center: Ornate copper-pipe and dark-wood Victorian steampunk bench.
+- Bottom-right: Grand interlocking brass-gear and copper-pipe archway gate.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-10. 블러드문 소품 — 파일명: props_magye_bloodmoon.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Gothic crimson-marble vampire-lord statue holding a ruby chalice.
+- Top-center: Black-marble blood-moon crescent obelisk monument.
+- Top-right: Cluster of radiant deep-ruby blood crystals.
+- Bottom-left: Blood-red velvet banner pole with black-gold crescent crest.
+- Bottom-center: Ornate black-iron and crimson-cushioned gothic bench.
+- Bottom-right: Gothic black-stone archway crowned with a glowing red crescent moon.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+4-11. 네크로폴리스 소품 — 파일명: props_magye_necropolis.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art dark fantasy necropolis prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Carved hooded reaper statue holding a glowing spectral turquoise lantern.
+- Top-center: Ancient gothic stone mausoleum tombstone monument with glowing teal runes.
+- Top-right: Ornate bone-and-iron brazier burning with ghostly cyan soul-fire.
+- Bottom-left: Tattered charcoal-and-teal soul-flame banner pole.
+- Bottom-center: Weathered dark-granite gothic cemetery stone bench.
+- Bottom-right: Carved gothic dark-granite crypt archway with twin spectral torches.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY. Consistent 3/4 top-down JRPG perspective, crisp dark pixel outlines.

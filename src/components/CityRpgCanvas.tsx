@@ -11,14 +11,24 @@ import {
     DIRECTION_ROW_MAP,
     drawFallbackChibiSprite,
     getCachedRpgSpriteImage,
-    getRpgSpriteAssetPath,
+    getRpgSpriteUrlByKey,
     loadRpgSpriteImage,
-    mapRegionToSpriteKey,
-    normalizeGenderKey,
+    resolveEntityRpgSprite,
     RpgSpriteGenderKey,
     RpgSpriteRegionKey,
     SpriteDirection
 } from '../services/rpgSpriteManifest';
+import {
+    CultureAssetPart,
+    getBuildingSpriteUrl,
+    getCachedCityAssetImage,
+    getCultureAssetUrl,
+    getPropAssetUrl,
+    getTerrainTileUrl,
+    loadCityAssetImage,
+    TerrainTilePart
+} from '../services/cityAssetManifest';
+import { getGroundTileTextures } from '../services/cityGroundTextureEngine';
 import {
     ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Compass, CornerDownLeft,
     Map as MapIcon, MessageSquare, Sparkles, ChevronUp, ChevronDown
@@ -143,43 +153,63 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
         ]
     );
 
-    const playerRegionKey: RpgSpriteRegionKey = mapRegionToSpriteKey(region, nation);
-    const playerGenderKey: RpgSpriteGenderKey = normalizeGenderKey(character.gender);
-    const playerSpriteUrl = getRpgSpriteAssetPath(region, character.gender, nation);
+    const playerSprite = useMemo(
+        () => resolveEntityRpgSprite(character, region, nation),
+        [character.rpgSpriteKey, character.id, character.name, character.gender, character.race, region, nation]
+    );
+    const playerRegionKey: RpgSpriteRegionKey = playerSprite.regionKey;
+    const playerGenderKey: RpgSpriteGenderKey = playerSprite.genderKey;
+    const playerSpriteUrl = playerSprite.url;
 
-    // 파티 동료(최대 4명) 팔로워 스프라이트 정보
+    // 파티 동료(최대 4명) 팔로워 스프라이트 정보 (각 동료 고유 rpgSpriteKey 또는 개성 있는 결정적 배정)
     const followers = useMemo(() => {
         return (character.companions || []).slice(0, 4).map((c, idx) => {
-            const gKey = normalizeGenderKey(c.gender);
-            const rKey = mapRegionToSpriteKey(region, nation);
+            const resolved = resolveEntityRpgSprite(c, region, nation);
             return {
                 id: c.id || `comp_${idx}`,
                 name: c.name,
-                regionKey: rKey,
-                genderKey: gKey,
-                spriteUrl: getRpgSpriteAssetPath(region, c.gender, nation)
+                regionKey: resolved.regionKey,
+                genderKey: resolved.genderKey,
+                spriteUrl: resolved.url
             };
         });
     }, [character.companions, region, nation]);
 
-    // 필요한 스프라이트 이미지 프리로드 (현재 지역 남/여 모두 로드)
+    // 필요한 스프라이트 이미지 & 고품질 도시 건물/소품 PNG 프리로드
     useEffect(() => {
-        const urls = new Set<string>([
+        const spriteUrls = new Set<string>([
             playerSpriteUrl,
-            getRpgSpriteAssetPath(region, '남성', nation),
-            getRpgSpriteAssetPath(region, '여성', nation),
-            ...followers.map(f => f.spriteUrl)
+            ...followers.map(f => f.spriteUrl),
+            ...mapData.npcs.map(n => getRpgSpriteUrlByKey(`${n.regionKey}_${n.gender}`))
         ]);
+        const cityAssetUrls = new Set<string>([
+            ...(['landmark', 'shop', 'house', 'tree', 'fountain', 'lamp'] as CultureAssetPart[]).map(part =>
+                getCultureAssetUrl(mapData.cultureKey, part)
+            ),
+            ...(['ground', 'road', 'plaza', 'royal_road', 'wall', 'water'] as TerrainTilePart[]).map(part =>
+                getTerrainTileUrl(mapData.cultureKey, part)
+            ),
+            ...mapData.portals
+                .filter(pt => pt.actionType !== 'world_map')
+                .map(pt => getBuildingSpriteUrl(mapData.cultureKey, pt.spriteKind)),
+            ...mapData.props.map(pr => getPropAssetUrl(pr.pack, pr.part))
+        ]);
+
         let mounted = true;
-        urls.forEach(url => {
+        spriteUrls.forEach(url => {
             loadRpgSpriteImage(url).then(() => {
                 if (mounted) setSpriteTick(t => t + 1);
+            });
+        });
+        cityAssetUrls.forEach(url => {
+            loadCityAssetImage(url).then(img => {
+                if (mounted && img) setSpriteTick(t => t + 1);
             });
         });
         return () => {
             mounted = false;
         };
-    }, [playerSpriteUrl, region, nation, followers]);
+    }, [playerSpriteUrl, followers, mapData.npcs, mapData.cultureKey, mapData.portals, mapData.props]);
 
     // 2. 런타임 게임 상태 Refs (60fps 루프용)
     const keysPressedRef = useRef<Set<string>>(new Set());
@@ -780,72 +810,111 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 const camY = cameraRef.current.y;
                 const pal = mapData.palette;
                 const ts = CITY_TILE_SIZE;
-                const waterWave = Math.sin(now * 0.004) * 3;
+                const groundTex = getGroundTileTextures(mapData.cultureKey, pal);
+                const waterFrameIdx = Math.floor(now / 360) % groundTex.waterFrames.length;
 
                 ctx.save();
                 ctx.scale(zoom, zoom);
                 ctx.translate(-camX, -camY);
+                ctx.imageSmoothingEnabled = false;
 
-                // Layer 1: 지형 타일
+                // Layer 1: 고품질 AI 지형 타일 PNG 우선 렌더링 (미로드/누락 시 16-bit 절차적 텍스처 폴백)
+                const aiGround = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'ground'));
+                const aiRoad = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'road'));
+                const aiPlaza = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'plaza'));
+                const aiRoyalRoad = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'royal_road'));
+                const aiWall = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'wall'));
+                const aiWater = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'water'));
+                const isImgReady = (img: HTMLImageElement | null): img is HTMLImageElement =>
+                    Boolean(img && img.complete && img.naturalWidth > 0);
+
                 for (let y = 0; y < mapData.rows; y++) {
                     for (let x = 0; x < mapData.cols; x++) {
                         const t = mapData.tiles[y][x];
                         const px = x * ts;
                         const py = y * ts;
-                        const checker = (x + y) % 2 === 0;
+                        const variantIdx = (x * 7 + y * 13) & 3;
 
-                        if (t === 'road') {
-                            ctx.fillStyle = checker ? pal.road1 : pal.road2;
-                            ctx.fillRect(px, py, ts, ts);
-                            ctx.fillStyle = 'rgba(0,0,0,0.08)';
-                            ctx.fillRect(px, py + ts - 2, ts, 2);
+                        if (t === 'royal_road') {
+                            if (isImgReady(aiRoyalRoad)) ctx.drawImage(aiRoyalRoad, px, py, ts, ts);
+                            else ctx.drawImage(groundTex.royalRoad, px, py);
+                        } else if (t === 'road') {
+                            if (isImgReady(aiRoad)) ctx.drawImage(aiRoad, px, py, ts, ts);
+                            else ctx.drawImage(groundTex.road, px, py);
+                            // 잔디와 맞닿는 경계에 자연스러운 연석 그림자/테두리
+                            ctx.fillStyle = 'rgba(15, 23, 42, 0.25)';
+                            if (y > 0 && mapData.tiles[y - 1][x] === 'grass') ctx.fillRect(px, py, ts, 2);
+                            if (y < mapData.rows - 1 && mapData.tiles[y + 1][x] === 'grass') ctx.fillRect(px, py + ts - 2, ts, 2);
+                            if (x > 0 && mapData.tiles[y][x - 1] === 'grass') ctx.fillRect(px, py, 2, ts);
+                            if (x < mapData.cols - 1 && mapData.tiles[y][x + 1] === 'grass') ctx.fillRect(px + ts - 2, py, 2, ts);
                         } else if (t === 'plaza' || t === 'fountain') {
-                            ctx.fillStyle = checker ? pal.plaza1 : pal.plaza2;
-                            ctx.fillRect(px, py, ts, ts);
-                            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-                            ctx.strokeRect(px + 1, py + 1, ts - 2, ts - 2);
+                            if (isImgReady(aiPlaza)) ctx.drawImage(aiPlaza, px, py, ts, ts);
+                            else ctx.drawImage(groundTex.plaza, px, py);
                         } else if (t === 'water') {
-                            ctx.fillStyle = checker ? pal.water1 : pal.water2;
-                            ctx.fillRect(px, py, ts, ts);
-                            ctx.fillStyle = 'rgba(255,255,255,0.22)';
-                            ctx.fillRect(px + 6 + waterWave, py + 12, 14, 2);
-                            ctx.fillRect(px + 14 - waterWave, py + 26, 12, 2);
+                            if (isImgReady(aiWater)) {
+                                ctx.drawImage(aiWater, px, py, ts, ts);
+                                // 살아있는 수면 반짝임 오버레이
+                                const shimmer = 0.06 + Math.sin(now * 0.004 + x * 0.9 + y * 0.7) * 0.05;
+                                ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, shimmer)})`;
+                                ctx.fillRect(px + ((x * 9 + waterFrameIdx * 6) % 24), py + 10 + (y % 3) * 8, 10, 2);
+                            } else {
+                                ctx.drawImage(groundTex.waterFrames[waterFrameIdx], px, py);
+                            }
+                            // 연못 가장자리 석축 테두리
+                            ctx.fillStyle = '#475569';
+                            if (y > 0 && mapData.tiles[y - 1][x] !== 'water') ctx.fillRect(px, py, ts, 3);
+                            if (y < mapData.rows - 1 && mapData.tiles[y + 1][x] !== 'water') ctx.fillRect(px, py + ts - 3, ts, 3);
+                            if (x > 0 && mapData.tiles[y][x - 1] !== 'water') ctx.fillRect(px, py, 3, ts);
+                            if (x < mapData.cols - 1 && mapData.tiles[y][x + 1] !== 'water') ctx.fillRect(px + ts - 3, py, 3, ts);
                         } else if (t === 'wall') {
-                            ctx.fillStyle = pal.wall;
-                            ctx.fillRect(px, py, ts, ts);
-                            ctx.fillStyle = pal.wallTop;
-                            ctx.fillRect(px, py, ts, 10);
-                            ctx.fillStyle = 'rgba(0,0,0,0.25)';
-                            ctx.fillRect(px, py + ts - 4, ts, 4);
-                        } else {
-                            ctx.fillStyle = checker ? pal.grass1 : pal.grass2;
-                            ctx.fillRect(px, py, ts, ts);
-                            if (t === 'flower') {
-                                ctx.fillStyle = '#fde047';
-                                ctx.fillRect(px + 10, py + 12, 4, 4);
+                            if (isImgReady(aiWall)) ctx.drawImage(aiWall, px, py, ts, ts);
+                            else ctx.drawImage(groundTex.wall, px, py);
+                        } else if (t === 'flower') {
+                            if (isImgReady(aiGround)) {
+                                ctx.drawImage(aiGround, px, py, ts, ts);
+                                // AI 잔디 위 작은 꽃잎 포인트
                                 ctx.fillStyle = '#f472b6';
-                                ctx.fillRect(px + 24, py + 22, 4, 4);
+                                ctx.fillRect(px + 9, py + 11, 4, 4);
+                                ctx.fillStyle = '#fde047';
+                                ctx.fillRect(px + 24, py + 19, 4, 4);
                                 ctx.fillStyle = '#38bdf8';
-                                ctx.fillRect(px + 16, py + 28, 4, 4);
+                                ctx.fillRect(px + 15, py + 28, 3, 3);
+                            } else {
+                                ctx.drawImage(groundTex.flower, px, py);
+                            }
+                        } else {
+                            if (isImgReady(aiGround)) ctx.drawImage(aiGround, px, py, ts, ts);
+                            else ctx.drawImage(groundTex.grassVariants[variantIdx], px, py);
+                        }
+
+                        // 중앙 분수대 디테일 (고품질 PNG가 없을 때만 기본 타일 분수 표시)
+                        if (t === 'fountain') {
+                            const fountainImg = getCachedCityAssetImage(getCultureAssetUrl(mapData.cultureKey, 'fountain'));
+                            if (!fountainImg) {
+                                ctx.fillStyle = '#64748b';
+                                ctx.beginPath();
+                                ctx.roundRect(px + 2, py + 4, ts - 4, ts - 8, 6);
+                                ctx.fill();
+                                ctx.fillStyle = pal.water2;
+                                ctx.beginPath();
+                                ctx.roundRect(px + 6, py + 8, ts - 12, ts - 16, 4);
+                                ctx.fill();
+                                ctx.fillStyle = 'rgba(255,255,255,0.65)';
+                                ctx.beginPath();
+                                ctx.arc(px + ts / 2, py + ts / 2 + Math.sin(now * 0.008) * 2, 4, 0, Math.PI * 2);
+                                ctx.fill();
                             }
                         }
-
-                        // 중앙 분수대 디테일
-                        if (t === 'fountain') {
-                            ctx.fillStyle = '#64748b';
-                            ctx.beginPath();
-                            ctx.roundRect(px + 2, py + 4, ts - 4, ts - 8, 6);
-                            ctx.fill();
-                            ctx.fillStyle = pal.water2;
-                            ctx.beginPath();
-                            ctx.roundRect(px + 6, py + 8, ts - 12, ts - 16, 4);
-                            ctx.fill();
-                            ctx.fillStyle = 'rgba(255,255,255,0.65)';
-                            ctx.beginPath();
-                            ctx.arc(px + ts / 2, py + ts / 2 + Math.sin(now * 0.008) * 2, 4, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
                     }
+                }
+
+                // 고품질 중앙 분수대 PNG가 있으면 중앙 광장에 통합 렌더링
+                const customFountainImg = getCachedCityAssetImage(getCultureAssetUrl(mapData.cultureKey, 'fountain'));
+                if (customFountainImg && customFountainImg.complete && customFountainImg.naturalWidth > 0) {
+                    const fx = mapData.fountainCenter.x * ts;
+                    const fy = mapData.fountainCenter.y * ts + ts / 2;
+                    ctx.imageSmoothingEnabled = false;
+                    ctx.drawImage(customFountainImg, fx - ts * 1.15, fy - ts * 1.15, ts * 2.3, ts * 2.3);
                 }
 
                 // 클릭 목표 경로 점선 표시
@@ -880,59 +949,153 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     const bh = pt.buildingH * ts;
 
                     // 건물 그림자
-                    ctx.fillStyle = 'rgba(0,0,0,0.32)';
+                    ctx.fillStyle = 'rgba(0,0,0,0.34)';
                     ctx.fillRect(bx + 6, by + bh - 4, bw, 10);
 
-                    // 벽면
-                    ctx.fillStyle = pal.buildingWall;
-                    ctx.fillRect(bx + 2, by + ts * 0.7, bw - 4, bh - ts * 0.7);
-                    ctx.strokeStyle = pal.buildingTrim;
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(bx + 2, by + ts * 0.7, bw - 4, bh - ts * 0.7);
+                    const buildingImg = getCachedCityAssetImage(getBuildingSpriteUrl(mapData.cultureKey, pt.spriteKind));
+                    if (buildingImg && buildingImg.complete && buildingImg.naturalWidth > 0) {
+                        // 고품질 문화권/특수 건물 PNG 렌더링
+                        ctx.imageSmoothingEnabled = false;
+                        ctx.drawImage(buildingImg, bx - 6, by - 14, bw + 12, bh + 16);
+                    } else {
+                        // 국가별 건축 양식 & 특수 건물 전용 폴백 렌더링
+                        const cKey = mapData.cultureKey;
+                        const isSpecial = pt.spriteKind.startsWith('special_');
 
-                    // 창문 (밤에는 따뜻한 불빛)
-                    const winCount = Math.max(1, pt.buildingW - 1);
-                    for (let i = 0; i < winCount; i++) {
-                        const wx = bx + 12 + i * ts;
-                        const wy = by + ts * 0.95;
-                        if (Math.abs(wx + 8 - (pt.doorX * ts + ts / 2)) < 20) continue;
-                        ctx.fillStyle = isNightLike ? '#fde047' : '#38bdf8';
-                        ctx.fillRect(wx, wy, 14, 14);
+                        // 벽면
+                        ctx.fillStyle =
+                            pt.spriteKind === 'special_dungeon' ? '#334155' :
+                            pt.spriteKind === 'special_abyss' ? '#1e1b4b' :
+                            pt.spriteKind === 'special_base' ? '#1f2937' :
+                            pal.buildingWall;
+                        ctx.fillRect(bx + 2, by + ts * 0.68, bw - 4, bh - ts * 0.68);
                         ctx.strokeStyle = pal.buildingTrim;
-                        ctx.lineWidth = 1.5;
-                        ctx.strokeRect(wx, wy, 14, 14);
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(bx + 2, by + ts * 0.68, bw - 4, bh - ts * 0.68);
+
+                        // 유럽 하프팀버 / 신계 대리석 기둥 / 마계 철제 기둥 디테일
+                        if (cKey === 'europe' && !isSpecial) {
+                            ctx.fillStyle = '#78350f';
+                            for (let gx = bx + ts; gx < bx + bw - 8; gx += ts) {
+                                ctx.fillRect(gx, by + ts * 0.68, 4, bh - ts * 0.68);
+                            }
+                        } else if (cKey === 'shingye') {
+                            ctx.fillStyle = '#fde68a';
+                            for (let gx = bx + 8; gx < bx + bw - 6; gx += ts) {
+                                ctx.fillRect(gx, by + ts * 0.68, 6, bh - ts * 0.68);
+                            }
+                        } else if (pt.spriteKind === 'special_base') {
+                            // 내 거점 성곽 요철 + 에메랄드 깃발
+                            ctx.fillStyle = '#10b981';
+                            ctx.fillRect(bx + 10, by - 14, 3, 18);
+                            ctx.beginPath();
+                            ctx.moveTo(bx + 13, by - 14);
+                            ctx.lineTo(bx + 27, by - 9);
+                            ctx.lineTo(bx + 13, by - 4);
+                            ctx.fill();
+                        }
+
+                        // 창문 (한국/일본은 격자 창호, 밤에는 따뜻한 불빛)
+                        if (pt.spriteKind !== 'special_dungeon') {
+                            const winCount = Math.max(1, pt.buildingW - 1);
+                            for (let i = 0; i < winCount; i++) {
+                                const wx = bx + 12 + i * ts;
+                                const wy = by + ts * 0.92;
+                                if (Math.abs(wx + 8 - (pt.doorX * ts + ts / 2)) < 20) continue;
+                                ctx.fillStyle = isNightLike ? '#fde047' : cKey === 'korea' || cKey === 'japan' ? '#fef3c7' : '#38bdf8';
+                                ctx.fillRect(wx, wy, 14, 14);
+                                ctx.strokeStyle = pal.buildingTrim;
+                                ctx.lineWidth = 1.5;
+                                ctx.strokeRect(wx, wy, 14, 14);
+                                if (cKey === 'korea' || cKey === 'japan') {
+                                    ctx.beginPath();
+                                    ctx.moveTo(wx + 7, wy); ctx.lineTo(wx + 7, wy + 14);
+                                    ctx.moveTo(wx, wy + 7); ctx.lineTo(wx + 14, wy + 7);
+                                    ctx.stroke();
+                                }
+                            }
+                        }
+
+                        // 지붕 (국가별 고유 실루엣)
+                        ctx.fillStyle = pt.roofColor;
+                        if (cKey === 'korea' || cKey === 'japan' || cKey === 'china') {
+                            // 동아시아 곡선 처마 기와지붕
+                            ctx.beginPath();
+                            ctx.moveTo(bx - 10, by + ts * 0.82);
+                            ctx.quadraticCurveTo(bx + bw / 2, by + ts * 0.55, bx + bw + 10, by + ts * 0.82);
+                            ctx.lineTo(bx + bw - 4, by - 4);
+                            ctx.lineTo(bx + 4, by - 4);
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.strokeStyle = 'rgba(0,0,0,0.48)';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        } else if (cKey === 'africa') {
+                            // 사막 둥근 돔 지붕
+                            ctx.beginPath();
+                            ctx.roundRect(bx - 2, by + ts * 0.35, bw + 4, ts * 0.52, 4);
+                            ctx.fill();
+                            ctx.fillStyle = '#f59e0b';
+                            ctx.beginPath();
+                            ctx.arc(bx + bw / 2, by + ts * 0.42, Math.min(bw * 0.28, 28), Math.PI, 0);
+                            ctx.fill();
+                        } else if (cKey === 'europe' || cKey === 'magye' || cKey === 'abyssalon' || pt.spriteKind === 'special_abyss') {
+                            // 삼각 박공 / 고딕 첨탑 지붕
+                            ctx.beginPath();
+                            ctx.moveTo(bx - 6, by + ts * 0.85);
+                            ctx.lineTo(bx + bw / 2, by - (pt.spriteKind === 'special_abyss' ? 22 : 10));
+                            ctx.lineTo(bx + bw + 6, by + ts * 0.85);
+                            ctx.closePath();
+                            ctx.fill();
+                            ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        } else {
+                            ctx.beginPath();
+                            ctx.roundRect(bx - 3, by - 4, bw + 6, ts * 0.92, 6);
+                            ctx.fill();
+                            ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        }
+
+                        // 지붕 하이라이트 띠
+                        ctx.fillStyle = pt.accentColor;
+                        ctx.fillRect(bx + 2, by + ts * 0.72, bw - 4, 4);
+
+                        // 문 / 포탈 입구
+                        const dx = pt.doorX * ts;
+                        const dy = pt.doorY * ts;
+                        if (pt.actionType === 'dungeon' || pt.actionType === 'abyss_tower') {
+                            const pulse = 0.55 + Math.sin(now * 0.006) * 0.25;
+                            ctx.fillStyle = `rgba(192, 132, 252, ${pulse})`;
+                            ctx.beginPath();
+                            ctx.ellipse(dx + ts / 2, dy + ts / 2, 14, 16, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                        } else {
+                            ctx.fillStyle = '#451a03';
+                            ctx.beginPath();
+                            ctx.roundRect(dx + 8, dy + 4, ts - 16, ts - 6, [6, 6, 0, 0]);
+                            ctx.fill();
+                            ctx.fillStyle = '#fbbf24';
+                            ctx.beginPath();
+                            ctx.arc(dx + ts - 13, dy + ts / 2 + 2, 2.2, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
                     }
 
-                    // 지붕
-                    ctx.fillStyle = pt.roofColor;
-                    ctx.beginPath();
-                    ctx.roundRect(bx - 3, by - 4, bw + 6, ts * 0.95, 6);
-                    ctx.fill();
-                    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
-                    ctx.lineWidth = 2;
-                    ctx.stroke();
-
-                    // 지붕 하이라이트 띠
-                    ctx.fillStyle = pt.accentColor;
-                    ctx.fillRect(bx + 2, by + ts * 0.72, bw - 4, 4);
-
-                    // 문 / 포탈 입구
-                    const dx = pt.doorX * ts;
-                    const dy = pt.doorY * ts;
+                    // 시즌 보스 / 심연 탑 포탈 글로우 오버레이 (PNG 위에도 살아있는 연출)
                     if (pt.actionType === 'dungeon' || pt.actionType === 'abyss_tower') {
-                        const pulse = 0.55 + Math.sin(now * 0.006) * 0.25;
-                        ctx.fillStyle = `rgba(192, 132, 252, ${pulse})`;
+                        const dx = pt.doorX * ts + ts / 2;
+                        const dy = pt.doorY * ts + ts / 2;
+                        const pulse = 0.28 + Math.sin(now * 0.006) * 0.16;
+                        ctx.fillStyle = pt.actionType === 'abyss_tower'
+                            ? `rgba(192, 132, 252, ${pulse})`
+                            : isMythicBoss
+                                ? `rgba(232, 121, 249, ${pulse + 0.15})`
+                                : `rgba(248, 113, 113, ${pulse})`;
                         ctx.beginPath();
-                        ctx.ellipse(dx + ts / 2, dy + ts / 2, 14, 16, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                    } else {
-                        ctx.fillStyle = '#451a03';
-                        ctx.beginPath();
-                        ctx.roundRect(dx + 8, dy + 4, ts - 16, ts - 6, [6, 6, 0, 0]);
-                        ctx.fill();
-                        ctx.fillStyle = '#fbbf24';
-                        ctx.beginPath();
-                        ctx.arc(dx + ts - 13, dy + ts / 2 + 2, 2.2, 0, Math.PI * 2);
+                        ctx.arc(dx, dy, 18, 0, Math.PI * 2);
                         ctx.fill();
                     }
 
@@ -952,9 +1115,43 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     ctx.fillText(title, bx + bw / 2, by + 18);
                 });
 
-                // 나무 & 가로등 + 캐릭터/NPC Y-Sort 엔티티 수집
+                // 바닥 위 통과 가능 소품 (화단, 마법진 등) 먼저 렌더링
+                mapData.props.forEach(pr => {
+                    if (!pr.walkable) return;
+                    const propImg = getCachedCityAssetImage(getPropAssetUrl(pr.pack, pr.part));
+                    if (!propImg || !propImg.complete || propImg.naturalWidth <= 0) return;
+                    const cx = pr.x * ts + ts / 2;
+                    const by = (pr.y + 1) * ts;
+                    ctx.imageSmoothingEnabled = false;
+                    ctx.drawImage(propImg, cx - pr.drawW / 2, by - pr.drawH, pr.drawW, pr.drawH);
+                });
+
+                // 나무 & 가로등 & 마을 오브젝트 + 캐릭터/NPC Y-Sort 엔티티 수집
                 type RenderItem = { y: number; draw: () => void };
                 const ySortItems: RenderItem[] = [];
+
+                // 입체 마을 오브젝트 소품 Y-Sort 추가
+                mapData.props.forEach(pr => {
+                    if (pr.walkable) return;
+                    const propImg = getCachedCityAssetImage(getPropAssetUrl(pr.pack, pr.part));
+                    if (!propImg || !propImg.complete || propImg.naturalWidth <= 0) return;
+                    const cx = pr.x * ts + ts / 2;
+                    const by = (pr.y + 1) * ts;
+                    ySortItems.push({
+                        y: by,
+                        draw: () => {
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.24)';
+                            ctx.beginPath();
+                            ctx.ellipse(cx, by - 3, Math.min(24, pr.drawW * 0.34), 6, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.imageSmoothingEnabled = false;
+                            ctx.drawImage(propImg, cx - pr.drawW / 2, by - pr.drawH, pr.drawW, pr.drawH);
+                        }
+                    });
+                });
+
+                const treeImg = getCachedCityAssetImage(getCultureAssetUrl(mapData.cultureKey, 'tree'));
+                const lampImg = getCachedCityAssetImage(getCultureAssetUrl(mapData.cultureKey, 'lamp'));
 
                 for (let y = 0; y < mapData.rows; y++) {
                     for (let x = 0; x < mapData.cols; x++) {
@@ -969,37 +1166,60 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                                     ctx.beginPath();
                                     ctx.ellipse(cx, by - 4, 14, 6, 0, 0, Math.PI * 2);
                                     ctx.fill();
-                                    ctx.fillStyle = pal.treeTrunk;
-                                    ctx.fillRect(cx - 5, by - 22, 10, 18);
-                                    ctx.fillStyle = pal.treeLeaf1;
-                                    ctx.beginPath();
-                                    ctx.arc(cx, by - 30, 16, 0, Math.PI * 2);
-                                    ctx.fill();
-                                    ctx.fillStyle = pal.treeLeaf2;
-                                    ctx.beginPath();
-                                    ctx.arc(cx - 5, by - 34, 9, 0, Math.PI * 2);
-                                    ctx.fill();
+                                    if (treeImg && treeImg.complete && treeImg.naturalWidth > 0) {
+                                        ctx.imageSmoothingEnabled = false;
+                                        ctx.drawImage(treeImg, cx - 26, by - 52, 52, 52);
+                                    } else {
+                                        ctx.fillStyle = pal.treeTrunk;
+                                        ctx.fillRect(cx - 5, by - 22, 10, 18);
+                                        ctx.fillStyle = pal.treeLeaf1;
+                                        ctx.beginPath();
+                                        ctx.arc(cx, by - 30, 16, 0, Math.PI * 2);
+                                        ctx.fill();
+                                        ctx.fillStyle = pal.treeLeaf2;
+                                        ctx.beginPath();
+                                        ctx.arc(cx - 5, by - 34, 9, 0, Math.PI * 2);
+                                        ctx.fill();
+                                    }
                                 }
                             });
                         } else if (t === 'lamp') {
                             ySortItems.push({
                                 y: by,
                                 draw: () => {
-                                    ctx.fillStyle = '#334155';
-                                    ctx.fillRect(cx - 2, by - 30, 4, 28);
-                                    ctx.fillStyle = isNightLike ? '#fef08a' : '#cbd5e1';
-                                    ctx.beginPath();
-                                    ctx.arc(cx, by - 32, 5, 0, Math.PI * 2);
-                                    ctx.fill();
+                                    if (lampImg && lampImg.complete && lampImg.naturalWidth > 0) {
+                                        ctx.imageSmoothingEnabled = false;
+                                        ctx.drawImage(lampImg, cx - 16, by - 44, 32, 44);
+                                    } else {
+                                        ctx.fillStyle = '#334155';
+                                        ctx.fillRect(cx - 2, by - 30, 4, 28);
+                                        // 한국 청사초롱 / 중국 홍등 / 마계 화로 포인트
+                                        if (mapData.cultureKey === 'korea') {
+                                            ctx.fillStyle = '#ef4444';
+                                            ctx.fillRect(cx - 4, by - 35, 8, 5);
+                                            ctx.fillStyle = '#3b82f6';
+                                            ctx.fillRect(cx - 4, by - 30, 8, 4);
+                                        } else if (mapData.cultureKey === 'china') {
+                                            ctx.fillStyle = '#dc2626';
+                                            ctx.beginPath();
+                                            ctx.arc(cx, by - 32, 6, 0, Math.PI * 2);
+                                            ctx.fill();
+                                        } else {
+                                            ctx.fillStyle = isNightLike ? '#fef08a' : '#cbd5e1';
+                                            ctx.beginPath();
+                                            ctx.arc(cx, by - 32, 5, 0, Math.PI * 2);
+                                            ctx.fill();
+                                        }
+                                    }
                                 }
                             });
                         }
                     }
                 }
 
-                // NPC 추가
+                // NPC 추가 (각 NPC의 고유 문화권 스프라이트 사용)
                 npcsRef.current.forEach(npc => {
-                    const npcUrl = getRpgSpriteAssetPath(region, npc.gender === 'female' ? '여성' : '남성', nation);
+                    const npcUrl = getRpgSpriteUrlByKey(`${npc.regionKey}_${npc.gender}`);
                     ySortItems.push({
                         y: npc.py + 8,
                         draw: () => {
@@ -1074,6 +1294,31 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     ctx.fill();
                 });
 
+                // 문화권별 살아있는 환경 파티클 (벚꽃잎 / 눈송이 / 황금 빛가루 / 마계 불티·독포자 / 엘프 반딧불이)
+                const cKey = mapData.cultureKey;
+                const ambientColor =
+                    cKey === 'korea' || cKey === 'japan' || cKey === 'shingye_flora' ? 'rgba(249, 168, 212, 0.72)' :
+                    cKey === 'northern_europe' || cKey === 'shingye_ice' ? 'rgba(224, 242, 254, 0.85)' :
+                    cKey === 'shingye_ocean' || cKey === 'shingye_thunder' || cKey === 'magye_necropolis' ? 'rgba(103, 232, 249, 0.78)' :
+                    cKey === 'shingye_moon' || cKey === 'shingye_abyss' || cKey === 'magye_delirium' || cKey === 'abyssalon' ? 'rgba(192, 132, 252, 0.74)' :
+                    cKey === 'magye_venomgarden' || cKey === 'sylvanar' ? 'rgba(110, 231, 183, 0.78)' :
+                    cKey.startsWith('shingye') ? 'rgba(254, 240, 138, 0.78)' :
+                    cKey.startsWith('magye') ? 'rgba(248, 113, 113, 0.72)' :
+                    'rgba(254, 249, 195, 0.35)';
+                ctx.fillStyle = ambientColor;
+                const risesUp = (cKey.startsWith('shingye') && cKey !== 'shingye_ice' && cKey !== 'shingye_flora') || cKey.startsWith('magye') || cKey === 'abyssalon';
+                for (let i = 0; i < 18; i++) {
+                    const seed = i * 197.3;
+                    const driftX = (seed * 13 + now * 0.018 * (1 + (i % 3) * 0.25)) % worldW;
+                    const driftY = risesUp
+                        ? (worldH - ((seed * 17 + now * 0.016) % worldH))
+                        : ((seed * 17 + now * 0.014) % worldH);
+                    const sway = Math.sin(now * 0.002 + i) * 8;
+                    ctx.beginPath();
+                    ctx.ellipse(driftX + sway, driftY, cKey === 'korea' || cKey === 'japan' ? 3 : 2, 1.8, (now * 0.001 + i) % Math.PI, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
                 // Layer 4: 시간대 대기 조명 + 야간 가로등/플레이어 광원
                 if (timePeriod === 'sunset') {
                     ctx.fillStyle = 'rgba(234, 88, 12, 0.14)';
@@ -1102,10 +1347,10 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
 
                 ctx.restore();
 
-                // Layer 5: 우측 상단 컴팩트 미니맵
-                const mmScale = 4;
-                const mmW = mapData.cols * mmScale;
-                const mmH = mapData.rows * mmScale;
+                // Layer 5: 우측 상단 컴팩트 미니맵 (수도 36x26 / 대도시 28x20 / 소도시 22x16 자동 스케일)
+                const mmScale = mapData.cols >= 34 ? 3.2 : mapData.cols <= 22 ? 4.8 : 4;
+                const mmW = Math.round(mapData.cols * mmScale);
+                const mmH = Math.round(mapData.rows * mmScale);
                 const mmX = viewW - mmW - 14;
                 const mmY = 14;
                 ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
@@ -1182,9 +1427,12 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 className="block w-full h-full cursor-pointer"
             />
 
-            {/* 조작 안내 뱃지 (좌상단) */}
+            {/* 조작 안내 및 도시 규모 뱃지 (좌상단) */}
             <div className="pointer-events-none absolute top-3 left-3 hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-700/70 text-[10px] text-slate-300 backdrop-blur-sm">
                 <Compass size={12} className="text-amber-400" />
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-black">
+                    {tier === 'Capital' ? '수도' : tier === 'City' ? '대도시' : '소도시'}
+                </span>
                 <span><strong className="text-white">WASD / 방향키 / 클릭</strong> 이동</span>
                 <span className="text-slate-600">|</span>
                 <span><strong className="text-white">Shift</strong> 달리기</span>

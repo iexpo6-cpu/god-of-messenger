@@ -4,6 +4,12 @@ import { User as UserIcon, Loader2, Sword, School, GraduationCap, Medal, Baby, M
 import { WORLD_GEOGRAPHY, SCHOOL_CONFIG, COMBAT_STYLE_CONFIG } from '../constants';
 import { Location, SchoolTier, SchoolData, SimpleStudent, CombatStyle } from '../types';
 import { generateClassmates, optimizeImage } from '../utils';
+import {
+  RPG_SPRITE_CATALOG,
+  getRpgSpriteUrlByKey,
+  normalizeGenderKey,
+  pickRandomRpgSpriteKey
+} from '../services/rpgSpriteManifest';
 
 interface CharacterCreationData {
   name: string;
@@ -18,6 +24,7 @@ interface CharacterCreationData {
   currentLocation?: Location;
   schoolData?: SchoolData;
   visualUrl?: string;
+  rpgSpriteKey?: string;
 }
 
 interface Props {
@@ -143,7 +150,9 @@ const CharacterCreationForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
     personality: 'ISTJ (신중하고 성실함)', 
     combatStyle: undefined as unknown as CombatStyle,
     visualUrl: CHARACTER_PRESETS['아시아'][0].url,
+    rpgSpriteKey: '',
   });
+  const [showAllSpriteGenders, setShowAllSpriteGenders] = useState(false);
 
   const [isCustomVisual, setIsCustomVisual] = useState(false);
   const [customVisualUrl, setCustomVisualUrl] = useState('');
@@ -323,8 +332,10 @@ const CharacterCreationForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
         };
     }
 
+    const finalSpriteKey = formData.rpgSpriteKey || pickRandomRpgSpriteKey(formData.gender, 'human');
     onSubmit({ 
         ...formData, 
+        rpgSpriteKey: finalSpriteKey,
         age: formData.age || currentOption.ages[0],
         nation: finalNation,
         startingLevel: currentOption.level,
@@ -619,6 +630,72 @@ const CharacterCreationForm: React.FC<Props> = ({ onSubmit, isLoading }) => {
                                     placeholder="도시 이름 입력" 
                                 />
                             )}
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="block text-xs uppercase text-amber-400 font-bold">
+                                    🎮 쯔꾸르 2D 필드 캐릭터 스프라이트 (지역 무관 자유 선택)
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAllSpriteGenders(v => !v)}
+                                    className="text-[11px] text-slate-400 hover:text-amber-300 underline"
+                                >
+                                    {showAllSpriteGenders ? '현재 성별만 보기' : '전체 22종 보기'}
+                                </button>
+                            </div>
+                            <p className="text-[11px] text-slate-400 mb-2.5">
+                                출신 국가나 지역에 구애받지 않고 원하는 외형을 고를 수 있습니다. 미선택 시 <strong>랜덤 기본 스프라이트</strong>로 자동 배정됩니다.
+                            </p>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 max-h-56 overflow-y-auto custom-scrollbar p-2 bg-slate-950/80 border border-slate-700 rounded-xl">
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, rpgSpriteKey: '' })}
+                                    className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-all ${
+                                        !formData.rpgSpriteKey
+                                            ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow'
+                                            : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-600'
+                                    }`}
+                                >
+                                    <div className="w-12 h-12 rounded-lg bg-slate-800/80 flex items-center justify-center text-xl">
+                                        🎲
+                                    </div>
+                                    <span className="text-[10px] font-bold text-center leading-tight">자동 / 랜덤</span>
+                                </button>
+                                {RPG_SPRITE_CATALOG.filter(
+                                    item => showAllSpriteGenders || item.gender === normalizeGenderKey(formData.gender)
+                                ).map(item => {
+                                    const selected = formData.rpgSpriteKey === item.key;
+                                    return (
+                                        <button
+                                            key={item.key}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, rpgSpriteKey: item.key })}
+                                            className={`p-2 rounded-lg border flex flex-col items-center justify-center gap-1 transition-all ${
+                                                selected
+                                                    ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow'
+                                                    : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-600'
+                                            }`}
+                                        >
+                                            <div
+                                                className="w-12 h-12 rounded-lg bg-slate-800/60 shrink-0"
+                                                style={{
+                                                    backgroundImage: `url(${getRpgSpriteUrlByKey(item.key)})`,
+                                                    backgroundPosition: '-48px 0px',
+                                                    backgroundSize: '144px 192px',
+                                                    backgroundRepeat: 'no-repeat',
+                                                    imageRendering: 'pixelated'
+                                                }}
+                                            />
+                                            <span className="text-[10px] font-bold text-center leading-tight truncate w-full">
+                                                {item.label}
+                                            </span>
+                                            <span className="text-[9px] text-slate-500">{item.tag}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
 
                         <div className="md:col-span-2">

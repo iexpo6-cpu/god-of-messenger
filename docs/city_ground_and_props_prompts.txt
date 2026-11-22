@@ -1,0 +1,179 @@
+================================================================================
+신의 사자 RPG — 쯔꾸르 2D 바닥 타일(7종) & 마을 오브젝트 소품(4종) 프롬프트 모음 (총 11장)
+================================================================================
+[사용 방법]
+1. 아래 각 항목의 프롬프트를 그대로 복사해서 Gemini 이미지 생성에 붙여넣으세요.
+2. 생성된 이미지를 프로젝트 루트의 `raw_tilesets/` 폴더에 안내된 파일명으로 저장하세요.
+   예) raw_tilesets/terrain_east_asia.png
+       raw_tilesets/props_market.png
+3. 원하는 만큼(1장만 넣어도 즉시 반영!) 저장하신 뒤 채팅에
+   "바닥이랑 오브젝트 넣었어 적용해줘"라고 말씀해 주시면
+   마젠타 배경 제거 + 6등분 정밀 추출 + 타일 이음새 보정 + 코드 연동 + 빌드까지 한 번에 반영해 드립니다!
+
+================================================================================
+[PART A] 지형 / 바닥 타일셋 7종 (각 3x2 = 6개 정사각형 타일)
+- Top-left: 기본 바닥 (잔디/모래/대리석/흑요석)
+- Top-center: 일반 도로 (돌길/조약돌/오솔길)
+- Top-right: 중앙 광장 타일 (문양 석재)
+- Bottom-left: 수도 왕도 (카펫/특수 도로)
+- Bottom-center: 외곽 성벽 / 담장 (벽돌/울타리)
+- Bottom-right: 연못 / 수면 / 용암 타일
+================================================================================
+
+--------------------------------------------------------------------------------
+A-1. 동아시아 (한국·일본·중국·아시아) — 파일명: terrain_east_asia.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Lush deep green East Asian garden grass with subtle small grass tufts and fallen pink sakura petals (flat top-down orthographic).
+- Top-center square tile: Traditional Korean/Japanese gray granite flagstone pavement path with neat mortar lines (flat top-down orthographic).
+- Top-right square tile: Ornate East Asian royal courtyard stone plaza tile with subtle geometric carved patterns (flat top-down orthographic).
+- Bottom-left square tile: Imperial crimson silk carpet road with golden embroidered side trim over stone (flat top-down orthographic).
+- Bottom-center square tile: Traditional East Asian dark gray giwa tiled wall top and stone masonry fortress wall (top-down RPG wall tile).
+- Bottom-right square tile: Clear turquoise koi lotus pond water surface with gentle pixel ripples and tiny lily pads (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture, cohesive warm JRPG palette.
+
+--------------------------------------------------------------------------------
+A-2. 유럽 · 북아메리카 (중세/모던 판타지) — 파일명: terrain_europe.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Vibrant medieval meadow grass with tiny clovers and subtle pixel blades (flat top-down orthographic).
+- Top-center square tile: Classic European warm cobblestone street pavement with mossy cracks (flat top-down orthographic).
+- Top-right square tile: Elegant medieval town square herringbone stone plaza tile (flat top-down orthographic).
+- Bottom-left square tile: Royal velvet red-and-gold ceremonial carpet road over marble stone (flat top-down orthographic).
+- Bottom-center square tile: Medieval European gray castle stone brick battlement wall (top-down RPG wall tile).
+- Bottom-right square tile: Sparkling sapphire blue river water surface with crisp white pixel wave highlights (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture, cohesive JRPG palette.
+
+--------------------------------------------------------------------------------
+A-3. 남아메리카 · 오세아니아 (열대/해안) — 파일명: terrain_tropical.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Lush tropical emerald jungle grass with tiny colorful wildflower specks (flat top-down orthographic).
+- Top-center square tile: Sun-warmed sandy limestone flagstone coastal road (flat top-down orthographic).
+- Top-right square tile: Ancient Aztec/tropical carved sun-stone plaza mosaic tile in warm ochre and turquoise (flat top-down orthographic).
+- Bottom-left square tile: Festive woven terracotta-and-gold ceremonial road carpet (flat top-down orthographic).
+- Bottom-center square tile: Moss-covered ancient jungle temple carved stone wall (top-down RPG wall tile).
+- Bottom-right square tile: Crystal clear tropical cyan-emerald lagoon water with bright shimmering ripples (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture, cohesive JRPG palette.
+
+--------------------------------------------------------------------------------
+A-4. 아프리카 · 중동 · 페랄디아 (사막/사암/투기국) — 파일명: terrain_desert.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Warm golden desert sand with gentle wind-blown ripples and small pebbles (flat top-down orthographic).
+- Top-center square tile: Sun-baked sandstone brick paved desert town road (flat top-down orthographic).
+- Top-right square tile: Ornate oasis bazaar mosaic plaza tile with sandstone and turquoise ceramic inlays (flat top-down orthographic).
+- Bottom-left square tile: Rich crimson-and-gold woven Persian royal carpet road (flat top-down orthographic).
+- Bottom-center square tile: Thick desert fortress sandstone battlement wall with carved relief (top-down RPG wall tile).
+- Bottom-right square tile: Shimmering desert oasis turquoise water surface with sunlit pixel sparkles (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture, cohesive JRPG palette.
+
+--------------------------------------------------------------------------------
+A-5. 신계 (천상/대리석) — 파일명: terrain_shingye.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Celestial pearlescent ivory-white marble floor with soft golden cloud wisps (flat top-down orthographic).
+- Top-center square tile: Polished white-and-gold sacred heavenly temple pathway tiles (flat top-down orthographic).
+- Top-right square tile: Radiant celestial star-mosaic marble plaza tile with gold filigree (flat top-down orthographic).
+- Bottom-left square tile: Divine royal sky-blue and pure gold celestial carpet road (flat top-down orthographic).
+- Bottom-center square tile: White marble and gold angelic sanctuary balustrade wall (top-down RPG wall tile).
+- Bottom-right square tile: Glowing ethereal sky-blue holy spring water with golden starlight sparkles (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture, luminous divine JRPG palette.
+
+--------------------------------------------------------------------------------
+A-6. 마계 · 아비살론 (흑요석/심연/용암) — 파일명: terrain_magye.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Dark volcanic ash and cracked obsidian demon realm ground with faint violet dust (flat top-down orthographic).
+- Top-center square tile: Dark basalt stone road inlaid with faint glowing crimson-purple rune lines (flat top-down orthographic).
+- Top-right square tile: Gothic obsidian citadel plaza tile with etched amethyst magic circle geometry (flat top-down orthographic).
+- Bottom-left square tile: Dark crimson-and-violet imperial demon velvet carpet road with silver trim (flat top-down orthographic).
+- Bottom-center square tile: Jagged dark iron and black obsidian demon fortress wall (top-down RPG wall tile).
+- Bottom-right square tile: Glowing molten crimson-orange magma lava and dark abyssal crust surface (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture, atmospheric dark fantasy JRPG palette.
+
+--------------------------------------------------------------------------------
+A-7. 실바나르 (엘프 요정 숲) — 파일명: terrain_sylvanar.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art seamless terrain tile swatch sheet.
+EXACTLY 3 columns x 2 rows grid of 6 clearly separated perfect square flat top-down tiles evenly spaced with wide gaps between them (NO grid lines, NO borders, NO frames, NO text, NO labels):
+- Top-left square tile: Enchanted mossy emerald forest grass with glowing cyan tiny blossoms (flat top-down orthographic).
+- Top-center square tile: Pale elven moonstone stepping-stone garden path bordered by soft moss (flat top-down orthographic).
+- Top-right square tile: Ivory elven sanctuary leaf-mosaic marble plaza tile with emerald inlays (flat top-down orthographic).
+- Bottom-left square tile: Silvery-emerald woven elven royal carpet road with glowing leaf embroidery (flat top-down orthographic).
+- Bottom-center square tile: Intertwined ancient silver-bark tree roots and ivy living hedge wall (top-down RPG wall tile).
+- Bottom-right square tile: Mystical glowing teal fairy lake water with floating luminous petals (flat top-down orthographic).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY filling all gaps between the 6 square tiles.
+Strict 90-degree flat top-down tile perspective, rich 16-bit pixel texture, magical forest JRPG palette.
+
+================================================================================
+[PART B] 마을 오브젝트 & 장식 소품 팩 4종 (각 3x2 = 6개 투명 오브젝트)
+================================================================================
+
+--------------------------------------------------------------------------------
+B-1. 시장 / 생활 소품 6종 — 파일명: props_market.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art town prop asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct RPG town props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Fantasy wooden market stall tent with striped red-and-cream awning displaying colorful fruits and potions.
+- Top-center: Classic carved wood and wrought-iron town park bench.
+- Top-right: Wooden RPG guild quest notice board pinned with parchment flyers under a small shingle roof.
+- Bottom-left: Cluster of wooden supply crates, oak barrels, and grain sacks.
+- Bottom-center: Medieval stone town water well with wooden roof and hanging bucket.
+- Bottom-right: Wooden merchant supply handcart loaded with covered cargo and lantern.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+B-2. 자연 / 조경 소품 6종 — 파일명: props_nature.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art environment prop asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct RPG outdoor props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Lush rectangular stone-bordered flowerbed bursting with red, yellow, and blue pixel blossoms.
+- Top-center: Cluster of mossy gray garden boulders with small ferns.
+- Top-right: Decorative manicured topiary bush inside an ornate terracotta planter pot.
+- Bottom-left: Classic wooden town picket fence section with stone posts.
+- Bottom-center: Heroic carved white marble knight statue on a square stone pedestal.
+- Bottom-right: Small wooden arched garden footbridge over stream (top-down RPG style).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+B-3. 판타지 / 특수 소품 6종 — 파일명: props_fantasy.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art fantasy RPG prop asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct RPG fantasy props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Glowing cyan-blue mana crystal cluster emerging from dark stone.
+- Top-center: Ancient circular glowing golden-blue arcane teleportation rune stone pad.
+- Top-right: Tall medieval guild banner flag pole with crimson-and-gold heraldic crest.
+- Bottom-left: Ornate iron fire brazier pedestal burning with bright warm orange flames.
+- Bottom-center: Classic JRPG ornate wooden-and-gold treasure chest.
+- Bottom-right: Ancient carved stone runic obelisk monument with faintly glowing blue runes.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+--------------------------------------------------------------------------------
+B-4. 동양 특화 소품 6종 — 파일명: props_east_asia.png
+--------------------------------------------------------------------------------
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art East Asian town prop asset sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct East Asian RPG props evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Traditional red wooden ceremonial archway gate (Hongsalmun / Torii style) with curved eaves.
+- Top-center: Traditional East Asian wooden market stall with cloth canopy selling ceramics and tea.
+- Top-right: Carved traditional Korean/East Asian stone guardian statue (Haetae / Jangseung) on pedestal.
+- Bottom-left: Traditional clay-and-giwa tiled low garden wall segment.
+- Bottom-center: Ornate wooden festive rack hung with glowing red and blue silk lanterns.
+- Bottom-right: Traditional wooden palanquin / rickshaw carriage prop.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.

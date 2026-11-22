@@ -1129,6 +1129,7 @@ export interface Companion {
   age: string;
   birthYear?: number;
   gender: string;
+  rpgSpriteKey?: string; // 쯔꾸르 2D 필드 캐릭터 스프라이트 키 (미지정 시 기본/랜덤)
   race: string;
   hairStyle?: string;
   appearance: string;
@@ -1750,6 +1751,7 @@ export interface Character {
   age: string;
   birthYear?: number;
   gender: string;
+  rpgSpriteKey?: string; // 쯔꾸르 2D 필드 캐릭터 스프라이트 키 (미지정 시 기본/랜덤)
   race: string;
   hairStyle: string;
   appearance: string;

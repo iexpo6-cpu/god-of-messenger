@@ -67,3 +67,7 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+
+# Raw high-res source packs before sprite/tileset extraction
+raw_tilesets/
+raw_sprites/
