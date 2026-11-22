@@ -82,11 +82,12 @@ export type TerrainBiomeKey =
     | 'desert'
     | 'shingye'
     | 'magye'
-    | 'sylvanar';
+    | 'sylvanar'
+    | string;
 
 export type TerrainTilePart = 'ground' | 'road' | 'plaza' | 'royal_road' | 'wall' | 'water';
 
-export type PropPackKey = 'market' | 'nature' | 'fantasy' | 'east_asia';
+export type PropPackKey = 'market' | 'nature' | 'fantasy' | 'east_asia' | 'statues' | 'srpg' | CityCultureKey;
 
 export interface CityPropAssetRef {
     pack: PropPackKey;
@@ -104,7 +105,9 @@ export const getParentCultureKey = (cultureKey: CityCultureKey): BaseCultureKey 
 };
 
 export const resolveTerrainBiomeKey = (cultureKey: CityCultureKey): TerrainBiomeKey => {
-    if (cultureKey.startsWith('shingye')) return 'shingye';
+    // 신계 각 성전별 전용 지형 타일이 존재하므로 cultureKey 그대로 매핑 (미로드 시 shingye로 폴백)
+    if (cultureKey.startsWith('shingye_')) return cultureKey;
+    if (cultureKey === 'shingye') return 'shingye';
     if (cultureKey.startsWith('magye') || cultureKey === 'abyssalon') return 'magye';
     if (cultureKey === 'sylvanar') return 'sylvanar';
 

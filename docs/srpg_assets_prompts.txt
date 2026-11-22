@@ -1,0 +1,53 @@
+================================================================================
+신의 사자 RPG — 파이어 엠블렘 2D SRPG 전용 고품질 에셋 프롬프트 (총 3장 = 18종)
+================================================================================
+※ 현재 SRPG는 이미 보유한 500여 종의 도시 타일·소품·22종 캐릭터 스프라이트로 즉시 완벽 작동합니다.
+※ 아래 3장을 추가로 생성해 `raw_tilesets/`에 넣으시면 전술 요새·적군 병과·보스 기믹이
+   진짜 파이어 엠블렘 / 랑그릿사급 SRPG 퀄리티로 한 단계 더 업그레이드됩니다!
+
+[사용 방법]
+1. 아래 3개 프롬프트를 Gemini 이미지 생성에 복붙해 `raw_tilesets/`에 안내된 파일명으로 저장하세요.
+2. 채팅에 "SRPG 에셋 넣었어 적용해줘"라고 말씀해 주시면 Connected Components(CC-6)로
+   자동 분리해 `SrpgBattleCanvas`에 즉시 연동해 드립니다.
+
+================================================================================
+1. SRPG 전술 지형·거점 6종 — 파일명: srpg_terrain_props.png
+================================================================================
+16-bit crisp JRPG Fire Emblem / Tactics Ogre style top-down pixel art tactical battlefield prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct tactical SRPG map structures evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Dense tactical pine-and-oak forest grove cluster for cover (top-down SRPG forest tile overlay).
+- Top-center: Medieval stone bastion fort tower with crenellated battlements and emerald healing banner (SRPG fortress tile).
+- Top-right: Glowing sacred white-marble and gold runic mana altar pedestal (SRPG holy altar tile).
+- Bottom-left: Wooden spiked battlefield barricade and sandbag defensive wall segment.
+- Bottom-center: Hero's royal blue-and-gold command camp tent with heraldic flag.
+- Bottom-right: Ominous crimson-and-black enemy warlord throne & war-banner outpost.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+================================================================================
+2. SRPG 적군 병과 유닛 6종 — 파일명: srpg_enemy_units.png
+================================================================================
+16-bit crisp JRPG Fire Emblem / GBA-SNES tactical SRPG style pixel art enemy unit token sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct chibi tactical RPG combat units facing forward-left in battle-ready stance, evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Heavy armored crimson-iron enemy knight holding tower shield and lance.
+- Top-center: Hooded dark-green enemy sniper archer aiming a longbow.
+- Top-right: Cloaked dark-violet enemy battle mage floating with a glowing arcane staff.
+- Bottom-left: Radiant armored celestial temple guardian paladin with white wings and halberd.
+- Bottom-center: Horned obsidian-armored demon realm berserker warrior wielding a fiery greatsword.
+- Bottom-right: Imposing crowned enemy warlord boss general in ornate black-and-gold plate armor with billowing crimson cape.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG sprite proportions, rich shading, crisp dark pixel outlines.
+
+================================================================================
+3. SRPG 보스 기믹 & 전장 오브젝트 6종 — 파일명: srpg_boss_effects.png
+================================================================================
+16-bit crisp JRPG Fire Emblem / tactical SRPG style pixel art battlefield gimmick & magic prop sheet.
+EXACTLY 3 columns x 2 rows grid (6 distinct fantasy RPG battlefield objects evenly spaced with wide gaps, NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Glowing arcane crystal turret obelisk pulsing with cyan lightning.
+- Top-center: Swirling dark-violet dimensional rift portal summoning gate.
+- Top-right: Cracked volcanic basalt magma vent glowing with molten orange lava.
+- Bottom-left: Towering translucent glacial-blue ice crystal barrier spire.
+- Bottom-center: Radiant golden angelic sanctuary barrier pillar with halo rings.
+- Bottom-right: Ornate gilded war-spoils treasure chest overflowing with gems.
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.

@@ -18,6 +18,8 @@ export interface CombatVFXData {
     vfxShape?: string;
     vfxScale?: number;
     frameAnimation?: SkillFrameAnimation;
+    /** BG3 무격자 캔버스 등에서 피격 대상의 정확한 화면 좌표(px)를 직접 지정할 때 사용 */
+    targetScreenPos?: { x: number; y: number };
 }
 
 // ============================================================================
@@ -1647,6 +1649,14 @@ const CombatVFXContent: React.FC<{ vfx: CombatVFXData }> = ({ vfx }) => {
     // 브라우저 렌더링 페인트 전에 좌표를 동기적으로 산출하여 깜빡임 없이 즉시 타겟 카드로 정확히 배치
     useLayoutEffect(() => {
         if (!overlayRef.current) return;
+        if (
+            vfx.targetScreenPos &&
+            Number.isFinite(vfx.targetScreenPos.x) &&
+            Number.isFinite(vfx.targetScreenPos.y)
+        ) {
+            setTargetPos({ x: vfx.targetScreenPos.x, y: vfx.targetScreenPos.y });
+            return;
+        }
         const now = performance.now();
         const cacheKey = `${isAoe ? 'aoe' : 'single'}:${tier}:${vfx.targetName || ''}:${vfx.attackerName || ''}`;
         const cached = targetPosCacheRef.current.get(cacheKey);

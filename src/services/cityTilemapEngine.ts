@@ -796,11 +796,96 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
                     roles: ['항구 대장', '해양 상인', '길드 안내원', '항해 학자', '모험가', '선장', '조타수']
                 };
             case 'shingye':
-                return {
-                    male: ['우리엘', '라파엘', '카시엘', '루미엘', '세라핌', '가브리엘'],
-                    female: ['아우리엘', '세레스', '루시아', '에스텔', '아리아', '셀레스티아'],
-                    roles: ['성전 수호기사', '성물 관리인', '신성 안내자', '신학자', '빛의 순례자', '천사장 보좌', '성가대원']
-                };
+                switch (cultureKey) {
+                    // === 양의 기운의 성전 6종 ===
+                    case 'shingye_sun':
+                        return {
+                            male: ['솔라리스', '헬리오스', '아폴론', '레오니드', '이그니스엘', '오리온'],
+                            female: ['아우로라', '솔레아', '루미나', '헬레나', '글로리아', '소피엘'],
+                            roles: ['태양 근위기사', '일륜 제사장', '성광 안내자', '태양 신학자', '여명의 순례자', '태양창 수련생', '황금 성가대']
+                        };
+                    case 'shingye_light':
+                        return {
+                            male: ['루시엘', '세라피엘', '라디안', '클라리온', '아우레우스', '루미너스'],
+                            female: ['클라리스', '프리즘', '셀레스', '루체', '비비엘', '아스트리아'],
+                            roles: ['광휘 수호기사', '프리즘 사제', '빛의 인도자', '광학 신학자', '성광 순례자', '광휘 수련생', '빛의 합창단']
+                        };
+                    case 'shingye_flora':
+                        return {
+                            male: ['플로리안', '실바누스', '에덴', '로즈웰', '베르단트', '세이지'],
+                            female: ['플로라', '아이리스', '릴리안', '블로섬', '카멜리아', '다프네'],
+                            roles: ['성초 파수꾼', '천상 약초사', '화원 안내자', '생명 학자', '꽃잎 순례자', '정원 수호자', '성초 관리인']
+                        };
+                    case 'shingye_flame':
+                        return {
+                            male: ['이그나티우스', '피닉스', '아그니', '블레이즈', '발칸엘', '솔파이어'],
+                            female: ['엠버', '세라피나', '파이리아', '스칼렛', '이그니아', '카르멘'],
+                            roles: ['성화 기사단장', '불꽃 제사장', '성화 안내자', '염화 신학자', '불꽃 투사', '성화 수련생', '봉황 제관']
+                        };
+                    case 'shingye_ocean':
+                        return {
+                            male: ['마리우스', '트리톤', '네레우스', '아쿠아리안', '포세이엘', '오세안'],
+                            female: ['마리나', '코랄리아', '세이렌', '펄리아', '아쿠아', '네리사'],
+                            roles: ['성수 수호기사', '산호 제사장', '해류 안내자', '성수 학자', '파도의 순례자', '진주 관리인', '해수 성가대']
+                        };
+                    case 'shingye_thunder':
+                        return {
+                            male: ['라이덴', '볼타르', '토르엔', '제우스톤', '스파크엘', '뇌신랑'],
+                            female: ['일렉트라', '아스트라', '썬드라', '볼티아', '키라라', '이리스'],
+                            roles: ['전격 집행관', '뇌전 사제', '천둥 안내자', '뇌력 연구원', '번개 기수', '전격 수련생', '천둥 파수꾼']
+                        };
+                    // === 음의 기운의 성전 6종 ===
+                    case 'shingye_moon':
+                        return {
+                            male: ['루나르', '녹티스', '셀레니온', '에클립스', '아르테온', '월영'],
+                            female: ['셀레네', '루나리아', '다이아나', '아르테미스', '노크티아', '은월'],
+                            roles: ['월광 수호검사', '달빛 제사장', '은월 안내자', '천문 신학자', '밤의 순례자', '월영 호위', '달빛 악사']
+                        };
+                    case 'shingye_wind':
+                        return {
+                            male: ['제피로스', '벤투스', '에올루스', '게일런', '사이클론', '천풍'],
+                            female: ['실피아', '아에리스', '브리즈', '시엘', '제피라', '하늘'],
+                            roles: ['질풍 파수꾼', '바람 사제', '천공 안내자', '기류 학자', '폭풍 순찰자', '질풍 궁수', '하늘 전령']
+                        };
+                    case 'shingye_ice':
+                        return {
+                            male: ['프로스톤', '글라시엘', '보레아스', '윈터스', '크리오스', '설한'],
+                            female: ['프레야', '크리스탈', '스노우', '아이샤', '글라시아', '설아'],
+                            roles: ['빙궁 근위장', '서리 제사장', '빙결 안내자', '빙정 학자', '만년설 순례자', '서리 기사', '얼음 조각가']
+                        };
+                    case 'shingye_steel':
+                        return {
+                            male: ['페루스', '발칸', '타이탄', '아이언하트', '스틸리온', '강철'],
+                            female: ['발키리아', '실버리아', '아테나', '스틸라', '미스릴', '아르젠'],
+                            roles: ['강성 수비대장', '백금 대장장이', '강철 안내자', '무구 학자', '철벽 기사', '강성 병참관', '방패 수련생']
+                        };
+                    case 'shingye_earth':
+                        return {
+                            male: ['테라온', '아틀라스', '가이우스', '크로노스', '오닉스', '태산'],
+                            female: ['가이아', '엠버린', '토파즈', '리아', '테라', '제이드'],
+                            roles: ['지령 수호자', '대지 제사장', '거석 안내자', '지맥 학자', '대지 순례자', '황옥 관리인', '성석 조각가']
+                        };
+                    case 'shingye_abyss':
+                        return {
+                            male: ['움브라', '녹턴', '에레보스', '네뷸라', '아스트랄', '심연'],
+                            female: ['닉스', '카시오페아', '베스퍼', '세레나', '녹티아', '에테르'],
+                            roles: ['암연 감시자', '성운 사제', '심연 안내자', '성좌 연구가', '황혼 순례자', '암연 수호자', '별빛 기록관']
+                        };
+                    // === 무의 궁궐 ===
+                    case 'shingye_void':
+                        return {
+                            male: ['무명', '청운', '현진', '백산', '도현', '태허'],
+                            female: ['소월', '연화', '청아', '백련', '설희', '무영'],
+                            roles: ['무극 수련생', '허공 도사', '무의 안내자', '기공 학자', '은둔 무사', '선계 문지기', '운무 서생']
+                        };
+                    // === 신의 거처 ===
+                    default:
+                        return {
+                            male: ['우리엘', '라파엘', '카시엘', '루미엘', '세라핌', '가브리엘'],
+                            female: ['아우리엘', '세레스', '루시아', '에스텔', '아리아', '셀레스티아'],
+                            roles: ['절대신 근위장', '성물 관리인', '천상 안내자', '대신학자', '빛의 순례자', '천사장 보좌', '천상 성가대']
+                        };
+                }
             case 'magye':
                 return {
                     male: ['카인', '벨리알', '드라켄', '녹스', '발록', '루시안'],
@@ -962,6 +1047,7 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
     };
 
     const isEastAsia = cultureKey === 'korea' || cultureKey === 'japan' || cultureKey === 'china' || cultureKey === 'asia';
+    const isShingyeSubTemple = cultureKey.startsWith('shingye_');
     const isFantasyRealm = cultureKey.startsWith('shingye') || cultureKey.startsWith('magye') || cultureKey === 'sylvanar' || cultureKey === 'abyssalon';
 
     // 광장 외곽 포인트 소품 (길드 게시판, 벤치, 화단, 석상/해태, 우물, 마차, 노점)
@@ -970,53 +1056,104 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
     const plazaLeftX = cx - plazaHalfW - 1;
     const plazaRightX = cx + plazaHalfW + 1;
 
-    // 1) 길드 게시판 & 벤치 (광장 남쪽 좌우)
-    tryPlaceProp('prop_notice', plazaLeftX, plazaBotY, 'market', 'notice_board', 46, 52);
-    tryPlaceProp('prop_bench_r', plazaRightX, plazaBotY, 'market', 'bench', 46, 36);
-    tryPlaceProp('prop_bench_l', plazaLeftX, plazaTopY, 'market', 'bench', 46, 36);
+    // 성전·제국별 수호신수 & 신화 보스 동상 매핑 (좌: 수호신수 동상, 우: 신화 사자/황제 동상)
+    const BOSS_STATUE_PAIR_MAP: Partial<Record<CityCultureKey, { left: string; right: string }>> = {
+        shingye: { left: 'divine_ellaphim', right: 'mythic_ella' },
+        shingye_sun: { left: 'divine_sun', right: 'mythic_sun' },
+        shingye_light: { left: 'divine_light', right: 'mythic_light' },
+        shingye_flora: { left: 'divine_flora', right: 'mythic_flora' },
+        shingye_flame: { left: 'divine_flame', right: 'mythic_flame' },
+        shingye_ocean: { left: 'divine_ocean', right: 'mythic_ocean' },
+        shingye_thunder: { left: 'divine_thunder', right: 'mythic_thunder' },
+        shingye_moon: { left: 'divine_moon', right: 'mythic_moon' },
+        shingye_wind: { left: 'divine_wind', right: 'mythic_wind' },
+        shingye_ice: { left: 'divine_ice', right: 'mythic_ice' },
+        shingye_steel: { left: 'divine_steel', right: 'mythic_steel' },
+        shingye_earth: { left: 'divine_earth', right: 'mythic_earth' },
+        shingye_abyss: { left: 'divine_abyss', right: 'mythic_abyss' },
+        shingye_void: { left: 'divine_void', right: 'mythic_void' },
+        magye: { left: 'mythic_imperial', right: 'mythic_imperial' },
+        abyssalon: { left: 'mythic_arkazeon', right: 'mythic_arkazeon' },
+    };
+    const bossStatuePair = BOSS_STATUE_PAIR_MAP[cultureKey];
 
-    // 2) 문화권 특화 상징 조형물 (동양: 해태/연등/홍살문 / 판타지: 크리스탈/비석/화로 / 일반: 기사 석상/우물)
-    if (isEastAsia) {
-        tryPlaceProp('prop_ea_guard_l', cx - 3, plazaTopY, 'east_asia', 'guardian', 46, 62);
-        tryPlaceProp('prop_ea_guard_r', cx + 3, plazaTopY, 'east_asia', 'guardian', 46, 62);
-        tryPlaceProp('prop_ea_stall', plazaLeftX - 2, hRoadY - 2, 'east_asia', 'east_stall', 64, 58);
-        tryPlaceProp('prop_ea_lantern', plazaRightX + 1, plazaTopY, 'east_asia', 'lantern_rack', 56, 54);
-        tryPlaceProp('prop_ea_palanquin', plazaRightX + 2, hRoadY + 2, 'east_asia', 'palanquin', 62, 50);
-        tryPlaceProp('prop_ea_arch', cx + 3, southRoadY, 'east_asia', 'archway', 68, 64);
-    } else if (isFantasyRealm) {
-        tryPlaceProp('prop_fa_crystal_l', cx - 3, plazaTopY, 'fantasy', 'crystal', 46, 58);
-        tryPlaceProp('prop_fa_crystal_r', cx + 3, plazaTopY, 'fantasy', 'crystal', 46, 58);
-        tryPlaceProp('prop_fa_obelisk', plazaRightX + 1, plazaTopY, 'fantasy', 'obelisk', 46, 66);
-        tryPlaceProp('prop_fa_brazier_l', cx - 3, southRoadY, 'fantasy', 'brazier', 42, 54);
-        tryPlaceProp('prop_fa_brazier_r', cx + 3, southRoadY, 'fantasy', 'brazier', 42, 54);
-        tryPlaceProp('prop_fa_rune', plazaLeftX - 1, plazaBotY + 1, 'fantasy', 'rune_pad', 56, 46, true);
+    if (isShingyeSubTemple) {
+        // === 신계 각 성전 전용 보스 동상 2기 + 6종 성전 오브젝트 대칭 배치 ===
+        if (bossStatuePair) {
+            tryPlaceProp('prop_boss_statue_divine', cx - 3, plazaTopY, 'statues', bossStatuePair.left, 64, 86);
+            tryPlaceProp('prop_boss_statue_mythic', cx + 3, plazaTopY, 'statues', bossStatuePair.right, 64, 86);
+        } else {
+            tryPlaceProp('prop_st_statue_l', cx - 3, plazaTopY, cultureKey, 'statue', 54, 70);
+            tryPlaceProp('prop_st_statue_r', cx + 3, plazaTopY, cultureKey, 'statue', 54, 70);
+        }
+        tryPlaceProp('prop_st_monument_l', plazaLeftX - 1, plazaTopY, cultureKey, 'monument', 50, 68);
+        tryPlaceProp('prop_st_monument_r', plazaRightX + 1, plazaTopY, cultureKey, 'monument', 50, 68);
+        tryPlaceProp('prop_st_crystal_l', plazaLeftX - 2, hRoadY + 2, cultureKey, 'crystal', 48, 60);
+        tryPlaceProp('prop_st_crystal_r', plazaRightX + 2, hRoadY + 2, cultureKey, 'crystal', 48, 60);
+        tryPlaceProp('prop_st_banner_l', cx - 3, southRoadY - 1, cultureKey, 'banner', 42, 68);
+        tryPlaceProp('prop_st_banner_r', cx + 3, southRoadY - 1, cultureKey, 'banner', 42, 68);
+        tryPlaceProp('prop_st_bench_l', plazaLeftX, plazaBotY, cultureKey, 'bench', 48, 38);
+        tryPlaceProp('prop_st_bench_r', plazaRightX, plazaBotY, cultureKey, 'bench', 48, 38);
+        tryPlaceProp('prop_st_arch_l', plazaLeftX - 2, hRoadY - 2, cultureKey, 'archway', 72, 66);
+        tryPlaceProp('prop_st_arch_r', plazaRightX + 2, hRoadY - 2, cultureKey, 'archway', 72, 66);
+        tryPlaceProp('prop_st_rune', cx - 4, plazaBotY + 1, 'fantasy', 'rune_pad', 56, 46, true);
     } else {
-        tryPlaceProp('prop_nat_statue', cx - 3, plazaTopY, 'nature', 'statue', 48, 66);
-        tryPlaceProp('prop_fa_banner', cx + 3, plazaTopY, 'fantasy', 'banner', 40, 66);
-        tryPlaceProp('prop_mk_stall', plazaLeftX - 2, hRoadY - 2, 'market', 'stall', 64, 58);
-        tryPlaceProp('prop_mk_well', plazaRightX + 1, plazaTopY, 'market', 'well', 52, 56);
-        tryPlaceProp('prop_mk_cart', plazaRightX + 2, hRoadY + 2, 'market', 'cart', 58, 48);
-    }
+        // 신의 거처 / 마계 수도 임페리얼 / 아비살론은 중앙 광장 북쪽 양옆에 최상위 보스 동상 우선 배치
+        if (bossStatuePair) {
+            tryPlaceProp('prop_boss_statue_l', cx - 3, plazaTopY, 'statues', bossStatuePair.left, 64, 86);
+            tryPlaceProp('prop_boss_statue_r', cx + 3, plazaTopY, 'statues', bossStatuePair.right, 64, 86);
+        }
 
-    // 3) 시장 상자·술통, 보물상자(장식), 화단, 바위, 화분으로 빈 잔디밭 풍성하게 채우기
-    tryPlaceProp('prop_mk_crates', plazaLeftX - 1, hRoadY + 2, 'market', 'crates', 46, 44);
-    tryPlaceProp('prop_fa_chest', cols - 4, rows - 4, 'fantasy', 'chest', 42, 38);
-    tryPlaceProp('prop_nat_flower_1', plazaLeftX - 2, plazaBotY, 'nature', 'flowerbed', 52, 42, true);
-    tryPlaceProp('prop_nat_flower_2', plazaRightX + 2, plazaBotY, 'nature', 'flowerbed', 52, 42, true);
-    tryPlaceProp('prop_nat_planter_1', plazaLeftX - 1, plazaTopY - 1, 'nature', 'planter', 40, 52);
-    tryPlaceProp('prop_nat_planter_2', plazaRightX + 1, plazaBotY + 1, 'nature', 'planter', 40, 52);
-    tryPlaceProp('prop_nat_boulder_1', 3, rows - 4, 'nature', 'boulders', 48, 42);
-    tryPlaceProp('prop_nat_boulder_2', cols - 5, 3, 'nature', 'boulders', 48, 42);
-    tryPlaceProp('prop_nat_fence_1', 4, hRoadY + 2, isEastAsia ? 'east_asia' : 'nature', isEastAsia ? 'clay_wall' : 'fence', 52, 38);
-    tryPlaceProp('prop_nat_fence_2', cols - 5, hRoadY - 2, isEastAsia ? 'east_asia' : 'nature', isEastAsia ? 'clay_wall' : 'fence', 52, 38);
+        // 1) 길드 게시판 & 벤치 (광장 남쪽 좌우)
+        tryPlaceProp('prop_notice', plazaLeftX, plazaBotY, 'market', 'notice_board', 46, 52);
+        tryPlaceProp('prop_bench_r', plazaRightX, plazaBotY, 'market', 'bench', 46, 36);
+        tryPlaceProp('prop_bench_l', plazaLeftX, plazaTopY, 'market', 'bench', 46, 36);
+
+        // 2) 문화권 특화 상징 조형물 (동양: 해태/연등/홍살문 / 판타지: 크리스탈/비석/화로 / 일반: 기사 석상/우물)
+        if (isEastAsia) {
+            tryPlaceProp('prop_ea_guard_l', cx - 3, plazaTopY, 'east_asia', 'guardian', 46, 62);
+            tryPlaceProp('prop_ea_guard_r', cx + 3, plazaTopY, 'east_asia', 'guardian', 46, 62);
+            tryPlaceProp('prop_ea_stall', plazaLeftX - 2, hRoadY - 2, 'east_asia', 'east_stall', 64, 58);
+            tryPlaceProp('prop_ea_lantern', plazaRightX + 1, plazaTopY, 'east_asia', 'lantern_rack', 56, 54);
+            tryPlaceProp('prop_ea_palanquin', plazaRightX + 2, hRoadY + 2, 'east_asia', 'palanquin', 62, 50);
+            tryPlaceProp('prop_ea_arch', cx + 3, southRoadY, 'east_asia', 'archway', 68, 64);
+        } else if (isFantasyRealm) {
+            tryPlaceProp('prop_fa_crystal_l', cx - 3, plazaTopY, 'fantasy', 'crystal', 46, 58);
+            tryPlaceProp('prop_fa_crystal_r', cx + 3, plazaTopY, 'fantasy', 'crystal', 46, 58);
+            tryPlaceProp('prop_fa_obelisk', plazaRightX + 1, plazaTopY, 'fantasy', 'obelisk', 46, 66);
+            tryPlaceProp('prop_fa_brazier_l', cx - 3, southRoadY, 'fantasy', 'brazier', 42, 54);
+            tryPlaceProp('prop_fa_brazier_r', cx + 3, southRoadY, 'fantasy', 'brazier', 42, 54);
+            tryPlaceProp('prop_fa_rune', plazaLeftX - 1, plazaBotY + 1, 'fantasy', 'rune_pad', 56, 46, true);
+        } else {
+            tryPlaceProp('prop_nat_statue', cx - 3, plazaTopY, 'nature', 'statue', 48, 66);
+            tryPlaceProp('prop_fa_banner', cx + 3, plazaTopY, 'fantasy', 'banner', 40, 66);
+            tryPlaceProp('prop_mk_stall', plazaLeftX - 2, hRoadY - 2, 'market', 'stall', 64, 58);
+            tryPlaceProp('prop_mk_well', plazaRightX + 1, plazaTopY, 'market', 'well', 52, 56);
+            tryPlaceProp('prop_mk_cart', plazaRightX + 2, hRoadY + 2, 'market', 'cart', 58, 48);
+        }
+
+        // 3) 시장 상자·술통, 보물상자(장식), 화단, 바위, 화분으로 빈 잔디밭 풍성하게 채우기
+        tryPlaceProp('prop_mk_crates', plazaLeftX - 1, hRoadY + 2, 'market', 'crates', 46, 44);
+        tryPlaceProp('prop_fa_chest', cols - 4, rows - 4, 'fantasy', 'chest', 42, 38);
+        tryPlaceProp('prop_nat_flower_1', plazaLeftX - 2, plazaBotY, 'nature', 'flowerbed', 52, 42, true);
+        tryPlaceProp('prop_nat_flower_2', plazaRightX + 2, plazaBotY, 'nature', 'flowerbed', 52, 42, true);
+        tryPlaceProp('prop_nat_planter_1', plazaLeftX - 1, plazaTopY - 1, 'nature', 'planter', 40, 52);
+        tryPlaceProp('prop_nat_planter_2', plazaRightX + 1, plazaBotY + 1, 'nature', 'planter', 40, 52);
+        tryPlaceProp('prop_nat_boulder_1', 3, rows - 4, 'nature', 'boulders', 48, 42);
+        tryPlaceProp('prop_nat_boulder_2', cols - 5, 3, 'nature', 'boulders', 48, 42);
+        tryPlaceProp('prop_nat_fence_1', 4, hRoadY + 2, isEastAsia ? 'east_asia' : 'nature', isEastAsia ? 'clay_wall' : 'fence', 52, 38);
+        tryPlaceProp('prop_nat_fence_2', cols - 5, hRoadY - 2, isEastAsia ? 'east_asia' : 'nature', isEastAsia ? 'clay_wall' : 'fence', 52, 38);
+    }
 
     // 수도(Capital)일 경우 추가 왕실 깃발 & 화로 장식
     if (isCapital) {
-        tryPlaceProp('prop_cap_banner_1', cx - 3, 5, 'fantasy', 'banner', 40, 66);
-        tryPlaceProp('prop_cap_banner_2', cx + 3, 5, 'fantasy', 'banner', 40, 66);
-        tryPlaceProp('prop_cap_brazier_1', cx - 3, 8, 'fantasy', 'brazier', 42, 54);
-        tryPlaceProp('prop_cap_brazier_2', cx + 3, 8, 'fantasy', 'brazier', 42, 54);
-        tryPlaceProp('prop_cap_well', 5, rows - 5, 'market', 'well', 52, 56);
+        tryPlaceProp('prop_cap_banner_1', cx - 3, 5, isShingyeSubTemple ? cultureKey : 'fantasy', 'banner', 40, 66);
+        tryPlaceProp('prop_cap_banner_2', cx + 3, 5, isShingyeSubTemple ? cultureKey : 'fantasy', 'banner', 40, 66);
+        tryPlaceProp('prop_cap_brazier_1', cx - 3, 8, isShingyeSubTemple ? cultureKey : 'fantasy', isShingyeSubTemple ? 'crystal' : 'brazier', 42, 54);
+        tryPlaceProp('prop_cap_brazier_2', cx + 3, 8, isShingyeSubTemple ? cultureKey : 'fantasy', isShingyeSubTemple ? 'crystal' : 'brazier', 42, 54);
+        if (!isShingyeSubTemple) {
+            tryPlaceProp('prop_cap_well', 5, rows - 5, 'market', 'well', 52, 56);
+        }
     }
 
     return {

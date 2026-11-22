@@ -75,7 +75,80 @@ PROPS_CELL_MAP = {
         ("lantern_rack", (96, 92)),
         ("palanquin", (104, 84)),
     ]),
+    "statues_divine_yang": ("props/statues", [
+        ("divine_sun", (92, 124)),
+        ("divine_light", (92, 124)),
+        ("divine_flora", (92, 124)),
+        ("divine_flame", (92, 124)),
+        ("divine_ocean", (92, 124)),
+        ("divine_thunder", (92, 124)),
+    ]),
+    "statues_divine_yin": ("props/statues", [
+        ("divine_moon", (92, 124)),
+        ("divine_wind", (92, 124)),
+        ("divine_ice", (92, 124)),
+        ("divine_steel", (92, 124)),
+        ("divine_earth", (92, 124)),
+        ("divine_abyss", (92, 124)),
+    ]),
+    "statues_mythic_yang": ("props/statues", [
+        ("mythic_sun", (92, 124)),
+        ("mythic_light", (92, 124)),
+        ("mythic_flora", (92, 124)),
+        ("mythic_flame", (92, 124)),
+        ("mythic_ocean", (92, 124)),
+        ("mythic_thunder", (92, 124)),
+    ]),
+    "statues_mythic_yin": ("props/statues", [
+        ("mythic_moon", (92, 124)),
+        ("mythic_wind", (92, 124)),
+        ("mythic_ice", (92, 124)),
+        ("mythic_steel", (92, 124)),
+        ("mythic_earth", (92, 124)),
+        ("mythic_abyss", (92, 124)),
+    ]),
+    "statues_supreme_6": ("props/statues", [
+        ("mythic_ella", (92, 124)),
+        ("divine_ellaphim", (92, 124)),
+        ("mythic_void", (92, 124)),
+        ("divine_void", (92, 124)),
+        ("mythic_imperial", (92, 124)),
+        ("mythic_arkazeon", (92, 124)),
+    ]),
+    "srpg_terrain_props": ("props/srpg", [
+        ("forest", (84, 84)),
+        ("fort", (96, 96)),
+        ("altar", (88, 88)),
+        ("barricade", (88, 72)),
+        ("ally_camp", (96, 96)),
+        ("enemy_throne", (104, 104)),
+    ]),
+    "srpg_enemy_units": ("props/srpg", [
+        ("enemy_knight", (76, 88)),
+        ("enemy_archer", (76, 88)),
+        ("enemy_mage", (76, 88)),
+        ("enemy_angel", (84, 96)),
+        ("enemy_demon", (84, 96)),
+        ("enemy_boss", (96, 108)),
+    ]),
+    "srpg_boss_effects": ("props/srpg", [
+        ("turret", (76, 96)),
+        ("rift_portal", (88, 96)),
+        ("magma_vent", (84, 84)),
+        ("ice_pillar", (76, 96)),
+        ("holy_pillar", (76, 96)),
+        ("chest", (72, 68)),
+    ]),
 }
+
+REALM_PROPS_CELL_NAMES = [
+    ("statue", (84, 112)),
+    ("monument", (80, 108)),
+    ("crystal", (76, 96)),
+    ("banner", (64, 108)),
+    ("bench", (76, 58)),
+    ("archway", (116, 108)),
+]
 
 
 def is_bg_pixel(r: int, g: int, b: int, a: int, bg_rgb: tuple[int, int, int], tol: int = 58) -> bool:
@@ -270,18 +343,20 @@ def extract_6_objects_smart(clean: Image.Image) -> list[Image.Image]:
         top6 = major[:6]
         top6_ids = {c["id"] for c in top6}
 
-        # 작은 조각(떨어진 꽃잎, 간판, 불꽃 등)은 중심점 거리가 가장 가까운 top6 객체에 귀속
+        # 작은 조각(떨어진 꽃잎, 간판, 불꽃 등)만 중심점 거리가 가장 가까운 top6 객체에 귀속
         owner_map: dict[int, int] = {c["id"]: c["id"] for c in top6}
         for c in comps:
             if c["id"] in top6_ids:
+                continue
+            # 옆 칸의 독립된 부속 객체(나무 등)가 다른 객체에 합쳐지지 않도록 소형 파편만 귀속
+            if c["count"] >= min_major * 0.65:
                 continue
             best_owner = min(
                 top6,
                 key=lambda m: (c["cx"] - m["cx"]) ** 2 + (c["cy"] - m["cy"]) ** 2
             )
-            # 바운딩 박스에서 너무 멀지 않은(15% 이내) 조각만 귀속
             dist = ((c["cx"] - best_owner["cx"]) ** 2 + (c["cy"] - best_owner["cy"]) ** 2) ** 0.5
-            if dist <= max(sw, sh) * 0.22:
+            if dist <= max(sw, sh) * 0.14:
                 owner_map[c["id"]] = best_owner["id"]
 
         # 6개 객체를 상단 3개(cy 오름차순 -> cx 오름차순), 하단 3개(cx 오름차순)로 정렬
@@ -369,6 +444,7 @@ def main():
 
         is_terrain = base_key.startswith("terrain_")
         is_props = base_key in PROPS_CELL_MAP
+        is_realm_props = (not is_props) and base_key.startswith("props_")
         is_special = base_key in ("special", "special_buildings")
 
         if is_terrain:
@@ -377,6 +453,10 @@ def main():
             sub_folder = os.path.join("terrain", biome_key)
         elif is_props:
             sub_folder, spec_list = PROPS_CELL_MAP[base_key]
+        elif is_realm_props:
+            pack_key = base_key[len("props_"):]
+            spec_list = REALM_PROPS_CELL_NAMES
+            sub_folder = os.path.join("props", pack_key)
         elif is_special:
             spec_list = SPECIAL_CELL_NAMES
             sub_folder = "special"

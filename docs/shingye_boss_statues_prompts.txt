@@ -1,0 +1,88 @@
+================================================================================
+신의 사자 RPG — 신계 성전별 수호신수(14) & 신화 사자(14) + 마황(2) 보스 동상 5장 일괄 프롬프트
+================================================================================
+[한 번에 6개씩 생성! 총 5장 = 30개 성전 전용 보스 동상]
+- 시트 1 (`statues_divine_yang.png`): 양의 기운 성전 수호신수 보스 동상 6종 (divineRealmbossmonsters.ts)
+- 시트 2 (`statues_divine_yin.png`):  음의 기운 성전 수호신수 보스 동상 6종 (divineRealmbossmonsters.ts)
+- 시트 3 (`statues_mythic_yang.png`): 양의 기운 성전 신화 사자 동상 6종 (mythicbossmonsters.ts)
+- 시트 4 (`statues_mythic_yin.png`):  음의 기운 성전 신화 사자 동상 6종 (mythicbossmonsters.ts)
+- 시트 5 (`statues_supreme_6.png`):   신의 거처·무의 궁궐 수호/신화 4종 + 마신황·심연마황 2종
+
+[사용 방법]
+1. 아래 5개 프롬프트를 Gemini 이미지 생성에 복붙해 5장만 생성한 뒤 `raw_tilesets/`에 저장하세요.
+2. 채팅에 "신계 보스 동상 넣었어 적용해줘"라고 말씀해 주시면 Connected Components(CC-6)로 30개 동상을 자동 분리해 각 신전 중앙 광장 양옆에 웅장하게 배치해 드립니다!
+
+================================================================================
+1. 양의 기운 성전 수호신수 보스 동상 6종 — 파일명: statues_divine_yang.png
+   (태양·광휘·초화·화염·해수·전격 성전)
+================================================================================
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art monumental boss statue asset sheet.
+EXACTLY 3 columns x 2 rows grid of 6 distinct carved stone-and-precious-metal RPG boss statues on square marble pedestals, evenly spaced with wide gaps (NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Grand golden-and-marble statue of Sun Red Blaze Dragon (majestic ancient solar fire dragon with spread wings and radiant sun crest on pedestal).
+- Top-center: Radiant white-marble and silver statue of White Angel Pegasus (winged heavenly angelic horse rearing gracefully with glowing halo on pedestal).
+- Top-right: Massive moss-and-jade carved stone statue of Grass Green Behemoth (colossal horned earth-nature beast guardian with emerald vine accents on pedestal).
+- Bottom-left: Burnished bronze-and-ivory statue of Red Flame Lion (fierce roaring solar lion with sculpted flaming mane on pedestal).
+- Bottom-center: Pearlescent aquamarine-marble statue of Ocean Blue Leviathan (coiling sea serpent dragon rising from carved waves on pedestal).
+- Bottom-right: Gleaming platinum-and-gold statue of Lightning Thunder Wolf (howling storm wolf wreathed in sculpted cyan lightning bolts on pedestal).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+================================================================================
+2. 음의 기운 성전 수호신수 보스 동상 6종 — 파일명: statues_divine_yin.png
+   (월광·질풍·빙결·강철·지령·암연 성전)
+================================================================================
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art monumental boss statue asset sheet.
+EXACTLY 3 columns x 2 rows grid of 6 distinct carved stone-and-precious-metal RPG boss statues on square stone pedestals, evenly spaced with wide gaps (NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Dark-obsidian and silver statue of Black Dark Moon Dragon (shadowy lunar dragon coiled around a silver crescent moon on pedestal).
+- Top-center: Wind-carved pale-slate and teal statue of Gray Hurricanox (fierce winged storm dinosaur beast roaring amidst carved gale swirls on pedestal).
+- Top-right: Translucent glacial-ice and marble statue of Ice Blizzard Bear (towering armored polar frost bear rearing with icy claws on pedestal).
+- Bottom-left: Polished platinum-steel statue of Metal Steel Golem (massive fortress-armored guardian golem holding a towering steel shield on pedestal).
+- Bottom-center: Ancient sandstone-and-amber statue of Earth Spirit Black Tortoise Genbu (sacred giant armored tortoise entwined with a stone serpent on pedestal).
+- Bottom-right: Obsidian-and-amethyst statue of Black Dark Cerberus (menacing three-headed abyssal hound guardian with faint violet glowing eyes on pedestal).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+================================================================================
+3. 양의 기운 성전 신화 사자 동상 6종 — 파일명: statues_mythic_yang.png
+   (엘클·줄리엣·태스크 슈카인·라 페르난데스·오션 레이크·권율)
+================================================================================
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art heroic deity-messenger statue asset sheet.
+EXACTLY 3 columns x 2 rows grid of 6 distinct heroic marble-and-gold humanoid RPG statues on ornate square pedestals, evenly spaced with wide gaps (NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Heroic golden-marble statue of Elkel, Messenger of the Sun (armored solar spearman champion wielding a radiant sun-blade spear and solar crown on pedestal).
+- Top-center: Graceful pearlescent-white marble statue of Juliet, Messenger of Radiance (angelic female light priestess holding a glowing prism staff with radiant halo on pedestal).
+- Top-right: Ornate ivory-and-emerald statue of Task Shukain, Messenger of Flora (regal nature sovereign holding a blossoming life-and-death vine scepter on pedestal).
+- Bottom-left: Dynamic bronze-and-crimson-gold statue of La Fernandez, Messenger of Flame (fiery martial brawler champion in heroic fighting stance with flame gauntlets on pedestal).
+- Bottom-center: Polished aquamarine-and-pearl marble statue of Ocean Lake, Messenger of the Sea (serene aquatic sovereign wielding a gilded water trident and flowing cape on pedestal).
+- Bottom-right: Noble platinum-and-gold statue of Kwon Yul, Messenger of Thunder (commanding armored general holding a crackling thunder halberd/sword with lightning cape on pedestal).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+================================================================================
+4. 음의 기운 성전 신화 사자 동상 6종 — 파일명: statues_mythic_yin.png
+   (최원한·블랙 스톰·이케 블리자더·퍼스트 스틸스·원지원·네오 다크 볼튼)
+================================================================================
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art heroic deity-messenger statue asset sheet.
+EXACTLY 3 columns x 2 rows grid of 6 distinct heroic carved-stone humanoid RPG statues on ornate square pedestals, evenly spaced with wide gaps (NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Sleek silver-and-indigo marble statue of Choi Wonhan, Messenger of Moonlight (silent moonlight swordsman warrior resting hand on crescent katana in flowing coat on pedestal).
+- Top-center: Wind-swept mint-and-silver statue of Black Storm, Messenger of Gale (masked tempest ranger with billowing storm cloak and twin wind blades on pedestal).
+- Top-right: Frosted white-marble and ice-crystal statue of Ike Blizzarder, Messenger of Frost (regal ice sovereign seated/standing with frost staff and crystalline cape on pedestal).
+- Bottom-left: Heavy brushed-steel and marble statue of First Steels, Messenger of Steel (impenetrable colossal armored knight holding a giant steel tower shield and hammer on pedestal).
+- Bottom-center: Solid sandstone-and-gold statue of Won Jiwon, Messenger of Earth (stoic earth guardian warrior wielding a massive runic greatblade on pedestal).
+- Bottom-right: Dark-obsidian and silver mecha-gothic statue of Neo Dark Bolton, Messenger of Abyss (forbidden dark-armored cyber-knight with glowing violet core and shadow blade on pedestal).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.
+
+================================================================================
+5. 최고 성소(신의 거처·무의 궁궐) 4종 + 마황 2종 동상 — 파일명: statues_supreme_6.png
+   (절대신 엘라·신성 가디언 엘라핌·홍길동·무극의 환영 + 마신황 임페리얼·심연마황)
+================================================================================
+16-bit crisp JRPG top-down RPG Maker MV/MZ style pixel art supreme deity & emperor statue asset sheet.
+EXACTLY 3 columns x 2 rows grid of 6 distinct grand monumental RPG statues on ornate square pedestals, evenly spaced with wide gaps (NO grid lines, NO borders, NO text, NO labels):
+- Top-left: Transcendent white-gold marble statue of Absolute Goddess Ella (serene supreme deity holding a glowing orb of creation with cosmic golden halo on pedestal).
+- Top-center: Majestic ivory-and-gold statue of Divine Guardian Ellaphim (six-winged archangel knight holding a sacred radiant greatsword on pedestal).
+- Top-right: Dynamic pale-jade and silver statue of Hong Gildong, Messenger of Void (mystical Korean Taoist sage martial artist in flowing hanbok robe holding a folding fan and Taoist staff on pedestal).
+- Bottom-left: Ethereal translucent white-crystal statue of Phantom of Limitless Void (hooded faceless martial spirit wreathed in swirling silver aura rings on pedestal).
+- Bottom-center: Imposing black-obsidian and crimson-gold statue of Demon God Emperor Imperial (crowned demon emperor in gothic dark armor wielding an apocalyptic dark blade on pedestal).
+- Bottom-right: Sinister dark-amethyst and obsidian statue of Abyssal Demon Emperor Arkazeon (horned abyssal overlord holding a swirling violet-fire cursed staff on pedestal).
+Solid flat pure bright magenta (#FF00FF) chroma-key background ONLY (no ground tiles, no shadows on background, no gradients).
+Consistent 3/4 top-down JRPG perspective, rich shading, crisp dark pixel outlines.

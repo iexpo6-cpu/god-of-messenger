@@ -726,6 +726,11 @@ const CityMapBoard: React.FC<Props> = ({
                         canOpenAbyssTower={Boolean(isMagye && loc.city === '임페리얼' && onOpenAbyssTower)}
                         timePeriod={timeAtmosphere.period as any}
                         timeLabel={timeAtmosphere.label}
+                        currentTime={character.currentTime || '08:00'}
+                        backgroundImageUrl={getResolvedBackgroundUrl(cityBg.url)}
+                        backgroundFallbackUrl={cityBg.fallbackUrl ? getResolvedBackgroundUrl(cityBg.fallbackUrl) : undefined}
+                        backgroundRawUrl={cityBg.url}
+                        backgroundFilterClass={isShingye ? (isMidnightLabor ? 'brightness-90 contrast-110 saturate-120' : 'brightness-105 contrast-105 saturate-110') : timeFilter.filterClass}
                         isMythicBoss={isMythicBoss}
                         bossName={currentBoss?.name}
                         onEnterCity={onEnterCity}

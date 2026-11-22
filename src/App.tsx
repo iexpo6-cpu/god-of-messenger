@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
-import { useGame } from './hooks/useGame';
+import { useGame, createInitialParticipantStates } from './hooks/useGame';
 import { useElixirTimer } from './hooks/useElixirTimer';
 import { GameProvider } from './context/GameContext';
 import { Character, Companion, Skill, BondSkill, SkillType, DivineDiplomacyStatus, DiplomaticStatus, ClassTier,SimpleStudent, Item, ItemRarity, Stats, WeaponType, CapturedMonster, Location, Enemy, CombatState, MercenaryRank, Quest, JobType, MilitaryRank, RelationType, InterviewData, CombatStyle, TrainerBranch, BaseDefenseReportData } from './types';
 import { FACILITIES_INFO, ENHANCEMENT_CAPS,START_DATE, SELL_PRICES, BASE_LEVEL_CONFIG, INITIAL_BASE, ENHANCEMENT_CONFIG, MAX_STORAGE_SIZE, MAX_PARTY_SIZE, BASE_RESIDENT_LIMIT, FACILITY_UPGRADE_CONFIG, WORLD_GEOGRAPHY, MERCENARY_RANK_SCORE, TEMPLE_MESSENGER_MAP, BASE_MONSTERS, BASE_UPGRADE_COSTS, FACILITY_CONSTRUCTION_COSTS, BASE_GRID_EXPANSION_COSTS, COMBAT_STYLE_CONFIG } from './constants';
-import { calculateItemPrice, addMasteryExp, addDays, applyConsumableEffect,generateLevelByRank,generateCompanionStats, generateNameWithSurname, calculateFinalStats, getYear,generateName, getTierByLevel, generateEnemyStats, getRegionByNation, calculateInventorySize, generateDefaultVisualUrl, getRaceByNation, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalWorkshopCapacity, calculateTotalLabLevel, calculateTotalTrainingLevel, gainProfessionExp, unassignFromTraining, assignRandomCombatStyle, getFacilityTrainingLimit, getTrainerBranchMultiplier, addTrainerExpToAssignedTrainers, generateProceduralEnemy, calculateResearcherBonus, getRequiredExp, calculateItemCPDelta, findAvailableBattlePosition, checkWeaponMasteryEquipRequirement } from './utils';
+import { calculateItemPrice, addMasteryExp, addDays, applyConsumableEffect,generateLevelByRank,generateCompanionStats, generateNameWithSurname, calculateFinalStats, getYear,generateName, getTierByLevel, generateEnemyStats, getRegionByNation, calculateInventorySize, generateDefaultVisualUrl, getRaceByNation, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalWorkshopCapacity, calculateTotalLabLevel, calculateTotalTrainingLevel, gainProfessionExp, unassignFromTraining, assignRandomCombatStyle, getFacilityTrainingLimit, getTrainerBranchMultiplier, addTrainerExpToAssignedTrainers, generateProceduralEnemy, calculateResearcherBonus, getRequiredExp, calculateItemCPDelta, findAvailableBattlePosition, checkWeaponMasteryEquipRequirement, generateLoot } from './utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { chatWithCompanion, generateInterviewQuestions } from './services/geminiService';
 import CharacterSheet from './components/CharacterSheet';
@@ -7100,6 +7100,105 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                 isLoading={isLoading} 
                                 narrative={messages[messages.length - 1]?.role === 'ai' ? messages[messages.length - 1].text : undefined} 
                                 onUpdateCharacter={handleUpdateCharacter} 
+                                onResolveSrpgCombat={(srpgResult) => {
+                                    const defeated = combatState.enemies || [];
+                                    const initialStates = createInitialParticipantStates(character);
+                                    const expGain = srpgResult.isVictory
+                                        ? defeated.reduce((acc, e) => acc + Math.max(150, (e as any).expReward || (e.level || 1) * 180), 0)
+                                        : 0;
+                                    const goldGain = srpgResult.isVictory
+                                        ? defeated.reduce((acc, e) => acc + Math.max(500, (e as any).goldReward || (e.level || 1) * 320), 0)
+                                        : 0;
+                                    const accumulatedLoot: Item[] = srpgResult.isVictory
+                                        ? defeated.flatMap(e => generateLoot(e, character.currentLocation?.nation, character) || [])
+                                        : [];
+
+                                    const applyExpWithLevelUp = <T extends { level: number; currentExp: number; maxExp: number; stats: Stats }>(
+                                        entity: T,
+                                        gain: number
+                                    ): T => {
+                                        if (gain <= 0) return entity;
+                                        let lvl = entity.level || 1;
+                                        let curExp = (entity.currentExp || 0) + gain;
+                                        let reqExp = entity.maxExp || getRequiredExp(lvl);
+                                        const nextStats = { ...entity.stats };
+                                        while (curExp >= reqExp && lvl < 9999) {
+                                            curExp -= reqExp;
+                                            lvl += 1;
+                                            reqExp = getRequiredExp(lvl);
+                                            nextStats.maxHp = Math.round((nextStats.maxHp || 100) * 1.03 + 25);
+                                            nextStats.maxMp = Math.round((nextStats.maxMp || 50) * 1.02 + 10);
+                                            nextStats.str = (nextStats.str || 10) + 3;
+                                            nextStats.agi = (nextStats.agi || 10) + 3;
+                                            nextStats.int = (nextStats.int || 10) + 3;
+                                            nextStats.wis = (nextStats.wis || 10) + 3;
+                                            nextStats.def = (nextStats.def || 10) + 2;
+                                        }
+                                        return { ...entity, level: lvl, currentExp: curExp, maxExp: reqExp, stats: nextStats };
+                                    };
+
+                                    const updatedPlayerBase = applyExpWithLevelUp(
+                                        {
+                                            ...character,
+                                            money: (character.money || 0) + goldGain,
+                                            inventory: [...(character.inventory || []), ...accumulatedLoot],
+                                            stats: {
+                                                ...character.stats,
+                                                hp: Math.max(1, Math.min(character.stats.maxHp, srpgResult.playerFinalHp))
+                                            }
+                                        },
+                                        expGain
+                                    );
+
+                                    const updatedChar: Character = {
+                                        ...updatedPlayerBase,
+                                        companions: (character.companions || []).map(c => {
+                                            const finalHp = srpgResult.companionFinalHps[c.id];
+                                            const withHp = typeof finalHp === 'number'
+                                                ? {
+                                                      ...c,
+                                                      stats: {
+                                                          ...c.stats,
+                                                          hp: Math.max(1, Math.min(c.stats.maxHp, finalHp))
+                                                      }
+                                                  }
+                                                : c;
+                                            return srpgResult.isVictory ? applyExpWithLevelUp(withHp, Math.round(expGain * 0.85)) : withHp;
+                                        })
+                                    };
+
+                                    const finalStates = createInitialParticipantStates(updatedChar);
+                                    setCharacter(updatedChar);
+
+                                    if (srpgResult.isVictory) {
+                                        addToLog(`[BG3 전술 대승] ${srpgResult.turns}턴 만에 승리! (EXP +${expGain.toLocaleString()} / 골드 +${goldGain.toLocaleString()} G / 전리품 ${accumulatedLoot.length}개)`);
+                                    } else {
+                                        addToLog(`[BG3 전선 퇴각] 전열을 재정비하기 위해 안전 지대로 후퇴했습니다.`);
+                                    }
+
+                                    setCombatState(prev => ({
+                                        ...prev,
+                                        enemies: prev.enemies.map(e => ({
+                                            ...e,
+                                            hp: srpgResult.isVictory ? 0 : Math.max(1, e.hp)
+                                        })),
+                                        isEnded: true
+                                    }));
+                                    setSceneType('normal');
+                                    setCombatResultData({
+                                        initialStates,
+                                        finalStates,
+                                        accumulatedExp: expGain,
+                                        accumulatedGold: goldGain,
+                                        accumulatedLoot,
+                                        isVictory: srpgResult.isVictory,
+                                        combatType: combatState.type,
+                                        dungeonId: (combatState as any).dungeonId,
+                                        lastEnemies: defeated,
+                                        targetCity: character.currentLocation?.city,
+                                        targetNation: character.currentLocation?.nation
+                                    });
+                                }}
                             />
                         </Suspense>
                     ) : (

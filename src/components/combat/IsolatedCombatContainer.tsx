@@ -1,5 +1,7 @@
 import React, { memo } from 'react';
 import CombatInterface from '../CombatInterface';
+import Bg3ArenaCanvas, { Bg3BattleResult } from '../bg3/Bg3ArenaCanvas';
+import { isCoreSrpgCombat } from '../../services/srpgBattleEngine';
 import { CombatState, Character } from '../../types';
 
 interface IsolatedCombatContainerProps {
@@ -9,6 +11,7 @@ interface IsolatedCombatContainerProps {
   isLoading: boolean;
   narrative?: string;
   onUpdateCharacter?: (newChar: Character, logMsg?: string) => void;
+  onResolveSrpgCombat?: (result: Bg3BattleResult) => void;
 }
 
 /**
@@ -42,7 +45,52 @@ const areStatusEffectsEqual = (a: any[] = [], b: any[] = []): boolean => {
 };
 
 export const IsolatedCombatContainer: React.FC<IsolatedCombatContainerProps> = memo(
-  ({ combatState, player, onAction, isLoading, narrative, onUpdateCharacter }) => {
+  ({ combatState, player, onAction, isLoading, narrative, onUpdateCharacter, onResolveSrpgCombat }) => {
+    const useSrpg = Boolean(onResolveSrpgCombat && isCoreSrpgCombat(combatState) && !combatState.isEnded);
+
+    if (useSrpg && onResolveSrpgCombat) {
+      const cType = String(combatState.type || 'boss');
+      const isLargeWar = ['god_rebellion', 'temple_invasion', 'temple_defense', 'divine_invasion', 'magye_god_slaying', 'magye_temple_invasion', 'magye_rebellion', 'war_battle', 'regional_uprising'].includes(cType);
+      const titleMap: Record<string, string> = {
+        god_rebellion: '절대신 반란전 (BG3 무격자 전술전)',
+        temple_invasion: '신계 성전 정벌전 (BG3 무격자 전술전)',
+        temple_defense: '성전 방어전 (BG3 무격자 전술전)',
+        divine_invasion: '신성 국가 정벌전 (BG3 무격자 전술전)',
+        magye_god_slaying: '천마 대전 — 절대신 토벌 (BG3 무격자 전술전)',
+        magye_temple_invasion: '마계 성전 침공전 (BG3 무격자 전술전)',
+        magye_rebellion: '마계 옥좌 찬탈전 (BG3 무격자 전술전)',
+        war_battle: '국가 전면전 (BG3 무격자 전술전)',
+        regional_uprising: '지역 반란 진압전 (BG3 무격자 전술전)',
+      };
+      const primaryEnemyName = combatState.enemies[0]?.name || '보스';
+      const srpgTitle = titleMap[cType] || `보스 전술 결전 — ${primaryEnemyName}`;
+
+      return (
+        <div className="flex-1 flex flex-col relative w-full h-full overflow-hidden isolate p-1 sm:p-2 bg-slate-950">
+          <Bg3ArenaCanvas
+            character={player}
+            enemies={combatState.enemies}
+            title={srpgTitle}
+            subtitle={`${player.currentLocation?.nation || ''} · ${player.currentLocation?.city || ''} | 발더스 게이트 3 스타일 무격자 자유 전술전`}
+            region={player.currentLocation?.region}
+            nation={player.currentLocation?.nation}
+            city={player.currentLocation?.city}
+            isLargeWar={isLargeWar}
+            onComplete={onResolveSrpgCombat}
+            onRetreat={() =>
+              onResolveSrpgCombat({
+                isVictory: false,
+                turns: 1,
+                playerFinalHp: Math.max(1, player.stats?.hp || 1),
+                companionFinalHps: {},
+                defeatedEnemyCount: 0
+              })
+            }
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="flex-1 flex flex-col relative w-full h-full overflow-hidden isolate">
         <CombatInterface

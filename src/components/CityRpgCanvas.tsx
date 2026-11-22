@@ -49,6 +49,11 @@ export interface CityRpgCanvasProps {
     canOpenAbyssTower?: boolean;
     timePeriod: 'dawn' | 'morning' | 'afternoon' | 'sunset' | 'night' | 'shingye';
     timeLabel: string;
+    currentTime?: string;
+    backgroundImageUrl?: string;
+    backgroundFallbackUrl?: string;
+    backgroundRawUrl?: string;
+    backgroundFilterClass?: string;
     isMythicBoss: boolean;
     bossName?: string;
     onEnterCity: (district?: DistrictType | 'Gate', openHuntMap?: boolean) => void;
@@ -100,6 +105,11 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     canOpenAbyssTower,
     timePeriod,
     timeLabel,
+    currentTime = '08:00',
+    backgroundImageUrl,
+    backgroundFallbackUrl,
+    backgroundRawUrl,
+    backgroundFilterClass = '',
     isMythicBoss,
     bossName,
     onEnterCity,
@@ -824,9 +834,12 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             const canvas = canvasRef.current;
             const ctx = canvas?.getContext('2d');
             if (ctx) {
+                // 도시 배경 일러스트가 은은하게 비쳐 보이도록 캔버스 배경을 투명하게 클리어
                 ctx.clearRect(0, 0, viewW, viewH);
-                ctx.fillStyle = '#090d16';
-                ctx.fillRect(0, 0, viewW, viewH);
+                if (!backgroundImageUrl) {
+                    ctx.fillStyle = '#090d16';
+                    ctx.fillRect(0, 0, viewW, viewH);
+                }
 
                 const camX = cameraRef.current.x;
                 const camY = cameraRef.current.y;
@@ -840,7 +853,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 ctx.translate(-camX, -camY);
                 ctx.imageSmoothingEnabled = false;
 
-                // Layer 1: 고품질 AI 지형 타일 PNG 우선 렌더링 (미로드/누락 시 16-bit 절차적 텍스처 폴백)
+                // Layer 1: 고품질 AI 지형 타일 PNG 우선 렌더링 (배경 이미지가 있을 경우 0.76 투명도로 은은하게 투과)
+                ctx.save();
+                ctx.globalAlpha = backgroundImageUrl ? 0.76 : 1;
                 const aiGround = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'ground'));
                 const aiRoad = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'road'));
                 const aiPlaza = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'plaza'));
@@ -929,6 +944,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                         }
                     }
                 }
+                ctx.restore(); // Layer 1 alpha 복원 (건물·소품·캐릭터는 100% 선명하게)
 
                 // 고품질 중앙 분수대 PNG가 있으면 중앙 광장에 통합 렌더링
                 const customFountainImg = getCachedCityAssetImage(getCultureAssetUrl(mapData.cultureKey, 'fountain'));
@@ -1354,29 +1370,83 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     ctx.fill();
                 }
 
-                // Layer 4: 시간대 대기 조명 + 야간 가로등/플레이어 광원
-                if (timePeriod === 'sunset') {
-                    ctx.fillStyle = 'rgba(234, 88, 12, 0.14)';
+                // Layer 4: 실제 시각(00:00~23:59) 연동 시간대 대기 조명 + 햇살/노을/별빛 + 야간 가로등 광원
+                const [chStr, cmStr] = (currentTime || '08:00').split(':');
+                const hourFloat = (parseInt(chStr, 10) || 8) + (parseInt(cmStr, 10) || 0) / 60;
+
+                const drawGlow = (gx: number, gy: number, r: number, color: string) => {
+                    const grad = ctx.createRadialGradient(gx, gy, 4, gx, gy, r);
+                    grad.addColorStop(0, color);
+                    grad.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(gx, gy, r, 0, Math.PI * 2);
+                    ctx.fill();
+                };
+
+                if (timePeriod === 'shingye') {
+                    // 신계: 성전 고유의 신성한 황금/천상 광휘
+                    const holyGrad = ctx.createLinearGradient(0, 0, 0, worldH);
+                    holyGrad.addColorStop(0, 'rgba(254, 240, 138, 0.14)');
+                    holyGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.04)');
+                    holyGrad.addColorStop(1, 'rgba(251, 191, 36, 0.08)');
+                    ctx.fillStyle = holyGrad;
                     ctx.fillRect(0, 0, worldW, worldH);
-                } else if (timePeriod === 'night' || timePeriod === 'dawn') {
-                    ctx.fillStyle = timePeriod === 'dawn' ? 'rgba(15, 23, 56, 0.36)' : 'rgba(10, 15, 40, 0.42)';
+                } else if (hourFloat >= 5 && hourFloat < 8) {
+                    // 여명/일출 (05:00~07:59): 동쪽에서 퍼지는 복숭아·인디고 여명
+                    const sunriseGrad = ctx.createLinearGradient(worldW, 0, 0, worldH);
+                    sunriseGrad.addColorStop(0, 'rgba(251, 146, 60, 0.22)');
+                    sunriseGrad.addColorStop(0.55, 'rgba(244, 114, 182, 0.12)');
+                    sunriseGrad.addColorStop(1, 'rgba(49, 46, 129, 0.20)');
+                    ctx.fillStyle = sunriseGrad;
                     ctx.fillRect(0, 0, worldW, worldH);
 
                     ctx.save();
                     ctx.globalCompositeOperation = 'lighter';
-                    const drawGlow = (gx: number, gy: number, r: number, color: string) => {
-                        const grad = ctx.createRadialGradient(gx, gy, 4, gx, gy, r);
-                        grad.addColorStop(0, color);
-                        grad.addColorStop(1, 'rgba(0,0,0,0)');
-                        ctx.fillStyle = grad;
-                        ctx.beginPath();
-                        ctx.arc(gx, gy, r, 0, Math.PI * 2);
-                        ctx.fill();
-                    };
+                    mapData.lamps.forEach(l => drawGlow(l.x * ts + ts / 2, l.y * ts + 8, 64, pal.lampGlow));
+                    ctx.restore();
+                } else if (hourFloat >= 8 && hourFloat < 12) {
+                    // 아침 (08:00~11:59): 상쾌하고 맑은 황금 아침 햇살
+                    const morningGrad = ctx.createLinearGradient(0, 0, worldW, worldH);
+                    morningGrad.addColorStop(0, 'rgba(254, 240, 138, 0.13)');
+                    morningGrad.addColorStop(0.6, 'rgba(255, 251, 235, 0.04)');
+                    morningGrad.addColorStop(1, 'rgba(56, 189, 248, 0.05)');
+                    ctx.fillStyle = morningGrad;
+                    ctx.fillRect(0, 0, worldW, worldH);
+                } else if (hourFloat >= 12 && hourFloat < 17) {
+                    // 한낮 (12:00~16:59): 화창하고 청명한 대낮 햇살
+                    const noonGrad = ctx.createLinearGradient(0, 0, 0, worldH);
+                    noonGrad.addColorStop(0, 'rgba(186, 230, 253, 0.10)');
+                    noonGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.03)');
+                    noonGrad.addColorStop(1, 'rgba(254, 249, 195, 0.06)');
+                    ctx.fillStyle = noonGrad;
+                    ctx.fillRect(0, 0, worldW, worldH);
+                } else if (hourFloat >= 17 && hourFloat < 20) {
+                    // 석양/노을 (17:00~19:59): 붉고 따뜻한 황혼 그라데이션 + 가로등 점등
+                    const sunsetGrad = ctx.createLinearGradient(0, 0, worldW, worldH);
+                    sunsetGrad.addColorStop(0, 'rgba(234, 88, 12, 0.24)');
+                    sunsetGrad.addColorStop(0.5, 'rgba(190, 24, 93, 0.16)');
+                    sunsetGrad.addColorStop(1, 'rgba(30, 27, 75, 0.24)');
+                    ctx.fillStyle = sunsetGrad;
+                    ctx.fillRect(0, 0, worldW, worldH);
+
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    mapData.lamps.forEach(l => drawGlow(l.x * ts + ts / 2, l.y * ts + 8, 76, pal.lampGlow));
+                    drawGlow(p.x, p.y - 6, 65, 'rgba(254, 215, 170, 0.14)');
+                    ctx.restore();
+                } else {
+                    // 밤 / 심야 (20:00~04:59): 깊은 남색 밤하늘 + 반짝이는 가로등·플레이어 등불 광원
+                    const isDeepMidnight = hourFloat >= 0 && hourFloat < 5;
+                    ctx.fillStyle = isDeepMidnight ? 'rgba(10, 14, 42, 0.46)' : 'rgba(12, 18, 46, 0.40)';
+                    ctx.fillRect(0, 0, worldW, worldH);
+
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
                     mapData.lamps.forEach(l => {
-                        drawGlow(l.x * ts + ts / 2, l.y * ts + 8, 92, pal.lampGlow);
+                        drawGlow(l.x * ts + ts / 2, l.y * ts + 8, 96, pal.lampGlow);
                     });
-                    drawGlow(p.x, p.y - 6, 85, 'rgba(254, 243, 199, 0.22)');
+                    drawGlow(p.x, p.y - 6, 88, 'rgba(254, 243, 199, 0.24)');
                     ctx.restore();
                 }
 
@@ -1446,6 +1516,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
         region,
         nation,
         timePeriod,
+        currentTime,
+        backgroundImageUrl,
         findNearbyInteractable,
         triggerPortalAction
     ]);
@@ -1455,14 +1527,34 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     return (
         <div
             ref={containerRef}
-            className="relative w-full flex-1 min-h-[320px] sm:min-h-[500px] rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl bg-slate-950 select-none"
+            className="relative w-full flex-1 min-h-[320px] sm:min-h-[500px] rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl bg-slate-950/75 select-none"
         >
+            {/* 도시별 고화질 배경 일러스트 레이어 (바닥 타일 너머로 은은하게 투과 + 시간대 필터 연동) */}
+            {backgroundImageUrl && (
+                <img
+                    key={backgroundImageUrl}
+                    src={backgroundImageUrl}
+                    alt={`${city} 배경`}
+                    onError={(e) => {
+                        const target = e.currentTarget;
+                        if (backgroundRawUrl && !target.dataset.triedRelative) {
+                            target.dataset.triedRelative = 'true';
+                            target.src = `./${backgroundRawUrl.replace(/^\.?\//, '')}`;
+                        } else if (backgroundFallbackUrl && !target.dataset.triedFallback) {
+                            target.dataset.triedFallback = 'true';
+                            target.src = backgroundFallbackUrl;
+                        }
+                    }}
+                    className={`pointer-events-none select-none absolute inset-0 w-full h-full object-cover object-center opacity-90 transition-all duration-700 ${backgroundFilterClass}`}
+                />
+            )}
+
             <canvas
                 ref={canvasRef}
                 width={canvasSize.width}
                 height={canvasSize.height}
                 onClick={handleCanvasClick}
-                className="block w-full h-full cursor-pointer"
+                className="relative z-10 block w-full h-full cursor-pointer"
             />
 
             {/* 조작 안내 및 도시 규모 뱃지 (좌상단) */}
