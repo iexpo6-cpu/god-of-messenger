@@ -1,0 +1,95 @@
+========================================================================
+[신의 사자 RPG - 쯔꾸르(RPG Maker) 스타일 던전 타일 & 오브젝트 Gemini 일괄 생성 프롬프트]
+========================================================================
+* 사용 방법:
+  1. 아래 [시트 1] ~ [시트 4] 프롬프트를 각각 Gemini 이미지 생성에 복사-붙여넣기 하세요.
+  2. 한 번 생성할 때마다 4~6개 에셋이 한 장에 깔끔하게 그리드로 생성됩니다. (총 4번 생성으로 22종 완성!)
+  3. 생성된 이미지 파일들을 `assets/visuals/` 폴더에 넣어두고 말씀해 주시면
+     자동으로 격자 크롭 + 마젠타(#FF00FF) 투명화 + 3곳(public/assets, assets, dist/assets) 동기화까지 한 번에 적용해 드립니다.
+========================================================================
+
+
+------------------------------------------------------------------------
+[시트 1] 던전 핵심 이동/보상 오브젝트 6종 (3열 x 2행, 마젠타 크로마키 배경)
+저장 파일명 매핑:
+  1행: entrance_gate.png / stairs_down.png / stairs_up.png
+  2행: chest_closed.png  / chest_open.png  / shrine_fountain.png
+------------------------------------------------------------------------
+2D RPG Maker MZ style top-down 3/4 view fantasy dungeon props sprite sheet, arranged neatly in a clean 3 columns by 2 rows grid with generous spacing between items, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows or gradients on the background. Crisp hand-painted dark fantasy pixel-inspired HD RPG art style, rich stonework and warm glowing magic highlights.
+Top row (left to right):
+1. Ancient stone dungeon exit archway gate glowing softly with emerald daylight portal light (entrance_gate)
+2. Descending spiral stone staircase leading down into dark abyssal depths with faint cyan mist (stairs_down)
+3. Ascending stone staircase leading upward illuminated by warm golden torchlight (stairs_up)
+Bottom row (left to right):
+4. Ornate dark wood and gold-trimmed fantasy treasure chest, closed and locked with a glowing ruby clasp (chest_closed)
+5. The same ornate gold treasure chest opened wide overflowing with shining gold coins and radiant magic gems (chest_open)
+6. Ancient carved stone healing shrine fountain filled with glowing luminous cyan sacred water (shrine_fountain)
+No text, no numbers, no borders, no grid lines, solid flat #FF00FF magenta background only.
+
+
+------------------------------------------------------------------------
+[시트 2] 던전 봉인석 / 몬스터 / 보스 / 미지 기척 6종 (3열 x 2행, 마젠타 크로마키 배경)
+저장 파일명 매핑:
+  1행: rune_locked.png  / rune_active.png   / mystery_wisp.png
+  2행: enemy_marker.png / miniboss_marker.png / boss_throne.png
+------------------------------------------------------------------------
+2D RPG Maker MZ style top-down 3/4 view fantasy dungeon interactive objects and enemy tokens sprite sheet, arranged neatly in a clean 3 columns by 2 rows grid with generous spacing between items, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows or gradients on the background. High-detail dark fantasy RPG art style with dramatic magical glow.
+Top row (left to right):
+1. Ancient obsidian rune obelisk stone wrapped in dark purple magical seal chains, locked state (rune_locked)
+2. Awakened ancient rune obelisk stone glowing brilliantly with golden-cyan liberated holy light (rune_active)
+3. Mysterious swirling golden-amber phantom wisp orb with subtle arcane sparks representing an unidentified presence (mystery_wisp)
+Bottom row (left to right):
+4. Menacing dark shadow dungeon monster chibi sprite in RPG Maker style with glowing red eyes and jagged claws (enemy_marker)
+5. Heavy armored crimson demonic elite knight miniboss chibi sprite holding a glowing dark greatsword (miniboss_marker)
+6. Grand sinister dark obsidian boss throne altar engraved with a glowing crimson magic circle and golden crown motif (boss_throne)
+No text, no numbers, no borders, no grid lines, solid flat #FF00FF magenta background only.
+
+
+------------------------------------------------------------------------
+[시트 3] 던전 분위기 장식 프롭 6종 (3열 x 2행, 마젠타 크로마키 배경)
+저장 파일명 매핑:
+  1행: wall_torch.png     / stone_pillar.png    / barrel_crates.png
+  2행: skeleton_bones.png / crystal_cluster.png / magic_circle.png
+------------------------------------------------------------------------
+2D RPG Maker MZ style top-down 3/4 view fantasy dungeon environmental decoration props sprite sheet, arranged neatly in a clean 3 columns by 2 rows grid with generous spacing between items, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows or gradients on the background. Rich dark fantasy RPG art style matching classic JRPG dungeons.
+Top row (left to right):
+1. Wrought-iron dungeon standing brazier torch burning with bright warm orange-gold fire (wall_torch)
+2. Weathered cracked ancient stone temple pillar with faint glowing runes and creeping moss (stone_pillar)
+3. Cluster of old wooden dungeon supply barrels and weathered crates bound with iron bands (barrel_crates)
+Bottom row (left to right):
+4. Ancient fallen adventurer skeleton remains with a rusted sword and tattered shield on stone rubble (skeleton_bones)
+5. Glowing cluster of luminous arcane blue-violet mana crystals jutting from dark dungeon rock (crystal_cluster)
+6. Top-down ornate ancient golden-cyan glowing rune magic circle etched for dungeon floor overlay (magic_circle)
+No text, no numbers, no borders, no grid lines, solid flat #FF00FF magenta background only.
+
+
+------------------------------------------------------------------------
+[시트 4] 던전 바닥 & 벽 타일 텍스처 4종 (2열 x 2행, 꽉 채운 정사각형 타일 - 배경 없음!)
+저장 파일명 매핑:
+  1행: tile_floor_stone.png  / tile_wall_stone.png
+  2행: tile_floor_mythic.png / tile_wall_mythic.png
+------------------------------------------------------------------------
+2D RPG Maker MZ style top-down fantasy dungeon tile textures arranged in an exact seamless 2x2 square grid filling the entire canvas edge-to-edge with zero margins and zero borders. Hand-painted dark fantasy JRPG tileset aesthetic.
+Top-left tile: Dark weathered ancient stone dungeon floor flagstones with subtle cracks, dust, and moss, seamless top-down tile texture (tile_floor_stone).
+Top-right tile: Thick 2.5D RPG Maker stone dungeon wall block with dark bevelled top edge and rugged carved stone brick front facade (tile_wall_stone).
+Bottom-left tile: Mythic abyssal temple floor made of polished dark obsidian marble inlaid with subtle glowing golden geometric trim, top-down seamless tile texture (tile_floor_mythic).
+Bottom-right tile: Mythic golden-trimmed obsidian sanctuary wall block in 2.5D RPG Maker perspective with sacred carved reliefs (tile_wall_mythic).
+Exact 2x2 equal quadrants, no text, no labels, no white/black dividing lines.
+
+
+------------------------------------------------------------------------
+[시트 5] BG3 전장 특수 지면(장판) 6종 고퀄리티 리메이크 (3열 x 2행, 마젠타 크로마키 배경)
+저장 파일명 매핑 (assets/visuals/city_tiles/props/srpg/):
+  1행: surface_fire.png   / surface_water.png / surface_ice.png
+  2행: surface_poison.png / surface_holy.png  / surface_electrified.png
+------------------------------------------------------------------------
+2D RPG Maker MZ / Baldur's Gate 3 style top-down tactical RPG ground elemental hazard & sanctuary surface effects sprite sheet, arranged neatly in a clean 3 columns by 2 rows grid with generous spacing between each circular ground patch, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows or gradients on the background. Crisp hand-painted dark fantasy HD RPG game VFX art with sharp silhouette details and vivid elemental textures (NOT blurry solid blobs).
+Top row (left to right):
+1. Blazing cracked scorched magma and roaring swirling flames ring with glowing charcoal embers and sparks (surface_fire)
+2. Crystal-clear shimmering shallow water puddle with crisp white ripple rings, wet pebbles, and subtle sky reflections (surface_water)
+3. Jagged translucent frozen ice sheet with sharp crystalline frost shards, snowflake cracks, and pale cyan sheen (surface_ice)
+Bottom row (left to right):
+4. Bubbling toxic emerald-green venom and acid swamp pool with glowing gas bubbles and dark boggy rim (surface_poison)
+5. Radiant golden-white sacred sanctuary magic circle etched with ornate holy runes, glowing light rays, and floating golden petals (surface_holy)
+6. Crackling high-voltage electric plasma ground zone with bright jagged cyan-white lightning arcs and ionized sparks (surface_electrified)
+No text, no numbers, no borders, no grid lines, solid flat #FF00FF magenta background only.

@@ -13,6 +13,7 @@ import { advanceGameTime } from '../services/gameTimeService';
 import { handleDungeonDefeatRecovery } from '../services/dungeonDefeatService';
 import { RescueGratitudeModal, RescuedPersonInfo } from './RescueGratitudeModal';
 import { createRescuedPersonData } from '../services/rescuePersonService';
+import DungeonRpgCanvas from './DungeonRpgCanvas';
 import { 
     GridDungeonState, 
     GridTile, 
@@ -61,6 +62,20 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
     const [rescuedModalInfo, setRescuedModalInfo] = useState<RescuedPersonInfo | null>(null);
     const [eventNotice, setEventNotice] = useState<{ title: string; desc: string; items?: { label: string; value: string }[] } | null>(null);
     const [dayChangeNotice, setDayChangeNotice] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'rpg' | 'classic'>(() => {
+        try {
+            const saved = localStorage.getItem('shinryoku_dungeon_view_mode');
+            return saved === 'classic' ? 'classic' : 'rpg';
+        } catch {
+            return 'rpg';
+        }
+    });
+    const toggleViewMode = (mode: 'rpg' | 'classic') => {
+        setViewMode(mode);
+        try {
+            localStorage.setItem('shinryoku_dungeon_view_mode', mode);
+        } catch {}
+    };
 
     const nation = character.currentLocation?.nation || character.nation;
     const currentCity = character.currentLocation?.city || "Unknown";
@@ -637,7 +652,7 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md">
-            <div className="bg-slate-900 border border-slate-700 w-full max-w-5xl rounded-2xl flex flex-col max-h-[96vh] shadow-2xl overflow-hidden">
+            <div className="bg-slate-900 border border-slate-700 w-full max-w-6xl rounded-2xl flex flex-col h-[92vh] max-h-[96vh] shadow-2xl overflow-hidden">
                 {/* 헤더 */}
                 <div className="p-4 sm:p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/70">
                     <div className="flex items-center gap-3">
@@ -698,11 +713,11 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                 ) : (
                     /* 메인 탐험 인터페이스 */
                     <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-                        {/* 좌측: 격자 캔버스 뷰 */}
-                        <div className="flex-1 bg-slate-950/80 p-3 sm:p-5 flex flex-col items-center justify-center overflow-auto border-b lg:border-b-0 lg:border-r border-slate-800">
+                        {/* 좌측: 쯔꾸르(RPG Maker) / 격자 캔버스 뷰 */}
+                        <div className="flex-1 bg-slate-950/80 p-3 sm:p-4 flex flex-col min-h-0 overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-800">
                             {/* 미궁 상단 상태 바 */}
-                            <div className="w-full flex flex-wrap justify-between items-center gap-2 mb-3 px-2 text-xs font-bold text-slate-400">
-                                <div className="flex items-center gap-2">
+                            <div className="w-full flex flex-wrap justify-between items-center gap-2 mb-2.5 px-1 text-xs font-bold text-slate-400 shrink-0">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <span className="flex items-center gap-1.5 text-amber-400">
                                         <Flame size={14} /> 횃불 시야 반경: {gridState.torchRadius}칸
                                     </span>
@@ -712,102 +727,137 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                         </span>
                                     )}
                                 </div>
-                                {gridState.totalRunesRequired > 0 && (
-                                    <span className="flex items-center gap-1.5 text-rose-400 bg-rose-950/40 px-2.5 py-1 rounded-lg border border-rose-900/60">
-                                        <Lock size={12} /> 결계 해제 봉인석: {gridState.activeRunesCount} / {gridState.totalRunesRequired}
-                                    </span>
-                                )}
+                                <div className="flex items-center gap-2">
+                                    {gridState.totalRunesRequired > 0 && (
+                                        <span className="flex items-center gap-1.5 text-rose-400 bg-rose-950/40 px-2.5 py-1 rounded-lg border border-rose-900/60">
+                                            <Lock size={12} /> 봉인석: {gridState.activeRunesCount} / {gridState.totalRunesRequired}
+                                        </span>
+                                    )}
+                                    <div className="inline-flex bg-slate-900 border border-slate-700/80 rounded-lg p-0.5 text-[11px]">
+                                        <button
+                                            onClick={() => toggleViewMode('rpg')}
+                                            className={`px-2 py-0.5 rounded-md font-bold transition-colors cursor-pointer ${viewMode === 'rpg' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                                        >
+                                            🎮 쯔꾸르 뷰
+                                        </button>
+                                        <button
+                                            onClick={() => toggleViewMode('classic')}
+                                            className={`px-2 py-0.5 rounded-md font-bold transition-colors cursor-pointer ${viewMode === 'classic' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                                        >
+                                            🗺️ 격자 보드
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* 격자 타일 보드 */}
-                            <div 
-                                className="inline-grid gap-1 p-2 bg-slate-900/90 rounded-2xl border border-slate-800/80 shadow-inner max-w-full overflow-auto"
-                                style={{
-                                    gridTemplateColumns: `repeat(${gridState.width}, minmax(0, 1fr))`
-                                }}
-                            >
-                                {gridState.tiles.map((row, y) =>
-                                    row.map((tile, x) => {
-                                        const isPlayer = gridState.playerPos.x === x && gridState.playerPos.y === y;
-                                        const isAdjacent = Math.abs(x - gridState.playerPos.x) <= 1 && Math.abs(y - gridState.playerPos.y) <= 1 && !(x === gridState.playerPos.x && y === gridState.playerPos.y);
-                                        const isSelected = selectedTile?.x === x && selectedTile?.y === y;
+                            {viewMode === 'rpg' ? (
+                                <div className="flex-1 min-h-0 w-full">
+                                    <DungeonRpgCanvas
+                                        gridState={gridState}
+                                        character={character}
+                                        selectedTile={selectedTile}
+                                        isSeasonalBoss={isSeasonalBoss}
+                                        bossName={bossInfo?.name}
+                                        isPaused={Boolean(eventNotice || rescuedModalInfo)}
+                                        onMoveToTile={handleMoveToTile}
+                                        onSelectTile={(t) => setSelectedTile(t)}
+                                        onTriggerFloorChange={(floor) => changeDungeonFloor(floor)}
+                                        onExitDungeon={handleExitDungeon}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center overflow-auto">
+                                    {/* 격자 타일 보드 */}
+                                    <div 
+                                        className="inline-grid gap-1 p-2 bg-slate-900/90 rounded-2xl border border-slate-800/80 shadow-inner max-w-full overflow-auto"
+                                        style={{
+                                            gridTemplateColumns: `repeat(${gridState.width}, minmax(0, 1fr))`
+                                        }}
+                                    >
+                                        {gridState.tiles.map((row, y) =>
+                                            row.map((tile, x) => {
+                                                const isPlayer = gridState.playerPos.x === x && gridState.playerPos.y === y;
+                                                const isAdjacent = Math.abs(x - gridState.playerPos.x) <= 1 && Math.abs(y - gridState.playerPos.y) <= 1 && !(x === gridState.playerPos.x && y === gridState.playerPos.y);
+                                                const isSelected = selectedTile?.x === x && selectedTile?.y === y;
 
-                                        // 1. 미탐색 어둠 (Fog of War)
-                                        if (!tile.isRevealed) {
-                                            return (
-                                                <div 
-                                                    key={`${x}-${y}`} 
-                                                    className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 bg-slate-950/90 rounded-md border border-slate-900 flex items-center justify-center opacity-70"
-                                                >
-                                                    <div className="w-1.5 h-1.5 bg-slate-800 rounded-full opacity-30" />
-                                                </div>
-                                            );
-                                        }
+                                                // 1. 미탐색 어둠 (Fog of War)
+                                                if (!tile.isRevealed) {
+                                                    return (
+                                                        <div 
+                                                            key={`${x}-${y}`} 
+                                                            className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 bg-slate-950/90 rounded-md border border-slate-900 flex items-center justify-center opacity-70"
+                                                        >
+                                                            <div className="w-1.5 h-1.5 bg-slate-800 rounded-full opacity-30" />
+                                                        </div>
+                                                    );
+                                                }
 
-                                        // 2. 벽 타일
-                                        if (tile.type === 'wall') {
-                                            return (
-                                                <div 
-                                                    key={`${x}-${y}`} 
-                                                    className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 bg-slate-900/95 rounded-md border border-slate-800/60 flex items-center justify-center text-slate-700 select-none shadow-sm"
-                                                >
-                                                    <span className="text-[10px] opacity-40">■</span>
-                                                </div>
-                                            );
-                                        }
+                                                // 2. 벽 타일
+                                                if (tile.type === 'wall') {
+                                                    return (
+                                                        <div 
+                                                            key={`${x}-${y}`} 
+                                                            className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 bg-slate-900/95 rounded-md border border-slate-800/60 flex items-center justify-center text-slate-700 select-none shadow-sm"
+                                                        >
+                                                            <span className="text-[10px] opacity-40">■</span>
+                                                        </div>
+                                                    );
+                                                }
 
-                                        // 3. 이동 가능한 바닥 타일
-                                        return (
-                                            <button
-                                                key={`${x}-${y}`}
-                                                onClick={() => handleMoveToTile(x, y)}
-                                                className={`
-                                                    w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-md flex items-center justify-center transition-all relative
-                                                    ${isPlayer 
-                                                        ? 'bg-amber-500/20 border-2 border-amber-400 shadow-lg shadow-amber-500/30 ring-2 ring-amber-400/40 z-10 scale-105' 
-                                                        : isSelected
-                                                            ? 'border-2 border-cyan-400 bg-cyan-950/40 z-10'
-                                                            : isAdjacent
-                                                                ? 'bg-slate-800/80 hover:bg-slate-700 border border-slate-600/70 hover:border-slate-400 cursor-pointer'
-                                                                : 'bg-slate-800/40 border border-slate-700/40'}
-                                                `}
-                                            >
-                                                {/* 플레이어 심볼 */}
-                                                {isPlayer ? (
-                                                    <span className="text-base sm:text-lg animate-bounce select-none">🧙</span>
-                                                ) : tile.type === 'stairs' ? (
-                                                    <span className="text-cyan-300 text-xs sm:text-sm font-black select-none" title="하층 계단">🪜⬇️</span>
-                                                ) : tile.type === 'stairs_up' ? (
-                                                    <span className="text-amber-300 text-xs sm:text-sm font-black select-none" title="상층 계단">🪜⬆️</span>
-                                                ) : tile.type === 'entrance' ? (
-                                                    <span className="text-emerald-400 text-xs sm:text-sm font-bold select-none" title="1층 출구">🚪</span>
-                                                ) : tile.content && !tile.isCleared && !tile.isIdentified ? (
-                                                    <HelpCircle size={16} className="text-amber-400 animate-pulse drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]" title="미지의 반응" />
-                                                ) : tile.content === 'boss' && !tile.isCleared ? (
-                                                    <Crown size={18} className="text-amber-400 animate-pulse" />
-                                                ) : tile.content === 'miniboss' && !tile.isCleared ? (
-                                                    <Skull size={16} className="text-rose-400" />
-                                                ) : tile.content === 'enemy' && !tile.isCleared ? (
-                                                    <Sword size={14} className="text-red-400" />
-                                                ) : tile.content === 'chest' && !tile.isCleared ? (
-                                                    <Gift size={15} className="text-yellow-400 animate-bounce" />
-                                                ) : tile.content === 'shrine' && !tile.isCleared ? (
-                                                    <Sparkles size={15} className="text-cyan-300" />
-                                                ) : tile.content === 'rune_stone' && !tile.isCleared ? (
-                                                    <Lock size={15} className="text-purple-400 animate-pulse" />
-                                                ) : (
-                                                    <div className="w-1 h-1 bg-slate-600 rounded-full opacity-40" />
-                                                )}
-                                            </button>
-                                        );
-                                    })
-                                )}
-                            </div>
+                                                // 3. 이동 가능한 바닥 타일
+                                                return (
+                                                    <button
+                                                        key={`${x}-${y}`}
+                                                        onClick={() => handleMoveToTile(x, y)}
+                                                        className={`
+                                                            w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-md flex items-center justify-center transition-all relative
+                                                            ${isPlayer 
+                                                                ? 'bg-amber-500/20 border-2 border-amber-400 shadow-lg shadow-amber-500/30 ring-2 ring-amber-400/40 z-10 scale-105' 
+                                                                : isSelected
+                                                                    ? 'border-2 border-cyan-400 bg-cyan-950/40 z-10'
+                                                                    : isAdjacent
+                                                                        ? 'bg-slate-800/80 hover:bg-slate-700 border border-slate-600/70 hover:border-slate-400 cursor-pointer'
+                                                                        : 'bg-slate-800/40 border border-slate-700/40'}
+                                                        `}
+                                                    >
+                                                        {/* 플레이어 심볼 */}
+                                                        {isPlayer ? (
+                                                            <span className="text-base sm:text-lg animate-bounce select-none">🧙</span>
+                                                        ) : tile.type === 'stairs' ? (
+                                                            <span className="text-cyan-300 text-xs sm:text-sm font-black select-none" title="하층 계단">🪜⬇️</span>
+                                                        ) : tile.type === 'stairs_up' ? (
+                                                            <span className="text-amber-300 text-xs sm:text-sm font-black select-none" title="상층 계단">🪜⬆️</span>
+                                                        ) : tile.type === 'entrance' ? (
+                                                            <span className="text-emerald-400 text-xs sm:text-sm font-bold select-none" title="1층 출구">🚪</span>
+                                                        ) : tile.content && !tile.isCleared && !tile.isIdentified ? (
+                                                            <HelpCircle size={16} className="text-amber-400 animate-pulse drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]" title="미지의 반응" />
+                                                        ) : tile.content === 'boss' && !tile.isCleared ? (
+                                                            <Crown size={18} className="text-amber-400 animate-pulse" />
+                                                        ) : tile.content === 'miniboss' && !tile.isCleared ? (
+                                                            <Skull size={16} className="text-rose-400" />
+                                                        ) : tile.content === 'enemy' && !tile.isCleared ? (
+                                                            <Sword size={14} className="text-red-400" />
+                                                        ) : tile.content === 'chest' && !tile.isCleared ? (
+                                                            <Gift size={15} className="text-yellow-400 animate-bounce" />
+                                                        ) : tile.content === 'shrine' && !tile.isCleared ? (
+                                                            <Sparkles size={15} className="text-cyan-300" />
+                                                        ) : tile.content === 'rune_stone' && !tile.isCleared ? (
+                                                            <Lock size={15} className="text-purple-400 animate-pulse" />
+                                                        ) : (
+                                                            <div className="w-1 h-1 bg-slate-600 rounded-full opacity-40" />
+                                                        )}
+                                                    </button>
+                                                );
+                                            })
+                                        )}
+                                    </div>
 
-                            {/* 가이드 안내 문구 */}
-                            <p className="text-[11px] text-slate-500 mt-3 text-center">
-                                * 인접한 밝혀진 타일을 탭하거나 하단 방향키를 눌러 1칸씩 미궁을 개척하세요. (미지의 ? 기척은 1칸 이내로 접근 시 식별됩니다)
-                            </p>
+                                    {/* 가이드 안내 문구 */}
+                                    <p className="text-[11px] text-slate-500 mt-3 text-center">
+                                        * 인접한 밝혀진 타일을 탭하거나 하단 방향키를 눌러 1칸씩 미궁을 개척하세요. (미지의 ? 기척은 1칸 이내로 접근 시 식별됩니다)
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* 우측: 탐험 상태 & 정보 패널 */}
