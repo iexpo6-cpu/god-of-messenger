@@ -7123,6 +7123,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                 onOpenBeastCity={() => setIsBeastCityOpen(true)}
                                 onOpenTranscendentArena={() => setIsTranscendentArenaOpen(true)}
                                 onOpenAbyssTower={() => setIsAbyssTowerOpen(true)}
+                                onInspectCompanion={(companionId) => setSelectedCompanionId(companionId)}
                                 onTravel={handleTravel}
                                 onUpdateCharacter={handleUpdateCharacter}
                                 onStartBattle={(enemies, type, source) => handleBattleTrigger(enemies, type as any, source)}

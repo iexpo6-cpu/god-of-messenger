@@ -45,7 +45,8 @@ export interface CityRpgCanvasProps {
     isElfNation: boolean;
     isBeastNation: boolean;
     isDemonNation: boolean;
-    canOpenTranscendent: boolean;
+    canOpenTranscendentArena?: boolean;
+    canOpenAbyssTower?: boolean;
     timePeriod: 'dawn' | 'morning' | 'afternoon' | 'sunset' | 'night' | 'shingye';
     timeLabel: string;
     isMythicBoss: boolean;
@@ -59,6 +60,7 @@ export interface CityRpgCanvasProps {
     onOpenBeastCity?: () => void;
     onOpenTranscendentArena?: () => void;
     onOpenAbyssTower?: () => void;
+    onInspectCompanion?: (companionId: string) => void;
 }
 
 interface TrailPoint {
@@ -94,7 +96,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     isElfNation,
     isBeastNation,
     isDemonNation,
-    canOpenTranscendent,
+    canOpenTranscendentArena,
+    canOpenAbyssTower,
     timePeriod,
     timeLabel,
     isMythicBoss,
@@ -107,7 +110,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     onOpenDemonCity,
     onOpenBeastCity,
     onOpenTranscendentArena,
-    onOpenAbyssTower
+    onOpenAbyssTower,
+    onInspectCompanion
 }) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -115,7 +119,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     const [dialogue, setDialogue] = useState<ActiveDialogue | null>(null);
     const [typedChars, setTypedChars] = useState(0);
     const [nearbyLabel, setNearbyLabel] = useState<string>('');
-    const [showQuickBar, setShowQuickBar] = useState<boolean>(true);
+    const [showQuickBar, setShowQuickBar] = useState<boolean>(() =>
+        typeof window !== 'undefined' ? window.innerWidth >= 640 : true
+    );
     const [, setSpriteTick] = useState(0);
 
     // 1. 현재 도시 타일맵 생성
@@ -131,7 +137,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 isElfNation,
                 isBeastNation,
                 isDemonNation,
-                canOpenTranscendent,
+                canOpenTranscendentArena,
+                canOpenAbyssTower,
                 timeLabel,
                 isMythicBoss,
                 bossName
@@ -146,7 +153,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             isElfNation,
             isBeastNation,
             isDemonNation,
-            canOpenTranscendent,
+            canOpenTranscendentArena,
+            canOpenAbyssTower,
             timeLabel,
             isMythicBoss,
             bossName
@@ -487,6 +495,19 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             y: Math.floor(p.y / CITY_TILE_SIZE)
         };
 
+        // 0. 뒤따라오는 동료(팔로워) 클릭 체크 -> 즉시 동료 정보창 열기
+        if (onInspectCompanion && followers.length > 0) {
+            for (let idx = 0; idx < followers.length; idx++) {
+                const trailIdx = Math.min(trailRef.current.length - 1, (idx + 1) * 10);
+                const fpt = trailRef.current[trailIdx];
+                if (!fpt) continue;
+                if (Math.hypot(fpt.x - worldX, (fpt.y - 8) - worldY) <= CITY_TILE_SIZE * 0.72) {
+                    onInspectCompanion(followers[idx].id);
+                    return;
+                }
+            }
+        }
+
         // 1. 건물 영역 클릭 체크 -> 해당 건물 문 앞으로 이동 후 자동 입장
         const clickedPortal = mapData.portals.find(
             pt =>
@@ -787,8 +808,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             const viewW = canvasSize.width;
             const viewH = canvasSize.height;
 
-            // 최소 1.45배 확대 + 화면 비율에 맞춰 여백 0% 보장
-            const zoom = Math.max(1.45, viewW / worldW, viewH / worldH);
+            // 모바일 화면에서는 시야를 넓혀 적당한 크기로, 데스크톱에서는 1.4배로 여백 0% 보장
+            const minZoom = viewW < 480 ? 0.85 : viewW < 768 ? 1.05 : 1.4;
+            const zoom = Math.max(minZoom, viewW / worldW, viewH / worldH);
             cameraRef.current.zoom = zoom;
             const visibleWorldW = viewW / zoom;
             const visibleWorldH = viewH / zoom;
@@ -1237,7 +1259,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     });
                 });
 
-                // 파티 동료 팔로워 트레일 추가
+                // 파티 동료 팔로워 트레일 추가 (이름표 표시 + 클릭 시 동료 정보창 열기)
                 followers.forEach((f, idx) => {
                     const trailIdx = Math.min(trailRef.current.length - 1, (idx + 1) * 10);
                     const pt = trailRef.current[trailIdx];
@@ -1255,6 +1277,19 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                                 f.regionKey,
                                 f.genderKey
                             );
+                            // 동료 이름표 (에메랄드 테두리)
+                            ctx.font = 'bold 10px sans-serif';
+                            ctx.textAlign = 'center';
+                            const fw = ctx.measureText(f.name).width + 10;
+                            ctx.fillStyle = 'rgba(6, 46, 38, 0.84)';
+                            ctx.beginPath();
+                            ctx.roundRect(pt.x - fw / 2, pt.y - 44, fw, 15, 4);
+                            ctx.fill();
+                            ctx.strokeStyle = 'rgba(52, 211, 153, 0.75)';
+                            ctx.lineWidth = 1;
+                            ctx.stroke();
+                            ctx.fillStyle = '#a7f3d0';
+                            ctx.fillText(f.name, pt.x, pt.y - 33);
                         }
                     });
                 });
@@ -1347,12 +1382,15 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
 
                 ctx.restore();
 
-                // Layer 5: 우측 상단 컴팩트 미니맵 (수도 36x26 / 대도시 28x20 / 소도시 22x16 자동 스케일)
-                const mmScale = mapData.cols >= 34 ? 3.2 : mapData.cols <= 22 ? 4.8 : 4;
+                // Layer 5: 우측 상단 컴팩트 미니맵 (모바일에서는 초소형 레이더로 시야 방해 최소화)
+                const isMobileView = viewW < 640;
+                const mmScale = isMobileView
+                    ? (mapData.cols >= 34 ? 1.8 : 2.2)
+                    : (mapData.cols >= 34 ? 3.2 : mapData.cols <= 22 ? 4.8 : 4);
                 const mmW = Math.round(mapData.cols * mmScale);
                 const mmH = Math.round(mapData.rows * mmScale);
-                const mmX = viewW - mmW - 14;
-                const mmY = 14;
+                const mmX = viewW - mmW - (isMobileView ? 8 : 14);
+                const mmY = isMobileView ? 8 : 14;
                 ctx.fillStyle = 'rgba(2, 6, 23, 0.78)';
                 ctx.beginPath();
                 ctx.roundRect(mmX - 5, mmY - 5, mmW + 10, mmH + 10, 8);
@@ -1417,7 +1455,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     return (
         <div
             ref={containerRef}
-            className="relative w-full flex-1 min-h-[430px] sm:min-h-[520px] rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl bg-slate-950 select-none"
+            className="relative w-full flex-1 min-h-[320px] sm:min-h-[500px] rounded-2xl overflow-hidden border border-slate-700/80 shadow-2xl bg-slate-950 select-none"
         >
             <canvas
                 ref={canvasRef}
@@ -1428,7 +1466,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             />
 
             {/* 조작 안내 및 도시 규모 뱃지 (좌상단) */}
-            <div className="pointer-events-none absolute top-3 left-3 hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-700/70 text-[10px] text-slate-300 backdrop-blur-sm">
+            <div className="pointer-events-none absolute top-2.5 left-2.5 hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-700/70 text-[10px] text-slate-300 backdrop-blur-sm">
                 <Compass size={12} className="text-amber-400" />
                 <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-black">
                     {tier === 'Capital' ? '수도' : tier === 'City' ? '대도시' : '소도시'}
@@ -1440,15 +1478,15 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 <span><strong className="text-amber-300">Space / E</strong> 상호작용</span>
             </div>
 
-            {/* 근접 상호작용 플로팅 프롬프트 */}
+            {/* 근접 상호작용 플로팅 프롬프트 (모바일은 상단 중앙 고정으로 하단 패드/퀵바와 겹침 0%) */}
             {nearbyLabel && !dialogue && (
                 <button
                     type="button"
                     onClick={handleInteract}
-                    className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl bg-slate-950/92 hover:bg-amber-950/90 border-2 border-amber-400/80 text-amber-200 text-xs font-black shadow-xl flex items-center gap-2 animate-bounce cursor-pointer z-20"
+                    className="absolute top-2.5 left-1/2 -translate-x-1/2 sm:top-auto sm:bottom-20 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-slate-950/92 hover:bg-amber-950/90 border-2 border-amber-400/80 text-amber-200 text-[11px] sm:text-xs font-black shadow-xl flex items-center gap-1.5 animate-bounce cursor-pointer z-20 max-w-[72%] sm:max-w-none truncate"
                 >
-                    <Sparkles size={14} className="text-amber-400" />
-                    <span>{nearbyLabel}</span>
+                    <Sparkles size={13} className="text-amber-400 shrink-0" />
+                    <span className="truncate">{nearbyLabel}</span>
                 </button>
             )}
 
@@ -1456,7 +1494,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             {dialogue && (
                 <div
                     onClick={handleInteract}
-                    className="absolute bottom-5 left-3 right-3 sm:left-8 sm:right-8 z-30 cursor-pointer rounded-2xl border-2 border-slate-100/90 bg-gradient-to-b from-blue-950/95 via-slate-950/95 to-slate-950/98 p-4 shadow-[0_0_30px_rgba(0,0,0,0.85)]"
+                    className="absolute bottom-3 left-2.5 right-2.5 sm:bottom-5 sm:left-8 sm:right-8 z-30 cursor-pointer rounded-2xl border-2 border-slate-100/90 bg-gradient-to-b from-blue-950/95 via-slate-950/95 to-slate-950/98 p-3 sm:p-4 shadow-[0_0_30px_rgba(0,0,0,0.85)]"
                 >
                     <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
@@ -1470,7 +1508,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                             {dialogue.lineIndex + 1} / {dialogue.lines.length}
                         </span>
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-100 leading-relaxed min-h-[2.6rem] font-medium">
+                    <p className="text-xs sm:text-sm text-slate-100 leading-relaxed min-h-[2.4rem] font-medium">
                         {currentDialogueText}
                     </p>
                     <div className="flex justify-end items-center gap-1 mt-1 text-[10px] text-amber-300/90 font-bold animate-pulse">
@@ -1480,19 +1518,19 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 </div>
             )}
 
-            {/* 모바일 가상 D-Pad (좌하단) + 확인 버튼 (우하단) */}
+            {/* 모바일 컴팩트 가상 D-Pad (좌하단) + 확인 버튼 (우하단) — 퀵바 펼침 시 자동으로 위로 이동해 겹침 방지 */}
             {!dialogue && (
                 <>
-                    <div className="sm:hidden absolute bottom-16 left-3 z-20 grid grid-cols-3 gap-1 w-28 h-28">
+                    <div className={`sm:hidden absolute left-2.5 z-20 grid grid-cols-3 gap-0.5 w-24 h-24 transition-all ${showQuickBar ? 'bottom-[74px]' : 'bottom-9'}`}>
                         <div />
                         <button
                             type="button"
                             onPointerDown={() => { dpadDirRef.current = 'up'; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/80 active:bg-amber-600/80 border border-slate-600 rounded-lg flex items-center justify-center text-white"
+                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
                         >
-                            <ArrowUp size={16} />
+                            <ArrowUp size={14} />
                         </button>
                         <div />
                         <button
@@ -1500,19 +1538,19 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                             onPointerDown={() => { dpadDirRef.current = 'left'; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/80 active:bg-amber-600/80 border border-slate-600 rounded-lg flex items-center justify-center text-white"
+                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
                         >
-                            <ArrowLeft size={16} />
+                            <ArrowLeft size={14} />
                         </button>
-                        <div className="rounded-lg bg-slate-950/60 border border-slate-800" />
+                        <div className="rounded-lg bg-slate-950/50 border border-slate-800/70" />
                         <button
                             type="button"
                             onPointerDown={() => { dpadDirRef.current = 'right'; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/80 active:bg-amber-600/80 border border-slate-600 rounded-lg flex items-center justify-center text-white"
+                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
                         >
-                            <ArrowRight size={16} />
+                            <ArrowRight size={14} />
                         </button>
                         <div />
                         <button
@@ -1520,9 +1558,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                             onPointerDown={() => { dpadDirRef.current = 'down'; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/80 active:bg-amber-600/80 border border-slate-600 rounded-lg flex items-center justify-center text-white"
+                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
                         >
-                            <ArrowDown size={16} />
+                            <ArrowDown size={14} />
                         </button>
                         <div />
                     </div>
@@ -1530,7 +1568,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     <button
                         type="button"
                         onClick={handleInteract}
-                        className="sm:hidden absolute bottom-20 right-3 z-20 w-14 h-14 rounded-full bg-amber-600/90 active:scale-95 border-2 border-amber-300 text-white font-black text-xs shadow-xl flex flex-col items-center justify-center"
+                        className={`sm:hidden absolute right-2.5 z-20 w-12 h-12 rounded-full bg-amber-600/90 active:scale-95 border-2 border-amber-300 text-white font-black text-[11px] shadow-xl flex flex-col items-center justify-center transition-all ${showQuickBar ? 'bottom-[82px]' : 'bottom-12'}`}
                     >
                         <span>확인</span>
                     </button>
@@ -1539,24 +1577,24 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
 
             {/* 하단 접이식 빠른 이동 퀵바 (걷지 않고 즉시 구역 진입 지원) */}
             {!dialogue && (
-                <div className="absolute bottom-3 left-2 right-2 z-20 flex flex-col items-center pointer-events-none">
+                <div className="absolute bottom-2 left-2 right-2 z-20 flex flex-col items-center pointer-events-none">
                     <button
                         type="button"
                         onClick={() => setShowQuickBar(v => !v)}
-                        className="pointer-events-auto mb-1 px-2.5 py-0.5 rounded-t-lg bg-slate-950/85 border border-b-0 border-slate-700/80 text-[10px] font-bold text-slate-300 hover:text-amber-300 flex items-center gap-1"
+                        className="pointer-events-auto mb-1 px-2.5 py-0.5 rounded-lg bg-slate-950/88 border border-slate-700/80 text-[10px] font-bold text-slate-300 hover:text-amber-300 flex items-center gap-1 shadow"
                     >
                         <MapIcon size={11} className="text-amber-400" />
                         <span>빠른 이동</span>
                         {showQuickBar ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
                     </button>
                     {showQuickBar && (
-                        <div className="pointer-events-auto max-w-full overflow-x-auto flex items-center gap-1.5 px-2 py-1.5 rounded-xl bg-slate-950/90 border border-slate-700/80 backdrop-blur-md shadow-xl custom-scrollbar">
+                        <div className="pointer-events-auto max-w-full overflow-x-auto flex items-center gap-1.5 px-2 py-1.5 rounded-xl bg-slate-950/92 border border-slate-700/80 backdrop-blur-md shadow-xl custom-scrollbar">
                             {mapData.portals.map(pt => (
                                 <button
                                     key={pt.id}
                                     type="button"
                                     onClick={() => triggerPortalAction(pt)}
-                                    className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-amber-400/70 text-[10.5px] font-bold text-slate-200 whitespace-nowrap flex items-center gap-1 transition-all active:scale-95 shrink-0"
+                                    className="px-2 sm:px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-amber-400/70 text-[10px] sm:text-[10.5px] font-bold text-slate-200 whitespace-nowrap flex items-center gap-1 transition-all active:scale-95 shrink-0"
                                 >
                                     <span>{pt.iconText}</span>
                                     <span>{pt.label}</span>

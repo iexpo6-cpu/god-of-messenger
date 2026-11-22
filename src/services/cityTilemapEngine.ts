@@ -293,7 +293,8 @@ export interface BuildCityTilemapParams {
     isElfNation: boolean;
     isBeastNation: boolean;
     isDemonNation: boolean;
-    canOpenTranscendent: boolean;
+    canOpenTranscendentArena?: boolean;
+    canOpenAbyssTower?: boolean;
     timeLabel: string;
     isMythicBoss: boolean;
     bossName?: string;
@@ -417,143 +418,237 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
         portals.push(adjusted);
     };
 
-    const hasDistrict = (d: DistrictType) => params.activeDistricts.includes(d);
+    const isShingye = params.region === '신계';
+    const isMagye = params.region === '마계' || params.nation === '임페리얼 제국';
+    const hasDistrict = (d: DistrictType) => !isShingye && !isMagye && params.activeDistricts.includes(d);
     const northW = isCapital ? 8 : isSmall ? 4 : 6;
     const northH = isCapital ? 4 : 3;
     const northX = cx - Math.floor(northW / 2);
-
-    // 북쪽 중앙: 수도 왕궁 또는 종족 특수 도시 또는 중앙 성소
-    if (params.isElfNation) {
-        placeBuilding({
-            id: 'elf_city', label: '실바나르 세계수 성소', subLabel: '엘프 종족 특수 도시',
-            actionType: 'elf_city', spriteKind: 'special_elf',
-            buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
-            doorX: cx, doorY: 2 + northH - 1, roofColor: '#059669', accentColor: '#34d399', iconText: '🌿'
-        });
-    } else if (params.isBeastNation) {
-        placeBuilding({
-            id: 'beast_city', label: '페랄디아 대투기장', subLabel: '수인 종족 특수 도시',
-            actionType: 'beast_city', spriteKind: 'special_beast',
-            buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
-            doorX: cx, doorY: 2 + northH - 1, roofColor: '#c2410c', accentColor: '#fb923c', iconText: '🦁'
-        });
-    } else if (params.isDemonNation) {
-        placeBuilding({
-            id: 'demon_city', label: '아비살론 암흑 성채', subLabel: '마족 종족 특수 도시',
-            actionType: 'demon_city', spriteKind: 'special_demon',
-            buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
-            doorX: cx, doorY: 2 + northH - 1, roofColor: '#6d28d9', accentColor: '#c084fc', iconText: '🦇'
-        });
-    } else if (hasDistrict('RoyalCourt')) {
-        placeBuilding({
-            id: 'royal_court', label: DISTRICT_CONFIG.RoyalCourt.label, subLabel: '수도 왕궁 알현',
-            actionType: 'district', district: 'RoyalCourt', spriteKind: 'landmark',
-            buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
-            doorX: cx, doorY: 2 + northH - 1, roofColor: '#b45309', accentColor: '#fbbf24', iconText: '👑'
-        });
-    } else {
-        placeBuilding({
-            id: 'city_hall', label: '도시 행정 광장', subLabel: `${params.city} 중심부`,
-            actionType: 'district', district: 'Residential', spriteKind: 'landmark',
-            buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
-            doorX: cx, doorY: 2 + northH - 1, roofColor: '#475569', accentColor: '#94a3b8', iconText: '🏛️'
-        });
-    }
-
     const sideW = isSmall ? 4 : 5;
     const sideH = isSmall ? 2 : 3;
-
-    // 북서쪽: 상업 지구
-    if (hasDistrict('Commercial')) {
-        placeBuilding({
-            id: 'commercial', label: DISTRICT_CONFIG.Commercial.label, subLabel: '상점 · 대장간 · 거래소',
-            actionType: 'district', district: 'Commercial', spriteKind: 'shop',
-            buildingX: 2, buildingY: 2, buildingW: sideW, buildingH: sideH,
-            doorX: 2 + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
-            roofColor: '#d97706', accentColor: '#fcd34d', iconText: '🏪'
-        });
-    }
-
-    // 북동쪽: 거주 지구
-    if (hasDistrict('Residential')) {
-        const rx = cols - 2 - sideW;
-        placeBuilding({
-            id: 'residential', label: DISTRICT_CONFIG.Residential.label, subLabel: '여관 · 주택 · 암시장',
-            actionType: 'district', district: 'Residential', spriteKind: 'house',
-            buildingX: rx, buildingY: 2, buildingW: sideW, buildingH: sideH,
-            doorX: rx + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
-            roofColor: '#15803d', accentColor: '#86efac', iconText: '🏠'
-        });
-    }
-
-    const midY = isSmall ? cy + 1 : cy + 1;
-    const midW = isSmall ? 3 : 4;
-    const midH = isSmall ? 2 : 3;
-
-    // 서쪽 중하단: 용병 길드
-    if (hasDistrict('Mercenary')) {
-        const mx = isSmall ? 2 : 6;
-        placeBuilding({
-            id: 'mercenary', label: DISTRICT_CONFIG.Mercenary.label, subLabel: '의뢰 · 파티 모집',
-            actionType: 'district', district: 'Mercenary', spriteKind: 'shop',
-            buildingX: mx, buildingY: midY, buildingW: midW, buildingH: midH,
-            doorX: mx + Math.floor(midW / 2), doorY: midY + midH - 1,
-            roofColor: '#b91c1c', accentColor: '#fca5a5', iconText: '⚔️'
-        });
-    }
-
-    // 동쪽 중하단: 레귤러스 학교
-    if (hasDistrict('Academic')) {
-        const ax = isSmall ? cols - 2 - midW : cols - 6 - midW;
-        placeBuilding({
-            id: 'academic', label: DISTRICT_CONFIG.Academic.label, subLabel: '학교 · 도서관',
-            actionType: 'district', district: 'Academic', spriteKind: 'house',
-            buildingX: ax, buildingY: midY, buildingW: midW, buildingH: midH,
-            doorX: ax + Math.floor(midW / 2), doorY: midY + midH - 1,
-            roofColor: '#0e7490', accentColor: '#67e8f9', iconText: '📚'
-        });
-    }
-
     const botY = rows - 4;
     const botW = isSmall ? 3 : 4;
 
-    // 남서쪽: 군사 구역
-    if (hasDistrict('Military')) {
+    if (isShingye) {
+        // === 신계 전용 시설만 배치 (상업지구·학교·용병길드·군사구역·심연의 탑 없음!) ===
+        // 1. 북쪽 중앙: 신의 사자 신전
         placeBuilding({
-            id: 'military', label: DISTRICT_CONFIG.Military.label, subLabel: '병영 · 군사 훈련',
-            actionType: 'district', district: 'Military', spriteKind: 'house',
-            buildingX: 2, buildingY: botY, buildingW: botW, buildingH: 2,
-            doorX: 2 + Math.floor(botW / 2), doorY: botY + 1,
-            roofColor: '#334155', accentColor: '#94a3b8', iconText: '🛡️'
+            id: 'shingye_temple', label: '신의 사자 신전', subLabel: `${params.city} 성전 진입`,
+            actionType: 'district', district: 'Imperial', spriteKind: 'landmark',
+            buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
+            doorX: cx, doorY: 2 + northH - 1, roofColor: '#d97706', accentColor: '#fde047', iconText: '✨'
         });
-    }
 
-    // 남동쪽: 도시 외곽(사냥터) + 던전 입구
-    if (hasDistrict('Outskirts')) {
-        const ox = cols - 2 - botW * 2 - 1;
+        // 2. 북서쪽: 신성 던전 (보스 토벌)
         placeBuilding({
-            id: 'outskirts', label: '외곽 사냥터', subLabel: '필드 몬스터 토벌',
+            id: 'shingye_dungeon',
+            label: params.isMythicBoss ? `차원의 틈새 (${params.bossName || '시즌 보스'})` : '신성 던전',
+            subLabel: '신계 보스 토벌',
+            actionType: 'dungeon', spriteKind: 'special_dungeon',
+            buildingX: 2, buildingY: 2, buildingW: sideW, buildingH: sideH,
+            doorX: 2 + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
+            roofColor: params.isMythicBoss ? '#7e22ce' : '#4338ca',
+            accentColor: params.isMythicBoss ? '#e879f9' : '#a5b4fc',
+            iconText: params.isMythicBoss ? '🌀' : '⚔️'
+        });
+
+        // 3. 북동쪽: 성스러운 필드 (사냥터)
+        const rx = cols - 2 - sideW;
+        placeBuilding({
+            id: 'shingye_field', label: '성스러운 필드', subLabel: '신계 구역 탐색',
             actionType: 'district', district: 'Outskirts', openHuntMap: true, spriteKind: 'house',
-            buildingX: Math.max(cx + 2, ox), buildingY: botY, buildingW: botW, buildingH: 2,
-            doorX: Math.max(cx + 2, ox) + Math.floor(botW / 2), doorY: botY + 1,
-            roofColor: '#c2410c', accentColor: '#fdba74', iconText: '🏕️'
+            buildingX: rx, buildingY: 2, buildingW: sideW, buildingH: sideH,
+            doorX: rx + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
+            roofColor: '#059669', accentColor: '#6ee7b7', iconText: '🌿'
+        });
+
+        // 4. 초월 그랜드 아레나 (오직 '신의 거처' 전용!)
+        if (params.canOpenTranscendentArena && params.city === '신의 거처') {
+            const arenaX = Math.max(2, cx - plazaHalfW - 4);
+            const arenaY = Math.max(2, cy - plazaHalfH - 1);
+            placeBuilding({
+                id: 'transcendent_arena', label: '초월 그랜드 아레나', subLabel: '신의 거처 초월 투기장',
+                actionType: 'transcendent_arena', spriteKind: 'special_beast',
+                buildingX: arenaX, buildingY: arenaY, buildingW: 3, buildingH: 2,
+                doorX: arenaX + 1, doorY: arenaY + 1,
+                roofColor: '#b45309', accentColor: '#fbbf24', iconText: '🏆'
+            });
+        }
+    } else if (isMagye) {
+        // === 마계 전용 시설만 배치 (상업지구·학교·용병길드·군사구역 없음, 무한 심연 탑은 '임페리얼' 전용!) ===
+        // 1. 북쪽 중앙: 마신황의 궁궐
+        placeBuilding({
+            id: 'magye_palace', label: '마신황의 궁궐', subLabel: `${params.city} 궁궐 진입`,
+            actionType: 'district', district: 'Imperial', spriteKind: 'landmark',
+            buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
+            doorX: cx, doorY: 2 + northH - 1, roofColor: '#991b1b', accentColor: '#f87171', iconText: '👑'
+        });
+
+        // 2. 북서쪽: 지옥의 나락 (던전)
+        placeBuilding({
+            id: 'magye_dungeon',
+            label: params.isMythicBoss ? `차원의 틈새 (${params.bossName || '시즌 보스'})` : '지옥의 나락',
+            subLabel: '마계 나락 공략',
+            actionType: 'dungeon', spriteKind: 'special_dungeon',
+            buildingX: 2, buildingY: 2, buildingW: sideW, buildingH: sideH,
+            doorX: 2 + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
+            roofColor: params.isMythicBoss ? '#7e22ce' : '#7f1d1d',
+            accentColor: params.isMythicBoss ? '#e879f9' : '#f87171',
+            iconText: params.isMythicBoss ? '🌀' : '💀'
+        });
+
+        // 3. 북동쪽: 심연의 경계 (사냥터)
+        const rx = cols - 2 - sideW;
+        placeBuilding({
+            id: 'magye_field', label: '심연의 경계', subLabel: '마계 심연 탐색',
+            actionType: 'district', district: 'Outskirts', openHuntMap: true, spriteKind: 'house',
+            buildingX: rx, buildingY: 2, buildingW: sideW, buildingH: sideH,
+            doorX: rx + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
+            roofColor: '#7f1d1d', accentColor: '#fca5a5', iconText: '🔥'
+        });
+
+        // 4. 무한 심연 탑 (오직 마계 수도 '임페리얼' 전용!)
+        if (params.canOpenAbyssTower && params.city === '임페리얼') {
+            const abX = Math.max(2, cx - plazaHalfW - 4);
+            const abY = Math.max(2, cy - plazaHalfH - 1);
+            placeBuilding({
+                id: 'abyss_tower', label: '무한 심연 탑', subLabel: '임페리얼 전용 초월 등반',
+                actionType: 'abyss_tower', spriteKind: 'special_abyss',
+                buildingX: abX, buildingY: abY, buildingW: 3, buildingH: 2,
+                doorX: abX + 1, doorY: abY + 1,
+                roofColor: '#4c1d95', accentColor: '#c084fc', iconText: '🗼'
+            });
+        }
+    } else {
+        // === 지상 인간계 & 이종족 도시 (실제 개방된 구역만 배치) ===
+        // 북쪽 중앙: 종족 특수 도시 또는 수도 왕궁 또는 도시 행정 광장
+        if (params.isElfNation) {
+            placeBuilding({
+                id: 'elf_city', label: '엘프 교류소', subLabel: '실바나르 세계수 성소',
+                actionType: 'elf_city', spriteKind: 'special_elf',
+                buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
+                doorX: cx, doorY: 2 + northH - 1, roofColor: '#059669', accentColor: '#34d399', iconText: '🌿'
+            });
+        } else if (params.isBeastNation) {
+            placeBuilding({
+                id: 'beast_city', label: '수인 투기광장', subLabel: '페랄디아 대투기장',
+                actionType: 'beast_city', spriteKind: 'special_beast',
+                buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
+                doorX: cx, doorY: 2 + northH - 1, roofColor: '#c2410c', accentColor: '#fb923c', iconText: '🦁'
+            });
+        } else if (params.isDemonNation) {
+            placeBuilding({
+                id: 'demon_city', label: '마인 계약소', subLabel: '아비살론 암흑 성채',
+                actionType: 'demon_city', spriteKind: 'special_demon',
+                buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
+                doorX: cx, doorY: 2 + northH - 1, roofColor: '#6d28d9', accentColor: '#c084fc', iconText: '🦇'
+            });
+        } else if (hasDistrict('RoyalCourt')) {
+            placeBuilding({
+                id: 'royal_court', label: DISTRICT_CONFIG.RoyalCourt.label, subLabel: '수도 왕궁 알현',
+                actionType: 'district', district: 'RoyalCourt', spriteKind: 'landmark',
+                buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
+                doorX: cx, doorY: 2 + northH - 1, roofColor: '#b45309', accentColor: '#fbbf24', iconText: '👑'
+            });
+        } else {
+            placeBuilding({
+                id: 'city_hall', label: '도시 행정 광장', subLabel: `${params.city} 중심부`,
+                actionType: 'district', district: 'Residential', spriteKind: 'landmark',
+                buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
+                doorX: cx, doorY: 2 + northH - 1, roofColor: '#475569', accentColor: '#94a3b8', iconText: '🏛️'
+            });
+        }
+
+        // 북서쪽: 상업 지구
+        if (hasDistrict('Commercial')) {
+            placeBuilding({
+                id: 'commercial', label: DISTRICT_CONFIG.Commercial.label, subLabel: '상점 · 대장간 · 거래소',
+                actionType: 'district', district: 'Commercial', spriteKind: 'shop',
+                buildingX: 2, buildingY: 2, buildingW: sideW, buildingH: sideH,
+                doorX: 2 + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
+                roofColor: '#d97706', accentColor: '#fcd34d', iconText: '🏪'
+            });
+        }
+
+        // 북동쪽: 거주 지구
+        if (hasDistrict('Residential')) {
+            const rx = cols - 2 - sideW;
+            placeBuilding({
+                id: 'residential', label: DISTRICT_CONFIG.Residential.label, subLabel: '여관 · 주택 · 암시장',
+                actionType: 'district', district: 'Residential', spriteKind: 'house',
+                buildingX: rx, buildingY: 2, buildingW: sideW, buildingH: sideH,
+                doorX: rx + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
+                roofColor: '#15803d', accentColor: '#86efac', iconText: '🏠'
+            });
+        }
+
+        const midY = cy + 1;
+        const midW = isSmall ? 3 : 4;
+        const midH = isSmall ? 2 : 3;
+
+        // 서쪽 중하단: 용병 길드
+        if (hasDistrict('Mercenary')) {
+            const mx = isSmall ? 2 : 6;
+            placeBuilding({
+                id: 'mercenary', label: DISTRICT_CONFIG.Mercenary.label, subLabel: '의뢰 · 파티 모집',
+                actionType: 'district', district: 'Mercenary', spriteKind: 'shop',
+                buildingX: mx, buildingY: midY, buildingW: midW, buildingH: midH,
+                doorX: mx + Math.floor(midW / 2), doorY: midY + midH - 1,
+                roofColor: '#b91c1c', accentColor: '#fca5a5', iconText: '⚔️'
+            });
+        }
+
+        // 동쪽 중하단: 레귤러스 학교
+        if (hasDistrict('Academic')) {
+            const ax = isSmall ? cols - 2 - midW : cols - 6 - midW;
+            placeBuilding({
+                id: 'academic', label: DISTRICT_CONFIG.Academic.label, subLabel: '학교 · 도서관',
+                actionType: 'district', district: 'Academic', spriteKind: 'house',
+                buildingX: ax, buildingY: midY, buildingW: midW, buildingH: midH,
+                doorX: ax + Math.floor(midW / 2), doorY: midY + midH - 1,
+                roofColor: '#0e7490', accentColor: '#67e8f9', iconText: '📚'
+            });
+        }
+
+        // 남서쪽: 군사 구역
+        if (hasDistrict('Military')) {
+            placeBuilding({
+                id: 'military', label: DISTRICT_CONFIG.Military.label, subLabel: '병영 · 군사 훈련',
+                actionType: 'district', district: 'Military', spriteKind: 'house',
+                buildingX: 2, buildingY: botY, buildingW: botW, buildingH: 2,
+                doorX: 2 + Math.floor(botW / 2), doorY: botY + 1,
+                roofColor: '#334155', accentColor: '#94a3b8', iconText: '🛡️'
+            });
+        }
+
+        // 남동쪽: 도시 외곽(사냥터) + 시험 던전
+        if (hasDistrict('Outskirts')) {
+            const ox = cols - 2 - botW * 2 - 1;
+            placeBuilding({
+                id: 'outskirts', label: '야외 사냥터', subLabel: '필드 몬스터 토벌',
+                actionType: 'district', district: 'Outskirts', openHuntMap: true, spriteKind: 'house',
+                buildingX: Math.max(cx + 2, ox), buildingY: botY, buildingW: botW, buildingH: 2,
+                doorX: Math.max(cx + 2, ox) + Math.floor(botW / 2), doorY: botY + 1,
+                roofColor: '#c2410c', accentColor: '#fdba74', iconText: '🏕️'
+            });
+        }
+
+        const dunX = cols - 2 - botW;
+        placeBuilding({
+            id: 'dungeon',
+            label: params.isMythicBoss ? `차원의 틈새 (${params.bossName || '시즌 보스'})` : '시험 던전',
+            subLabel: '2D 미궁 탐험 진입',
+            actionType: 'dungeon',
+            spriteKind: 'special_dungeon',
+            buildingX: dunX, buildingY: botY, buildingW: botW, buildingH: 2,
+            doorX: dunX + Math.floor(botW / 2), doorY: botY + 1,
+            roofColor: params.isMythicBoss ? '#7e22ce' : '#7f1d1d',
+            accentColor: params.isMythicBoss ? '#e879f9' : '#f87171',
+            iconText: params.isMythicBoss ? '🌀' : '💀'
         });
     }
-    const dunX = cols - 2 - botW;
-    placeBuilding({
-        id: 'dungeon',
-        label: params.isMythicBoss ? `차원의 틈새 (${params.bossName || '시즌 보스'})` : '던전 입구',
-        subLabel: '2D 미궁 탐험 진입',
-        actionType: 'dungeon',
-        spriteKind: 'special_dungeon',
-        buildingX: dunX, buildingY: botY, buildingW: botW, buildingH: 2,
-        doorX: dunX + Math.floor(botW / 2), doorY: botY + 1,
-        roofColor: params.isMythicBoss ? '#7e22ce' : '#7f1d1d',
-        accentColor: params.isMythicBoss ? '#e879f9' : '#f87171',
-        iconText: params.isMythicBoss ? '🌀' : '💀'
-    });
 
-    // 내 기지 (특수 건물 전용)
+    // 내 기지 (현재 도시에 보유 중인 경우에만 표시)
     if (params.hasBaseInCurrentLocation) {
         const baseX = Math.min(cols - 5, cx + plazaHalfW + 1);
         const baseY = Math.max(2, cy - plazaHalfH - 1);
@@ -563,19 +658,6 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
             buildingX: baseX, buildingY: baseY, buildingW: 3, buildingH: 2,
             doorX: baseX + 1, doorY: baseY + 1,
             roofColor: '#047857', accentColor: '#34d399', iconText: '🏰'
-        });
-    }
-
-    // 초월 콘텐츠 포탈 (무한 심연 탑 — 특수 건물 전용)
-    if (params.canOpenTranscendent) {
-        const abX = Math.max(2, cx - plazaHalfW - 4);
-        const abY = Math.max(2, cy - plazaHalfH - 1);
-        placeBuilding({
-            id: 'abyss_tower', label: '무한 심연 탑', subLabel: '초월 엔드게임 등반',
-            actionType: 'abyss_tower', spriteKind: 'special_abyss',
-            buildingX: abX, buildingY: abY, buildingW: 3, buildingH: 2,
-            doorX: abX + 1, doorY: abY + 1,
-            roofColor: '#4c1d95', accentColor: '#c084fc', iconText: '🗼'
         });
     }
 

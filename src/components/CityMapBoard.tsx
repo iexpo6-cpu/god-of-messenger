@@ -30,6 +30,7 @@ interface Props {
     onOpenBeastCity?: () => void;
     onOpenTranscendentArena?: () => void;
     onOpenAbyssTower?: () => void;
+    onInspectCompanion?: (companionId: string) => void;
     onTravel?: (destination: any, cost: number, days: number) => void;
     onUpdateCharacter?: (updatedChar: Character, logMessage: string) => void;
     onStartBattle?: (enemies: any[], battleType: string, sourceId?: string) => void;
@@ -47,6 +48,7 @@ const CityMapBoard: React.FC<Props> = ({
     onOpenBeastCity,
     onOpenTranscendentArena,
     onOpenAbyssTower,
+    onInspectCompanion,
     onTravel,
     onUpdateCharacter,
     onStartBattle,
@@ -670,32 +672,32 @@ const CityMapBoard: React.FC<Props> = ({
                     <button
                         type="button"
                         onClick={onOpenCharacterSheet}
-                        className="ml-2 mt-1.5 sm:mt-2.5 px-3 py-2 rounded-xl bg-slate-950/90 hover:bg-amber-950/80 border border-amber-500/50 hover:border-amber-400 text-amber-300 text-[10px] sm:text-[11px] font-black shadow-xl backdrop-blur-md flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                        className="ml-1.5 sm:ml-2 mt-1 sm:mt-2.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-slate-950/90 hover:bg-amber-950/80 border border-amber-500/50 hover:border-amber-400 text-amber-300 text-[10px] sm:text-[11px] font-black shadow-xl backdrop-blur-md flex items-center gap-1 transition-all active:scale-95 cursor-pointer shrink-0"
                         title="캐릭터 정보 / 인벤토리 / 동료 시트 열기"
                     >
-                        <Users2 size={13} className="text-amber-400" />
+                        <Users2 size={12} className="text-amber-400" />
                         <span>내 정보</span>
                     </button>
                 )}
 
                 {/* 쯔꾸르 2D 필드 <-> 클래식 보드 전환 토글 */}
-                <div className="ml-2 mt-1.5 sm:mt-2.5 flex items-center bg-slate-950/90 border border-slate-700/80 rounded-xl p-0.5 shadow-xl backdrop-blur-md">
+                <div className="ml-1.5 sm:ml-2 mt-1 sm:mt-2.5 flex items-center bg-slate-950/90 border border-slate-700/80 rounded-xl p-0.5 shadow-xl backdrop-blur-md shrink-0">
                     <button
                         type="button"
                         onClick={() => toggleMapViewMode('rpg')}
-                        className={`px-2.5 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-black transition-all flex items-center gap-1 ${
+                        className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-black transition-all flex items-center gap-1 ${
                             mapViewMode === 'rpg'
                                 ? 'bg-amber-500 text-slate-950 shadow'
                                 : 'text-slate-400 hover:text-white'
                         }`}
                         title="쯔꾸르 2D 탑다운 필드 모드"
                     >
-                        <span>🎮 쯔꾸르 필드</span>
+                        <span>🎮 <span className="hidden xs:inline">쯔꾸르</span><span className="xs:hidden">필드</span></span>
                     </button>
                     <button
                         type="button"
                         onClick={() => toggleMapViewMode('classic')}
-                        className={`px-2.5 py-1.5 rounded-lg text-[10px] sm:text-[11px] font-black transition-all flex items-center gap-1 ${
+                        className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-black transition-all flex items-center gap-1 ${
                             mapViewMode === 'classic'
                                 ? 'bg-indigo-600 text-white shadow'
                                 : 'text-slate-400 hover:text-white'
@@ -708,7 +710,7 @@ const CityMapBoard: React.FC<Props> = ({
             </div>
 
             {mapViewMode === 'rpg' ? (
-                <div className="z-10 flex-1 mt-1.5 mb-[58px] sm:mb-[54px] flex flex-col w-full min-h-[420px] sm:min-h-[calc(100vh-165px)]">
+                <div className="z-10 flex-1 mt-1 mb-[62px] sm:mb-[54px] flex flex-col w-full min-h-[320px] sm:min-h-[calc(100vh-165px)]">
                     <CityRpgCanvas
                         character={character}
                         region={loc.region}
@@ -720,7 +722,8 @@ const CityMapBoard: React.FC<Props> = ({
                         isElfNation={isElfNation}
                         isBeastNation={isBeastNation}
                         isDemonNation={isDemonNation}
-                        canOpenTranscendent={Boolean((character.level || 1) >= 2000 && (onOpenTranscendentArena || onOpenAbyssTower))}
+                        canOpenTranscendentArena={Boolean(isShingye && loc.city === '신의 거처' && onOpenTranscendentArena)}
+                        canOpenAbyssTower={Boolean(isMagye && loc.city === '임페리얼' && onOpenAbyssTower)}
                         timePeriod={timeAtmosphere.period as any}
                         timeLabel={timeAtmosphere.label}
                         isMythicBoss={isMythicBoss}
@@ -734,6 +737,7 @@ const CityMapBoard: React.FC<Props> = ({
                         onOpenBeastCity={onOpenBeastCity}
                         onOpenTranscendentArena={onOpenTranscendentArena}
                         onOpenAbyssTower={onOpenAbyssTower}
+                        onInspectCompanion={onInspectCompanion}
                     />
                 </div>
             ) : (
@@ -1050,8 +1054,8 @@ const CityMapBoard: React.FC<Props> = ({
                             </button>
                         </div>
 
-                        {/* 무한 심연 탑 (마계 임페리얼, 좌측 하단) */}
-                        {onOpenAbyssTower && (
+                        {/* 무한 심연 탑 (마계 임페리얼 전용, 좌측 하단) */}
+                        {loc.city === '임페리얼' && onOpenAbyssTower && (
                             <div className="absolute left-[4%] sm:left-[16%] bottom-[22%] sm:bottom-[18%] z-10">
                                 <button
                                     onClick={onOpenAbyssTower}
