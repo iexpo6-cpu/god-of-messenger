@@ -13,7 +13,7 @@ import { advanceGameTime } from '../services/gameTimeService';
 import { handleDungeonDefeatRecovery } from '../services/dungeonDefeatService';
 import { RescueGratitudeModal, RescuedPersonInfo } from './RescueGratitudeModal';
 import { createRescuedPersonData } from '../services/rescuePersonService';
-import DungeonRpgCanvas from './DungeonRpgCanvas';
+import DungeonRpgCanvas, { resolveDungeonAssetUrl } from './DungeonRpgCanvas';
 import { 
     GridDungeonState, 
     GridTile, 
@@ -797,10 +797,13 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                                     return (
                                                         <div 
                                                             key={`${x}-${y}`} 
-                                                            className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 bg-slate-900/95 rounded-md border border-slate-800/60 flex items-center justify-center text-slate-700 select-none shadow-sm"
-                                                        >
-                                                            <span className="text-[10px] opacity-40">■</span>
-                                                        </div>
+                                                            className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 bg-slate-900/95 rounded-md border border-slate-800/60 flex items-center justify-center text-slate-700 select-none shadow-sm overflow-hidden"
+                                                            style={{
+                                                                backgroundImage: `url(${resolveDungeonAssetUrl(isSeasonalBoss ? 'tile_wall_mythic' : 'tile_wall_stone')})`,
+                                                                backgroundSize: 'cover',
+                                                                backgroundPosition: 'center'
+                                                            }}
+                                                        />
                                                     );
                                                 }
 
@@ -809,42 +812,47 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                                     <button
                                                         key={`${x}-${y}`}
                                                         onClick={() => handleMoveToTile(x, y)}
+                                                        style={{
+                                                            backgroundImage: `url(${resolveDungeonAssetUrl(isSeasonalBoss ? 'tile_floor_mythic' : 'tile_floor_stone')})`,
+                                                            backgroundSize: 'cover',
+                                                            backgroundPosition: 'center'
+                                                        }}
                                                         className={`
-                                                            w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-md flex items-center justify-center transition-all relative
+                                                            w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-md flex items-center justify-center transition-all relative overflow-hidden
                                                             ${isPlayer 
-                                                                ? 'bg-amber-500/20 border-2 border-amber-400 shadow-lg shadow-amber-500/30 ring-2 ring-amber-400/40 z-10 scale-105' 
+                                                                ? 'border-2 border-amber-400 shadow-lg shadow-amber-500/30 ring-2 ring-amber-400/40 z-10 scale-105' 
                                                                 : isSelected
-                                                                    ? 'border-2 border-cyan-400 bg-cyan-950/40 z-10'
+                                                                    ? 'border-2 border-cyan-400 z-10'
                                                                     : isAdjacent
-                                                                        ? 'bg-slate-800/80 hover:bg-slate-700 border border-slate-600/70 hover:border-slate-400 cursor-pointer'
-                                                                        : 'bg-slate-800/40 border border-slate-700/40'}
+                                                                        ? 'border border-sky-400/60 hover:border-amber-300 cursor-pointer'
+                                                                        : 'border border-slate-800/70'}
                                                         `}
                                                     >
-                                                        {/* 플레이어 심볼 */}
+                                                        {/* 플레이어 및 오브젝트 심볼 스프라이트 */}
                                                         {isPlayer ? (
-                                                            <span className="text-base sm:text-lg animate-bounce select-none">🧙</span>
+                                                            <span className="text-base sm:text-lg animate-bounce select-none drop-shadow">🧙</span>
                                                         ) : tile.type === 'stairs' ? (
-                                                            <span className="text-cyan-300 text-xs sm:text-sm font-black select-none" title="하층 계단">🪜⬇️</span>
+                                                            <img src={resolveDungeonAssetUrl('stairs_down')} alt="하층 계단" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" title="하층 계단" />
                                                         ) : tile.type === 'stairs_up' ? (
-                                                            <span className="text-amber-300 text-xs sm:text-sm font-black select-none" title="상층 계단">🪜⬆️</span>
+                                                            <img src={resolveDungeonAssetUrl('stairs_up')} alt="상층 계단" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" title="상층 계단" />
                                                         ) : tile.type === 'entrance' ? (
-                                                            <span className="text-emerald-400 text-xs sm:text-sm font-bold select-none" title="1층 출구">🚪</span>
+                                                            <img src={resolveDungeonAssetUrl('entrance_gate')} alt="1층 출구" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" title="1층 출구" />
                                                         ) : tile.content && !tile.isCleared && !tile.isIdentified ? (
-                                                            <HelpCircle size={16} className="text-amber-400 animate-pulse drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]" title="미지의 반응" />
+                                                            <img src={resolveDungeonAssetUrl('mystery_wisp')} alt="미지의 반응" className="w-6 h-6 sm:w-7 sm:h-7 object-contain animate-pulse drop-shadow" title="미지의 반응" />
                                                         ) : tile.content === 'boss' && !tile.isCleared ? (
-                                                            <Crown size={18} className="text-amber-400 animate-pulse" />
+                                                            <img src={resolveDungeonAssetUrl('boss_throne')} alt="보스 제단" className="w-7 h-7 sm:w-8 sm:h-8 object-contain animate-pulse drop-shadow" />
                                                         ) : tile.content === 'miniboss' && !tile.isCleared ? (
-                                                            <Skull size={16} className="text-rose-400" />
+                                                            <img src={resolveDungeonAssetUrl('miniboss_marker')} alt="정예 수호수" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
                                                         ) : tile.content === 'enemy' && !tile.isCleared ? (
-                                                            <Sword size={14} className="text-red-400" />
+                                                            <img src={resolveDungeonAssetUrl('enemy_marker')} alt="마물" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
                                                         ) : tile.content === 'chest' && !tile.isCleared ? (
-                                                            <Gift size={15} className="text-yellow-400 animate-bounce" />
+                                                            <img src={resolveDungeonAssetUrl('chest_closed')} alt="보물 상자" className="w-6 h-6 sm:w-7 sm:h-7 object-contain animate-bounce drop-shadow" />
                                                         ) : tile.content === 'shrine' && !tile.isCleared ? (
-                                                            <Sparkles size={15} className="text-cyan-300" />
+                                                            <img src={resolveDungeonAssetUrl('shrine_fountain')} alt="성스러운 샘" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
                                                         ) : tile.content === 'rune_stone' && !tile.isCleared ? (
-                                                            <Lock size={15} className="text-purple-400 animate-pulse" />
+                                                            <img src={resolveDungeonAssetUrl('rune_locked')} alt="봉인석" className="w-6 h-6 sm:w-7 sm:h-7 object-contain animate-pulse drop-shadow" />
                                                         ) : (
-                                                            <div className="w-1 h-1 bg-slate-600 rounded-full opacity-40" />
+                                                            <div className="w-1 h-1 bg-slate-400/30 rounded-full" />
                                                         )}
                                                     </button>
                                                 );
@@ -870,9 +878,12 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                     </span>
                                     {selectedTile?.content && !selectedTile.isCleared && !selectedTile.isIdentified ? (
                                         <>
-                                            <h4 className="text-base font-bold text-amber-300 flex items-center gap-2">
-                                                <HelpCircle size={18} className="animate-pulse text-amber-400" /> 미지의 기척 (식별 필요)
-                                            </h4>
+                                            <div className="flex items-center gap-2.5">
+                                                <img src={resolveDungeonAssetUrl('mystery_wisp')} alt="미지의 기척" className="w-10 h-10 object-contain shrink-0 animate-pulse" />
+                                                <h4 className="text-base font-bold text-amber-300 flex items-center gap-2">
+                                                    미지의 기척 (식별 필요)
+                                                </h4>
+                                            </div>
                                             <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
                                                 어둠 속에서 정체를 알 수 없는 기척이 느껴집니다. 1칸 더 가까이 다가가면 무엇인지 식별할 수 있습니다.
                                             </p>
@@ -887,9 +898,30 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                         </>
                                     ) : (
                                         <>
-                                            <h4 className="text-base font-bold text-white flex items-center gap-2">
-                                                {selectedTile?.name || (selectedTile?.type === 'wall' ? '단단한 석벽' : '미궁 복도')}
-                                            </h4>
+                                            <div className="flex items-center gap-2.5">
+                                                {selectedTile && (
+                                                    <img
+                                                        src={resolveDungeonAssetUrl(
+                                                            selectedTile.content === 'boss' ? 'boss_throne' :
+                                                            selectedTile.content === 'miniboss' ? 'miniboss_marker' :
+                                                            selectedTile.content === 'enemy' ? 'enemy_marker' :
+                                                            selectedTile.content === 'chest' ? (selectedTile.isCleared ? 'chest_open' : 'chest_closed') :
+                                                            selectedTile.content === 'shrine' ? 'shrine_fountain' :
+                                                            selectedTile.content === 'rune_stone' ? (selectedTile.isCleared ? 'rune_active' : 'rune_locked') :
+                                                            selectedTile.type === 'stairs' ? 'stairs_down' :
+                                                            selectedTile.type === 'stairs_up' ? 'stairs_up' :
+                                                            selectedTile.type === 'entrance' ? 'entrance_gate' :
+                                                            selectedTile.type === 'wall' ? (isSeasonalBoss ? 'tile_wall_mythic' : 'tile_wall_stone') :
+                                                            (isSeasonalBoss ? 'tile_floor_mythic' : 'tile_floor_stone')
+                                                        )}
+                                                        alt="타일 아이콘"
+                                                        className="w-10 h-10 object-contain rounded-lg bg-slate-900/90 border border-slate-800 p-1 shrink-0"
+                                                    />
+                                                )}
+                                                <h4 className="text-base font-bold text-white flex items-center gap-2">
+                                                    {selectedTile?.name || (selectedTile?.type === 'wall' ? '단단한 석벽' : '미궁 복도')}
+                                                </h4>
+                                            </div>
                                             <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
                                                 {selectedTile?.description || '미궁의 어두운 바닥입니다. 발걸음을 옮겨 시야를 넓힐 수 있습니다.'}
                                             </p>

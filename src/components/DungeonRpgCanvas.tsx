@@ -48,7 +48,13 @@ const DUNGEON_ASSET_KEYS = [
     'barrel_crates',
     'skeleton_bones',
     'crystal_cluster',
-    'magic_circle'
+    'magic_circle',
+    'zone_fire_lava',
+    'zone_water_puddle',
+    'zone_ice_frost',
+    'zone_poison_swamp',
+    'zone_holy_sanctuary',
+    'zone_thunder_crack'
 ] as const;
 
 type DungeonAssetKey = typeof DUNGEON_ASSET_KEYS[number];
@@ -56,7 +62,7 @@ type DungeonAssetKey = typeof DUNGEON_ASSET_KEYS[number];
 const dungeonImageCache = new Map<string, HTMLImageElement | null>();
 const dungeonImageLoading = new Set<string>();
 
-const resolveDungeonAssetUrl = (key: DungeonAssetKey): string => {
+export const resolveDungeonAssetUrl = (key: DungeonAssetKey): string => {
     const base = (import.meta as any).env?.BASE_URL || '/';
     const normalizedBase = base.endsWith('/') ? base : `${base}/`;
     return `${normalizedBase}assets/props/dungeon/${key}.png`;
@@ -483,11 +489,16 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                     }
 
                     if (tile.type === 'wall') {
+                        const belowIsFloor = y + 1 < gs.height && gs.tiles[y + 1][x].type !== 'wall';
                         if (wallImg) {
                             ctx.drawImage(wallImg, px, py, TILE_PX, TILE_PX);
+                            if (belowIsFloor) {
+                                // Cast shadow onto floor below
+                                ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                                ctx.fillRect(px, py + TILE_PX, TILE_PX, 7);
+                            }
                         } else {
                             // 2.5D RPG Maker stone wall block: top cap + brick front facade
-                            const belowIsFloor = y + 1 < gs.height && gs.tiles[y + 1][x].type !== 'wall';
                             ctx.fillStyle = theme.wallTop;
                             ctx.fillRect(px, py, TILE_PX, TILE_PX);
 
@@ -516,40 +527,42 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                                 // Cast shadow onto floor below
                                 ctx.fillStyle = 'rgba(0,0,0,0.35)';
                                 ctx.fillRect(px, py + TILE_PX, TILE_PX, 7);
-
-                                // Occasional wall torch sconce!
-                                if (hVal > 0.78) {
-                                    const torchImg = getDungeonImage('wall_torch');
-                                    const tx = px + TILE_PX * 0.5;
-                                    const ty = faceY + faceH * 0.35;
-                                    if (torchImg) {
-                                        ctx.drawImage(torchImg, px + 16, faceY - 6, 32, 32);
-                                    } else {
-                                        ctx.fillStyle = '#78350f';
-                                        ctx.fillRect(tx - 2, ty, 4, 10);
-                                        ctx.fillStyle = '#fb923c';
-                                        ctx.beginPath();
-                                        ctx.arc(tx, ty - 2, 4.5 * torchFlicker, 0, Math.PI * 2);
-                                        ctx.fill();
-                                        ctx.fillStyle = '#fef08a';
-                                        ctx.beginPath();
-                                        ctx.arc(tx, ty - 3, 2.2 * torchFlicker, 0, Math.PI * 2);
-                                        ctx.fill();
-                                    }
-                                    // Warm radial glow from wall torch
-                                    const grad = ctx.createRadialGradient(tx, ty, 2, tx, ty, 58 * torchFlicker);
-                                    grad.addColorStop(0, 'rgba(251, 146, 60, 0.26)');
-                                    grad.addColorStop(1, 'rgba(251, 146, 60, 0)');
-                                    ctx.fillStyle = grad;
-                                    ctx.beginPath();
-                                    ctx.arc(tx, ty, 58 * torchFlicker, 0, Math.PI * 2);
-                                    ctx.fill();
-                                }
                             } else {
                                 // Subtle bevel border on solid wall roof
                                 ctx.strokeStyle = 'rgba(255,255,255,0.03)';
                                 ctx.strokeRect(px + 1, py + 1, TILE_PX - 2, TILE_PX - 2);
                             }
+                        }
+
+                        // Wall Torch Sconce on south-facing walls
+                        if (belowIsFloor && hVal > 0.76) {
+                            const faceH = Math.floor(TILE_PX * 0.44);
+                            const faceY = py + TILE_PX - faceH;
+                            const torchImg = getDungeonImage('wall_torch');
+                            const tx = px + TILE_PX * 0.5;
+                            const ty = faceY + faceH * 0.35;
+                            if (torchImg) {
+                                ctx.drawImage(torchImg, px + 14, faceY - 8, 36, 36);
+                            } else {
+                                ctx.fillStyle = '#78350f';
+                                ctx.fillRect(tx - 2, ty, 4, 10);
+                                ctx.fillStyle = '#fb923c';
+                                ctx.beginPath();
+                                ctx.arc(tx, ty - 2, 4.5 * torchFlicker, 0, Math.PI * 2);
+                                ctx.fill();
+                                ctx.fillStyle = '#fef08a';
+                                ctx.beginPath();
+                                ctx.arc(tx, ty - 3, 2.2 * torchFlicker, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+                            // Warm radial glow from wall torch
+                            const grad = ctx.createRadialGradient(tx, ty, 2, tx, ty, 58 * torchFlicker);
+                            grad.addColorStop(0, 'rgba(251, 146, 60, 0.26)');
+                            grad.addColorStop(1, 'rgba(251, 146, 60, 0)');
+                            ctx.fillStyle = grad;
+                            ctx.beginPath();
+                            ctx.arc(tx, ty, 58 * torchFlicker, 0, Math.PI * 2);
+                            ctx.fill();
                         }
                         continue;
                     }
@@ -567,29 +580,50 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                         // Subtle inner stone bevel
                         ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
                         ctx.strokeRect(px + 2.5, py + 2.5, TILE_PX - 5, TILE_PX - 5);
+                    }
 
-                        // Subtle cracks / moss / mythic trim
-                        if (isSeasonalBoss && hVal > 0.72) {
-                            ctx.strokeStyle = 'rgba(217, 179, 86, 0.16)';
-                            ctx.strokeRect(px + 7, py + 7, TILE_PX - 14, TILE_PX - 14);
-                        } else if (hVal < 0.16) {
-                            ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-                            ctx.beginPath();
-                            ctx.moveTo(px + 14, py + 18);
-                            ctx.lineTo(px + 24, py + 26);
-                            ctx.lineTo(px + 20, py + 37);
-                            ctx.stroke();
+                    // Decorative ambient props & elemental zones on empty floor tiles
+                    if (!tile.content && tile.type === 'floor' && !(x === gs.playerPos.x && y === gs.playerPos.y)) {
+                        if (hVal > 0.955) {
+                            const crystalImg = getDungeonImage('crystal_cluster');
+                            if (crystalImg) ctx.drawImage(crystalImg, px + 34, py + 6, 24, 24);
+                        } else if (hVal > 0.925 && hVal <= 0.955) {
+                            const pillarImg = getDungeonImage('stone_pillar');
+                            if (pillarImg) ctx.drawImage(pillarImg, px + 34, py + 2, 26, 30);
+                        } else if (hVal > 0.895 && hVal <= 0.925) {
+                            const crateImg = getDungeonImage('barrel_crates');
+                            if (crateImg) ctx.drawImage(crateImg, px + 6, py + 32, 26, 26);
+                        } else if (hVal < 0.035) {
+                            const boneImg = getDungeonImage('skeleton_bones');
+                            if (boneImg) ctx.drawImage(boneImg, px + 6, py + 34, 24, 24);
+                        } else if (hVal >= 0.035 && hVal < 0.115) {
+                            const zoneKeys: DungeonAssetKey[] = [
+                                'zone_fire_lava',
+                                'zone_water_puddle',
+                                'zone_ice_frost',
+                                'zone_poison_swamp',
+                                'zone_holy_sanctuary',
+                                'zone_thunder_crack'
+                            ];
+                            const zIdx = Math.floor(((hVal - 0.035) / 0.08) * zoneKeys.length) % zoneKeys.length;
+                            const zoneImg = getDungeonImage(zoneKeys[zIdx]);
+                            if (zoneImg) {
+                                ctx.save();
+                                ctx.globalAlpha = 0.82;
+                                ctx.drawImage(zoneImg, px + 6, py + 6, TILE_PX - 12, TILE_PX - 12);
+                                ctx.restore();
+                            }
                         }
                     }
 
-                    // Decorative ambient prop on empty cleared floor corners (subtle)
-                    if (!tile.content && tile.type === 'floor' && !(x === gs.playerPos.x && y === gs.playerPos.y)) {
-                        if (hVal > 0.94) {
-                            const crystalImg = getDungeonImage('crystal_cluster');
-                            if (crystalImg) ctx.drawImage(crystalImg, px + 36, py + 6, 22, 22);
-                        } else if (hVal < 0.04) {
-                            const boneImg = getDungeonImage('skeleton_bones');
-                            if (boneImg) ctx.drawImage(boneImg, px + 8, py + 36, 22, 22);
+                    // Holy sanctuary aura under Shrine tiles
+                    if (tile.content === 'shrine') {
+                        const holyZone = getDungeonImage('zone_holy_sanctuary');
+                        if (holyZone) {
+                            ctx.save();
+                            ctx.globalAlpha = tile.isCleared ? 0.35 : 0.75;
+                            ctx.drawImage(holyZone, px + 2, py + 6, TILE_PX - 4, TILE_PX - 4);
+                            ctx.restore();
                         }
                     }
 
