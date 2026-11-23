@@ -71,17 +71,50 @@ SHEET_SPECS_3X2 = [
             ("zone_thunder_crack", (128, 128)),
         ],
     ),
+    (
+        "g2.png",
+        [
+            ("royal_carpet", (128, 128)),
+            ("gargoyle_statue", (128, 128)),
+            ("prison_bars", (128, 128)),
+            ("arcane_bookshelf", (128, 128)),
+            ("blood_altar", (128, 128)),
+            ("campfire_rest", (128, 128)),
+        ],
+    ),
+    (
+        "g3.png",
+        [
+            ("spike_trap", (128, 128)),
+            ("rune_lever", (128, 128)),
+            ("dungeon_merchant", (128, 128)),
+            ("mimic_chest", (128, 128)),
+            ("wraith_reaper", (128, 128)),
+            ("golem_sentry", (128, 128)),
+        ],
+    ),
 ]
 
-SHEET_SPEC_2X2_TILES = (
-    "Gemini_Generated_Image_nlawcwnlawcwnlaw.png",
-    [
-        ("tile_floor_stone", (0, 0), (128, 128), False),
-        ("tile_wall_stone", (1, 0), (128, 128), False),
-        ("tile_floor_mythic", (0, 1), (128, 128), False),
-        ("tile_wall_mythic", (1, 1), (128, 128), True),  # 우측 하단 워터마크 회피 인셋
-    ],
-)
+SHEET_SPECS_2X2_TILES = [
+    (
+        "Gemini_Generated_Image_nlawcwnlawcwnlaw.png",
+        [
+            ("tile_floor_stone", (0, 0), (128, 128), False),
+            ("tile_wall_stone", (1, 0), (128, 128), False),
+            ("tile_floor_mythic", (0, 1), (128, 128), False),
+            ("tile_wall_mythic", (1, 1), (128, 128), True),
+        ],
+    ),
+    (
+        "g1.png",
+        [
+            ("tile_floor_volcanic", (0, 0), (128, 128), False),
+            ("tile_wall_volcanic", (1, 0), (128, 128), False),
+            ("tile_floor_celestial", (0, 1), (128, 128), False),
+            ("tile_wall_celestial", (1, 1), (128, 128), True),
+        ],
+    ),
+]
 
 
 def remove_chroma_bg_deep(img: Image.Image) -> Image.Image:
@@ -197,31 +230,30 @@ def main():
 
     total_saved = 0
 
-    # 1. 2x2 바닥/벽 타일 시트 크롭
-    tile_fname, tile_specs = SHEET_SPEC_2X2_TILES
-    tile_raw = resolve_raw_path(root_dir, tile_fname)
-    if tile_raw:
-        src = Image.open(tile_raw).convert("RGBA")
-        w, h = src.size
-        hw, hh = w // 2, h // 2
-        for key, (gx, gy), target_size, avoid_wm in tile_specs:
-            x0 = gx * hw
-            y0 = gy * hh
-            x1 = (gx + 1) * hw
-            y1 = (gy + 1) * hh
-            inset = int(hw * 0.025)
-            if avoid_wm:
-                # 우측 하단 워터마크(150px)를 완전히 피하면서 상단/좌측 중심의 정사각형 영역 크롭
-                side = int(hw * 0.82)
-                cropped = src.crop((x0 + inset, y0 + inset, x0 + inset + side, y0 + inset + side))
-            else:
-                cropped = src.crop((x0 + inset, y0 + inset, x1 - inset, y1 - inset))
-            resized = cropped.resize(target_size, Image.Resampling.LANCZOS)
-            save_to_all_targets(resized, out_dirs, f"{key}.png")
-            total_saved += 1
-            print(f"[2x2 TILE OK] {key}.png ({target_size[0]}x{target_size[1]})")
-    else:
-        print(f"[WARN] Missing 2x2 tile sheet: {tile_fname}")
+    # 1. 2x2 바닥/벽 타일 시트 2종 크롭
+    for tile_fname, tile_specs in SHEET_SPECS_2X2_TILES:
+        tile_raw = resolve_raw_path(root_dir, tile_fname)
+        if tile_raw:
+            src = Image.open(tile_raw).convert("RGBA")
+            w, h = src.size
+            hw, hh = w // 2, h // 2
+            for key, (gx, gy), target_size, avoid_wm in tile_specs:
+                x0 = gx * hw
+                y0 = gy * hh
+                x1 = (gx + 1) * hw
+                y1 = (gy + 1) * hh
+                inset = int(hw * 0.025)
+                if avoid_wm:
+                    side = int(hw * 0.82)
+                    cropped = src.crop((x0 + inset, y0 + inset, x0 + inset + side, y0 + inset + side))
+                else:
+                    cropped = src.crop((x0 + inset, y0 + inset, x1 - inset, y1 - inset))
+                resized = cropped.resize(target_size, Image.Resampling.LANCZOS)
+                save_to_all_targets(resized, out_dirs, f"{key}.png")
+                total_saved += 1
+                print(f"[2x2 TILE OK] {key}.png ({target_size[0]}x{target_size[1]})")
+        else:
+            print(f"[WARN] Missing 2x2 tile sheet: {tile_fname}")
 
     # 2. 3x2 오브젝트/심볼/소품/원소장판 시트 4종 스마트 분리 + 마젠타 투명화
     for fname, spec_list in SHEET_SPECS_3X2:

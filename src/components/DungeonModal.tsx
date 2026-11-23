@@ -13,13 +13,15 @@ import { advanceGameTime } from '../services/gameTimeService';
 import { handleDungeonDefeatRecovery } from '../services/dungeonDefeatService';
 import { RescueGratitudeModal, RescuedPersonInfo } from './RescueGratitudeModal';
 import { createRescuedPersonData } from '../services/rescuePersonService';
-import DungeonRpgCanvas, { resolveDungeonAssetUrl } from './DungeonRpgCanvas';
+import DungeonRpgCanvas, { resolveDungeonAssetUrl, DungeonFloatingText } from './DungeonRpgCanvas';
+import { resolveEntityRpgSprite } from '../services/rpgSpriteManifest';
 import { 
     GridDungeonState, 
     GridTile, 
     generateGridDungeonFloor, 
     revealFogOfWar,
     updateTileIdentifications,
+    stepDungeonMonsterPatrol,
     FloorCacheData 
 } from '../services/gridDungeonEngine';
 
@@ -62,6 +64,8 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
     const [rescuedModalInfo, setRescuedModalInfo] = useState<RescuedPersonInfo | null>(null);
     const [eventNotice, setEventNotice] = useState<{ title: string; desc: string; items?: { label: string; value: string }[] } | null>(null);
     const [dayChangeNotice, setDayChangeNotice] = useState<string | null>(null);
+    const [floatingNotice, setFloatingNotice] = useState<DungeonFloatingText | null>(null);
+    const [gimmickToast, setGimmickToast] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'rpg' | 'classic'>(() => {
         try {
             const saved = localStorage.getItem('shinryoku_dungeon_view_mode');
@@ -279,8 +283,8 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         
         // 시야 확장 (Fog of War)
         revealFogOfWar(newTiles, targetX, targetY, gridState.torchRadius);
-        // 근접(1칸) 타일 이벤트 식별
-        updateTileIdentifications(newTiles, targetX, targetY);
+        // 혁신안 4: 마물 1칸 배회(Patrol) 및 경계(!) 업데이트
+        stepDungeonMonsterPatrol(newTiles, { x: targetX, y: targetY });
 
         const newPos = { x: targetX, y: targetY };
         const updatedGrid: GridDungeonState = {
@@ -290,7 +294,18 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         };
 
         // 타일 이벤트/오브젝트 처리
-        processTileContent(updatedGrid, targetTile, activeChar);
+        processTileContent(updatedGrid, newTiles[targetY][targetX], activeChar);
+    };
+
+    const emitFloatingGimmick = (x: number, y: number, text: string, color: string, toastMsg: string) => {
+        setFloatingNotice({
+            id: `${Date.now()}_${Math.random()}`,
+            x,
+            y,
+            text,
+            color
+        });
+        setGimmickToast(toastMsg);
     };
 
     /**
@@ -306,7 +321,6 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
 
         // 1. 보스 도어 / 보스 전투
         if (targetTile.content === 'boss' && !targetTile.isCleared) {
-            // 시즌 보스 룬석 요구조건 검사
             if (currentGrid.totalRunesRequired > 0 && currentGrid.activeRunesCount < currentGrid.totalRunesRequired) {
                 setEventNotice({
                     title: '봉인된 심연의 결계',
@@ -316,8 +330,6 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                 setSelectedTile(targetTile);
                 return;
             }
-
-            // 보스 전투 시작
             triggerGridBattle('boss', targetTile, activeChar, currentGrid);
             return;
         }
@@ -340,10 +352,9 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
             const manaStone = targetTile.treasureData?.manaStone || 5;
 
             targetTile.isCleared = true;
-            targetTile.content = undefined;
             targetTile.treasureData = undefined;
-            targetTile.name = '미궁 복도';
-            targetTile.description = '미궁의 어두운 바닥입니다. 발걸음을 옮겨 시야를 넓힐 수 있습니다.';
+            targetTile.name = '열린 보물 상자';
+            targetTile.description = '이미 보물을 모두 회수한 빈 황금 상자입니다.';
 
             const newChar = { ...activeChar };
             newChar.money = (newChar.money || 0) + gold;
@@ -351,14 +362,13 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                 newChar.base.resources.manaStone = (newChar.base.resources.manaStone || 0) + manaStone;
             }
 
-            setEventNotice({
-                title: '비밀 보물 상자 개봉!',
-                desc: '미궁 구석에 숨겨져 있던 고대 보물 상자를 열었습니다.',
-                items: [
-                    { label: '골드 획득', value: `+${gold.toLocaleString()} G` },
-                    { label: '마정석 획득', value: `+${manaStone} 개` }
-                ]
-            });
+            emitFloatingGimmick(
+                playerPos.x,
+                playerPos.y,
+                `🎁 +${gold.toLocaleString()}G · 마정석 +${manaStone}`,
+                '#fde047',
+                `[보물 상자 개봉] ${gold.toLocaleString()} 골드와 마정석 ${manaStone}개를 획득했습니다!`
+            );
 
             const nextGrid = updatedGridState(currentGrid);
             setGridState(nextGrid);
@@ -370,10 +380,9 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         // 5. 성스러운 샘 (Shrine)
         if (targetTile.content === 'shrine' && !targetTile.isCleared) {
             targetTile.isCleared = true;
-            targetTile.content = undefined;
             targetTile.shrineData = undefined;
-            targetTile.name = '미궁 복도';
-            targetTile.description = '미궁의 어두운 바닥입니다. 발걸음을 옮겨 시야를 넓힐 수 있습니다.';
+            targetTile.name = '치유의 샘 (사용됨)';
+            targetTile.description = '영험한 샘물을 마셔 기력을 회복한 성소입니다.';
 
             const pFinal = calculateFinalStats(activeChar).finalStats;
             const newChar = { ...activeChar };
@@ -394,11 +403,13 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                 });
             }
 
-            setEventNotice({
-                title: '치유의 신성한 샘',
-                desc: '영험한 샘물을 마셔 파티 전원의 생명력과 마력이 60% 회복되었습니다.',
-                items: [{ label: 'HP/MP 회복', value: '+60%' }]
-            });
+            emitFloatingGimmick(
+                playerPos.x,
+                playerPos.y,
+                '⛲ 파티 HP/MP +60% 회복!',
+                '#67e8f9',
+                '[치유의 신성한 샘] 영험한 샘물을 마셔 파티 전원의 생명력과 마력이 60% 회복되었습니다!'
+            );
 
             const nextGrid = updatedGridState(currentGrid);
             setGridState(nextGrid);
@@ -410,17 +421,19 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         // 6. 봉인의 룬석 (Rune Stone - 시즌 보스 전용)
         if (targetTile.content === 'rune_stone' && !targetTile.isCleared) {
             targetTile.isCleared = true;
-            targetTile.content = undefined;
-            targetTile.name = '미궁 복도';
-            targetTile.description = '미궁의 어두운 바닥입니다. 발걸음을 옮겨 시야를 넓힐 수 있습니다.';
+            targetTile.name = '해제된 신화 봉인석';
+            targetTile.description = '고대 룬 각인이 활성화되어 결계가 약화된 오벨리스크입니다.';
             currentGrid.activeRunesCount += 1;
             const runes = currentGrid.activeRunesCount;
             const total = currentGrid.totalRunesRequired;
 
-            setEventNotice({
-                title: '신화의 봉인석 해제!',
-                desc: `고대의 룬 각인을 파괴하여 심연 결계의 힘을 약화시켰습니다! (해제된 각인: ${runes} / ${total})`
-            });
+            emitFloatingGimmick(
+                playerPos.x,
+                playerPos.y,
+                `🔮 봉인석 해제 (${runes}/${total})`,
+                '#d8b4fe',
+                `[신화의 봉인석 해제] 심연 결계의 봉인석을 활성화했습니다! (${runes} / ${total})`
+            );
 
             const nextGrid = updatedGridState(currentGrid);
             setGridState(nextGrid);
@@ -429,13 +442,215 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
             return;
         }
 
-        // 7. 하층 계단 도달 (Stairs)
+        // 7. 혁신안 3 확장: 인터랙티브 파밍 소품 & g2/g3 신규 구조물 기믹
+        if (targetTile.propType && targetTile.propType !== 'pillar' && targetTile.propType !== 'gargoyle' && !targetTile.isCleared) {
+            const pFinal = calculateFinalStats(activeChar).finalStats;
+            const newChar = { ...activeChar };
+            let logMsg = '';
+
+            if (targetTile.propType === 'crate') {
+                targetTile.isCleared = true;
+                targetTile.propType = undefined;
+                targetTile.name = '부서진 보급통 잔해';
+                targetTile.description = '보급품을 회수하고 남은 나무 파편입니다.';
+                const bonusGold = (currentFloor + 1) * 3500 + Math.floor(Math.random() * 2500);
+                const healHp = Math.floor(pFinal.maxHp * 0.15);
+                newChar.money = (newChar.money || 0) + bonusGold;
+                newChar.stats.hp = Math.min(pFinal.maxHp, newChar.stats.hp + healHp);
+                logMsg = `[보급통 파괴] 오크통을 부수어 비상금 +${bonusGold.toLocaleString()}G와 비상 식량(HP +15%)을 획득했습니다!`;
+                emitFloatingGimmick(playerPos.x, playerPos.y, `📦 +${bonusGold.toLocaleString()}G · HP +15%`, '#fdba74', logMsg);
+            } else if (targetTile.propType === 'bones') {
+                targetTile.isCleared = true;
+                targetTile.propType = undefined;
+                targetTile.name = '수습된 모험가의 유해';
+                targetTile.description = '선대 탐험가의 유품을 수습하고 명복을 빌어주었습니다.';
+                const bonusStone = 2 + currentFloor;
+                if (newChar.base?.resources) {
+                    newChar.base.resources.manaStone = (newChar.base.resources.manaStone || 0) + bonusStone;
+                }
+                for (let ry = 0; ry < currentGrid.height; ry++) {
+                    for (let rx = 0; rx < currentGrid.width; rx++) {
+                        const rt = tiles[ry][rx];
+                        if ((rt.content === 'chest' || rt.content === 'rune_stone' || rt.content === 'shrine' || rt.type === 'stairs') && !rt.isRevealed) {
+                            revealFogOfWar(tiles, rx, ry, 1.5);
+                            break;
+                        }
+                    }
+                }
+                logMsg = `[유골 조사] 선대 모험가의 지도 조각으로 숨겨진 구역이 밝혀지고 마정석 +${bonusStone}개를 얻었습니다!`;
+                emitFloatingGimmick(playerPos.x, playerPos.y, `💀 마정석 +${bonusStone} · 비밀지도 개방!`, '#e2e8f0', logMsg);
+            } else if (targetTile.propType === 'crystal') {
+                targetTile.isCleared = true;
+                targetTile.name = '공명 중인 마력 수정 (비콘)';
+                targetTile.description = '마력을 방출하여 주변 어둠을 영구적으로 밝히고 있는 크리스탈입니다.';
+                const mpGain = Math.floor(pFinal.maxMp * 0.35);
+                newChar.stats.mp = Math.min(pFinal.maxMp, newChar.stats.mp + mpGain);
+                revealFogOfWar(tiles, playerPos.x, playerPos.y, 3.2);
+                logMsg = `[마력 수정 공명] 수정의 마나를 흡수하여 MP +35% 회복 및 주변 3.2칸 시야를 영구 점등했습니다!`;
+                emitFloatingGimmick(playerPos.x, playerPos.y, '💎 MP +35% · 수정 비콘 점등!', '#38bdf8', logMsg);
+            } else if (targetTile.propType === 'campfire') {
+                targetTile.isCleared = true;
+                targetTile.name = '따뜻한 모닥불 야영지 (휴식됨)';
+                targetTile.description = '모닥불 온기로 파티가 휴식을 마친 야영지입니다.';
+                newChar.stats.hp = Math.min(pFinal.maxHp, newChar.stats.hp + Math.floor(pFinal.maxHp * 0.45));
+                newChar.stats.mp = Math.min(pFinal.maxMp, newChar.stats.mp + Math.floor(pFinal.maxMp * 0.45));
+                logMsg = `[🏕️ 모닥불 야영지] 따뜻한 수프와 모닥불 앞에서 휴식하여 HP/MP를 45% 회복했습니다!`;
+                emitFloatingGimmick(playerPos.x, playerPos.y, '🏕️ 야영 휴식 HP/MP +45%!', '#fed7aa', logMsg);
+            } else if (targetTile.propType === 'merchant') {
+                targetTile.isCleared = true;
+                targetTile.name = '미궁 방랑 상인 (거래 완료)';
+                targetTile.description = '탐험가에게 비약과 군자금을 건네준 신비한 방랑 상인입니다.';
+                const bonusGold = (currentFloor + 1) * 5000;
+                newChar.money = (newChar.money || 0) + bonusGold;
+                newChar.stats.hp = Math.min(pFinal.maxHp, newChar.stats.hp + Math.floor(pFinal.maxHp * 0.3));
+                newChar.stats.mp = Math.min(pFinal.maxMp, newChar.stats.mp + Math.floor(pFinal.maxMp * 0.3));
+                logMsg = `[🏮 미궁 방랑 상인] 방랑 상인이 모험가를 응원하며 비약(HP/MP +30%)과 후원금 +${bonusGold.toLocaleString()}G를 건넸습니다!`;
+                emitFloatingGimmick(playerPos.x, playerPos.y, `🏮 상인 보급 HP/MP +30% · +${bonusGold.toLocaleString()}G`, '#e9d5ff', logMsg);
+            } else if (targetTile.propType === 'bookshelf') {
+                targetTile.isCleared = true;
+                targetTile.name = '열람한 고대 마도서 서가';
+                targetTile.description = '비전 마법서를 모두 해독한 고대 서가입니다.';
+                const expGain = (currentFloor + 1) * 4500;
+                const stoneGain = 3 + currentFloor;
+                newChar.currentExp = (newChar.currentExp || 0) + expGain;
+                if (newChar.base?.resources) {
+                    newChar.base.resources.manaStone = (newChar.base.resources.manaStone || 0) + stoneGain;
+                }
+                logMsg = `[📚 고대 마도서 해독] 비전 마법서를 해독하여 경험치 +${expGain.toLocaleString()} 및 마정석 +${stoneGain}개를 획득했습니다!`;
+                emitFloatingGimmick(playerPos.x, playerPos.y, `📚 EXP +${expGain.toLocaleString()} · 마정석 +${stoneGain}`, '#93c5fd', logMsg);
+            } else if (targetTile.propType === 'altar') {
+                targetTile.isCleared = true;
+                targetTile.name = '의식을 마친 혈석 제단';
+                targetTile.description = '핏빛 성배의 축복을 수렴한 고대 제단입니다.';
+                const bonusGold = (currentFloor + 1) * 7500;
+                const stoneGain = 4 + currentFloor * 2;
+                newChar.stats.hp = Math.max(1, newChar.stats.hp - Math.floor(pFinal.maxHp * 0.08));
+                newChar.money = (newChar.money || 0) + bonusGold;
+                if (newChar.base?.resources) {
+                    newChar.base.resources.manaStone = (newChar.base.resources.manaStone || 0) + stoneGain;
+                }
+                logMsg = `[🩸 핏빛 혈석 제단] 생명력(HP -8%)을 바쳐 황금 성배의 보화(+${bonusGold.toLocaleString()}G · 마정석 +${stoneGain})를 얻었습니다!`;
+                emitFloatingGimmick(playerPos.x, playerPos.y, `🩸 성배 공물 +${bonusGold.toLocaleString()}G · 마정석 +${stoneGain}`, '#fca5a5', logMsg);
+            } else if (targetTile.propType === 'prison') {
+                targetTile.isCleared = true;
+                targetTile.name = '개방된 지하 감옥 철창';
+                targetTile.description = '자물쇠를 부수고 내부의 유물을 회수한 철창입니다.';
+                const bonusGold = (currentFloor + 1) * 6000;
+                const stoneGain = 3 + currentFloor;
+                newChar.money = (newChar.money || 0) + bonusGold;
+                if (newChar.base?.resources) {
+                    newChar.base.resources.manaStone = (newChar.base.resources.manaStone || 0) + stoneGain;
+                }
+                logMsg = `[⛓️ 감옥 철창 개방] 봉인된 철창 자물쇠를 해제하여 은닉된 보화(+${bonusGold.toLocaleString()}G · 마정석 +${stoneGain})를 회수했습니다!`;
+                emitFloatingGimmick(playerPos.x, playerPos.y, `⛓️ 철창 개방 +${bonusGold.toLocaleString()}G · 마정석 +${stoneGain}`, '#cbd5e1', logMsg);
+            } else if (targetTile.propType === 'lever') {
+                targetTile.isCleared = true;
+                targetTile.name = '작동된 고대 룬 레버';
+                targetTile.description = '레버를 당겨 미궁의 함정을 해제하고 비밀 통로를 밝혔습니다.';
+                let disarmed = 0;
+                for (let ry = 0; ry < currentGrid.height; ry++) {
+                    for (let rx = 0; rx < currentGrid.width; rx++) {
+                        const rt = tiles[ry][rx];
+                        if (rt.propType === 'spike_trap' && !rt.isCleared) {
+                            rt.isCleared = true;
+                            rt.propType = undefined;
+                            disarmed++;
+                        }
+                        if ((rt.type === 'stairs' || rt.content === 'boss' || rt.content === 'chest') && !rt.isRevealed) {
+                            revealFogOfWar(tiles, rx, ry, 2.0);
+                        }
+                    }
+                }
+                logMsg = `[⚙️ 고대 룬 레버 작동] 현재 층의 가시 함정 ${disarmed}개를 일괄 해제하고 주요 거점 시야를 개방했습니다!`;
+                emitFloatingGimmick(playerPos.x, playerPos.y, `⚙️ 함정 ${disarmed}개 해제 · 비밀시야 개방!`, '#67e8f9', logMsg);
+            } else if (targetTile.propType === 'spike_trap') {
+                targetTile.isCleared = true;
+                targetTile.propType = undefined;
+                targetTile.name = '해체된 가시 함정';
+                targetTile.description = '작동 후 해체된 기계식 함정 자리입니다.';
+                const bonusGold = (currentFloor + 1) * 3000;
+                newChar.stats.hp = Math.max(1, newChar.stats.hp - Math.floor(pFinal.maxHp * 0.06));
+                newChar.money = (newChar.money || 0) + bonusGold;
+                logMsg = `[🗡️ 강철 가시 함정] 가시에 스쳐 피해(HP -6%)를 입었지만 기계 부품(+${bonusGold.toLocaleString()}G)을 회수했습니다!`;
+                emitFloatingGimmick(playerPos.x, playerPos.y, `🗡️ 가시 함정 HP -6% · 부품 +${bonusGold.toLocaleString()}G`, '#fda4af', logMsg);
+            }
+
+            const nextGrid = updatedGridState(currentGrid);
+            setGridState(nextGrid);
+            setSelectedTile({ ...targetTile });
+            syncGridToCharacter(nextGrid, newChar, logMsg);
+            return;
+        }
+
+        // 8. 혁신안 3: 6종 원소 지형 장판 기믹 발동 (fire, water, ice, poison, holy, thunder)
+        if (targetTile.zoneType && !targetTile.isCleared) {
+            targetTile.isCleared = true;
+            const pFinal = calculateFinalStats(activeChar).finalStats;
+            const newChar = { ...activeChar };
+            let logMsg = '';
+
+            switch (targetTile.zoneType) {
+                case 'fire': {
+                    const bonusGold = (currentFloor + 1) * 4000;
+                    newChar.money = (newChar.money || 0) + bonusGold;
+                    newChar.stats.hp = Math.max(1, newChar.stats.hp - Math.floor(pFinal.maxHp * 0.04));
+                    logMsg = `[🔥 용암 화염 지대] 뜨거운 열기(HP -4%)를 견뎌내고 용암 결정(+${bonusGold.toLocaleString()}G)을 획득했습니다!`;
+                    emitFloatingGimmick(playerPos.x, playerPos.y, `🔥 화염 결정 +${bonusGold.toLocaleString()}G`, '#fb923c', logMsg);
+                    break;
+                }
+                case 'water': {
+                    newChar.stats.mp = Math.min(pFinal.maxMp, newChar.stats.mp + Math.floor(pFinal.maxMp * 0.25));
+                    logMsg = `[💧 지하수 웅덩이] 맑은 영수로 목을 축여 파티 MP가 25% 회복되었습니다!`;
+                    emitFloatingGimmick(playerPos.x, playerPos.y, '💧 맑은 영수 MP +25%', '#38bdf8', logMsg);
+                    break;
+                }
+                case 'ice': {
+                    newChar.stats.hp = Math.min(pFinal.maxHp, newChar.stats.hp + Math.floor(pFinal.maxHp * 0.12));
+                    newChar.stats.mp = Math.min(pFinal.maxMp, newChar.stats.mp + Math.floor(pFinal.maxMp * 0.18));
+                    logMsg = `[❄️ 혹한 서리 빙판] 차가운 냉기 마력을 수렴하여 HP +12%, MP +18%를 회복했습니다!`;
+                    emitFloatingGimmick(playerPos.x, playerPos.y, '❄️ 냉기 수렴 HP +12% · MP +18%', '#a5f3fc', logMsg);
+                    break;
+                }
+                case 'poison': {
+                    newChar.stats.hp = Math.max(1, newChar.stats.hp - Math.floor(pFinal.maxHp * 0.05));
+                    if (newChar.base?.resources) {
+                        newChar.base.resources.manaStone = (newChar.base.resources.manaStone || 0) + 2;
+                    }
+                    logMsg = `[☠️ 맹독 포자 늪] 독기(HP -5%) 속에서 희귀한 맹독 마정석 +2개를 채집했습니다!`;
+                    emitFloatingGimmick(playerPos.x, playerPos.y, '☠️ 독기 HP -5% · 마정석 +2', '#4ade80', logMsg);
+                    break;
+                }
+                case 'holy': {
+                    newChar.stats.hp = Math.min(pFinal.maxHp, newChar.stats.hp + Math.floor(pFinal.maxHp * 0.25));
+                    newChar.stats.mp = Math.min(pFinal.maxMp, newChar.stats.mp + Math.floor(pFinal.maxMp * 0.25));
+                    revealFogOfWar(tiles, playerPos.x, playerPos.y, currentGrid.torchRadius + 1.0);
+                    logMsg = `[✨ 성역의 축복 장판] 황금빛 성역의 가호로 HP/MP +25% 회복 및 주변 안개가 정화되었습니다!`;
+                    emitFloatingGimmick(playerPos.x, playerPos.y, '✨ 성역 축복 HP/MP +25%', '#fde047', logMsg);
+                    break;
+                }
+                case 'thunder': {
+                    currentGrid.torchRadius = Number((currentGrid.torchRadius + 0.5).toFixed(1));
+                    revealFogOfWar(tiles, playerPos.x, playerPos.y, currentGrid.torchRadius);
+                    logMsg = `[⚡ 낙뢰 마력 균열] 전격 에너지가 횃불에 깃들어 현재 층 시야 반경이 +0.5칸 영구 확장되었습니다!`;
+                    emitFloatingGimmick(playerPos.x, playerPos.y, '⚡ 전격 각성! 횃불 시야 +0.5칸', '#60a5fa', logMsg);
+                    break;
+                }
+            }
+
+            const nextGrid = updatedGridState(currentGrid);
+            setGridState(nextGrid);
+            setSelectedTile({ ...targetTile });
+            syncGridToCharacter(nextGrid, newChar, logMsg);
+            return;
+        }
+
+        // 9. 하층 계단 도달 (Stairs)
         if (targetTile.type === 'stairs') {
             changeDungeonFloor(currentFloor + 1);
             return;
         }
 
-        // 8. 상층 계단 도달 (Stairs Up)
+        // 10. 상층 계단 도달 (Stairs Up)
         if (targetTile.type === 'stairs_up') {
             changeDungeonFloor(currentFloor - 1);
             return;
@@ -750,6 +965,13 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                 </div>
                             </div>
 
+                            {gimmickToast && (
+                                <div className="mb-2 px-3 py-1.5 rounded-xl bg-amber-950/70 border border-amber-700/70 text-amber-200 text-xs font-bold flex items-center justify-between gap-2 animate-fade-in">
+                                    <span className="truncate">✨ {gimmickToast}</span>
+                                    <button onClick={() => setGimmickToast(null)} className="text-amber-400 hover:text-white text-[10px] shrink-0 cursor-pointer">닫기</button>
+                                </div>
+                            )}
+
                             {viewMode === 'rpg' ? (
                                 <div className="flex-1 min-h-0 w-full">
                                     <DungeonRpgCanvas
@@ -759,6 +981,7 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                         isSeasonalBoss={isSeasonalBoss}
                                         bossName={bossInfo?.name}
                                         isPaused={Boolean(eventNotice || rescuedModalInfo)}
+                                        floatingNotice={floatingNotice}
                                         onMoveToTile={handleMoveToTile}
                                         onSelectTile={(t) => setSelectedTile(t)}
                                         onTriggerFloorChange={(floor) => changeDungeonFloor(floor)}
@@ -830,15 +1053,22 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                                     >
                                                         {/* 플레이어 및 오브젝트 심볼 스프라이트 */}
                                                         {isPlayer ? (
-                                                            <span className="text-base sm:text-lg animate-bounce select-none drop-shadow">🧙</span>
+                                                            <div
+                                                                className="w-7 h-7 sm:w-8 sm:h-8 drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)]"
+                                                                style={{
+                                                                    backgroundImage: `url(${resolveEntityRpgSprite(character, character.currentLocation?.region, nation).url})`,
+                                                                    backgroundSize: '300% 400%',
+                                                                    backgroundPosition: '50% 0%',
+                                                                    backgroundRepeat: 'no-repeat'
+                                                                }}
+                                                                title={character.name}
+                                                            />
                                                         ) : tile.type === 'stairs' ? (
                                                             <img src={resolveDungeonAssetUrl('stairs_down')} alt="하층 계단" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" title="하층 계단" />
                                                         ) : tile.type === 'stairs_up' ? (
                                                             <img src={resolveDungeonAssetUrl('stairs_up')} alt="상층 계단" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" title="상층 계단" />
                                                         ) : tile.type === 'entrance' ? (
                                                             <img src={resolveDungeonAssetUrl('entrance_gate')} alt="1층 출구" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" title="1층 출구" />
-                                                        ) : tile.content && !tile.isCleared && !tile.isIdentified ? (
-                                                            <img src={resolveDungeonAssetUrl('mystery_wisp')} alt="미지의 반응" className="w-6 h-6 sm:w-7 sm:h-7 object-contain animate-pulse drop-shadow" title="미지의 반응" />
                                                         ) : tile.content === 'boss' && !tile.isCleared ? (
                                                             <img src={resolveDungeonAssetUrl('boss_throne')} alt="보스 제단" className="w-7 h-7 sm:w-8 sm:h-8 object-contain animate-pulse drop-shadow" />
                                                         ) : tile.content === 'miniboss' && !tile.isCleared ? (
@@ -851,6 +1081,27 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                                             <img src={resolveDungeonAssetUrl('shrine_fountain')} alt="성스러운 샘" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
                                                         ) : tile.content === 'rune_stone' && !tile.isCleared ? (
                                                             <img src={resolveDungeonAssetUrl('rune_locked')} alt="봉인석" className="w-6 h-6 sm:w-7 sm:h-7 object-contain animate-pulse drop-shadow" />
+                                                        ) : tile.propType === 'crate' && !tile.isCleared ? (
+                                                            <img src={resolveDungeonAssetUrl('barrel_crates')} alt="보급통" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
+                                                        ) : tile.propType === 'bones' && !tile.isCleared ? (
+                                                            <img src={resolveDungeonAssetUrl('skeleton_bones')} alt="유골" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
+                                                        ) : tile.propType === 'crystal' && !tile.isCleared ? (
+                                                            <img src={resolveDungeonAssetUrl('crystal_cluster')} alt="마력수정" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
+                                                        ) : tile.propType === 'pillar' ? (
+                                                            <img src={resolveDungeonAssetUrl('stone_pillar')} alt="석주" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
+                                                        ) : tile.zoneType && !tile.isCleared ? (
+                                                            <img
+                                                                src={resolveDungeonAssetUrl(
+                                                                    tile.zoneType === 'fire' ? 'zone_fire_lava' :
+                                                                    tile.zoneType === 'water' ? 'zone_water_puddle' :
+                                                                    tile.zoneType === 'ice' ? 'zone_ice_frost' :
+                                                                    tile.zoneType === 'poison' ? 'zone_poison_swamp' :
+                                                                    tile.zoneType === 'holy' ? 'zone_holy_sanctuary' :
+                                                                    'zone_thunder_crack'
+                                                                )}
+                                                                alt="원소 장판"
+                                                                className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow"
+                                                            />
                                                         ) : (
                                                             <div className="w-1 h-1 bg-slate-400/30 rounded-full" />
                                                         )}
@@ -862,7 +1113,7 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
 
                                     {/* 가이드 안내 문구 */}
                                     <p className="text-[11px] text-slate-500 mt-3 text-center">
-                                        * 인접한 밝혀진 타일을 탭하거나 하단 방향키를 눌러 1칸씩 미궁을 개척하세요. (미지의 ? 기척은 1칸 이내로 접근 시 식별됩니다)
+                                        * 인접한 밝혀진 타일을 탭하거나 하단 방향키를 눌러 미궁을 개척하세요. 보급통·유골·마력수정·원소 장판 위를 밟으면 즉시 효과가 발동합니다!
                                     </p>
                                 </div>
                             )}
@@ -876,52 +1127,41 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
                                         CURRENT TILE FOCUS
                                     </span>
-                                    {selectedTile?.content && !selectedTile.isCleared && !selectedTile.isIdentified ? (
-                                        <>
-                                            <div className="flex items-center gap-2.5">
-                                                <img src={resolveDungeonAssetUrl('mystery_wisp')} alt="미지의 기척" className="w-10 h-10 object-contain shrink-0 animate-pulse" />
-                                                <h4 className="text-base font-bold text-amber-300 flex items-center gap-2">
-                                                    미지의 기척 (식별 필요)
-                                                </h4>
-                                            </div>
-                                            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                                                어둠 속에서 정체를 알 수 없는 기척이 느껴집니다. 1칸 더 가까이 다가가면 무엇인지 식별할 수 있습니다.
-                                            </p>
-                                            <div className="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-slate-900">
-                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-800">
-                                                    미식별 이벤트 (?)
-                                                </span>
-                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                                                    좌표: ({selectedTile.x}, {selectedTile.y})
-                                                </span>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <div className="flex items-center gap-2.5">
-                                                {selectedTile && (
-                                                    <img
-                                                        src={resolveDungeonAssetUrl(
-                                                            selectedTile.content === 'boss' ? 'boss_throne' :
-                                                            selectedTile.content === 'miniboss' ? 'miniboss_marker' :
-                                                            selectedTile.content === 'enemy' ? 'enemy_marker' :
-                                                            selectedTile.content === 'chest' ? (selectedTile.isCleared ? 'chest_open' : 'chest_closed') :
-                                                            selectedTile.content === 'shrine' ? 'shrine_fountain' :
-                                                            selectedTile.content === 'rune_stone' ? (selectedTile.isCleared ? 'rune_active' : 'rune_locked') :
-                                                            selectedTile.type === 'stairs' ? 'stairs_down' :
-                                                            selectedTile.type === 'stairs_up' ? 'stairs_up' :
-                                                            selectedTile.type === 'entrance' ? 'entrance_gate' :
-                                                            selectedTile.type === 'wall' ? (isSeasonalBoss ? 'tile_wall_mythic' : 'tile_wall_stone') :
-                                                            (isSeasonalBoss ? 'tile_floor_mythic' : 'tile_floor_stone')
-                                                        )}
-                                                        alt="타일 아이콘"
-                                                        className="w-10 h-10 object-contain rounded-lg bg-slate-900/90 border border-slate-800 p-1 shrink-0"
-                                                    />
-                                                )}
-                                                <h4 className="text-base font-bold text-white flex items-center gap-2">
-                                                    {selectedTile?.name || (selectedTile?.type === 'wall' ? '단단한 석벽' : '미궁 복도')}
-                                                </h4>
-                                            </div>
+                                    <>
+                                        <div className="flex items-center gap-2.5">
+                                            {selectedTile && (
+                                                <img
+                                                    src={resolveDungeonAssetUrl(
+                                                        selectedTile.content === 'boss' ? 'boss_throne' :
+                                                        selectedTile.content === 'miniboss' ? 'miniboss_marker' :
+                                                        selectedTile.content === 'enemy' ? 'enemy_marker' :
+                                                        selectedTile.content === 'chest' ? (selectedTile.isCleared ? 'chest_open' : 'chest_closed') :
+                                                        selectedTile.content === 'shrine' ? 'shrine_fountain' :
+                                                        selectedTile.content === 'rune_stone' ? (selectedTile.isCleared ? 'rune_active' : 'rune_locked') :
+                                                        selectedTile.propType === 'crate' ? 'barrel_crates' :
+                                                        selectedTile.propType === 'bones' ? 'skeleton_bones' :
+                                                        selectedTile.propType === 'crystal' ? 'crystal_cluster' :
+                                                        selectedTile.propType === 'pillar' ? 'stone_pillar' :
+                                                        selectedTile.zoneType === 'fire' ? 'zone_fire_lava' :
+                                                        selectedTile.zoneType === 'water' ? 'zone_water_puddle' :
+                                                        selectedTile.zoneType === 'ice' ? 'zone_ice_frost' :
+                                                        selectedTile.zoneType === 'poison' ? 'zone_poison_swamp' :
+                                                        selectedTile.zoneType === 'holy' ? 'zone_holy_sanctuary' :
+                                                        selectedTile.zoneType === 'thunder' ? 'zone_thunder_crack' :
+                                                        selectedTile.type === 'stairs' ? 'stairs_down' :
+                                                        selectedTile.type === 'stairs_up' ? 'stairs_up' :
+                                                        selectedTile.type === 'entrance' ? 'entrance_gate' :
+                                                        selectedTile.type === 'wall' ? (isSeasonalBoss ? 'tile_wall_mythic' : 'tile_wall_stone') :
+                                                        (isSeasonalBoss ? 'tile_floor_mythic' : 'tile_floor_stone')
+                                                    )}
+                                                    alt="타일 아이콘"
+                                                    className="w-10 h-10 object-contain rounded-lg bg-slate-900/90 border border-slate-800 p-1 shrink-0"
+                                                />
+                                            )}
+                                            <h4 className="text-base font-bold text-white flex items-center gap-2">
+                                                {selectedTile?.name || (selectedTile?.type === 'wall' ? '단단한 석벽' : '미궁 복도')}
+                                            </h4>
+                                        </div>
                                             <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
                                                 {selectedTile?.description || '미궁의 어두운 바닥입니다. 발걸음을 옮겨 시야를 넓힐 수 있습니다.'}
                                             </p>

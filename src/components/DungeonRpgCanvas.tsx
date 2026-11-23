@@ -11,6 +11,14 @@ import {
 } from '../services/rpgSpriteManifest';
 import { ZoomIn, ZoomOut, Maximize2, Compass } from 'lucide-react';
 
+export interface DungeonFloatingText {
+    id: string;
+    x: number;
+    y: number;
+    text: string;
+    color: string;
+}
+
 export interface DungeonRpgCanvasProps {
     gridState: GridDungeonState;
     character: Character;
@@ -18,6 +26,7 @@ export interface DungeonRpgCanvasProps {
     isSeasonalBoss: boolean;
     bossName?: string;
     isPaused?: boolean;
+    floatingNotice?: DungeonFloatingText | null;
     onMoveToTile: (x: number, y: number) => void;
     onSelectTile: (tile: GridTile) => void;
     onTriggerFloorChange?: (targetFloor: number) => void;
@@ -31,6 +40,10 @@ const DUNGEON_ASSET_KEYS = [
     'tile_wall_stone',
     'tile_floor_mythic',
     'tile_wall_mythic',
+    'tile_floor_volcanic',
+    'tile_wall_volcanic',
+    'tile_floor_celestial',
+    'tile_wall_celestial',
     'entrance_gate',
     'stairs_down',
     'stairs_up',
@@ -54,7 +67,19 @@ const DUNGEON_ASSET_KEYS = [
     'zone_ice_frost',
     'zone_poison_swamp',
     'zone_holy_sanctuary',
-    'zone_thunder_crack'
+    'zone_thunder_crack',
+    'royal_carpet',
+    'gargoyle_statue',
+    'prison_bars',
+    'arcane_bookshelf',
+    'blood_altar',
+    'campfire_rest',
+    'spike_trap',
+    'rune_lever',
+    'dungeon_merchant',
+    'mimic_chest',
+    'wraith_reaper',
+    'golem_sentry'
 ] as const;
 
 type DungeonAssetKey = typeof DUNGEON_ASSET_KEYS[number];
@@ -154,6 +179,7 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
     isSeasonalBoss,
     bossName,
     isPaused = false,
+    floatingNotice,
     onMoveToTile,
     onSelectTile,
     onTriggerFloorChange,
@@ -174,6 +200,20 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
     const cameraRef = useRef({ x: gridState.playerPos.x * TILE_PX, y: gridState.playerPos.y * TILE_PX });
     const dustRef = useRef<{ x: number; y: number; vx: number; vy: number; life: number; maxLife: number }[]>([]);
     const embersRef = useRef<{ x: number; y: number; vx: number; vy: number; size: number; alpha: number; phase: number }[]>([]);
+    const floatTextsRef = useRef<{ x: number; y: number; text: string; color: string; life: number; maxLife: number }[]>([]);
+
+    // Enqueue floating text popup whenever floatingNotice prop updates
+    useEffect(() => {
+        if (!floatingNotice) return;
+        floatTextsRef.current.push({
+            x: floatingNotice.x * TILE_PX + TILE_PX * 0.5,
+            y: floatingNotice.y * TILE_PX + 10,
+            text: floatingNotice.text,
+            color: floatingNotice.color || '#fde047',
+            life: 0,
+            maxLife: 58
+        });
+    }, [floatingNotice]);
 
     // Auto-walk BFS path queue
     const autoPathRef = useRef<{ x: number; y: number }[]>([]);
@@ -207,7 +247,8 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
     // Preload party sprites and dungeon prop images
     useEffect(() => {
         partySprites.forEach(p => {
-            if (p.spec.sheetUrl) loadRpgSpriteImage(p.spec.sheetUrl);
+            const url = p.spec.url || (p.spec as any).sheetUrl;
+            if (url) loadRpgSpriteImage(url);
         });
         DUNGEON_ASSET_KEYS.forEach(k => getDungeonImage(k));
     }, [partySprites]);
@@ -215,7 +256,7 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
     // Initialize ambient floating embers/dust particles
     useEffect(() => {
         const arr = [];
-        for (let i = 0; i < 36; i++) {
+        for (let i = 0; i < 42; i++) {
             arr.push({
                 x: Math.random() * gridState.width * TILE_PX,
                 y: Math.random() * gridState.height * TILE_PX,
@@ -234,7 +275,6 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
         const prev = prevTileRef.current;
         const curr = gridState.playerPos;
         if (prev.floor !== gridState.currentFloor) {
-            // Instant snap on floor change
             visualPosRef.current = { x: curr.x * TILE_PX, y: curr.y * TILE_PX };
             cameraRef.current = { x: curr.x * TILE_PX, y: curr.y * TILE_PX };
             trailRef.current = [];
@@ -335,7 +375,6 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
             autoPathRef.current = [];
             onMoveToTile(hit.x, hit.y);
         } else {
-            // BFS auto-walk to clicked revealed tile
             const path = findDungeonPath(gs.tiles, gs.playerPos, hit);
             if (path.length > 0) {
                 autoPathRef.current = path;
@@ -363,30 +402,29 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
         setZoom(Math.max(0.55, Math.min(1.6, Number(fit.toFixed(2)))));
     }, [viewportSize]);
 
-    // Theme palette (Normal stone dungeon vs Mythic golden abyssal sanctuary)
     const theme = useMemo(() => {
         if (isSeasonalBoss) {
             return {
-                voidBg: '#09070f',
+                voidBg: '#06050c',
                 floorA: '#1d182b',
                 floorB: '#241e35',
                 floorEdge: '#3b2f52',
-                wallTop: '#161124',
+                wallTop: '#100c1c',
                 wallFace: '#2c2242',
-                wallTrim: '#c59b46',
-                torchColor: 'rgba(251, 191, 36, 0.24)',
+                wallTrim: '#d4af37',
+                torchColor: 'rgba(251, 191, 36, 0.25)',
                 emberColor: '#fbbf24'
             };
         }
         return {
-            voidBg: '#070a12',
+            voidBg: '#05070e',
             floorA: '#1c2433',
             floorB: '#212b3d',
             floorEdge: '#324059',
-            wallTop: '#0f1521',
+            wallTop: '#0b101b',
             wallFace: '#273247',
-            wallTrim: '#475569',
-            torchColor: 'rgba(245, 158, 11, 0.22)',
+            wallTrim: '#64748b',
+            torchColor: 'rgba(245, 158, 11, 0.23)',
             emberColor: '#f59e0b'
         };
     }, [isSeasonalBoss]);
@@ -421,7 +459,6 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                 const dy = Math.abs(nextStep.y - gs.playerPos.y);
                 if (dx <= 1 && dy <= 1) {
                     lastStepTimeRef.current = now;
-                    // Stop auto-walk right after stepping onto interactive event/combat tile
                     const nextTile = gs.tiles[nextStep.y]?.[nextStep.x];
                     if (nextTile && ((nextTile.content && !nextTile.isCleared) || nextTile.type === 'stairs' || nextTile.type === 'stairs_up')) {
                         autoPathRef.current = [];
@@ -466,12 +503,21 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
             ctx.scale(zoom, zoom);
             ctx.translate(-(cam.x + TILE_PX / 2), -(cam.y + TILE_PX / 2));
 
-            const floorImg = getDungeonImage(isSeasonalBoss ? 'tile_floor_mythic' : 'tile_floor_stone');
-            const wallImg = getDungeonImage(isSeasonalBoss ? 'tile_wall_mythic' : 'tile_wall_stone');
+            const isFinalFloor = gs.currentFloor === gs.maxFloors - 1;
+            const floorKey: DungeonAssetKey = isSeasonalBoss
+                ? (isFinalFloor || gs.currentFloor % 2 === 1 ? 'tile_floor_celestial' : 'tile_floor_mythic')
+                : (isFinalFloor || gs.currentFloor >= 1 ? 'tile_floor_volcanic' : 'tile_floor_stone');
+            const wallKey: DungeonAssetKey = isSeasonalBoss
+                ? (isFinalFloor || gs.currentFloor % 2 === 1 ? 'tile_wall_celestial' : 'tile_wall_mythic')
+                : (isFinalFloor || gs.currentFloor >= 1 ? 'tile_wall_volcanic' : 'tile_wall_stone');
+            const floorImg = getDungeonImage(floorKey);
+            const wallImg = getDungeonImage(wallKey);
             const pulse = 0.5 + 0.5 * Math.sin(now * 0.005);
             const torchFlicker = 0.92 + 0.08 * Math.sin(now * 0.011) * Math.cos(now * 0.007);
 
-            // 1. Draw Floor & Wall Tiles (2.5D RPG Maker style)
+            // =========================================================================
+            // 1. 혁신안 1: 2.5D 입체 벽면(천장 Roof / 전면 Facade 분리) + 바닥 AO + 소프트 안개
+            // =========================================================================
             for (let y = 0; y < gs.height; y++) {
                 for (let x = 0; x < gs.width; x++) {
                     const tile = gs.tiles[y][x];
@@ -480,88 +526,100 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                     const hVal = tileHash(x, y, gs.currentFloor);
 
                     if (!tile.isRevealed) {
-                        // Fog of War tile
-                        ctx.fillStyle = '#05070e';
+                        // Soft-Edge Fog of War: 밝혀진 타일과 맞닿아 있으면 부드러운 그라데이션 테두리 연출
+                        const hasRevealedNeighbor =
+                            (y > 0 && gs.tiles[y - 1][x].isRevealed) ||
+                            (y + 1 < gs.height && gs.tiles[y + 1][x].isRevealed) ||
+                            (x > 0 && gs.tiles[y][x - 1].isRevealed) ||
+                            (x + 1 < gs.width && gs.tiles[y][x + 1].isRevealed);
+
+                        ctx.fillStyle = theme.voidBg;
                         ctx.fillRect(px, py, TILE_PX, TILE_PX);
-                        ctx.fillStyle = 'rgba(30, 41, 59, 0.18)';
-                        ctx.fillRect(px + 2, py + 2, TILE_PX - 4, TILE_PX - 4);
+                        if (hasRevealedNeighbor) {
+                            const fogGrad = ctx.createRadialGradient(
+                                px + TILE_PX / 2, py + TILE_PX / 2, 4,
+                                px + TILE_PX / 2, py + TILE_PX / 2, TILE_PX * 0.75
+                            );
+                            fogGrad.addColorStop(0, isSeasonalBoss ? 'rgba(44, 34, 66, 0.28)' : 'rgba(30, 41, 59, 0.28)');
+                            fogGrad.addColorStop(1, 'rgba(5, 7, 14, 0)');
+                            ctx.fillStyle = fogGrad;
+                            ctx.fillRect(px, py, TILE_PX, TILE_PX);
+                        }
                         continue;
                     }
 
                     if (tile.type === 'wall') {
                         const belowIsFloor = y + 1 < gs.height && gs.tiles[y + 1][x].type !== 'wall';
-                        if (wallImg) {
-                            ctx.drawImage(wallImg, px, py, TILE_PX, TILE_PX);
-                            if (belowIsFloor) {
-                                // Cast shadow onto floor below
-                                ctx.fillStyle = 'rgba(0,0,0,0.35)';
-                                ctx.fillRect(px, py + TILE_PX, TILE_PX, 7);
-                            }
-                        } else {
-                            // 2.5D RPG Maker stone wall block: top cap + brick front facade
+                        const aboveIsFloor = y > 0 && gs.tiles[y - 1][x].type !== 'wall';
+                        const leftIsFloor = x > 0 && gs.tiles[y][x - 1].type !== 'wall';
+                        const rightIsFloor = x + 1 < gs.width && gs.tiles[y][x + 1].type !== 'wall';
+
+                        if (belowIsFloor) {
+                            // 2.5D 전면 석벽 (상단 34% 천장 캡 + 하단 66% 전면 벽돌 텍스처 + 몰딩 라인)
                             ctx.fillStyle = theme.wallTop;
                             ctx.fillRect(px, py, TILE_PX, TILE_PX);
-
-                            if (belowIsFloor) {
-                                // Front facade (bottom 42% of tile)
-                                const faceH = Math.floor(TILE_PX * 0.44);
+                            if (wallImg) {
+                                ctx.drawImage(wallImg, px, py, TILE_PX, TILE_PX);
+                                // 상단 천장 캡 쉐이딩
+                                ctx.fillStyle = 'rgba(5, 7, 14, 0.42)';
+                                ctx.fillRect(px, py, TILE_PX, Math.floor(TILE_PX * 0.34));
+                            } else {
+                                const faceH = Math.floor(TILE_PX * 0.56);
                                 const faceY = py + TILE_PX - faceH;
                                 ctx.fillStyle = theme.wallFace;
                                 ctx.fillRect(px, faceY, TILE_PX, faceH);
-                                // Stone brick mortar lines
-                                ctx.strokeStyle = 'rgba(0,0,0,0.45)';
-                                ctx.lineWidth = 1;
-                                ctx.beginPath();
-                                ctx.moveTo(px, faceY + faceH * 0.5);
-                                ctx.lineTo(px + TILE_PX, faceY + faceH * 0.5);
-                                ctx.moveTo(px + TILE_PX * 0.5, faceY);
-                                ctx.lineTo(px + TILE_PX * 0.5, faceY + faceH * 0.5);
-                                ctx.moveTo(px + TILE_PX * 0.25, faceY + faceH * 0.5);
-                                ctx.lineTo(px + TILE_PX * 0.25, py + TILE_PX);
-                                ctx.moveTo(px + TILE_PX * 0.75, faceY + faceH * 0.5);
-                                ctx.lineTo(px + TILE_PX * 0.75, py + TILE_PX);
-                                ctx.stroke();
-                                // Top lip highlight
-                                ctx.fillStyle = theme.wallTrim;
-                                ctx.fillRect(px, faceY, TILE_PX, 2.5);
-                                // Cast shadow onto floor below
-                                ctx.fillStyle = 'rgba(0,0,0,0.35)';
-                                ctx.fillRect(px, py + TILE_PX, TILE_PX, 7);
-                            } else {
-                                // Subtle bevel border on solid wall roof
-                                ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-                                ctx.strokeRect(px + 1, py + 1, TILE_PX - 2, TILE_PX - 2);
                             }
+                            // 2.5D 석조/황금 상단 릿지(Ridge) 몰딩 라인
+                            const ridgeY = py + Math.floor(TILE_PX * 0.34);
+                            ctx.fillStyle = theme.wallTrim;
+                            ctx.fillRect(px, ridgeY, TILE_PX, 2.5);
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+                            ctx.fillRect(px, ridgeY + 2.5, TILE_PX, 2);
+                            // 하단 베이스 걸레받이 음영
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                            ctx.fillRect(px, py + TILE_PX - 3, TILE_PX, 3);
+                        } else {
+                            // 사방이 벽인 천장(Roof) 타일: 어둡게 눌러서 바닥/전면벽과의 2.5D 높이차를 확실히 부여!
+                            ctx.fillStyle = theme.wallTop;
+                            ctx.fillRect(px, py, TILE_PX, TILE_PX);
+                            if (wallImg) {
+                                ctx.save();
+                                ctx.globalAlpha = 0.38;
+                                ctx.drawImage(wallImg, px, py, TILE_PX, TILE_PX);
+                                ctx.restore();
+                            }
+                            ctx.fillStyle = 'rgba(4, 6, 12, 0.52)';
+                            ctx.fillRect(px, py, TILE_PX, TILE_PX);
                         }
 
-                        // Wall Torch Sconce on south-facing walls
-                        if (belowIsFloor && hVal > 0.76) {
-                            const faceH = Math.floor(TILE_PX * 0.44);
+                        // 바닥과 맞닿는 벽 외곽에 입체 하이라이트 림(Rim) 라인 추가
+                        ctx.fillStyle = isSeasonalBoss ? 'rgba(212, 175, 55, 0.4)' : 'rgba(148, 163, 184, 0.32)';
+                        if (aboveIsFloor) ctx.fillRect(px, py, TILE_PX, 2.5);
+                        if (leftIsFloor) ctx.fillRect(px, py, 2.5, TILE_PX);
+                        if (rightIsFloor) ctx.fillRect(px + TILE_PX - 2.5, py, 2.5, TILE_PX);
+
+                        // 남향 전면 벽 횃불(wall_torch) 대칭/주기 배치 + 따뜻한 광원
+                        if (belowIsFloor && (hVal > 0.65 || (x % 2 === 1 && hVal > 0.42))) {
+                            const faceH = Math.floor(TILE_PX * 0.52);
                             const faceY = py + TILE_PX - faceH;
                             const torchImg = getDungeonImage('wall_torch');
                             const tx = px + TILE_PX * 0.5;
                             const ty = faceY + faceH * 0.35;
                             if (torchImg) {
-                                ctx.drawImage(torchImg, px + 14, faceY - 8, 36, 36);
+                                ctx.drawImage(torchImg, px + 14, faceY - 6, 36, 36);
                             } else {
-                                ctx.fillStyle = '#78350f';
-                                ctx.fillRect(tx - 2, ty, 4, 10);
                                 ctx.fillStyle = '#fb923c';
                                 ctx.beginPath();
                                 ctx.arc(tx, ty - 2, 4.5 * torchFlicker, 0, Math.PI * 2);
                                 ctx.fill();
-                                ctx.fillStyle = '#fef08a';
-                                ctx.beginPath();
-                                ctx.arc(tx, ty - 3, 2.2 * torchFlicker, 0, Math.PI * 2);
-                                ctx.fill();
                             }
-                            // Warm radial glow from wall torch
-                            const grad = ctx.createRadialGradient(tx, ty, 2, tx, ty, 58 * torchFlicker);
-                            grad.addColorStop(0, 'rgba(251, 146, 60, 0.26)');
+                            const grad = ctx.createRadialGradient(tx, ty + 8, 2, tx, ty + 8, 68 * torchFlicker);
+                            grad.addColorStop(0, 'rgba(251, 146, 60, 0.34)');
+                            grad.addColorStop(0.55, 'rgba(245, 158, 11, 0.12)');
                             grad.addColorStop(1, 'rgba(251, 146, 60, 0)');
                             ctx.fillStyle = grad;
                             ctx.beginPath();
-                            ctx.arc(tx, ty, 58 * torchFlicker, 0, Math.PI * 2);
+                            ctx.arc(tx, ty + 8, 68 * torchFlicker, 0, Math.PI * 2);
                             ctx.fill();
                         }
                         continue;
@@ -570,59 +628,90 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                     // Walkable Floor Tile
                     if (floorImg) {
                         ctx.drawImage(floorImg, px, py, TILE_PX, TILE_PX);
+                        // 체커보드 미세 명암 차이로 타일 격자감 부여
+                        if ((x + y) % 2 === 1) {
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+                            ctx.fillRect(px, py, TILE_PX, TILE_PX);
+                        }
                     } else {
                         ctx.fillStyle = (x + y) % 2 === 0 ? theme.floorA : theme.floorB;
                         ctx.fillRect(px, py, TILE_PX, TILE_PX);
-                        // Flagstone seam
-                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.28)';
-                        ctx.lineWidth = 1;
-                        ctx.strokeRect(px + 0.5, py + 0.5, TILE_PX - 1, TILE_PX - 1);
-                        // Subtle inner stone bevel
-                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
-                        ctx.strokeRect(px + 2.5, py + 2.5, TILE_PX - 5, TILE_PX - 5);
                     }
 
-                    // Decorative ambient props & elemental zones on empty floor tiles
-                    if (!tile.content && tile.type === 'floor' && !(x === gs.playerPos.x && y === gs.playerPos.y)) {
-                        if (hVal > 0.955) {
-                            const crystalImg = getDungeonImage('crystal_cluster');
-                            if (crystalImg) ctx.drawImage(crystalImg, px + 34, py + 6, 24, 24);
-                        } else if (hVal > 0.925 && hVal <= 0.955) {
-                            const pillarImg = getDungeonImage('stone_pillar');
-                            if (pillarImg) ctx.drawImage(pillarImg, px + 34, py + 2, 26, 30);
-                        } else if (hVal > 0.895 && hVal <= 0.925) {
-                            const crateImg = getDungeonImage('barrel_crates');
-                            if (crateImg) ctx.drawImage(crateImg, px + 6, py + 32, 26, 26);
-                        } else if (hVal < 0.035) {
-                            const boneImg = getDungeonImage('skeleton_bones');
-                            if (boneImg) ctx.drawImage(boneImg, px + 6, py + 34, 24, 24);
-                        } else if (hVal >= 0.035 && hVal < 0.115) {
-                            const zoneKeys: DungeonAssetKey[] = [
-                                'zone_fire_lava',
-                                'zone_water_puddle',
-                                'zone_ice_frost',
-                                'zone_poison_swamp',
-                                'zone_holy_sanctuary',
-                                'zone_thunder_crack'
-                            ];
-                            const zIdx = Math.floor(((hVal - 0.035) / 0.08) * zoneKeys.length) % zoneKeys.length;
-                            const zoneImg = getDungeonImage(zoneKeys[zIdx]);
-                            if (zoneImg) {
-                                ctx.save();
-                                ctx.globalAlpha = 0.82;
-                                ctx.drawImage(zoneImg, px + 6, py + 6, TILE_PX - 12, TILE_PX - 12);
-                                ctx.restore();
-                            }
+                    // 타일 이음새 베벨
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.24)';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(px + 0.5, py + 0.5, TILE_PX - 1, TILE_PX - 1);
+
+                    // 2.5D 바닥 Ambient Occlusion (벽과 맞닿는 바닥 가장자리에 깊은 그림자 드리우기)
+                    const wallN = y > 0 && gs.tiles[y - 1][x].type === 'wall';
+                    const wallS = y + 1 < gs.height && gs.tiles[y + 1][x].type === 'wall';
+                    const wallW = x > 0 && gs.tiles[y][x - 1].type === 'wall';
+                    const wallE = x + 1 < gs.width && gs.tiles[y][x + 1].type === 'wall';
+
+                    if (wallN) {
+                        const gN = ctx.createLinearGradient(px, py, px, py + 18);
+                        gN.addColorStop(0, 'rgba(0, 0, 0, 0.68)');
+                        gN.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                        ctx.fillStyle = gN;
+                        ctx.fillRect(px, py, TILE_PX, 18);
+                    }
+                    if (wallS) {
+                        const gS = ctx.createLinearGradient(px, py + TILE_PX, px, py + TILE_PX - 10);
+                        gS.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
+                        gS.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                        ctx.fillStyle = gS;
+                        ctx.fillRect(px, py + TILE_PX - 10, TILE_PX, 10);
+                    }
+                    if (wallW) {
+                        const gW = ctx.createLinearGradient(px, py, px + 12, py);
+                        gW.addColorStop(0, 'rgba(0, 0, 0, 0.48)');
+                        gW.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                        ctx.fillStyle = gW;
+                        ctx.fillRect(px, py, 12, TILE_PX);
+                    }
+                    if (wallE) {
+                        const gE = ctx.createLinearGradient(px + TILE_PX, py, px + TILE_PX - 12, py);
+                        gE.addColorStop(0, 'rgba(0, 0, 0, 0.48)');
+                        gE.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                        ctx.fillStyle = gE;
+                        ctx.fillRect(px + TILE_PX - 12, py, 12, TILE_PX);
+                    }
+
+                    // 왕실 레드카펫 러너 (보스 홀 및 주요 방 중앙 통로)
+                    if (tile.hasCarpet) {
+                        const carpetImg = getDungeonImage('royal_carpet');
+                        if (carpetImg) {
+                            ctx.save();
+                            ctx.globalAlpha = 0.92;
+                            ctx.drawImage(carpetImg, px + 2, py + 1, TILE_PX - 4, TILE_PX - 2);
+                            ctx.restore();
                         }
                     }
 
-                    // Holy sanctuary aura under Shrine tiles
-                    if (tile.content === 'shrine') {
+                    // 혁신안 3: 6종 원소 지형 장판 렌더링 (타일 전체 크기로 화려하게!)
+                    const zoneKeyMap: Record<string, DungeonAssetKey> = {
+                        fire: 'zone_fire_lava',
+                        water: 'zone_water_puddle',
+                        ice: 'zone_ice_frost',
+                        poison: 'zone_poison_swamp',
+                        holy: 'zone_holy_sanctuary',
+                        thunder: 'zone_thunder_crack'
+                    };
+                    if (tile.zoneType && zoneKeyMap[tile.zoneType]) {
+                        const zImg = getDungeonImage(zoneKeyMap[tile.zoneType]);
+                        if (zImg) {
+                            ctx.save();
+                            ctx.globalAlpha = tile.isCleared ? 0.35 : (0.85 + pulse * 0.15);
+                            ctx.drawImage(zImg, px + 2, py + 2, TILE_PX - 4, TILE_PX - 4);
+                            ctx.restore();
+                        }
+                    } else if (tile.content === 'shrine') {
                         const holyZone = getDungeonImage('zone_holy_sanctuary');
                         if (holyZone) {
                             ctx.save();
-                            ctx.globalAlpha = tile.isCleared ? 0.35 : 0.75;
-                            ctx.drawImage(holyZone, px + 2, py + 6, TILE_PX - 4, TILE_PX - 4);
+                            ctx.globalAlpha = tile.isCleared ? 0.35 : 0.8;
+                            ctx.drawImage(holyZone, px + 2, py + 4, TILE_PX - 4, TILE_PX - 4);
                             ctx.restore();
                         }
                     }
@@ -660,7 +749,9 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                 }
             }
 
-            // 3. Draw Tile Objects (Stairs, Entrance, Chest, Shrine, Rune, Monsters, Boss)
+            // =========================================================================
+            // 3. 혁신안 2·3·4 + g2/g3 확장: 테마 룸 인테리어 소품 & 함정/상인/야영지 & 회전 마법진 & 다종 몬스터(!)
+            // =========================================================================
             for (let y = 0; y < gs.height; y++) {
                 for (let x = 0; x < gs.width; x++) {
                     const tile = gs.tiles[y][x];
@@ -669,212 +760,205 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                     const py = y * TILE_PX;
                     const cx = px + TILE_PX / 2;
                     const cy = py + TILE_PX / 2;
+                    const bob = Math.sin(now * 0.004 + x + y) * 2.5;
 
-                    // Entrance / Stairs
+                    // 3-A. 테마 룸 인테리어 & 파밍 소품 (pillar, gargoyle, crate, bones, crystal, campfire, merchant, bookshelf, altar, prison, lever, spike_trap)
+                    if (tile.propType === 'pillar') {
+                        const pImg = getDungeonImage('stone_pillar');
+                        if (pImg) {
+                            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                            ctx.beginPath();
+                            ctx.ellipse(cx, py + TILE_PX - 8, 18, 7, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.drawImage(pImg, px + 6, py - 8, TILE_PX - 12, TILE_PX + 4);
+                        }
+                    } else if (tile.propType === 'gargoyle') {
+                        const gImg = getDungeonImage('gargoyle_statue');
+                        if (gImg) {
+                            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                            ctx.beginPath();
+                            ctx.ellipse(cx, py + TILE_PX - 8, 18, 7, 0, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.drawImage(gImg, px + 4, py - 8, TILE_PX - 8, TILE_PX + 4);
+                        }
+                    } else if (tile.propType === 'crate' && !tile.isCleared) {
+                        const cImg = getDungeonImage('barrel_crates');
+                        if (cImg) {
+                            ctx.drawImage(cImg, px + 8, py + 8, TILE_PX - 16, TILE_PX - 16);
+                            drawMiniBadge(ctx, cx, py + TILE_PX - 7, '보급통', '#451a03', '#fdba74');
+                        }
+                    } else if (tile.propType === 'bones' && !tile.isCleared) {
+                        const bImg = getDungeonImage('skeleton_bones');
+                        if (bImg) {
+                            ctx.drawImage(bImg, px + 6, py + 10, TILE_PX - 12, TILE_PX - 12);
+                            drawMiniBadge(ctx, cx, py + TILE_PX - 7, '유골', '#1e293b', '#cbd5e1');
+                        }
+                    } else if (tile.propType === 'crystal') {
+                        const crImg = getDungeonImage('crystal_cluster');
+                        const cGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 48);
+                        cGrad.addColorStop(0, 'rgba(56, 189, 248, 0.32)');
+                        cGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+                        ctx.fillStyle = cGrad;
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, 48, 0, Math.PI * 2);
+                        ctx.fill();
+                        if (crImg) {
+                            ctx.globalAlpha = tile.isCleared ? 0.55 : 1;
+                            ctx.drawImage(crImg, px + 6, py + 4 + bob * 0.4, TILE_PX - 12, TILE_PX - 12);
+                            ctx.globalAlpha = 1;
+                        }
+                        if (!tile.isCleared) drawMiniBadge(ctx, cx, py + TILE_PX - 7, '마력수정', '#0c4a6e', '#7dd3fc');
+                    } else if (tile.propType === 'campfire') {
+                        const cfImg = getDungeonImage('campfire_rest');
+                        const fGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 56 * torchFlicker);
+                        fGrad.addColorStop(0, 'rgba(251, 146, 60, 0.36)');
+                        fGrad.addColorStop(1, 'rgba(251, 146, 60, 0)');
+                        ctx.fillStyle = fGrad;
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, 56 * torchFlicker, 0, Math.PI * 2);
+                        ctx.fill();
+                        if (cfImg) {
+                            ctx.globalAlpha = tile.isCleared ? 0.55 : 1;
+                            ctx.drawImage(cfImg, px + 4, py + 4, TILE_PX - 8, TILE_PX - 8);
+                            ctx.globalAlpha = 1;
+                        }
+                        if (!tile.isCleared) drawMiniBadge(ctx, cx, py + TILE_PX - 7, '모닥불', '#7c2d12', '#fed7aa');
+                    } else if (tile.propType === 'merchant') {
+                        const mImg = getDungeonImage('dungeon_merchant');
+                        if (mImg) {
+                            ctx.globalAlpha = tile.isCleared ? 0.55 : 1;
+                            ctx.drawImage(mImg, px + 4, py + 2 + bob * 0.5, TILE_PX - 8, TILE_PX - 6);
+                            ctx.globalAlpha = 1;
+                        }
+                        if (!tile.isCleared) drawMiniBadge(ctx, cx, py + TILE_PX - 7, '방랑상인', '#3b0764', '#e9d5ff');
+                    } else if (tile.propType === 'bookshelf' && !tile.isCleared) {
+                        const bsImg = getDungeonImage('arcane_bookshelf');
+                        if (bsImg) {
+                            ctx.drawImage(bsImg, px + 4, py + 2, TILE_PX - 8, TILE_PX - 4);
+                            drawMiniBadge(ctx, cx, py + TILE_PX - 7, '마도서가', '#1e3a8a', '#93c5fd');
+                        }
+                    } else if (tile.propType === 'altar' && !tile.isCleared) {
+                        const alImg = getDungeonImage('blood_altar');
+                        if (alImg) {
+                            ctx.drawImage(alImg, px + 4, py + 4, TILE_PX - 8, TILE_PX - 8);
+                            drawMiniBadge(ctx, cx, py + TILE_PX - 7, '혈석제단', '#7f1d1d', '#fca5a5');
+                        }
+                    } else if (tile.propType === 'prison' && !tile.isCleared) {
+                        const prImg = getDungeonImage('prison_bars');
+                        if (prImg) {
+                            ctx.drawImage(prImg, px + 4, py + 2, TILE_PX - 8, TILE_PX - 4);
+                            drawMiniBadge(ctx, cx, py + TILE_PX - 7, '감옥철창', '#334155', '#e2e8f0');
+                        }
+                    } else if (tile.propType === 'lever') {
+                        const lvImg = getDungeonImage('rune_lever');
+                        if (lvImg) {
+                            ctx.globalAlpha = tile.isCleared ? 0.55 : 1;
+                            ctx.drawImage(lvImg, px + 6, py + 6, TILE_PX - 12, TILE_PX - 12);
+                            ctx.globalAlpha = 1;
+                        }
+                        if (!tile.isCleared) drawMiniBadge(ctx, cx, py + TILE_PX - 7, '제어레버', '#164e63', '#67e8f9');
+                    } else if (tile.propType === 'spike_trap' && !tile.isCleared) {
+                        const spImg = getDungeonImage('spike_trap');
+                        if (spImg) {
+                            ctx.drawImage(spImg, px + 6, py + 8, TILE_PX - 12, TILE_PX - 12);
+                            drawMiniBadge(ctx, cx, py + TILE_PX - 7, '가시함정', '#450a0a', '#fda4af');
+                        }
+                    }
+
+                    // 3-B. Entrance / Stairs
                     if (tile.type === 'entrance') {
                         const img = getDungeonImage('entrance_gate');
                         if (img) {
-                            ctx.drawImage(img, px + 4, py + 2, TILE_PX - 8, TILE_PX - 4);
-                        } else {
-                            // Emerald exit portal archway
-                            const g = ctx.createRadialGradient(cx, cy, 4, cx, cy, 26);
-                            g.addColorStop(0, 'rgba(52, 211, 153, 0.75)');
-                            g.addColorStop(1, 'rgba(16, 185, 129, 0)');
-                            ctx.fillStyle = g;
-                            ctx.beginPath();
-                            ctx.arc(cx, cy, 26, 0, Math.PI * 2);
-                            ctx.fill();
-                            ctx.strokeStyle = '#6ee7b7';
-                            ctx.lineWidth = 3;
-                            ctx.beginPath();
-                            ctx.arc(cx, cy + 4, 16, Math.PI, 0);
-                            ctx.stroke();
+                            ctx.drawImage(img, px + 2, py - 2, TILE_PX - 4, TILE_PX);
                         }
                         drawMiniBadge(ctx, cx, py + TILE_PX - 6, '출구', '#065f46', '#6ee7b7');
                     } else if (tile.type === 'stairs') {
                         const img = getDungeonImage('stairs_down');
                         if (img) {
                             ctx.drawImage(img, px + 4, py + 4, TILE_PX - 8, TILE_PX - 8);
-                        } else {
-                            // Descending stone steps
-                            ctx.fillStyle = '#0f172a';
-                            ctx.fillRect(px + 12, py + 12, 40, 40);
-                            for (let s = 0; s < 5; s++) {
-                                ctx.fillStyle = `rgb(${85 - s * 14}, ${105 - s * 16}, ${135 - s * 18})`;
-                                ctx.fillRect(px + 14 + s * 3, py + 14 + s * 7, 36 - s * 6, 6);
-                            }
-                            ctx.strokeStyle = '#38bdf8';
-                            ctx.lineWidth = 2;
-                            ctx.strokeRect(px + 12, py + 12, 40, 40);
                         }
                         drawMiniBadge(ctx, cx, py + TILE_PX - 6, '하층 ↓', '#0c4a6e', '#7dd3fc');
                     } else if (tile.type === 'stairs_up') {
                         const img = getDungeonImage('stairs_up');
                         if (img) {
                             ctx.drawImage(img, px + 4, py + 4, TILE_PX - 8, TILE_PX - 8);
-                        } else {
-                            ctx.fillStyle = '#451a03';
-                            ctx.fillRect(px + 12, py + 12, 40, 40);
-                            for (let s = 0; s < 5; s++) {
-                                ctx.fillStyle = `rgb(${180 - s * 18}, ${140 - s * 16}, ${80 - s * 10})`;
-                                ctx.fillRect(px + 14, py + 42 - s * 7, 36, 5);
-                            }
-                            ctx.strokeStyle = '#fbbf24';
-                            ctx.lineWidth = 2;
-                            ctx.strokeRect(px + 12, py + 12, 40, 40);
                         }
                         drawMiniBadge(ctx, cx, py + TILE_PX - 6, '상층 ↑', '#78350f', '#fde68a');
                     }
 
-                    // Interactive Content Objects
+                    // 3-C. Interactive Content Objects (시야 내 모든 오브젝트는 ? 없이 고유 이미지로 즉시 노출!)
                     if (tile.content) {
-                        const bob = Math.sin(now * 0.004 + x + y) * 2.5;
-
-                        if (!tile.isCleared && !tile.isIdentified) {
-                            // Unidentified mystery wisp (?)
-                            const img = getDungeonImage('mystery_wisp');
-                            if (img) {
-                                ctx.drawImage(img, px + 8, py + 6 + bob, TILE_PX - 16, TILE_PX - 16);
-                            } else {
-                                const g = ctx.createRadialGradient(cx, cy + bob, 2, cx, cy + bob, 22);
-                                g.addColorStop(0, 'rgba(251, 191, 36, 0.9)');
-                                g.addColorStop(0.55, 'rgba(245, 158, 11, 0.35)');
-                                g.addColorStop(1, 'rgba(245, 158, 11, 0)');
-                                ctx.fillStyle = g;
-                                ctx.beginPath();
-                                ctx.arc(cx, cy + bob, 22, 0, Math.PI * 2);
-                                ctx.fill();
-                                ctx.fillStyle = '#fef3c7';
-                                ctx.font = 'bold 20px sans-serif';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-                                ctx.fillText('?', cx, cy + bob);
-                            }
-                        } else if (tile.content === 'chest') {
+                        if (tile.content === 'chest') {
                             const img = getDungeonImage(tile.isCleared ? 'chest_open' : 'chest_closed');
                             if (img) {
-                                ctx.drawImage(img, px + 8, py + 8, TILE_PX - 16, TILE_PX - 16);
-                            } else {
-                                ctx.fillStyle = tile.isCleared ? '#57534e' : '#92400e';
-                                ctx.fillRect(px + 16, py + 22, 32, 22);
-                                ctx.strokeStyle = tile.isCleared ? '#a8a29e' : '#fbbf24';
-                                ctx.lineWidth = 2.5;
-                                ctx.strokeRect(px + 16, py + 22, 32, 22);
-                                ctx.fillStyle = tile.isCleared ? '#78716c' : '#f59e0b';
-                                ctx.fillRect(px + 29, py + 28, 6, 8);
+                                ctx.drawImage(img, px + 6, py + 6, TILE_PX - 12, TILE_PX - 12);
                             }
                             if (!tile.isCleared) drawMiniBadge(ctx, cx, py + 10, '보물', '#78350f', '#fde047');
                         } else if (tile.content === 'shrine') {
                             const img = getDungeonImage('shrine_fountain');
                             if (img) {
                                 ctx.globalAlpha = tile.isCleared ? 0.5 : 1;
-                                ctx.drawImage(img, px + 6, py + 4, TILE_PX - 12, TILE_PX - 12);
+                                ctx.drawImage(img, px + 4, py + 2, TILE_PX - 8, TILE_PX - 8);
                                 ctx.globalAlpha = 1;
-                            } else {
-                                const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, 24);
-                                g.addColorStop(0, tile.isCleared ? 'rgba(148,163,184,0.3)' : 'rgba(34, 211, 238, 0.75)');
-                                g.addColorStop(1, 'rgba(34, 211, 238, 0)');
-                                ctx.fillStyle = g;
-                                ctx.beginPath();
-                                ctx.arc(cx, cy, 24, 0, Math.PI * 2);
-                                ctx.fill();
-                                ctx.fillStyle = '#334155';
-                                ctx.beginPath();
-                                ctx.arc(cx, cy, 13, 0, Math.PI * 2);
-                                ctx.fill();
-                                ctx.fillStyle = tile.isCleared ? '#64748b' : '#67e8f9';
-                                ctx.beginPath();
-                                ctx.arc(cx, cy, 8, 0, Math.PI * 2);
-                                ctx.fill();
                             }
-                            if (!tile.isCleared) drawMiniBadge(ctx, cx, py + 10, '성소', '#164e63', '#67e8f9');
+                            if (!tile.isCleared) drawMiniBadge(ctx, cx, py + 10, '치유성소', '#164e63', '#67e8f9');
                         } else if (tile.content === 'rune_stone') {
-                            const img = getDungeonImage(tile.isCleared ? 'rune_active' : 'rune_locked');
-                            if (img) {
-                                ctx.drawImage(img, px + 6, py + 2, TILE_PX - 12, TILE_PX - 8);
-                            } else {
-                                ctx.fillStyle = tile.isCleared ? '#0e7490' : '#4c1d95';
-                                ctx.beginPath();
-                                ctx.moveTo(cx, py + 10);
-                                ctx.lineTo(px + 44, py + 28);
-                                ctx.lineTo(px + 40, py + 52);
-                                ctx.lineTo(px + 24, py + 52);
-                                ctx.lineTo(px + 20, py + 28);
-                                ctx.closePath();
-                                ctx.fill();
-                                ctx.strokeStyle = tile.isCleared ? '#67e8f9' : '#c084fc';
-                                ctx.lineWidth = 2;
-                                ctx.stroke();
-                            }
-                            drawMiniBadge(ctx, cx, py + 10, tile.isCleared ? '해제됨' : '봉인석', tile.isCleared ? '#164e63' : '#3b0764', tile.isCleared ? '#67e8f9' : '#d8b4fe');
-                        } else if (!tile.isCleared && tile.content === 'enemy') {
-                            const img = getDungeonImage('enemy_marker');
-                            if (img) {
-                                ctx.drawImage(img, px + 6, py + 4 + bob * 0.6, TILE_PX - 12, TILE_PX - 12);
-                            } else {
-                                ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
-                                ctx.beginPath();
-                                ctx.arc(cx, cy + 8, 16, 0, Math.PI * 2);
-                                ctx.fill();
-                                ctx.fillStyle = '#7f1d1d';
-                                ctx.beginPath();
-                                ctx.arc(cx, cy + bob * 0.5, 13, 0, Math.PI * 2);
-                                ctx.fill();
-                                ctx.fillStyle = '#fca5a5';
-                                ctx.fillRect(cx - 6, cy - 2 + bob * 0.5, 4, 3);
-                                ctx.fillRect(cx + 2, cy - 2 + bob * 0.5, 4, 3);
-                            }
-                            drawMiniBadge(ctx, cx, py + 8, '마물', '#7f1d1d', '#fca5a5');
-                        } else if (!tile.isCleared && tile.content === 'miniboss') {
-                            const img = getDungeonImage('miniboss_marker');
-                            if (img) {
-                                ctx.drawImage(img, px + 2, py + bob * 0.6, TILE_PX - 4, TILE_PX - 4);
-                            } else {
-                                ctx.fillStyle = 'rgba(244, 63, 94, 0.32)';
-                                ctx.beginPath();
-                                ctx.arc(cx, cy + 8, 20, 0, Math.PI * 2);
-                                ctx.fill();
-                                ctx.fillStyle = '#9f1239';
-                                ctx.beginPath();
-                                ctx.arc(cx, cy + bob * 0.5, 16, 0, Math.PI * 2);
-                                ctx.fill();
-                                ctx.strokeStyle = '#fda4af';
-                                ctx.lineWidth = 2;
-                                ctx.stroke();
-                            }
-                            drawMiniBadge(ctx, cx, py + 8, '정예', '#881337', '#fda4af');
-                        } else if (!tile.isCleared && tile.content === 'boss') {
+                            // 봉인석 아래 회전하는 마법진 연출
                             const magicImg = getDungeonImage('magic_circle');
                             if (magicImg) {
                                 ctx.save();
-                                ctx.globalAlpha = 0.55 + pulse * 0.35;
-                                ctx.drawImage(magicImg, px - 10, py - 10, TILE_PX + 20, TILE_PX + 20);
+                                ctx.translate(cx, cy + 4);
+                                ctx.rotate(now * 0.0008);
+                                ctx.globalAlpha = tile.isCleared ? 0.35 : (0.65 + pulse * 0.25);
+                                ctx.drawImage(magicImg, -34, -34, 68, 68);
                                 ctx.restore();
+                            }
+                            const img = getDungeonImage(tile.isCleared ? 'rune_active' : 'rune_locked');
+                            if (img) {
+                                ctx.drawImage(img, px + 6, py, TILE_PX - 12, TILE_PX - 6);
+                            }
+                            drawMiniBadge(ctx, cx, py + 8, tile.isCleared ? '해제됨' : '봉인석', tile.isCleared ? '#164e63' : '#3b0764', tile.isCleared ? '#67e8f9' : '#d8b4fe');
+                        } else if (!tile.isCleared && tile.content === 'enemy') {
+                            const alertFastBob = tile.isAlerted ? Math.sin(now * 0.014 + x) * 4.5 : bob * 0.6;
+                            const enemyAsset: DungeonAssetKey =
+                                tile.enemyVariant === 'mimic' ? 'mimic_chest' :
+                                tile.enemyVariant === 'wraith' ? 'wraith_reaper' :
+                                'enemy_marker';
+                            const img = getDungeonImage(enemyAsset);
+                            if (img) {
+                                ctx.drawImage(img, px + 5, py + 3 + alertFastBob, TILE_PX - 10, TILE_PX - 10);
+                            }
+                            if (tile.isAlerted) {
+                                drawMiniBadge(ctx, cx, py + 6, '! 경계중', '#991b1b', '#fef08a');
                             } else {
-                                ctx.strokeStyle = `rgba(244, 63, 94, ${0.5 + pulse * 0.45})`;
-                                ctx.lineWidth = 3;
-                                ctx.beginPath();
-                                ctx.arc(cx, cy, 26 + pulse * 3, 0, Math.PI * 2);
-                                ctx.stroke();
+                                const label = tile.enemyVariant === 'mimic' ? '미믹' : tile.enemyVariant === 'wraith' ? '사신망령' : '마물';
+                                drawMiniBadge(ctx, cx, py + 8, label, '#7f1d1d', '#fca5a5');
+                            }
+                        } else if (!tile.isCleared && tile.content === 'miniboss') {
+                            const alertFastBob = tile.isAlerted ? Math.sin(now * 0.012 + x) * 4 : bob * 0.6;
+                            const mbAsset: DungeonAssetKey = tile.enemyVariant === 'golem' ? 'golem_sentry' : 'miniboss_marker';
+                            const img = getDungeonImage(mbAsset);
+                            if (img) {
+                                ctx.drawImage(img, px + 1, py - 2 + alertFastBob, TILE_PX - 2, TILE_PX - 2);
+                            }
+                            const mbLabel = tile.enemyVariant === 'golem' ? '고대골렘' : '정예수호자';
+                            drawMiniBadge(ctx, cx, py + 6, tile.isAlerted ? `!! ${mbLabel}` : mbLabel, '#881337', '#fda4af');
+                        } else if (!tile.isCleared && tile.content === 'boss') {
+                            // 보스 알현실: 거대한 2x2 크기로 실시간 회전하는 고대 마법진 + 왕좌
+                            const magicImg = getDungeonImage('magic_circle');
+                            if (magicImg) {
+                                ctx.save();
+                                ctx.translate(cx, cy + 4);
+                                ctx.rotate(now * 0.0006);
+                                ctx.globalAlpha = 0.72 + pulse * 0.25;
+                                ctx.drawImage(magicImg, -54, -54, 108, 108);
+                                ctx.restore();
                             }
                             const bossImg = getDungeonImage('boss_throne');
                             if (bossImg) {
-                                ctx.drawImage(bossImg, px - 2, py - 6 + bob * 0.5, TILE_PX + 4, TILE_PX + 4);
-                            } else {
-                                ctx.fillStyle = '#450a0a';
-                                ctx.beginPath();
-                                ctx.arc(cx, cy, 18, 0, Math.PI * 2);
-                                ctx.fill();
-                                ctx.strokeStyle = '#fbbf24';
-                                ctx.lineWidth = 2.5;
-                                ctx.stroke();
-                                ctx.fillStyle = '#fbbf24';
-                                ctx.font = 'bold 18px sans-serif';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-                                ctx.fillText('👑', cx, cy);
+                                ctx.drawImage(bossImg, px - 8, py - 14 + bob * 0.5, TILE_PX + 16, TILE_PX + 16);
                             }
-                            drawMiniBadge(ctx, cx, py - 2, bossName ? `BOSS ${bossName.slice(0, 6)}` : 'BOSS', '#7f1d1d', '#fde047');
+                            drawMiniBadge(ctx, cx, py - 6, bossName ? `👑 ${bossName.slice(0, 7)}` : '👑 BOSS', '#7f1d1d', '#fde047');
                         }
                     }
                 }
@@ -938,13 +1022,17 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                 }
 
                 const spriteSize = partyIndex === 0 ? 54 : 44;
-                const sheetImg = member.spec.sheetUrl ? getCachedRpgSpriteImage(member.spec.sheetUrl) : null;
+                const spriteUrl = member.spec.url || (member.spec as any).sheetUrl;
+                const sheetImg = spriteUrl ? getCachedRpgSpriteImage(spriteUrl) : null;
+                if (spriteUrl && !sheetImg) {
+                    loadRpgSpriteImage(spriteUrl);
+                }
                 const animFrame = isMoving ? Math.floor(walkAnimRef.current) % 4 : 1;
                 const frameCol = animFrame === 3 ? 1 : animFrame; // 0-1-2-1 RPG Maker walk cycle
 
                 if (sheetImg && sheetImg.complete && sheetImg.naturalWidth > 0) {
-                    const cols = member.spec.cols || 3;
-                    const rows = member.spec.rows || 4;
+                    const cols = (member.spec as any).cols || 3;
+                    const rows = (member.spec as any).rows || 4;
                     const fw = sheetImg.naturalWidth / cols;
                     const fh = sheetImg.naturalHeight / rows;
                     const row = DIRECTION_ROW_MAP[dir] ?? 0;
@@ -960,17 +1048,16 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                         spriteSize
                     );
                 } else {
-                    drawFallbackChibiSprite(ctx, {
-                        x: centerX,
-                        y: footY,
-                        size: spriteSize,
+                    drawFallbackChibiSprite(
+                        ctx,
+                        centerX,
+                        footY,
+                        spriteSize,
                         dir,
-                        frame: frameCol,
-                        hairColor: member.spec.hairColor,
-                        outfitColor: member.spec.outfitColor,
-                        accentColor: member.spec.accentColor,
-                        isFemale: member.spec.gender === 'female'
-                    });
+                        frameCol,
+                        member.spec.regionKey || 'asia',
+                        member.spec.genderKey || 'male'
+                    );
                 }
 
                 if (partyIndex === 0) {
@@ -1009,19 +1096,47 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
             }
             ctx.globalAlpha = 1;
 
+            // 7-B. Floating Gimmick & Loot Popups on Canvas
+            for (let i = floatTextsRef.current.length - 1; i >= 0; i--) {
+                const ft = floatTextsRef.current[i];
+                ft.y -= 0.65;
+                ft.life += 1;
+                if (ft.life >= ft.maxLife) {
+                    floatTextsRef.current.splice(i, 1);
+                    continue;
+                }
+                const alpha = Math.min(1, (1 - ft.life / ft.maxLife) * 1.35);
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.font = 'bold 12px sans-serif';
+                const tw = Math.max(40, ctx.measureText(ft.text).width + 16);
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+                ctx.beginPath();
+                ctx.roundRect(ft.x - tw / 2, ft.y - 11, tw, 22, 6);
+                ctx.fill();
+                ctx.strokeStyle = ft.color;
+                ctx.lineWidth = 1.4;
+                ctx.stroke();
+                ctx.fillStyle = ft.color;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(ft.text, ft.x, ft.y + 0.5);
+                ctx.restore();
+            }
+
             ctx.restore(); // End world camera transform
 
             // 8. Atmospheric Dungeon Vignette Overlay
             const vig = ctx.createRadialGradient(
                 viewportSize.width / 2,
                 viewportSize.height / 2,
-                Math.min(viewportSize.width, viewportSize.height) * 0.32,
+                Math.min(viewportSize.width, viewportSize.height) * 0.36,
                 viewportSize.width / 2,
                 viewportSize.height / 2,
-                Math.max(viewportSize.width, viewportSize.height) * 0.72
+                Math.max(viewportSize.width, viewportSize.height) * 0.76
             );
             vig.addColorStop(0, 'rgba(0,0,0,0)');
-            vig.addColorStop(1, 'rgba(2, 6, 23, 0.62)');
+            vig.addColorStop(1, 'rgba(2, 6, 23, 0.56)');
             ctx.fillStyle = vig;
             ctx.fillRect(0, 0, viewportSize.width, viewportSize.height);
 
@@ -1083,7 +1198,7 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                 </div>
                 <div
                     className="grid gap-[1px] bg-slate-900 p-1 rounded-lg border border-slate-800"
-                    style={{ gridTemplateColumns: `repeat(${gridState.width}, 7px)` }}
+                    style={{ gridTemplateColumns: `repeat(${gridState.width}, 6px)` }}
                 >
                     {gridState.tiles.map((row, y) =>
                         row.map((t, x) => {
@@ -1098,11 +1213,14 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                                 else if (t.content === 'chest' && !t.isCleared) bg = 'bg-yellow-400';
                                 else if (t.content === 'shrine' && !t.isCleared) bg = 'bg-cyan-400';
                                 else if (t.content === 'rune_stone' && !t.isCleared) bg = 'bg-purple-400';
+                                else if (t.propType === 'crystal' && !t.isCleared) bg = 'bg-sky-300';
+                                else if (t.propType === 'crate' && !t.isCleared) bg = 'bg-orange-400';
+                                else if (t.propType === 'bones' && !t.isCleared) bg = 'bg-slate-300';
                                 else if (t.type === 'stairs' || t.type === 'stairs_up') bg = 'bg-sky-400';
                                 else if (t.type === 'entrance') bg = 'bg-emerald-400';
                                 else bg = 'bg-slate-600/80';
                             }
-                            return <div key={`${x}-${y}`} className={`w-[7px] h-[7px] rounded-[1px] ${bg}`} />;
+                            return <div key={`${x}-${y}`} className={`w-[6px] h-[6px] rounded-[1px] ${bg}`} />;
                         })
                     )}
                 </div>
