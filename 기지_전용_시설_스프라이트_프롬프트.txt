@@ -1,0 +1,39 @@
+========================================================================
+신의 사자 RPG — 기지 전용 시설 16종 스프라이트 시트 프롬프트 (4×2 시트 × 2장)
+========================================================================
+※ 생성 후 assets/visuals/new 폴더에 파일명 그대로 넣어주시면
+   자동 분할·마젠타 투명화·기지 2D 맵 매핑까지 한 번에 적용해 드립니다!
+
+------------------------------------------------------------------------
+[시트 1] base_facilities_sheet_1.png (생산·생활·제작 시설 8종, 4×2)
+  1행: 농장(farm) / 광산(mine) / 대장간(blacksmith) / 연금술실(alchemy)
+  2행: 요리실(cooking) / 마법연구소(lab) / 제작공방(workshop) / 창고(storage)
+------------------------------------------------------------------------
+2D top-down 3/4 view RPG fantasy base facility building sprite sheet arranged in an exact 4 columns by 2 rows grid (8 distinct buildings total), strictly isolated on a solid flat pure magenta (#FF00FF) background with generous empty magenta margin between every building so no roofs, signs, or shadows touch adjacent cells. Crisp hand-painted pixel-art / JRPG townsfolk style matching Stardew Valley and RPG Maker MZ high-res assets, clean dark outlines, no text, no labels, no grid lines, no corner watermarks.
+Top row (left to right):
+1) Lush medieval fantasy farmstead with wooden barn, tilled golden wheat & vegetable plots, and a small windmill (farm).
+2) Rocky quarry mine entrance carved into cliff stone with wooden support beams, minecart tracks, and glowing crystal ore veins (mine).
+3) Dwarven-inspired fantasy blacksmith forge with stone chimney emitting warm orange embers, outdoor anvil, weapon rack, and glowing furnace (blacksmith).
+4) Mystical alchemy laboratory cottage with purple slate roof, bubbling glass cauldrons, herb drying racks, and glowing potion bottles (alchemy).
+Bottom row (left to right):
+5) Cozy fantasy tavern-style kitchen hall with brick bakery oven, steaming chimney, outdoor spice barrels, and warm golden windows (cooking).
+6) Arcane magic research tower with observatory dome, floating blue rune crystals, and stacked spellbooks at the entrance (lab).
+7) Master artisan craft workshop with timber-framed roof, wooden gear wheel, lumber stacks, and crafting workbench (workshop).
+8) Reinforced stone-and-timber supply warehouse with double iron-bound cargo doors, stacked crates, barrels, and treasure chests (storage).
+
+------------------------------------------------------------------------
+[시트 2] base_facilities_sheet_2.png (전투·훈련·특수 시설 8종, 4×2)
+  1행: 몬스터 사육소(monster_farm) / 몬스터 아레나(monster_arena) / 전투 훈련소(combat_training) / 전술 대련장(tactical_training)
+  2행: 파견소(dispatch) / 방어소(defense) / 탐험 관측소(explorer_observatory) / 신력·초월 성소(sanctuary)
+------------------------------------------------------------------------
+2D top-down 3/4 view RPG fantasy base facility building sprite sheet arranged in an exact 4 columns by 2 rows grid (8 distinct buildings total), strictly isolated on a solid flat pure magenta (#FF00FF) background with generous empty magenta margin between every building so no roofs, banners, or shadows touch adjacent cells. Crisp hand-painted pixel-art / JRPG style, clean dark outlines, no text, no labels, no grid lines, no corner watermarks.
+Top row (left to right):
+1) Spacious monster ranch barn with wooden pasture fence, hay bales, feeding trough, and cozy monster stables (monster_farm).
+2) Grand circular stone monster colosseum arena with crimson banners, sandy battle ring, and spectator tiers (monster_arena).
+3) Open-air martial combat training dojo and barracks with wooden training dummies, weapon racks, and archery targets (combat_training).
+4) Tactical command war-room pavilion with strategy map table visible under an open arched roof, blue banners, and sparring circle (tactical_training).
+Bottom row (left to right):
+5) Adventurer dispatch guild outpost with messenger bird coop, wooden quest notice board, travel map stand, and supply wagon (dispatch).
+6) Fortified stone watchtower and bastion gatehouse with battlements, shield emblems, and signal brazier on top (defense).
+7) Tall astronomical explorer observatory with brass telescope dome, glowing starlight astrolabe, and stone staircase (explorer_observatory).
+8) Radiant golden-white divine transcendence sanctuary shrine with floating halo crystal, marble pillars, and sacred lotus pool (sanctuary).

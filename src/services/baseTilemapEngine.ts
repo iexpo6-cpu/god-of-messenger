@@ -1,10 +1,14 @@
-import { Character, Companion, CapturedMonster, FacilityInstance } from '../types';
+import { BaseDecorationItem, Character, Companion, CapturedMonster, FacilityInstance } from '../types';
 import { FACILITIES_INFO } from '../constants';
 import {
     CityCultureKey,
+    CultureAssetPart,
     getBaseBuildingSpriteUrl,
+    getCultureAssetUrl,
     getHousingBuildingUrl,
+    getPropAssetUrl,
     HousingBuildingPart,
+    PropPackKey,
     resolveBuildingPackKey,
     resolveCityCultureKey
 } from './cityAssetManifest';
@@ -14,17 +18,189 @@ import { getTimeOfDay } from './gameTimeService';
 
 export const BASE_TILE_SIZE = 48;
 
-export type BaseTileType =
-    | 'grass'
-    | 'road'
+/** 기지 레벨(Lv.1~5)별 최대 맵 크기 (타일 수, 정사각형 기준) */
+export const BASE_MAX_MAP_SIZE_BY_LEVEL: Record<number, number> = {
+    1: 40,
+    2: 70,
+    3: 110,
+    4: 150,
+    5: 200
+};
+
+export interface BaseMapExpansionOption {
+    canExpand: boolean;
+    nextSize: number;
+    maxForLevel: number;
+    goldCost: number;
+    woodCost: number;
+    stoneCost: number;
+    needsHigherBaseLevel: boolean;
+}
+
+export const getBaseMapExpansionOption = (
+    baseLevel: number,
+    curWidth: number,
+    curHeight: number
+): BaseMapExpansionOption => {
+    const lv = Math.max(1, Math.min(5, Math.floor(baseLevel || 1)));
+    const maxForLevel = BASE_MAX_MAP_SIZE_BY_LEVEL[lv] || 40;
+    const cur = Math.max(curWidth || 30, curHeight || 30);
+    if (cur >= maxForLevel) {
+        return {
+            canExpand: false,
+            nextSize: cur,
+            maxForLevel,
+            goldCost: 0,
+            woodCost: 0,
+            stoneCost: 0,
+            needsHigherBaseLevel: lv < 5
+        };
+    }
+    const step = lv === 1 ? 10 : lv === 2 ? 15 : lv <= 4 ? 20 : 25;
+    const nextSize = Math.min(maxForLevel, cur + step);
+    const tierFactor = Math.max(1, Math.floor((nextSize - 20) / 10));
+    return {
+        canExpand: true,
+        nextSize,
+        maxForLevel,
+        goldCost: tierFactor * 45000,
+        woodCost: tierFactor * 20,
+        stoneCost: tierFactor * 25,
+        needsHigherBaseLevel: false
+    };
+};
+
+/** 시설 성격별 차지하는 타일 크기 (Footprint) */
+export const getFacilityFootprint = (facilityType: string): { w: number; h: number } => {
+    if (facilityType === 'hq') return { w: 6, h: 5 };
+    if (
+        facilityType === 'monster_farm' ||
+        facilityType === 'monster_ranch' ||
+        facilityType === 'monster_arena' ||
+        facilityType === 'tactical_training'
+    ) {
+        return { w: 5, h: 4 };
+    }
+    if (
+        facilityType === 'farm' ||
+        facilityType === 'mine' ||
+        facilityType === 'combat_training' ||
+        facilityType === 'training_exp' ||
+        facilityType === 'training_stat' ||
+        facilityType === 'training_mastery' ||
+        facilityType === 'training' ||
+        facilityType === 'child_academy' ||
+        facilityType === 'defense'
+    ) {
+        return { w: 4, h: 3 };
+    }
+    if (
+        facilityType === 'housing' ||
+        facilityType === 'home' ||
+        facilityType === 'my_home' ||
+        facilityType === 'blacksmith' ||
+        facilityType === 'alchemy' ||
+        facilityType === 'cooking' ||
+        facilityType === 'lab' ||
+        facilityType === 'workshop' ||
+        facilityType === 'storage' ||
+        facilityType === 'dispatch'
+    ) {
+        return { w: 3, h: 3 };
+    }
+    return { w: 2, h: 2 };
+};
+
+export type BaseFloorTileId =
+    | 'default'
+    | 'dirt_road'
+    | 'stone_road'
     | 'plaza'
-    | 'wall'
+    | 'wood_deck'
+    | 'flower_field'
     | 'water'
-    | 'farm_soil'
-    | 'pasture'
-    | 'slot_empty'
-    | 'building'
-    | 'gate';
+    | 'royal_marble'
+    | 'sand'
+    | 'snow'
+    | 'elf_moss'
+    | 'shingye_jade'
+    | 'magye_obsidian';
+
+export interface BaseFloorTileDef {
+    id: BaseFloorTileId;
+    label: string;
+    gold: number;
+    wood: number;
+    stone: number;
+    color: string;
+    accentColor: string;
+    solid?: boolean;
+    terrainPart?: 'ground' | 'road' | 'plaza' | 'royal_road' | 'water';
+}
+
+export const BASE_FLOOR_TILE_CATALOG: BaseFloorTileDef[] = [
+    { id: 'default', label: '기본 지면 (무료)', gold: 0, wood: 0, stone: 0, color: '#356831', accentColor: '#2f5e2c', terrainPart: 'ground' },
+    { id: 'dirt_road', label: '흙길', gold: 50, wood: 0, stone: 0, color: '#9c7c56', accentColor: '#876946' },
+    { id: 'stone_road', label: '돌 포장도로', gold: 120, wood: 0, stone: 1, color: '#8d867e', accentColor: '#736d66', terrainPart: 'road' },
+    { id: 'plaza', label: '광장 석재', gold: 150, wood: 0, stone: 1, color: '#b4afa6', accentColor: '#9c968d', terrainPart: 'plaza' },
+    { id: 'wood_deck', label: '목재 데크', gold: 120, wood: 1, stone: 0, color: '#8b5a2b', accentColor: '#6f451f' },
+    { id: 'flower_field', label: '꽃밭 정원', gold: 200, wood: 0, stone: 0, color: '#3f7d3a', accentColor: '#f472b6' },
+    { id: 'water', label: '연못 / 수로', gold: 250, wood: 0, stone: 1, color: '#0284c7', accentColor: '#38bdf8', solid: true, terrainPart: 'water' },
+    { id: 'royal_marble', label: '왕도 대리석', gold: 400, wood: 0, stone: 2, color: '#e2e8f0', accentColor: '#fbbf24', terrainPart: 'royal_road' },
+    { id: 'sand', label: '사막 모래', gold: 80, wood: 0, stone: 0, color: '#d4b483', accentColor: '#c19e67' },
+    { id: 'snow', label: '설원 눈길', gold: 100, wood: 0, stone: 0, color: '#e0f2fe', accentColor: '#bae6fd' },
+    { id: 'elf_moss', label: '엘프 숲길', gold: 300, wood: 1, stone: 0, color: '#15803d', accentColor: '#4ade80' },
+    { id: 'shingye_jade', label: '신계 백옥', gold: 600, wood: 0, stone: 2, color: '#fef9c3', accentColor: '#f59e0b' },
+    { id: 'magye_obsidian', label: '마계 흑요석', gold: 600, wood: 0, stone: 2, color: '#2e1065', accentColor: '#a855f7' }
+];
+
+export const FLOOR_TILE_MAP: Record<string, BaseFloorTileDef> = Object.fromEntries(
+    BASE_FLOOR_TILE_CATALOG.map(t => [t.id, t])
+);
+
+export interface BaseDecorationDef {
+    key: string;
+    label: string;
+    pack: 'culture' | PropPackKey;
+    part: string;
+    gold: number;
+    wood: number;
+    stone: number;
+    solid: boolean;
+    category: '자연·정원' | '마을·가구' | '신비·성채';
+}
+
+export const BASE_DECORATION_CATALOG: BaseDecorationDef[] = [
+    { key: 'culture_tree', label: '지역 조경수', pack: 'culture', part: 'tree', gold: 500, wood: 2, stone: 0, solid: true, category: '자연·정원' },
+    { key: 'nature_flowerbed', label: '꽃밭 화단', pack: 'nature', part: 'flowerbed', gold: 400, wood: 1, stone: 0, solid: false, category: '자연·정원' },
+    { key: 'nature_planter', label: '대형 화분', pack: 'nature', part: 'planter', gold: 450, wood: 1, stone: 1, solid: true, category: '자연·정원' },
+    { key: 'nature_boulders', label: '조경 바위', pack: 'nature', part: 'boulders', gold: 350, wood: 0, stone: 2, solid: true, category: '자연·정원' },
+    { key: 'nature_fence', label: '나무 울타리', pack: 'nature', part: 'fence', gold: 300, wood: 2, stone: 0, solid: true, category: '자연·정원' },
+    { key: 'nature_bridge', label: '나무 다리', pack: 'nature', part: 'bridge', gold: 800, wood: 4, stone: 0, solid: false, category: '자연·정원' },
+    { key: 'culture_lamp', label: '지역 가로등', pack: 'culture', part: 'lamp', gold: 600, wood: 1, stone: 1, solid: true, category: '마을·가구' },
+    { key: 'culture_fountain', label: '중앙 분수대', pack: 'culture', part: 'fountain', gold: 2500, wood: 0, stone: 6, solid: true, category: '마을·가구' },
+    { key: 'market_bench', label: '휴식 벤치', pack: 'market', part: 'bench', gold: 500, wood: 2, stone: 0, solid: false, category: '마을·가구' },
+    { key: 'market_well', label: '돌 우물', pack: 'market', part: 'well', gold: 1200, wood: 1, stone: 4, solid: true, category: '마을·가구' },
+    { key: 'market_notice', label: '영지 게시판', pack: 'market', part: 'notice_board', gold: 700, wood: 3, stone: 0, solid: true, category: '마을·가구' },
+    { key: 'market_stall', label: '노점 천막', pack: 'market', part: 'stall', gold: 1100, wood: 3, stone: 0, solid: true, category: '마을·가구' },
+    { key: 'fantasy_brazier', label: '성채 화톳불', pack: 'fantasy', part: 'brazier', gold: 1000, wood: 1, stone: 3, solid: true, category: '신비·성채' },
+    { key: 'fantasy_banner', label: '영지 깃발', pack: 'fantasy', part: 'banner', gold: 900, wood: 2, stone: 0, solid: false, category: '신비·성채' },
+    { key: 'fantasy_crystal', label: '마력 크리스탈', pack: 'fantasy', part: 'crystal', gold: 2000, wood: 0, stone: 4, solid: true, category: '신비·성채' },
+    { key: 'fantasy_obelisk', label: '고대 오벨리스크', pack: 'fantasy', part: 'obelisk', gold: 3000, wood: 0, stone: 8, solid: true, category: '신비·성채' },
+    { key: 'fantasy_rune', label: '룬 마법진', pack: 'fantasy', part: 'rune_pad', gold: 1800, wood: 0, stone: 3, solid: false, category: '신비·성채' },
+    { key: 'east_archway', label: '전통 아치문', pack: 'east_asia', part: 'archway', gold: 2200, wood: 5, stone: 3, solid: false, category: '신비·성채' }
+];
+
+export const resolveDecorationSpriteUrl = (
+    cultureKey: CityCultureKey,
+    pack: string,
+    part: string
+): string => {
+    if (pack === 'culture') {
+        return getCultureAssetUrl(cultureKey, part as CultureAssetPart);
+    }
+    return getPropAssetUrl(pack as PropPackKey, part);
+};
 
 export interface BaseFacilityNode {
     id: string;
@@ -33,8 +209,6 @@ export interface BaseFacilityNode {
     label: string;
     subLabel: string;
     level: number;
-    gridX: number; // 논리 격자 X (0..gridSize-1), 본부는 -1
-    gridY: number; // 논리 격자 Y (0..gridSize-1), 본부는 -1
     tileX: number;
     tileY: number;
     tileW: number;
@@ -48,16 +222,8 @@ export interface BaseFacilityNode {
     accentColor: string;
     isHq?: boolean;
     isMonsterPen?: boolean;
+    isFarm?: boolean;
     assignedNames: string[];
-}
-
-export interface BaseEmptySlotNode {
-    gridX: number;
-    gridY: number;
-    tileX: number;
-    tileY: number;
-    tileW: number;
-    tileH: number;
 }
 
 export interface BaseResidentEntity {
@@ -105,13 +271,15 @@ export interface BaseFarmMonsterEntity {
 export interface BaseTilemapData {
     cols: number;
     rows: number;
-    gridSize: number;
+    baseLevel: number;
     cultureKey: CityCultureKey;
     buildingPackKey: string;
-    tiles: BaseTileType[][];
-    solid: boolean[][];
+    /** 희소 바닥 타일 오버라이드 (key: "x,y", value: BaseFloorTileId) */
+    floorOverrides: Record<string, BaseFloorTileId>;
+    /** 충돌 판정용 희소 Set (key: "x,y") — 200x200에서도 초경량 & O(1) */
+    solidSet: Set<string>;
     facilities: BaseFacilityNode[];
-    emptySlots: BaseEmptySlotNode[];
+    decorations: BaseDecorationItem[];
     residents: BaseResidentEntity[];
     farmMonsters: BaseFarmMonsterEntity[];
     spawnPos: { x: number; y: number };
@@ -152,7 +320,6 @@ const resolveHousingPartForInstance = (
 ): HousingBuildingPart => {
     if (inst.type === 'home' || inst.type === 'my_home') return 'house_my_home';
     const houses = character.base?.houses || [];
-    // 해당 housing 인스턴스 또는 가장 높은 등급의 주택 타입을 매칭
     const matched = houses.find(h => h.id === inst.id) || houses[0];
     const hType = String(matched?.type || '').toLowerCase();
     if (hType.includes('luxury') || hType.includes('mansion') || hType.includes('고급')) return 'house_luxury';
@@ -162,84 +329,117 @@ const resolveHousingPartForInstance = (
     return 'house_1f';
 };
 
+export const canPlaceFacilityRect = (
+    cols: number,
+    rows: number,
+    facilities: BaseFacilityNode[],
+    floorOverrides: Record<string, BaseFloorTileId>,
+    exitGate: { x: number; y: number; w: number; h: number },
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    ignoreFacilityId?: string
+): boolean => {
+    // 외곽 성벽(0, cols-1, 0, rows-1) 및 정문 앞 2칸 보호
+    if (x < 2 || y < 2 || x + w > cols - 2 || y + h > rows - 3) return false;
+
+    // 정문 출입 통로 침범 방지
+    if (
+        x < exitGate.x + exitGate.w + 1 &&
+        x + w > exitGate.x - 1 &&
+        y + h > exitGate.y - 3
+    ) {
+        return false;
+    }
+
+    // 물 타일 위 건설 불가
+    for (let ty = y; ty < y + h; ty++) {
+        for (let tx = x; tx < x + w; tx++) {
+            if (floorOverrides[`${tx},${ty}`] === 'water') return false;
+        }
+    }
+
+    // 기존 시설과 1칸 여백 포함 충돌 검사 (자연스러운 통로 확보)
+    for (const f of facilities) {
+        if (ignoreFacilityId && (f.id === ignoreFacilityId || f.instanceId === ignoreFacilityId)) continue;
+        if (x < f.tileX + f.tileW + 1 && x + w + 1 > f.tileX && y < f.tileY + f.tileH + 1 && y + h + 1 > f.tileY) {
+            return false;
+        }
+    }
+
+    return true;
+};
+
 export const generateBaseTilemap = (character: Character): BaseTilemapData => {
     const base = character.base;
-    const gridSize = Math.max(7, Math.min(10, base?.gridSize || 7));
     const baseLevel = Math.max(1, Math.min(5, base?.level || 1));
+    const maxAllowed = BASE_MAX_MAP_SIZE_BY_LEVEL[baseLevel] || 40;
+    const defaultSize = baseLevel === 1 ? 30 : Math.min(maxAllowed, 30 + (baseLevel - 1) * 15);
+    const cols = Math.max(24, Math.min(200, base?.mapWidth || defaultSize));
+    const rows = Math.max(24, Math.min(200, base?.mapHeight || defaultSize));
+    const cx = Math.floor(cols / 2);
+
     const loc = base?.location || character.currentLocation || { region: '아시아', nation: '대한민국', city: '서울' };
     const cultureKey = resolveCityCultureKey(loc.region, loc.nation, loc.city);
     const defaultPack = resolveBuildingPackKey(cultureKey);
     const buildingPackKey = base?.customBuildingPack || defaultPack;
 
-    // 각 논리 격자 슬롯 = 3x3 타일 블록 (1타일 통로 간격 포함 시 너무 커지므로 3x3 블록 내 2x2 건물 + 1타일 앞길)
-    const CELL = 3;
-    const marginX = 3;
-    const hqHeight = 6; // 상단 기지 본부 및 광장 영역
-    const southHeight = 4; // 남쪽 정문 및 출구 도로 영역
+    const exitGate = { x: cx - 1, y: rows - 1, w: 3, h: 1 };
 
-    const cols = marginX * 2 + gridSize * CELL;
-    const rows = hqHeight + gridSize * CELL + southHeight;
-    const cx = Math.floor(cols / 2);
+    // 1. 기본 자연 도로/광장 + 사용자 customTiles 오버라이드 병합
+    const floorOverrides: Record<string, BaseFloorTileId> = {};
+    const hqFoot = getFacilityFootprint('hq');
+    const hqX = Math.max(2, Math.min(cols - 2 - hqFoot.w, base?.hqPos?.x ?? cx - Math.floor(hqFoot.w / 2)));
+    const hqY = Math.max(2, Math.min(rows - 4 - hqFoot.h, base?.hqPos?.y ?? 4));
+    const hqDoorX = hqX + Math.floor(hqFoot.w / 2);
+    const hqDoorY = hqY + hqFoot.h;
 
-    const tiles: BaseTileType[][] = Array.from({ length: rows }, () =>
-        Array.from({ length: cols }, () => 'grass' as BaseTileType)
-    );
-    const solid: boolean[][] = Array.from({ length: rows }, () =>
-        Array.from({ length: cols }, () => false)
-    );
+    // 초기 중앙 광장 & 남쪽 정문 연결 도로 (사용자가 customTiles로 언제든 덮어쓸 수 있음)
+    for (let y = hqY + hqFoot.h - 1; y <= Math.min(rows - 3, hqY + hqFoot.h + 3); y++) {
+        for (let x = Math.max(2, hqX - 1); x <= Math.min(cols - 3, hqX + hqFoot.w); x++) {
+            floorOverrides[`${x},${y}`] = 'plaza';
+        }
+    }
+    for (let y = hqDoorY; y < rows - 1; y++) {
+        floorOverrides[`${cx},${y}`] = 'stone_road';
+        if (cx - 1 >= 2) floorOverrides[`${cx - 1},${y}`] = 'stone_road';
+    }
+    // 가로 산책로 (본부 앞 광장 좌우)
+    const crossRoadY = Math.min(rows - 5, hqDoorY + 2);
+    for (let x = 4; x < cols - 4; x++) {
+        floorOverrides[`${x},${crossRoadY}`] = 'dirt_road';
+    }
 
-    // 1. 외곽 성벽
+    // 사용자 커스텀 타일 적용 (default이면 기본 잔디로 복원)
+    if (base?.customTiles) {
+        Object.entries(base.customTiles).forEach(([k, v]) => {
+            if (v === 'default') {
+                delete floorOverrides[k];
+            } else {
+                floorOverrides[k] = v as BaseFloorTileId;
+            }
+        });
+    }
+
+    const solidSet = new Set<string>();
+    // 외곽 성벽 충돌
     for (let x = 0; x < cols; x++) {
-        tiles[0][x] = 'wall';
-        solid[0][x] = true;
-        tiles[rows - 1][x] = 'wall';
-        solid[rows - 1][x] = true;
+        solidSet.add(`${x},0`);
+        if (x < exitGate.x || x >= exitGate.x + exitGate.w) {
+            solidSet.add(`${x},${rows - 1}`);
+        }
     }
     for (let y = 0; y < rows; y++) {
-        tiles[y][0] = 'wall';
-        solid[y][0] = true;
-        tiles[y][cols - 1] = 'wall';
-        solid[y][cols - 1] = true;
+        solidSet.add(`0,${y}`);
+        solidSet.add(`${cols - 1},${y}`);
     }
+    // 물 타일 충돌
+    Object.entries(floorOverrides).forEach(([k, v]) => {
+        if (FLOOR_TILE_MAP[v]?.solid) solidSet.add(k);
+    });
 
-    // 2. 남쪽 정문 출구 (도시로 나가기)
-    const exitGate = { x: cx - 1, y: rows - 1, w: 3, h: 1 };
-    for (let gx = exitGate.x; gx < exitGate.x + exitGate.w; gx++) {
-        tiles[rows - 1][gx] = 'gate';
-        solid[rows - 1][gx] = false;
-        tiles[rows - 2][gx] = 'road';
-        tiles[rows - 3][gx] = 'road';
-    }
-
-    // 3. 상단 본부 앞 광장 + 중앙 종단 도로
-    for (let y = 2; y <= hqHeight; y++) {
-        for (let x = Math.max(2, cx - 4); x <= Math.min(cols - 3, cx + 4); x++) {
-            tiles[y][x] = 'plaza';
-        }
-    }
-    for (let y = hqHeight; y < rows - 1; y++) {
-        tiles[y][cx] = 'road';
-        if (cx - 1 >= 1) tiles[y][cx - 1] = 'road';
-    }
-    // 가로 순환 도로 (본부 바로 아래 & 남쪽 정문 바로 위)
-    for (let x = 2; x < cols - 2; x++) {
-        tiles[hqHeight][x] = 'road';
-        tiles[rows - 3][x] = 'road';
-    }
-
-    // 4. 기지 본부(HQ) 배치
-    const hqW = baseLevel >= 5 ? 5 : baseLevel >= 3 ? 4 : 3;
-    const hqH = baseLevel >= 4 ? 3 : 2;
-    const hqX = cx - Math.floor(hqW / 2);
-    const hqY = 2;
-    for (let y = hqY; y < hqY + hqH; y++) {
-        for (let x = hqX; x < hqX + hqW; x++) {
-            tiles[y][x] = 'building';
-            solid[y][x] = true;
-        }
-    }
-    solid[hqY + hqH - 1][cx] = false;
-
+    // 2. 기지 본부(HQ) 배치
     const facilities: BaseFacilityNode[] = [
         {
             id: 'base_hq',
@@ -247,14 +447,12 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
             label: `기지 본부 (Lv.${baseLevel})`,
             subLabel: '증축 · 외형 개축 · 기지 통합 관리',
             level: baseLevel,
-            gridX: -1,
-            gridY: -1,
             tileX: hqX,
             tileY: hqY,
-            tileW: hqW,
-            tileH: hqH,
-            doorX: cx,
-            doorY: hqY + hqH - 1,
+            tileW: hqFoot.w,
+            tileH: hqFoot.h,
+            doorX: hqDoorX,
+            doorY: hqDoorY,
             underConstruction: Boolean(base?.underConstruction || base?.exteriorRemodelUnderConstruction),
             completionText: base?.underConstruction
                 ? `Lv.${base.targetLevel || baseLevel + 1} 증축 중`
@@ -268,11 +466,16 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
             assignedNames: []
         }
     ];
+    for (let y = hqY; y < hqY + hqFoot.h; y++) {
+        for (let x = hqX; x < hqX + hqFoot.w; x++) {
+            solidSet.add(`${x},${y}`);
+        }
+    }
+    solidSet.delete(`${hqDoorX},${hqY + hqFoot.h - 1}`);
 
-    // 담당자 맵 구성 (instanceId / facilityType -> Companion[])
+    // 담당자 조회 헬퍼
     const allComps = [...(character.inactiveCompanions || []), ...(character.companions || [])];
     const findCompById = (id?: string) => allComps.find(c => c.id === id);
-
     const getAssignedCompsForInstance = (inst: FacilityInstance): Companion[] => {
         const result: Companion[] = [];
         const seen = new Set<string>();
@@ -295,69 +498,74 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         return result;
     };
 
-    // 5. 기존 배치된 시설들(base.layout)을 2D 맵 격자에 배치
-    const occupiedGrid = new Set<string>();
+    // 3. 기존 시설들 자유 좌표 배치 (freeX/freeY가 있으면 그대로, 없으면 자연스러운 마을형 스파이럴 자동 배치)
     const layoutList = (base?.layout || []).filter(inst => inst && inst.type);
-
-    // 빈 슬롯에 자동 폴백 좌표를 부여할 헬퍼
-    const claimGridPos = (prefX?: number, prefY?: number): { gx: number; gy: number } => {
-        if (
-            typeof prefX === 'number' &&
-            typeof prefY === 'number' &&
-            prefX >= 0 &&
-            prefX < gridSize &&
-            prefY >= 0 &&
-            prefY < gridSize &&
-            !occupiedGrid.has(`${prefX},${prefY}`)
-        ) {
-            occupiedGrid.add(`${prefX},${prefY}`);
-            return { gx: prefX, gy: prefY };
-        }
-        for (let gy = 0; gy < gridSize; gy++) {
-            for (let gx = 0; gx < gridSize; gx++) {
-                if (!occupiedGrid.has(`${gx},${gy}`)) {
-                    occupiedGrid.add(`${gx},${gy}`);
-                    return { gx, gy };
-                }
-            }
-        }
-        return { gx: 0, gy: 0 };
-    };
-
     const assignedCompLocation = new Map<string, { px: number; py: number; bubble: string; facLabel: string }>();
     let monsterPenBounds: { minPx: number; maxPx: number; minPy: number; maxPy: number } | null = null;
 
-    layoutList.forEach(inst => {
-        const { gx, gy } = claimGridPos(inst.x, inst.y);
-        const tileX = marginX + gx * CELL;
-        const tileY = hqHeight + 1 + gy * CELL;
+    const findNaturalFreePos = (w: number, h: number, seedIdx: number): { x: number; y: number } => {
+        // 중앙 본부 좌우·하단에 자연스럽게 분산 (격자처럼 일렬로 붙지 않도록 오프셋 부여)
+        const baseAnchorY = Math.min(rows - h - 4, hqDoorY + 4);
+        for (let radius = 0; radius < Math.max(cols, rows); radius += 2) {
+            const angleSteps = Math.max(8, radius * 2);
+            for (let s = 0; s < angleSteps; s++) {
+                const ang = ((s + (seedIdx % 5)) / angleSteps) * Math.PI * 2;
+                const candX = Math.round(cx - w / 2 + Math.cos(ang) * (radius + 4));
+                const candY = Math.round(baseAnchorY + Math.sin(ang) * (radius * 0.8 + 2));
+                if (canPlaceFacilityRect(cols, rows, facilities, floorOverrides, exitGate, candX, candY, w, h)) {
+                    return { x: candX, y: candY };
+                }
+            }
+        }
+        // 폴백 전체 스캔
+        for (let ty = 3; ty < rows - h - 3; ty += 2) {
+            for (let tx = 3; tx < cols - w - 3; tx += 2) {
+                if (canPlaceFacilityRect(cols, rows, facilities, floorOverrides, exitGate, tx, ty, w, h)) {
+                    return { x: tx, y: ty };
+                }
+            }
+        }
+        return { x: 3, y: 3 };
+    };
+
+    layoutList.forEach((inst, idx) => {
+        const foot = getFacilityFootprint(inst.type);
+        let tileX = inst.freeX;
+        let tileY = inst.freeY;
+        if (
+            typeof tileX !== 'number' ||
+            typeof tileY !== 'number' ||
+            tileX < 2 ||
+            tileY < 2 ||
+            tileX + foot.w > cols - 2 ||
+            tileY + foot.h > rows - 3
+        ) {
+            const autoPos = findNaturalFreePos(foot.w, foot.h, idx);
+            tileX = autoPos.x;
+            tileY = autoPos.y;
+        }
+
         const facInfo = FACILITIES_INFO.find(f => f.id === inst.type);
         const meta = FACILITY_VISUAL_META[inst.type] || { icon: '🏛️', color: '#94a3b8', activity: '⚙️ 시설 근무 중' };
         const isHousing = inst.type === 'housing' || inst.type === 'home' || inst.type === 'my_home';
         const isMonsterPen = inst.type === 'monster_farm' || inst.type === 'monster_ranch';
         const isFarm = inst.type === 'farm';
 
-        // 타일 채색 & 충돌 설정 (상단 2x2 건물, 하단 1행은 진입 통로)
-        for (let dy = 0; dy < 2; dy++) {
-            for (let dx = 0; dx < 2; dx++) {
-                const tx = tileX + dx;
-                const ty = tileY + dy;
-                if (ty < rows - 1 && tx < cols - 1) {
-                    tiles[ty][tx] = isMonsterPen ? 'pasture' : isFarm ? 'farm_soil' : 'building';
-                    solid[ty][tx] = !isMonsterPen && !isFarm;
+        if (!isMonsterPen && !isFarm) {
+            for (let ty = tileY; ty < tileY + foot.h; ty++) {
+                for (let tx = tileX; tx < tileX + foot.w; tx++) {
+                    solidSet.add(`${tx},${ty}`);
                 }
             }
-        }
-        // 앞쪽 통로 타일
-        if (tileY + 2 < rows - 1) {
-            tiles[tileY + 2][tileX] = 'road';
-            tiles[tileY + 2][tileX + 1] = 'road';
         }
 
         const assignedComps = getAssignedCompsForInstance(inst);
         const spriteUrl = isHousing
             ? getHousingBuildingUrl(cultureKey, resolveHousingPartForInstance(character, inst))
             : undefined;
+
+        const doorX = tileX + Math.floor(foot.w / 2);
+        const doorY = tileY + foot.h;
 
         const node: BaseFacilityNode = {
             id: `fac_${inst.id}`,
@@ -368,40 +576,37 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
                 ? '공사 진행 중'
                 : `Lv.${inst.level || 1}${assignedComps.length > 0 ? ` · 담당 ${assignedComps.length}명` : ''}`,
             level: inst.level || 1,
-            gridX: gx,
-            gridY: gy,
             tileX,
             tileY,
-            tileW: 2,
-            tileH: 2,
-            doorX: tileX + 1,
-            doorY: tileY + 2,
+            tileW: foot.w,
+            tileH: foot.h,
+            doorX,
+            doorY,
             underConstruction: Boolean(inst.underConstruction),
             completionText: inst.underConstruction ? '공사 중' : undefined,
             spriteUrl,
             iconText: meta.icon,
             accentColor: meta.color,
             isMonsterPen,
+            isFarm,
             assignedNames: assignedComps.map(c => c.name)
         };
         facilities.push(node);
 
-        // 몬스터 사육소 울타리 좌표 기록
         if (isMonsterPen && !monsterPenBounds) {
             monsterPenBounds = {
-                minPx: (tileX + 0.3) * BASE_TILE_SIZE,
-                maxPx: (tileX + 2.4) * BASE_TILE_SIZE,
-                minPy: (tileY + 0.3) * BASE_TILE_SIZE,
-                maxPy: (tileY + 2.1) * BASE_TILE_SIZE
+                minPx: (tileX + 0.45) * BASE_TILE_SIZE,
+                maxPx: (tileX + foot.w - 0.45) * BASE_TILE_SIZE,
+                minPy: (tileY + 0.45) * BASE_TILE_SIZE,
+                maxPy: (tileY + foot.h - 0.45) * BASE_TILE_SIZE
             };
         }
 
-        // 담당자 활동 위치 등록
-        assignedComps.forEach((comp, idx) => {
+        assignedComps.forEach((comp, cIdx) => {
             if (!assignedCompLocation.has(comp.id)) {
                 assignedCompLocation.set(comp.id, {
-                    px: (tileX + 0.6 + (idx % 2) * 1.1) * BASE_TILE_SIZE,
-                    py: (tileY + 2.15) * BASE_TILE_SIZE,
+                    px: (tileX + 0.6 + (cIdx % Math.max(1, foot.w - 1)) * 0.95) * BASE_TILE_SIZE,
+                    py: (doorY + 0.35) * BASE_TILE_SIZE,
                     bubble: meta.activity,
                     facLabel: node.label
                 });
@@ -409,34 +614,29 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         });
     });
 
-    // 6. 빈 건설 슬롯 목록 생성 (건설 모드에서 하이라이트 & 클릭 건설 가능)
-    const emptySlots: BaseEmptySlotNode[] = [];
-    for (let gy = 0; gy < gridSize; gy++) {
-        for (let gx = 0; gx < gridSize; gx++) {
-            if (occupiedGrid.has(`${gx},${gy}`)) continue;
-            const tileX = marginX + gx * CELL;
-            const tileY = hqHeight + 1 + gy * CELL;
-            for (let dy = 0; dy < 2; dy++) {
-                for (let dx = 0; dx < 2; dx++) {
-                    if (tiles[tileY + dy]?.[tileX + dx] === 'grass') {
-                        tiles[tileY + dy][tileX + dx] = 'slot_empty';
-                    }
-                }
-            }
-            emptySlots.push({ gridX: gx, gridY: gy, tileX, tileY, tileW: 2, tileH: 2 });
-        }
-    }
+    // 4. 조경 소품 배치
+    const decorations: BaseDecorationItem[] = (base?.decorations || []).filter(
+        d => d && d.x >= 1 && d.y >= 1 && d.x < cols - 1 && d.y < rows - 1
+    );
+    decorations.forEach(d => {
+        if (d.solid) solidSet.add(`${d.x},${d.y}`);
+    });
 
-    // 7. 기지 거주민(inactiveCompanions) & 시설 담당자 라이브 NPC 스폰 (인원 제한 없이 전원 표시!)
+    // 5. 기지 거주민 & 시설 담당자 전원 라이브 스폰 (제한 없음)
     const residents: BaseResidentEntity[] = [];
     const isMonsterComp = (c: Companion) =>
-        Boolean(c.isMonster || (c as any).isCustomMonster || c.monsterData || c.race === '몬스터' || (typeof c.race === 'string' && c.race.includes('Monster')));
+        Boolean(
+            c.isMonster ||
+                (c as any).isCustomMonster ||
+                c.monsterData ||
+                c.race === '몬스터' ||
+                (typeof c.race === 'string' && c.race.includes('Monster'))
+        );
 
     const allInactiveLiving = (character.inactiveCompanions || []).filter(c => c && !c.isDead);
     const humanResidents = allInactiveLiving.filter(c => !isMonsterComp(c));
     const monsterResidents = allInactiveLiving.filter(c => isMonsterComp(c));
 
-    // 시설에 배치되어 있지만 현재 파티(companions)에도 있는 담당자까지 누락 없이 포함
     const residentSeenIds = new Set(humanResidents.map(c => c.id));
     (character.companions || []).forEach(c => {
         if (c && !c.isDead && !isMonsterComp(c) && assignedCompLocation.has(c.id) && !residentSeenIds.has(c.id)) {
@@ -447,18 +647,12 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
 
     const timeOfDay = getTimeOfDay(character.currentTime || '12:00');
     const housingNodes = facilities.filter(f => f.facilityType === 'housing' || f.facilityType === 'home' || f.facilityType === 'my_home');
-    // 미배치 거주민이 겹치지 않도록 기지 전역(주택 앞 · 중앙 광장 · 순환 도로)에 골고루 분산 배치
     const roamAnchors: { x: number; y: number }[] = [
-        ...housingNodes.map(h => ({ x: h.doorX + 0.5, y: h.doorY + 0.35 })),
-        { x: cx - 3, y: hqHeight + 0.3 },
-        { x: cx - 1.5, y: hqHeight + 0.3 },
-        { x: cx + 1.5, y: hqHeight + 0.3 },
-        { x: cx + 3, y: hqHeight + 0.3 },
-        { x: cx - 0.5, y: hqHeight + 2.5 },
-        { x: cx + 0.5, y: hqHeight + 4.5 },
-        { x: cx - 0.5, y: Math.max(hqHeight + 5, rows - 4) },
-        { x: Math.max(3, cx - 5), y: rows - 3 },
-        { x: Math.min(cols - 4, cx + 5), y: rows - 3 }
+        ...housingNodes.map(h => ({ x: h.doorX + 0.5, y: h.doorY + 0.5 })),
+        ...facilities.slice(0, 12).map(f => ({ x: f.doorX + 0.5, y: f.doorY + 0.5 })),
+        { x: cx - 3, y: hqDoorY + 1 },
+        { x: cx + 3, y: hqDoorY + 1 },
+        { x: cx, y: Math.min(rows - 4, hqDoorY + 4) }
     ];
 
     humanResidents.forEach((comp, idx) => {
@@ -466,17 +660,17 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         const anchor = roamAnchors[idx % roamAnchors.length];
         const ringOffset = Math.floor(idx / roamAnchors.length);
         const jitterAngle = (idx * 137.5 * Math.PI) / 180;
-        const jitterR = Math.min(1.4, 0.35 + ringOffset * 0.32);
+        const jitterR = Math.min(2.2, 0.4 + ringOffset * 0.45);
 
         let homePx = Math.max(
-            BASE_TILE_SIZE * 1.5,
-            Math.min((cols - 1.5) * BASE_TILE_SIZE, (anchor.x + Math.cos(jitterAngle) * jitterR) * BASE_TILE_SIZE)
+            BASE_TILE_SIZE * 2,
+            Math.min((cols - 2) * BASE_TILE_SIZE, (anchor.x + Math.cos(jitterAngle) * jitterR) * BASE_TILE_SIZE)
         );
         let homePy = Math.max(
             BASE_TILE_SIZE * 2.5,
-            Math.min((rows - 2) * BASE_TILE_SIZE, (anchor.y + Math.sin(jitterAngle) * jitterR) * BASE_TILE_SIZE)
+            Math.min((rows - 2.5) * BASE_TILE_SIZE, (anchor.y + Math.sin(jitterAngle) * jitterR) * BASE_TILE_SIZE)
         );
-        let activityBubble = timeOfDay === 'Night' ? '🌙 밤 산책 중' : '☀️ 기지 생활 중';
+        let activityBubble = timeOfDay === 'Night' ? '🌙 밤 산책 중' : '☀️ 영지 생활 중';
         let assignedFacilityLabel: string | undefined;
 
         if (assignedLoc) {
@@ -486,15 +680,13 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
             assignedFacilityLabel = assignedLoc.facLabel;
         } else if (housingNodes.length > 0 && timeOfDay === 'Night') {
             const hNode = housingNodes[idx % housingNodes.length];
-            homePx = (hNode.doorX + ((idx % 3) - 1) * 0.55) * BASE_TILE_SIZE;
-            homePy = (hNode.doorY + 0.35) * BASE_TILE_SIZE;
+            homePx = (hNode.doorX + ((idx % 3) - 1) * 0.65) * BASE_TILE_SIZE;
+            homePy = (hNode.doorY + 0.45) * BASE_TILE_SIZE;
             activityBubble = '💤 숙소 휴식 중';
         } else {
             try {
                 const routine = getCompanionRoutine(character, comp.id);
-                if (routine?.activity) {
-                    activityBubble = routine.activity;
-                }
+                if (routine?.activity) activityBubble = routine.activity;
             } catch {
                 // fallback
             }
@@ -522,14 +714,14 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         });
     });
 
-    // 8. 몬스터 사육소 보유 몬스터 + 대기 몬스터 동료 전원 라이브 스폰 (제한 해제)
+    // 6. 몬스터 사육소 보유 몬스터 + 대기 몬스터 동료 전원 스폰
     const farmMonsters: BaseFarmMonsterEntity[] = [];
     const captured = (base?.capturedMonsters || []).filter(Boolean);
     const defaultPen = monsterPenBounds || {
-        minPx: (cx + 1.5) * BASE_TILE_SIZE,
-        maxPx: Math.min(cols - 2.5, cx + 4.5) * BASE_TILE_SIZE,
-        minPy: (hqHeight - 1.5) * BASE_TILE_SIZE,
-        maxPy: (hqHeight + 0.5) * BASE_TILE_SIZE
+        minPx: Math.min(cols - 6, cx + 3) * BASE_TILE_SIZE,
+        maxPx: Math.min(cols - 2, cx + 7) * BASE_TILE_SIZE,
+        minPy: Math.max(3, hqY) * BASE_TILE_SIZE,
+        maxPy: Math.min(rows - 5, hqY + 4) * BASE_TILE_SIZE
     };
 
     const allFarmMonsters: CapturedMonster[] = [
@@ -582,16 +774,16 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
     return {
         cols,
         rows,
-        gridSize,
+        baseLevel,
         cultureKey,
         buildingPackKey,
-        tiles,
-        solid,
+        floorOverrides,
+        solidSet,
         facilities,
-        emptySlots,
+        decorations,
         residents,
         farmMonsters,
-        spawnPos: { x: cx, y: rows - 3 },
+        spawnPos: { x: cx, y: Math.max(hqDoorY + 1, rows - 3) },
         exitGate
     };
 };

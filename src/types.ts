@@ -2216,6 +2216,8 @@ export interface FacilityInstance {
   y: number;
   width: number;
   height: number;
+  freeX?: number; // [NEW] 자유 배치 2D 기지 맵 타일 X 좌표
+  freeY?: number; // [NEW] 자유 배치 2D 기지 맵 타일 Y 좌표
   underConstruction?: boolean;
   targetLevel?: number;
   constructionStartDate?: string;
@@ -2223,6 +2225,17 @@ export interface FacilityInstance {
   constructionCompletionDate?: string;
   constructionCompletionTime?: string;
   totalConstructionMinutes?: number;
+}
+
+export interface BaseDecorationItem {
+  id: string;
+  decoKey: string;
+  pack: string;
+  part: string;
+  label: string;
+  x: number;
+  y: number;
+  solid?: boolean;
 }
 
 export interface FarmPlot {
@@ -2370,6 +2383,11 @@ export interface Base {
   exteriorRemodelCompletionDate?: string;
   exteriorRemodelCompletionTime?: string;
   exteriorRemodelTotalMinutes?: number;
+  mapWidth?: number; // [NEW] 자유 배치 2D 기지 맵 가로 타일 수 (기본 30, Lv.5 최대 200)
+  mapHeight?: number; // [NEW] 자유 배치 2D 기지 맵 세로 타일 수 (기본 30, Lv.5 최대 200)
+  hqPos?: { x: number; y: number }; // [NEW] 기지 본부 자유 배치 좌표
+  customTiles?: Record<string, string>; // [NEW] 희소 커스텀 바닥 타일 ("x,y" -> floorTileId)
+  decorations?: BaseDecorationItem[]; // [NEW] 자유 배치 조경 소품 목록
   dailyCounts: Record<string, number>;
   lastDailyReset?: string;
   elementalShards: Record<string, number>;
