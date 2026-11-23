@@ -1151,7 +1151,7 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
     return (
         <div
             ref={containerRef}
-            className="relative w-full h-full min-h-[380px] sm:min-h-[480px] bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl select-none"
+            className="relative w-full h-full min-h-[240px] sm:min-h-[460px] bg-slate-950 rounded-xl sm:rounded-2xl overflow-hidden border border-slate-800 shadow-2xl select-none"
         >
             <canvas
                 ref={canvasRef}
@@ -1163,35 +1163,35 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
             />
 
             {/* 좌측 상단: 줌 & 전체보기 컨트롤 */}
-            <div className="absolute top-3 left-3 flex items-center gap-1 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-1 shadow-lg">
+            <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex items-center gap-0.5 sm:gap-1 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-lg sm:rounded-xl p-0.5 sm:p-1 shadow-lg">
                 <button
                     onClick={() => setZoom(z => Math.max(0.55, Number((z - 0.15).toFixed(2))))}
-                    className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
+                    className="p-1 sm:p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                     title="축소"
                 >
-                    <ZoomOut size={15} />
+                    <ZoomOut size={14} />
                 </button>
-                <span className="text-[11px] font-mono font-bold text-amber-300 px-1.5 min-w-[44px] text-center">
+                <span className="text-[10px] sm:text-[11px] font-mono font-bold text-amber-300 px-1 sm:px-1.5 min-w-[38px] sm:min-w-[44px] text-center">
                     {Math.round(zoom * 100)}%
                 </span>
                 <button
                     onClick={() => setZoom(z => Math.min(2.2, Number((z + 0.15).toFixed(2))))}
-                    className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
+                    className="p-1 sm:p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
                     title="확대"
                 >
-                    <ZoomIn size={15} />
+                    <ZoomIn size={14} />
                 </button>
                 <button
                     onClick={handleFitMap}
-                    className="px-2 py-1 hover:bg-slate-800 rounded-lg text-[11px] font-bold text-cyan-300 flex items-center gap-1 transition-colors border-l border-slate-800 ml-0.5"
+                    className="px-1.5 sm:px-2 py-0.5 sm:py-1 hover:bg-slate-800 rounded-lg text-[10px] sm:text-[11px] font-bold text-cyan-300 flex items-center gap-1 transition-colors border-l border-slate-800 ml-0.5"
                     title="전체 지도 맞추기"
                 >
-                    <Maximize2 size={13} /> 전체
+                    <Maximize2 size={12} /> 전체
                 </button>
             </div>
 
             {/* 우측 상단: 실시간 미니맵 */}
-            <div className="absolute top-3 right-3 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-2 shadow-xl hidden sm:block">
+            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-xl p-1.5 sm:p-2 shadow-xl hidden sm:block">
                 <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mb-1 px-0.5">
                     <span className="flex items-center gap-1"><Compass size={11} className="text-amber-400" /> 미니맵</span>
                     <span className="font-mono text-amber-300">({gridState.playerPos.x},{gridState.playerPos.y})</span>
@@ -1227,8 +1227,8 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
             </div>
 
             {/* 하단 안내 오버레이 */}
-            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 bg-slate-950/80 backdrop-blur-md border border-slate-700/70 px-3 py-1 rounded-full text-[11px] text-slate-300 font-medium whitespace-nowrap pointer-events-none shadow-lg">
-                🖱️ 바닥 클릭 자동 이동 · ⌨️ WASD / 방향키 탐험 · 🔍 휠 확대/축소
+            <div className="absolute bottom-1.5 sm:bottom-2.5 left-1/2 -translate-x-1/2 bg-slate-950/80 backdrop-blur-md border border-slate-700/70 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-[11px] text-slate-300 font-medium whitespace-nowrap pointer-events-none shadow-lg max-w-[94%] truncate">
+                🖱️ 바닥 탭 자동 이동 · ⌨️ 방향키 탐험 · 🔍 확대/축소
             </div>
         </div>
     );

@@ -866,44 +866,44 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
     const isAlreadyClearedToday = character.clearedDungeonsByCity && character.clearedDungeonsByCity[city] === character.currentDate;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md">
-            <div className="bg-slate-900 border border-slate-700 w-full max-w-6xl rounded-2xl flex flex-col h-[92vh] max-h-[96vh] shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-4 bg-black/90 backdrop-blur-md">
+            <div className="bg-slate-900 border border-slate-700 w-full max-w-6xl rounded-xl sm:rounded-2xl flex flex-col h-[96dvh] sm:h-[92vh] max-h-[98dvh] shadow-2xl overflow-hidden">
                 {/* 헤더 */}
-                <div className="p-4 sm:p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/70">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-rose-950/60 border border-rose-800/80 rounded-xl text-rose-400">
-                            {isSeasonalBoss ? <Crown size={24} className="animate-pulse" /> : <Map size={24} />}
+                <div className="px-3 py-2 sm:p-4 border-b border-slate-800 flex justify-between items-center gap-2 bg-slate-950/70 shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <div className="p-1.5 sm:p-2.5 bg-rose-950/60 border border-rose-800/80 rounded-lg sm:rounded-xl text-rose-400 shrink-0">
+                            {isSeasonalBoss ? <Crown size={18} className="animate-pulse sm:w-6 sm:h-6" /> : <Map size={18} className="sm:w-6 sm:h-6" />}
                         </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-lg sm:text-xl font-bold text-slate-100 flex items-center gap-2">
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                <h2 className="text-sm sm:text-xl font-bold text-slate-100 truncate">
                                     {city} {isSeasonalBoss ? '시즌 신화 대미궁' : '지하 미궁'}
                                 </h2>
-                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${isSeasonalBoss ? 'bg-amber-950/80 text-amber-300 border border-amber-700/60' : 'bg-slate-800 text-slate-300'}`}>
+                                <span className={`text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${isSeasonalBoss ? 'bg-amber-950/80 text-amber-300 border border-amber-700/60' : 'bg-slate-800 text-slate-300'}`}>
                                     {gridState ? `지하 ${gridState.currentFloor + 1}F / ${gridState.maxFloors}F` : '지하 미궁'}
                                 </span>
                                 {gridState && gridState.currentFloor > 0 && (
                                     <button
                                         onClick={() => changeDungeonFloor(gridState.currentFloor - 1)}
-                                        className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-700/60 flex items-center gap-1 transition-colors cursor-pointer"
+                                        className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-700/60 flex items-center gap-1 transition-colors cursor-pointer shrink-0"
                                         title="이전 층으로 이동"
                                     >
-                                        <span>⬆️ 지하 {gridState.currentFloor}F로 복귀</span>
+                                        <span>⬆️ {gridState.currentFloor}F 복귀</span>
                                     </button>
                                 )}
                             </div>
-                            <p className="text-xs text-slate-400 mt-0.5">
+                            <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 truncate">
                                 {isSeasonalBoss ? `[신화 보스: ${bossInfo?.name || '신화적 존재'}] 광활한 5층 심연 미궁` : `[던전 보스: ${bossInfo?.name || '미궁 군주'}] 격자 타일 탐색`}
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1.5 text-xs font-bold font-mono text-amber-300 bg-amber-950/60 border border-amber-800/70 px-3 py-1.5 rounded-xl shadow-sm">
-                            <Clock size={14} className="text-amber-400" />
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        <div className="flex items-center gap-1 text-[11px] sm:text-xs font-bold font-mono text-amber-300 bg-amber-950/60 border border-amber-800/70 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg sm:rounded-xl shadow-sm">
+                            <Clock size={12} className="text-amber-400" />
                             <span>{character.currentTime || '12:00'}</span>
                         </div>
-                        <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer" title="던전 나가기">
-                            <X size={20} />
+                        <button onClick={onClose} className="p-1.5 sm:p-2 hover:bg-slate-800 rounded-lg sm:rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer" title="던전 나가기">
+                            <X size={18} />
                         </button>
                     </div>
                 </div>
@@ -929,26 +929,26 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                     /* 메인 탐험 인터페이스 */
                     <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
                         {/* 좌측: 쯔꾸르(RPG Maker) / 격자 캔버스 뷰 */}
-                        <div className="flex-1 bg-slate-950/80 p-3 sm:p-4 flex flex-col min-h-0 overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-800">
+                        <div className="flex-1 min-h-[48dvh] lg:min-h-0 bg-slate-950/80 p-2 sm:p-4 flex flex-col overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-800">
                             {/* 미궁 상단 상태 바 */}
-                            <div className="w-full flex flex-wrap justify-between items-center gap-2 mb-2.5 px-1 text-xs font-bold text-slate-400 shrink-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="flex items-center gap-1.5 text-amber-400">
-                                        <Flame size={14} /> 횃불 시야 반경: {gridState.torchRadius}칸
+                            <div className="w-full flex flex-wrap justify-between items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2.5 px-1 text-[11px] sm:text-xs font-bold text-slate-400 shrink-0">
+                                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                                    <span className="flex items-center gap-1 text-amber-400">
+                                        <Flame size={13} /> 횃불 시야: {gridState.torchRadius}칸
                                     </span>
                                     {character.scoutedDungeons?.includes(currentCity) && (
-                                        <span className="flex items-center gap-1 text-[11px] text-emerald-300 bg-emerald-950/60 border border-emerald-700/60 px-2 py-0.5 rounded-lg">
-                                            🗺️ 정찰 완료 (전체 지도 개방)
+                                        <span className="flex items-center gap-1 text-[10px] sm:text-[11px] text-emerald-300 bg-emerald-950/60 border border-emerald-700/60 px-1.5 py-0.5 rounded-lg">
+                                            🗺️ 정찰 완료
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 sm:gap-2">
                                     {gridState.totalRunesRequired > 0 && (
-                                        <span className="flex items-center gap-1.5 text-rose-400 bg-rose-950/40 px-2.5 py-1 rounded-lg border border-rose-900/60">
-                                            <Lock size={12} /> 봉인석: {gridState.activeRunesCount} / {gridState.totalRunesRequired}
+                                        <span className="flex items-center gap-1 text-rose-400 bg-rose-950/40 px-2 py-0.5 rounded-lg border border-rose-900/60 text-[10px] sm:text-xs">
+                                            <Lock size={11} /> 봉인석: {gridState.activeRunesCount}/{gridState.totalRunesRequired}
                                         </span>
                                     )}
-                                    <div className="inline-flex bg-slate-900 border border-slate-700/80 rounded-lg p-0.5 text-[11px]">
+                                    <div className="inline-flex bg-slate-900 border border-slate-700/80 rounded-lg p-0.5 text-[10px] sm:text-[11px]">
                                         <button
                                             onClick={() => toggleViewMode('rpg')}
                                             className={`px-2 py-0.5 rounded-md font-bold transition-colors cursor-pointer ${viewMode === 'rpg' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
@@ -966,7 +966,7 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                             </div>
 
                             {gimmickToast && (
-                                <div className="mb-2 px-3 py-1.5 rounded-xl bg-amber-950/70 border border-amber-700/70 text-amber-200 text-xs font-bold flex items-center justify-between gap-2 animate-fade-in">
+                                <div className="mb-1.5 px-2.5 py-1 rounded-xl bg-amber-950/70 border border-amber-700/70 text-amber-200 text-[11px] font-bold flex items-center justify-between gap-2 animate-fade-in shrink-0">
                                     <span className="truncate">✨ {gimmickToast}</span>
                                     <button onClick={() => setGimmickToast(null)} className="text-amber-400 hover:text-white text-[10px] shrink-0 cursor-pointer">닫기</button>
                                 </div>
@@ -989,7 +989,7 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                     />
                                 </div>
                             ) : (
-                                <div className="flex-1 flex flex-col items-center justify-center overflow-auto">
+                                <div className="flex-1 flex flex-col items-center justify-center overflow-auto min-h-0">
                                     {/* 격자 타일 보드 */}
                                     <div 
                                         className="inline-grid gap-1 p-2 bg-slate-900/90 rounded-2xl border border-slate-800/80 shadow-inner max-w-full overflow-auto"
@@ -1112,23 +1112,23 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                     </div>
 
                                     {/* 가이드 안내 문구 */}
-                                    <p className="text-[11px] text-slate-500 mt-3 text-center">
-                                        * 인접한 밝혀진 타일을 탭하거나 하단 방향키를 눌러 미궁을 개척하세요. 보급통·유골·마력수정·원소 장판 위를 밟으면 즉시 효과가 발동합니다!
+                                    <p className="text-[10px] sm:text-[11px] text-slate-500 mt-1.5 sm:mt-3 text-center">
+                                        * 인접 타일 탭 또는 방향키로 이동 · 오브젝트·원소 장판은 밟으면 즉시 발동!
                                     </p>
                                 </div>
                             )}
                         </div>
 
-                        {/* 우측: 탐험 상태 & 정보 패널 */}
-                        <div className="w-full lg:w-80 p-4 sm:p-5 flex flex-col justify-between bg-slate-900 overflow-y-auto">
-                            <div className="space-y-4">
+                        {/* 우측(모바일 하단): 탐험 상태 & 정보 패널 (모바일에서 맵을 가리지 않도록 최대 높이 제한 & 2열 배치) */}
+                        <div className="w-full lg:w-80 shrink-0 max-h-[38dvh] lg:max-h-none p-2.5 sm:p-4 flex flex-col justify-between bg-slate-900 overflow-y-auto">
+                            <div className="grid grid-cols-12 gap-2 lg:flex lg:flex-col lg:space-y-4 items-stretch">
                                 {/* 현재 위치 타일 정보 카드 */}
-                                <div className="bg-slate-950/70 border border-slate-800 p-4 rounded-xl">
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-                                        CURRENT TILE FOCUS
-                                    </span>
-                                    <>
-                                        <div className="flex items-center gap-2.5">
+                                <div className="col-span-7 lg:w-full bg-slate-950/70 border border-slate-800 p-2.5 sm:p-4 rounded-xl flex flex-col justify-between">
+                                    <div>
+                                        <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                                            CURRENT TILE FOCUS
+                                        </span>
+                                        <div className="flex items-center gap-2">
                                             {selectedTile && (
                                                 <img
                                                     src={resolveDungeonAssetUrl(
@@ -1155,108 +1155,109 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                                         (isSeasonalBoss ? 'tile_floor_mythic' : 'tile_floor_stone')
                                                     )}
                                                     alt="타일 아이콘"
-                                                    className="w-10 h-10 object-contain rounded-lg bg-slate-900/90 border border-slate-800 p-1 shrink-0"
+                                                    className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-lg bg-slate-900/90 border border-slate-800 p-1 shrink-0"
                                                 />
                                             )}
-                                            <h4 className="text-base font-bold text-white flex items-center gap-2">
+                                            <h4 className="text-xs sm:text-base font-bold text-white truncate">
                                                 {selectedTile?.name || (selectedTile?.type === 'wall' ? '단단한 석벽' : '미궁 복도')}
                                             </h4>
                                         </div>
-                                            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                                                {selectedTile?.description || '미궁의 어두운 바닥입니다. 발걸음을 옮겨 시야를 넓힐 수 있습니다.'}
-                                            </p>
+                                        <p className="text-[11px] sm:text-xs text-slate-400 mt-1 sm:mt-1.5 leading-snug sm:leading-relaxed line-clamp-2 lg:line-clamp-none">
+                                            {selectedTile?.description || '미궁의 어두운 바닥입니다. 발걸음을 옮겨 시야를 넓힐 수 있습니다.'}
+                                        </p>
+                                    </div>
 
-                                            {/* 타일 상태 태그 */}
-                                            {selectedTile && (
-                                                <div className="flex flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-slate-900">
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                                                        좌표: ({selectedTile.x}, {selectedTile.y})
+                                    <div>
+                                        {/* 타일 상태 태그 */}
+                                        {selectedTile && (
+                                            <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-3 pt-1.5 sm:pt-2.5 border-t border-slate-900">
+                                                <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                                                    좌표: ({selectedTile.x}, {selectedTile.y})
+                                                </span>
+                                                {selectedTile.isCleared && (
+                                                    <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-900">
+                                                        소탕/해제
                                                     </span>
-                                                    {selectedTile.isCleared && (
-                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-900">
-                                                            소탕/해제 완료
-                                                        </span>
-                                                    )}
-                                                    {selectedTile.content && !selectedTile.isCleared && selectedTile.isIdentified && (
-                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800">
-                                                            식별 완료
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
+                                                )}
+                                                {selectedTile.content && !selectedTile.isCleared && selectedTile.isIdentified && (
+                                                    <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800">
+                                                        식별됨
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
 
-                                    {/* 계단 및 입구 인터랙션 액션 버튼 */}
-                                    {selectedTile && gridState && (
-                                        <div className="mt-3 pt-2.5 border-t border-slate-900/80">
-                                            {selectedTile.type === 'stairs' && (
-                                                <button
-                                                    onClick={() => changeDungeonFloor(gridState.currentFloor + 1)}
-                                                    className="w-full py-2 px-3 bg-cyan-900/60 hover:bg-cyan-800 border border-cyan-600/80 rounded-xl text-cyan-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-lg cursor-pointer"
-                                                >
-                                                    <span>🪜 지하 {gridState.currentFloor + 2}층으로 내려가기</span>
-                                                    <ChevronRight size={14} />
-                                                </button>
-                                            )}
-                                            {selectedTile.type === 'stairs_up' && (
-                                                <button
-                                                    onClick={() => changeDungeonFloor(gridState.currentFloor - 1)}
-                                                    className="w-full py-2 px-3 bg-amber-900/60 hover:bg-amber-800 border border-amber-600/80 rounded-xl text-amber-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-lg cursor-pointer"
-                                                >
-                                                    <ChevronLeft size={14} />
-                                                    <span>🪜 이전 층 (지하 {gridState.currentFloor}층)으로 올라가기</span>
-                                                </button>
-                                            )}
-                                            {selectedTile.type === 'entrance' && (
-                                                <button
-                                                    onClick={handleExitDungeon}
-                                                    className="w-full py-2 px-3 bg-emerald-900/60 hover:bg-emerald-800 border border-emerald-600/80 rounded-xl text-emerald-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-lg cursor-pointer"
-                                                >
-                                                    <LogOut size={14} />
-                                                    <span>🚪 지상으로 던전 퇴각</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
+                                        {/* 계단 및 입구 인터랙션 액션 버튼 */}
+                                        {selectedTile && gridState && (selectedTile.type === 'stairs' || selectedTile.type === 'stairs_up' || selectedTile.type === 'entrance') && (
+                                            <div className="mt-1.5 sm:mt-3 pt-1.5 sm:pt-2.5 border-t border-slate-900/80">
+                                                {selectedTile.type === 'stairs' && (
+                                                    <button
+                                                        onClick={() => changeDungeonFloor(gridState.currentFloor + 1)}
+                                                        className="w-full py-1.5 sm:py-2 px-2 sm:px-3 bg-cyan-900/60 hover:bg-cyan-800 border border-cyan-600/80 rounded-xl text-cyan-200 text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 transition-colors shadow-lg cursor-pointer"
+                                                    >
+                                                        <span>🪜 지하 {gridState.currentFloor + 2}F 이동</span>
+                                                        <ChevronRight size={13} />
+                                                    </button>
+                                                )}
+                                                {selectedTile.type === 'stairs_up' && (
+                                                    <button
+                                                        onClick={() => changeDungeonFloor(gridState.currentFloor - 1)}
+                                                        className="w-full py-1.5 sm:py-2 px-2 sm:px-3 bg-amber-900/60 hover:bg-amber-800 border border-amber-600/80 rounded-xl text-amber-200 text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 transition-colors shadow-lg cursor-pointer"
+                                                    >
+                                                        <ChevronLeft size={13} />
+                                                        <span>🪜 지하 {gridState.currentFloor}F 복귀</span>
+                                                    </button>
+                                                )}
+                                                {selectedTile.type === 'entrance' && (
+                                                    <button
+                                                        onClick={handleExitDungeon}
+                                                        className="w-full py-1.5 sm:py-2 px-2 sm:px-3 bg-emerald-900/60 hover:bg-emerald-800 border border-emerald-600/80 rounded-xl text-emerald-200 text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1 transition-colors shadow-lg cursor-pointer"
+                                                    >
+                                                        <LogOut size={13} />
+                                                        <span>🚪 지상 퇴각</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* D-Pad 한 손 방향키 및 키보드 컨트롤러 */}
-                                <div className="bg-slate-950/50 border border-slate-800/80 p-3 rounded-xl flex flex-col items-center">
-                                    <span className="text-[10px] font-bold text-amber-400 mb-0.5">방향키(↑↓←→) / WASD 지원</span>
-                                    <span className="text-[9px] text-slate-500 mb-2">클릭 또는 키보드로 이동</span>
-                                    <div className="grid grid-cols-3 gap-1.5 w-36">
+                                <div className="col-span-5 lg:w-full bg-slate-950/50 border border-slate-800/80 p-2 sm:p-3 rounded-xl flex flex-col items-center justify-center">
+                                    <span className="text-[9px] sm:text-[10px] font-bold text-amber-400 mb-0.5 text-center">방향키 / WASD</span>
+                                    <span className="text-[8px] sm:text-[9px] text-slate-500 mb-1 sm:mb-2 hidden sm:block">클릭 또는 키보드로 이동</span>
+                                    <div className="grid grid-cols-3 gap-1 sm:gap-1.5 w-24 sm:w-36">
                                         <div />
                                         <button
                                             onClick={() => handleDPadMove(0, -1)}
-                                            className="p-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-white flex items-center justify-center font-bold"
+                                            className="p-2 sm:p-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-white flex items-center justify-center font-bold"
                                         >
-                                            <ChevronUp size={20} />
+                                            <ChevronUp size={16} className="sm:w-5 sm:h-5" />
                                         </button>
                                         <div />
 
                                         <button
                                             onClick={() => handleDPadMove(-1, 0)}
-                                            className="p-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-white flex items-center justify-center font-bold"
+                                            className="p-2 sm:p-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-white flex items-center justify-center font-bold"
                                         >
-                                            <ChevronLeft size={20} />
+                                            <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
                                         </button>
-                                        <div className="flex items-center justify-center text-slate-600 text-[10px] font-bold">
+                                        <div className="flex items-center justify-center text-slate-600 text-[8px] sm:text-[10px] font-bold">
                                             MOVE
                                         </div>
                                         <button
                                             onClick={() => handleDPadMove(1, 0)}
-                                            className="p-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-white flex items-center justify-center font-bold"
+                                            className="p-2 sm:p-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-white flex items-center justify-center font-bold"
                                         >
-                                            <ChevronRight size={20} />
+                                            <ChevronRight size={16} className="sm:w-5 sm:h-5" />
                                         </button>
 
                                         <div />
                                         <button
                                             onClick={() => handleDPadMove(0, 1)}
-                                            className="p-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-white flex items-center justify-center font-bold"
+                                            className="p-2 sm:p-3 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded-lg text-white flex items-center justify-center font-bold"
                                         >
-                                            <ChevronDown size={20} />
+                                            <ChevronDown size={16} className="sm:w-5 sm:h-5" />
                                         </button>
                                         <div />
                                     </div>
@@ -1264,43 +1265,45 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                             </div>
 
                             {/* 하단 파티 상태 및 퇴각 버튼 */}
-                            <div className="pt-4 border-t border-slate-800 space-y-2.5 mt-4">
+                            <div className="pt-2 sm:pt-4 border-t border-slate-800 space-y-1.5 sm:space-y-2.5 mt-2 sm:mt-4">
                                 {/* 1. 파티 자원 바 (HP & MP를 2열 분리하여 숫자가 커져도 절대 짤리지 않음) */}
-                                <div className="grid grid-cols-2 gap-2 text-xs font-bold bg-slate-950/80 p-2 rounded-xl border border-slate-800">
-                                    <div className="flex items-center text-red-400 bg-red-950/30 px-2.5 py-1.5 rounded-lg border border-red-900/40">
-                                        <Heart size={14} className="mr-1.5 shrink-0" />
+                                <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-bold bg-slate-950/80 p-1.5 sm:p-2 rounded-xl border border-slate-800">
+                                    <div className="flex items-center text-red-400 bg-red-950/30 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border border-red-900/40">
+                                        <Heart size={13} className="mr-1.5 shrink-0" />
                                         <div className="flex flex-col min-w-0">
-                                            <span className="text-[10px] text-slate-500 font-semibold leading-none">체력 (HP)</span>
+                                            <span className="text-[9px] sm:text-[10px] text-slate-500 font-semibold leading-none">체력 (HP)</span>
                                             <span className="truncate font-mono">{character.stats.hp} / {playerFinalStats.maxHp}</span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center text-blue-400 bg-blue-950/30 px-2.5 py-1.5 rounded-lg border border-blue-900/40">
-                                        <Zap size={14} className="mr-1.5 shrink-0" />
+                                    <div className="flex items-center text-blue-400 bg-blue-950/30 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg border border-blue-900/40">
+                                        <Zap size={13} className="mr-1.5 shrink-0" />
                                         <div className="flex flex-col min-w-0">
-                                            <span className="text-[10px] text-slate-500 font-semibold leading-none">마나 (MP)</span>
+                                            <span className="text-[9px] sm:text-[10px] text-slate-500 font-semibold leading-none">마나 (MP)</span>
                                             <span className="truncate font-mono">{character.stats.mp} / {playerFinalStats.maxMp}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* 2. 미궁 탐험 시간 & 일자 전용 독립 패널 */}
-                                <div className="flex items-center justify-between text-xs font-bold bg-slate-950/90 px-3.5 py-2 rounded-xl border border-amber-950/50 shadow-sm">
-                                    <div className="flex items-center gap-1.5 text-slate-300">
-                                        <Calendar size={13} className="text-slate-500 shrink-0" />
-                                        <span className="text-[11px] text-slate-400 font-semibold">{character.currentDate || '1일차'}</span>
+                                {/* 2. 미궁 탐험 시간 & 퇴각 버튼 (모바일에서는 한 줄에 컴팩트 배치) */}
+                                <div className="flex items-center gap-1.5 sm:flex-col sm:items-stretch sm:gap-2">
+                                    <div className="hidden sm:flex items-center justify-between text-xs font-bold bg-slate-950/90 px-3.5 py-2 rounded-xl border border-amber-950/50 shadow-sm">
+                                        <div className="flex items-center gap-1.5 text-slate-300">
+                                            <Calendar size={13} className="text-slate-500 shrink-0" />
+                                            <span className="text-[11px] text-slate-400 font-semibold">{character.currentDate || '1일차'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-amber-300 bg-amber-950/60 px-2.5 py-0.5 rounded-lg border border-amber-800/60 font-mono">
+                                            <Clock size={13} className="text-amber-400 shrink-0" />
+                                            <span>현재 시각 {character.currentTime || '12:00'}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5 text-amber-300 bg-amber-950/60 px-2.5 py-0.5 rounded-lg border border-amber-800/60 font-mono">
-                                        <Clock size={13} className="text-amber-400 shrink-0" />
-                                        <span>현재 시각 {character.currentTime || '12:00'}</span>
-                                    </div>
-                                </div>
 
-                                <button
-                                    onClick={handleExitDungeon}
-                                    className="w-full py-2.5 bg-slate-800/80 hover:bg-red-950/60 hover:border-red-800 hover:text-red-300 text-slate-400 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-700/60 cursor-pointer"
-                                >
-                                    <LogOut size={14} /> 던전 탐험 중단 및 지상 퇴각
-                                </button>
+                                    <button
+                                        onClick={handleExitDungeon}
+                                        className="w-full py-1.5 sm:py-2.5 bg-slate-800/80 hover:bg-red-950/60 hover:border-red-800 hover:text-red-300 text-slate-400 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 border border-slate-700/60 cursor-pointer"
+                                    >
+                                        <LogOut size={13} /> 던전 탐험 중단 및 지상 퇴각
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
