@@ -5,7 +5,7 @@ import { useElixirTimer } from './hooks/useElixirTimer';
 import { GameProvider } from './context/GameContext';
 import { Character, Companion, Skill, BondSkill, SkillType, BattleRole, DivineDiplomacyStatus, DiplomaticStatus, ClassTier,SimpleStudent, Item, ItemRarity, Stats, WeaponType, CapturedMonster, Location, Enemy, CombatState, MercenaryRank, Quest, JobType, MilitaryRank, RelationType, InterviewData, CombatStyle, TrainerBranch, BaseDefenseReportData } from './types';
 import { FACILITIES_INFO, ENHANCEMENT_CAPS,START_DATE, SELL_PRICES, BASE_LEVEL_CONFIG, INITIAL_BASE, ENHANCEMENT_CONFIG, MAX_STORAGE_SIZE, MAX_PARTY_SIZE, BASE_RESIDENT_LIMIT, FACILITY_UPGRADE_CONFIG, WORLD_GEOGRAPHY, MERCENARY_RANK_SCORE, TEMPLE_MESSENGER_MAP, BASE_MONSTERS, BASE_UPGRADE_COSTS, FACILITY_CONSTRUCTION_COSTS, BASE_GRID_EXPANSION_COSTS, COMBAT_STYLE_CONFIG } from './constants';
-import { calculateItemPrice, addMasteryExp, addDays, applyConsumableEffect,generateLevelByRank,generateCompanionStats, generateNameWithSurname, calculateFinalStats, getYear,generateName, getTierByLevel, generateEnemyStats, getRegionByNation, calculateInventorySize, generateDefaultVisualUrl, getRaceByNation, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalWorkshopCapacity, calculateTotalLabLevel, calculateTotalTrainingLevel, gainProfessionExp, unassignFromTraining, assignRandomCombatStyle, getFacilityTrainingLimit, getTrainerBranchMultiplier, addTrainerExpToAssignedTrainers, generateProceduralEnemy, calculateResearcherBonus, getRequiredExp, calculateItemCPDelta, findAvailableBattlePosition, checkWeaponMasteryEquipRequirement, generateLoot, getWeaponTypeFromItem, calculateRewardBonuses, getWeaponMasteryMultiplier, getSkillMasteryMultiplier } from './utils';
+import { calculateItemPrice, addMasteryExp, addDays, applyConsumableEffect,generateLevelByRank,generateCompanionStats, getCharacterMaxLevel, getMonsterMaxLevel, generateNameWithSurname, calculateFinalStats, getYear,generateName, getTierByLevel, generateEnemyStats, getRegionByNation, calculateInventorySize, generateDefaultVisualUrl, getRaceByNation, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalWorkshopCapacity, calculateTotalLabLevel, calculateTotalTrainingLevel, gainProfessionExp, unassignFromTraining, assignRandomCombatStyle, getFacilityTrainingLimit, getTrainerBranchMultiplier, addTrainerExpToAssignedTrainers, generateProceduralEnemy, calculateResearcherBonus, getRequiredExp, calculateItemCPDelta, findAvailableBattlePosition, checkWeaponMasteryEquipRequirement, generateLoot, getWeaponTypeFromItem, calculateRewardBonuses, getWeaponMasteryMultiplier, getSkillMasteryMultiplier } from './utils';
 import { MountCombatService } from './services/mountCombatService';
 import { tickPostCombatStatusEffects } from './services/bg3CombatSyncBridge';
 import { updateBondSkillMastery } from './services/combatUtils';
@@ -78,6 +78,7 @@ import { generateWarEnemies } from './warbattlesystem';
 import { NATION_RELICS } from './nationLoreData'; 
 import { generateDivineWarEnemies, generateLootedStaff, DIVINE_WAR_CONSTANTS } from './divineWarSystem';
 import { updateQuestProgress } from './services/questService';
+import { resolvePostCombatEvents } from './services/combatPostResolutionService';
 import { performSuccession } from './services/deathTimeEngine';
 import { NATION_THEMES, HUNT_LEVEL_BANDS, getMonsterPoolForBand, getMonsterInfo } from './monsterfield';
 import { generateTravelMonsterAmbush } from './services/travelAmbushService';
@@ -119,6 +120,7 @@ const App: React.FC = () => {
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isCompanionModalOpen, setIsCompanionModalOpen] = useState(false);
   const [baseInitialSubModal, setBaseInitialSubModal] = useState<{ type: string; instanceId?: string } | undefined>(undefined);
+  const [activeMapZone, setActiveMapZone] = useState<'city' | 'base'>('city');
 
   const [isMonsterSkillBookOpen, setIsMonsterSkillBookOpen] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
@@ -208,7 +210,12 @@ const App: React.FC = () => {
     (window as any).__openGameInventory = () => setIsInventoryModalOpen(true);
     (window as any).__openGameBase = () => {
       setIsMobileMenuOpen(false);
-      setIsBaseModalOpen(true);
+      setIsCityOpen(false);
+      if (character?.base) {
+        setActiveMapZone('base');
+      } else {
+        setIsBaseModalOpen(true);
+      }
     };
     (window as any).__openGameHunt = () => {
       setCityInitialConfig({ openHuntMap: true });
@@ -1877,25 +1884,29 @@ const App: React.FC = () => {
                     }
                 }
             } else {
-                addToLog(`[던전 실패] 전투에서 패배하여 던전 밖으로 안전하게 후송 퇴각했습니다.`);
-                
-                // 패배 시 던전 진행도만 초기화 (1일 경과 및 자동 회복 없음)
-                const newChar = { ...character };
-                newChar.dungeonProgress = undefined;
+                // 던전 모달이 전투 종료 후 다시 열리지 않도록 즉시 닫음
+                setIsDungeonOpen(false);
+                if (character.dungeonProgress) {
+                    addToLog(`[던전 실패] 전투에서 패배하여 던전 밖으로 안전하게 후송 퇴각했습니다.`);
+                    
+                    // 패배 시 던전 진행도만 초기화 (1일 경과 및 자동 회복 없음)
+                    const newChar = { ...character };
+                    newChar.dungeonProgress = undefined;
 
-                setTimeout(() => {
-                    setResultModalData({
-                        type: 'failure',
-                        title: '던전 공략 실패',
-                        message: `전투에서 패배하여 던전 공략이 중단되고 던전 밖으로 후송되었습니다.`,
-                        items: [
-                            { label: '던전 진행', after: '초기화' },
-                            { label: '퇴각', after: '마을로 후송' }
-                        ]
-                    });
-                }, 500);
+                    setTimeout(() => {
+                        setResultModalData({
+                            type: 'failure',
+                            title: '던전 공략 실패',
+                            message: `전투에서 패배하여 던전 공략이 중단되고 던전 밖으로 후송되었습니다.`,
+                            items: [
+                                { label: '던전 진행', after: '초기화' },
+                                { label: '퇴각', after: '마을로 후송' }
+                            ]
+                        });
+                    }, 500);
 
-                setCharacter(newChar);
+                    setCharacter(newChar);
+                }
             }
             setCombatState(prev => ({ ...prev, type: undefined }));
         }
@@ -1960,8 +1971,8 @@ const App: React.FC = () => {
                     });
                 }
                 setCharacter(promoteNextIncident(newChar));
+                setCombatState(prev => ({ ...prev, type: undefined }));
             }
-            setCombatState(prev => ({ ...prev, type: undefined }));
         }
     }, [sceneType, combatState.isEnded, combatState.type]); // 의존성 배열 유지
     
@@ -2059,11 +2070,13 @@ useEffect(() => {
 
                 // 3. 인연 정산 모달 호출
                 setPendingRelationResolution({ targetId, enemy });
-                setCharacter(newChar);
-            }
-         // 3. 인연 정산 모달 호출
+                setCharacter(promoteNextIncident(newChar));
+            } else {
+                // 3. 인연 정산 모달 호출
                 setPendingRelationResolution({ targetId, enemy });
                 setCharacter(promoteNextIncident(newChar));
+            }
+            setCombatState(prev => ({ ...prev, type: undefined }));
         }
 
     }
@@ -2744,7 +2757,9 @@ useEffect(() => {
               return;
           }
       }
-      setIsBaseModalOpen(true);
+      setIsCityOpen(false);
+      setIsMobileMenuOpen(false);
+      setActiveMapZone('base');
   };
 
   const handleBattleTrigger = (enemy: Enemy | Enemy[], combatType: CombatState['type'] = 'normal', defenseSource?: string, targetCity?: string, targetNation?: string, rebelRankIdx?: number) => {
@@ -7133,13 +7148,16 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                               return acc + Math.max(500, Math.round(raw));
                                           }, 0)
                                         : 0;
+                                    const suddenRewardMult = Math.max(1, Number((combatState as any).suddenRewardMultiplier || 1));
                                     const expGain = Math.round(
                                         baseExpGain *
+                                            suddenRewardMult *
                                             (1 + (rewardBonuses?.expBonus || 0) / 100) *
                                             Math.max(1, rewardBonuses?.expMultiplier || 1)
                                     );
                                     const goldGain = Math.round(
                                         baseGoldGain *
+                                            suddenRewardMult *
                                             (1 + (rewardBonuses?.goldBonus || 0) / 100) *
                                             Math.max(1, rewardBonuses?.goldMultiplier || 1)
                                     );
@@ -7155,16 +7173,18 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
 
                                     const applyExpWithLevelUp = <T extends { level: number; currentExp: number; maxExp: number; stats: Stats; statPoints?: number }>(
                                         entity: T,
-                                        gain: number
+                                        gain: number,
+                                        maxLevelCap: number
                                     ): { entity: T; leveledUp: boolean } => {
                                         if (gain <= 0) return { entity, leveledUp: false };
                                         let lvl = entity.level || 1;
+                                        const effectiveMaxLv = Math.max(lvl, maxLevelCap || 100);
                                         let curExp = (entity.currentExp || 0) + gain;
                                         let reqExp = entity.maxExp || getRequiredExp(lvl);
                                         const nextStats = { ...entity.stats };
                                         let nextStatPoints = entity.statPoints || 0;
                                         let leveledUp = false;
-                                        while (curExp >= reqExp && lvl < 9999) {
+                                        while (curExp >= reqExp && lvl < effectiveMaxLv) {
                                             curExp -= reqExp;
                                             lvl += 1;
                                             leveledUp = true;
@@ -7177,6 +7197,9 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                             nextStats.int = (nextStats.int || 10) + 3;
                                             nextStats.wis = (nextStats.wis || 10) + 3;
                                             nextStats.def = (nextStats.def || 10) + 2;
+                                        }
+                                        if (lvl >= effectiveMaxLv) {
+                                            curExp = Math.min(curExp, reqExp);
                                         }
                                         return {
                                             entity: { ...entity, level: lvl, currentExp: curExp, maxExp: reqExp, stats: nextStats, statPoints: nextStatPoints },
@@ -7276,7 +7299,8 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                                     : character.stats.mp
                                             }
                                         },
-                                        expGain
+                                        expGain,
+                                        getCharacterMaxLevel(character, character.base)
                                     );
                                     let updatedPlayerBase = applyCombatMastery(playerLvlRes.entity, 'player');
                                     if (playerLvlRes.leveledUp) {
@@ -7310,8 +7334,11 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                                     mp: typeof finalMp === 'number' ? Math.max(0, Math.min(cMaxMpFinal, finalMp)) : c.stats.mp
                                                 }
                                             };
+                                            const compMaxLv = (c.isMonster || c.monsterData || c.race === '몬스터')
+                                                ? getMonsterMaxLevel(c as any, character.base)
+                                                : getCharacterMaxLevel(c, character.base);
                                             const cLvlRes = srpgResult.isVictory && (typeof finalHp !== 'number' || finalHp > 0)
-                                                ? applyExpWithLevelUp(withHp, expGain)
+                                                ? applyExpWithLevelUp(withHp, expGain, compMaxLv)
                                                 : { entity: withHp, leveledUp: false };
                                             let nextComp = applyCombatMastery(cLvlRes.entity, c.id);
                                             if (cLvlRes.leveledUp) {
@@ -7404,73 +7431,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                             };
                                         }
 
-                                        // 4-4. 특수 전투 컨텍스트 후속 훅 (클래스 승급전 / 학교 시험 / 대련 / 무한 심연의 탑 / 성전·신좌 / 현상수배 / 돌발 이벤트)
-                                        const cType = String(combatState.type || '');
-                                        const challengerId = (combatState as any).challengerCompanionId;
-                                        if (cType === 'class_trial') {
-                                            if (challengerId) {
-                                                updatedChar.companions = (updatedChar.companions || []).map(c => {
-                                                    if (c.id !== challengerId) return c;
-                                                    const cTier = c.classTier;
-                                                    const nextC: any = { ...c };
-                                                    if (cTier === ClassTier.NONE) nextC.hasClearedFirstTrial = true;
-                                                    else if (cTier === ClassTier.FIRST) nextC.hasClearedSecondTrial = true;
-                                                    else if (cTier === ClassTier.SECOND) nextC.hasClearedLastTrial = true;
-                                                    else if (cTier === ClassTier.LAST) nextC.hasClearedFinalTrial = true;
-                                                    return nextC;
-                                                });
-                                            } else {
-                                                const curTier = updatedChar.classTier;
-                                                if (curTier === ClassTier.NONE) (updatedChar as any).hasClearedFirstTrial = true;
-                                                else if (curTier === ClassTier.FIRST) (updatedChar as any).hasClearedSecondTrial = true;
-                                                else if (curTier === ClassTier.SECOND) (updatedChar as any).hasClearedLastTrial = true;
-                                                else if (curTier === ClassTier.LAST) (updatedChar as any).hasClearedFinalTrial = true;
-                                            }
-                                        } else if (cType === 'exam_mid' && (updatedChar as any).schoolData) {
-                                            (updatedChar as any).schoolData = { ...(updatedChar as any).schoolData, midtermPassed: true };
-                                        } else if (cType === 'exam_final' && (updatedChar as any).schoolData) {
-                                            (updatedChar as any).schoolData = { ...(updatedChar as any).schoolData, finalPassed: true };
-                                        } else if (cType === 'sparring_arena' || cType === 'sparring') {
-                                            try {
-                                                const sparringPartner = defeated[0];
-                                                if (sparringPartner) {
-                                                    const sparRes = applySparringManualCombatResult(updatedChar, sparringPartner as any, true);
-                                                    if (sparRes?.updatedCharacter) {
-                                                        updatedChar = sparRes.updatedCharacter;
-                                                    }
-                                                }
-                                            } catch {
-                                                // ignore
-                                            }
-                                        } else if (cType === 'abyss_tower_mob' || cType === 'abyss_tower_boss') {
-                                            const curFloor = (updatedChar as any).abyssTowerFloor || 1;
-                                            if (cType === 'abyss_tower_boss') {
-                                                (updatedChar as any).abyssTowerFloor = curFloor + 1;
-                                                (updatedChar as any).abyssTowerMaxFloor = Math.max((updatedChar as any).abyssTowerMaxFloor || 1, curFloor + 1);
-                                            }
-                                        } else if (cType === 'god_rebellion' || cType === 'magye_god_slaying') {
-                                            (updatedChar as any).isGodDefeated = true;
-                                        } else if (cType === 'wanted_battle' || cType === 'bounty_hunt') {
-                                            if (updatedChar.currentLocation?.city) {
-                                                const cleared = new Set<string>((updatedChar as any).wantedClearanceCities || []);
-                                                cleared.add(updatedChar.currentLocation.city);
-                                                (updatedChar as any).wantedClearanceCities = Array.from(cleared);
-                                            }
-                                        } else if (!cType || cType === 'normal' || cType === 'hunting' || cType === 'dungeon') {
-                                            try {
-                                                suddenEvent = rollSuddenPostCombatEvent(
-                                                    updatedChar,
-                                                    defeated,
-                                                    expGain,
-                                                    cType || 'normal',
-                                                    (combatState as any).dungeonId
-                                                );
-                                            } catch {
-                                                suddenEvent = null;
-                                            }
-                                        }
-
-                                        // 4-5. 탑승 탈것 경험치 분배
+                                        // 4-4. 탑승 탈것 경험치 분배
                                         try {
                                             MountCombatService.distributeKillExpToMounts(updatedChar, expGain);
                                         } catch {
@@ -7478,13 +7439,48 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                         }
                                     }
 
+                                    // 5. useGame.ts 기준 모든 전투 승리/패배 특수 이벤트 통합 정산
+                                    // (던전 패배, 토너먼트/그랜드아레나/초월아레나, 무한 심연의 탑, 신성정벌/성전침공·방어/신반란,
+                                    //  마계 성전정벌·신살해, 전쟁 습격·방어, 현상수배/현상금, 학교 시험·대련·라이벌, 클래스 시련, 돌발 이벤트 등)
+                                    const postRes = resolvePostCombatEvents({
+                                        character: updatedChar,
+                                        combatState,
+                                        defeatedEnemies: defeated,
+                                        isVictory: srpgResult.isVictory,
+                                        expGain,
+                                        goldGain,
+                                        callbacks: {
+                                            addToLog,
+                                            setResultModalData,
+                                            setPendingTempleConquest,
+                                            setPendingTournamentPostMatch,
+                                            setPendingRelationResolution,
+                                            setIsDungeonOpen
+                                        }
+                                    });
+                                    updatedChar = postRes.updatedChar;
+                                    suddenEvent = postRes.suddenEvent;
+                                    const totalExpGain = expGain + (postRes.bonusExp || 0);
+                                    const totalGoldGain = goldGain + (postRes.bonusGold || 0);
+
+                                    // 전투 종료 시 브레이크 게이지 초기화
+                                    updatedChar.breakGauge = undefined;
+                                    updatedChar.maxBreakGauge = undefined;
+                                    if (Array.isArray(updatedChar.companions)) {
+                                        updatedChar.companions = updatedChar.companions.map(c => ({
+                                            ...c,
+                                            breakGauge: undefined,
+                                            maxBreakGauge: undefined
+                                        }));
+                                    }
+
                                     const finalStates = createInitialParticipantStates(updatedChar);
                                     setCharacter(updatedChar);
 
                                     if (srpgResult.isVictory) {
-                                        addToLog(`[BG3 전술 대승] ${srpgResult.turns}턴 만에 승리! (EXP +${expGain.toLocaleString()} / 골드 +${goldGain.toLocaleString()} G / 전리품 ${accumulatedLoot.length}개)`);
+                                        addToLog(`[전술 대승] ${srpgResult.turns}턴 만에 승리! (EXP +${totalExpGain.toLocaleString()} / 골드 +${totalGoldGain.toLocaleString()} G / 전리품 ${accumulatedLoot.length}개)`);
                                     } else {
-                                        addToLog(`[BG3 전선 퇴각] 전열을 재정비하기 위해 안전 지대로 후퇴했습니다.`);
+                                        addToLog(`[전선 퇴각] 전열을 재정비하기 위해 안전 지대로 후퇴했습니다.`);
                                     }
 
                                     setCombatState(prev => ({
@@ -7499,20 +7495,25 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                     setCombatResultData({
                                         initialStates,
                                         finalStates,
-                                        accumulatedExp: expGain,
-                                        accumulatedGold: goldGain,
+                                        accumulatedExp: totalExpGain,
+                                        accumulatedGold: totalGoldGain,
                                         accumulatedLoot,
                                         isVictory: srpgResult.isVictory,
                                         combatType: combatState.type,
-                                        dungeonId: (combatState as any).dungeonId,
+                                        dungeonId: (combatState as any).dungeonId || character.dungeonProgress?.dungeonId,
                                         lastEnemies: defeated,
-                                        targetCity: character.currentLocation?.city,
-                                        targetNation: character.currentLocation?.nation,
+                                        defenseSource: (combatState as any).defenseSource,
+                                        targetCity: (combatState as any).targetCity || character.currentLocation?.city,
+                                        targetNation: (combatState as any).targetNation || character.currentLocation?.nation,
+                                        rebelRankIdx: (combatState as any).rebelRankIdx,
+                                        huntingBandId: updatedChar.lastHuntingBandId,
                                         expMultiplier: rewardBonuses?.expMultiplier || 1,
                                         goldMultiplier: rewardBonuses?.goldMultiplier || 1,
                                         expBonus: rewardBonuses?.expBonus || 0,
                                         goldBonus: rewardBonuses?.goldBonus || 0,
-                                        suddenEvent
+                                        suddenEvent,
+                                        suddenEventType: (combatState as any).suddenEventType,
+                                        isSuddenEvent: Boolean((combatState as any).suddenEventType) || Boolean(suddenEvent) || defeated.some(e => e.name?.includes('[영원의 라이벌]') || e.name?.includes('[영원의 숙적]') || (e as any).isRivalEscort || (e as any).isRiftCrystal)
                                     } as any);
                                 }}
                             />
@@ -7532,7 +7533,12 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                     setMapMode('travel');
                                     setIsMapOpen(true);
                                 }}
-                                onOpenBase={() => setIsBaseModalOpen(true)}
+                                activeMapZone={activeMapZone}
+                                onChangeMapZone={setActiveMapZone}
+                                onOpenBase={(initialSubModal?: string) => {
+                                    setBaseInitialSubModal(initialSubModal ? { type: initialSubModal } : undefined);
+                                    setIsBaseModalOpen(true);
+                                }}
                                 onOpenElfCity={() => setIsElfCityOpen(true)}
                                 onOpenDemonCity={() => setIsDemonCityOpen(true)}
                                 onOpenBeastCity={() => setIsBeastCityOpen(true)}
@@ -7697,7 +7703,13 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                 });
                                 return;
                             }
-                            setIsBaseModalOpen(true);
+                            if (character.base) {
+                                setIsCityOpen(false);
+                                setIsMobileMenuOpen(false);
+                                setActiveMapZone('base');
+                            } else {
+                                setIsBaseModalOpen(true);
+                            }
                         }} 
                         onOpenBlacksmith={() => {
                             const isAtBase = !character.base?.location || (
@@ -7847,7 +7859,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                         sceneType={sceneType}
                         onOpenCharacter={() => setIsMobileMenuOpen(true)}
                         onOpenInventory={() => setIsInventoryModalOpen(true)}
-                        onOpenBase={() => setIsBaseModalOpen(true)}
+                        onOpenBase={handleOpenBase}
                         onOpenCompanion={() => setIsCompanionModalOpen(true)}
                         onOpenHunt={() => {
                             setCityInitialConfig({ openHuntMap: true });

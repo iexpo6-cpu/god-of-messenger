@@ -1,0 +1,122 @@
+========================================================================
+[신의 사자 RPG - NPC 다양화(노인·아이·군인·용병·평민·왕족·교사) 일괄 생성 프롬프트]
+========================================================================
+* 사용 방법:
+  - 1장당 4명의 NPC를 한 번에 생성하는 2x2 멀티 캐릭터 시트 프롬프트입니다. (총 7장 = 28명 NPC!)
+  - 각 캐릭터는 3열(왼발·정지·오른발) x 4행(앞·왼쪽·오른쪽·뒤) 규격이며,
+    배경은 순수 네온 마젠타 (#FF00FF) 단색입니다.
+  - 생성하신 이미지를 `assets/visuals/npc/` 또는 `assets/visuals/` 폴더에 넣어두고 말씀해 주시면
+    자동 분할 + 좌/우 방향 교정 + 마젠타 투명화 + 도시 NPC 자동 배치까지 한 번에 적용해 드립니다!
+========================================================================
+
+
+------------------------------------------------------------------------
+[NPC 시트 1] 노인 4종 (원로 할아버지 / 할머니 / 노마법사 / 노장군) — 2x2 블록
+  좌상: npc_elder_grandpa  (인자한 동양 백발 할아버지)
+  우상: npc_elder_grandma  (따뜻한 은발 할머니)
+  좌하: npc_elder_sage     (긴 흰수염 원로 대현자/마법사)
+  우하: npc_elder_general  (백발·흉터 베테랑 노장군)
+------------------------------------------------------------------------
+2D RPG Maker MZ style chibi pixel-HD NPC character sprite sheet containing 4 distinct elderly characters arranged in a clean 2x2 grid (total 6 columns by 8 rows of sprites). Each character occupies a 3-column by 4-row sub-grid (Row 1: facing down, Row 2: strictly facing left, Row 3: strictly facing right, Row 4: facing up; Columns: left step, idle, right step).
+Completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background, crisp dark outlines, generous margin inside every cell so heads and feet are never cut off, zero grid lines, zero text.
+- Top-left 3x4 block: Kind elderly grandfather with white hair and short white beard, wearing warm brown and ivory traditional cardigan robe.
+- Top-right 3x4 block: Gentle elderly grandmother with silver-white hair tied in a neat bun and round glasses, wearing a cozy lavender shawl over a cream apron dress.
+- Bottom-left 3x4 block: Wise old archmage elder with long flowing white beard and blue-star wizard robe with golden trim.
+- Bottom-right 3x4 block: Battle-hardened elderly veteran general with spiky silver hair, dignified mustache, wearing ornate navy-and-gold armored military coat with red cape.
+Exact uniform cell alignment, pure flat #FF00FF magenta background only.
+
+
+------------------------------------------------------------------------
+[NPC 시트 2] 어린아이 4종 (활발한 소년 / 귀여운 소녀 / 견습 모험가 / 꼬마 마법사) — 2x2 블록
+  좌상: npc_child_boy       (갈발 활발한 마을 소년)
+  우상: npc_child_girl      (주황 양갈래 귀여운 마을 소녀)
+  좌하: npc_child_squire    (금발 견습 기사/모험가 소년)
+  우하: npc_child_apprentice(분홍 단발 견습 마법 소녀)
+------------------------------------------------------------------------
+2D RPG Maker MZ style chibi pixel-HD NPC character sprite sheet containing 4 distinct cute child characters (slightly smaller kid proportions) arranged in a clean 2x2 grid (total 6 columns by 8 rows of sprites). Each character occupies a 3-column by 4-row sub-grid (Row 1: facing down, Row 2: strictly facing left, Row 3: strictly facing right, Row 4: facing up; Columns: left step, idle, right step).
+Completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background, crisp dark outlines, generous margin inside every cell, zero grid lines, zero text.
+- Top-left 3x4 block: Cheerful young village boy with messy chestnut-brown hair, wearing a sky-blue tunic, brown vest, and shorts.
+- Top-right 3x4 block: Adorable young village girl with bright orange twin-braids and red hair ribbons, wearing a sunny yellow sundress with white apron.
+- Bottom-left 3x4 block: Energetic young squire boy with spiky blonde hair and bandage on cheek, wearing a cute mini adventurer leather vest and red scarf.
+- Bottom-right 3x4 block: Cute little apprentice witch girl with pastel-pink bob hair and tiny starry beret, wearing a purple-and-white junior mage dress.
+Exact uniform cell alignment, pure flat #FF00FF magenta background only.
+
+
+------------------------------------------------------------------------
+[NPC 시트 3] 지역별 군인 4종 (동양 호위병 / 유럽 경비병 / 현대 군인 / 마계 흑갑병) — 2x2 블록
+  좌상: npc_soldier_asia   (동양 철갑 호위병)
+  우상: npc_soldier_europe (유럽 투구·판금 성문 경비병)
+  좌하: npc_soldier_modern (현대 전술 군복 병사)
+  우하: npc_soldier_magye  (마계 흑적 제국 보병)
+------------------------------------------------------------------------
+2D RPG Maker MZ style chibi pixel-HD NPC soldier sprite sheet containing 4 distinct regional soldiers arranged in a clean 2x2 grid (total 6 columns by 8 rows of sprites). Each character occupies a 3-column by 4-row sub-grid (Row 1: facing down, Row 2: strictly facing left, Row 3: strictly facing right, Row 4: facing up; Columns: left step, idle, right step).
+Completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background, crisp dark outlines, generous margin inside every cell, zero grid lines, zero text.
+- Top-left 3x4 block: East Asian imperial guard soldier wearing a traditional black-and-red lamellar armor helmet and crimson martial tunic.
+- Top-right 3x4 block: European medieval castle guard knight wearing a shining steel open-face helmet, silver breastplate, and royal-blue tabard.
+- Bottom-left 3x4 block: Modern tactical military soldier with dark hair, olive-green combat helmet, camo tactical vest, and combat boots.
+- Bottom-right 3x4 block: Dark-fantasy Magye imperial demon soldier wearing menacing jet-black spiked helmet and dark obsidian-and-crimson plate armor.
+Exact uniform cell alignment, pure flat #FF00FF magenta background only.
+
+
+------------------------------------------------------------------------
+[NPC 시트 4] 지역별 용병 4종 (적발 전사 / 청발 여검객 / 사막 용병 / 백발 베테랑) — 2x2 블록
+  좌상: npc_merc_red       (적발 가죽갑옷 대검 용병)
+  우상: npc_merc_blue      (청발 포니테일 여성 용병)
+  좌하: npc_merc_desert    (사막 두건 쌍검 용병)
+  우하: npc_merc_veteran   (은발 안대 베테랑 용병단장)
+------------------------------------------------------------------------
+2D RPG Maker MZ style chibi pixel-HD NPC mercenary sprite sheet containing 4 distinct diverse mercenaries arranged in a clean 2x2 grid (total 6 columns by 8 rows of sprites). Each character occupies a 3-column by 4-row sub-grid (Row 1: facing down, Row 2: strictly facing left, Row 3: strictly facing right, Row 4: facing up; Columns: left step, idle, right step).
+Completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background, crisp dark outlines, generous margin inside every cell, zero grid lines, zero text.
+- Top-left 3x4 block: Rugged male mercenary with wild crimson-red hair, wearing worn brown leather shoulder armor, dark tunic, and iron gauntlets.
+- Top-right 3x4 block: Cool female mercenary swordswoman with sapphire-blue high ponytail, wearing a sleek emerald-and-black sleeveless battle coat and boots.
+- Bottom-left 3x4 block: Agile Middle Eastern/desert mercenary with tanned skin, dark headscarf bandana, wearing sand-colored linen wraps and crimson sash.
+- Bottom-right 3x4 block: Seasoned veteran mercenary captain with spiky silver hair and black eyepatch, wearing a tattered charcoal-and-gold armored cloak.
+Exact uniform cell alignment, pure flat #FF00FF magenta background only.
+
+
+------------------------------------------------------------------------
+[NPC 시트 5] 평민 · 상인 · 장인 4종 (대장장이 / 여상인 / 마을 청년 / 약초상 소녀) — 2x2 블록
+  좌상: npc_civil_smith    (갈발 근육질 대장장이)
+  우상: npc_civil_merchant (금발 밝은 상단 여상인)
+  좌하: npc_civil_youth    (흑발 평범한 마을 청년)
+  우하: npc_civil_herbalist(녹발 따뜻한 꽃집/약초상 소녀)
+------------------------------------------------------------------------
+2D RPG Maker MZ style chibi pixel-HD NPC townspeople sprite sheet containing 4 distinct civilians and merchants with varied hair colors and outfits arranged in a clean 2x2 grid (total 6 columns by 8 rows of sprites). Each character occupies a 3-column by 4-row sub-grid (Row 1: facing down, Row 2: strictly facing left, Row 3: strictly facing right, Row 4: facing up; Columns: left step, idle, right step).
+Completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background, crisp dark outlines, generous margin inside every cell, zero grid lines, zero text.
+- Top-left 3x4 block: Sturdy town blacksmith with short dark-brown hair and headband, wearing a rolled-up white shirt and heavy brown leather forge apron.
+- Top-right 3x4 block: Cheerful female merchant with wavy golden-blonde hair and green merchant beret, wearing a burgundy vest, cream blouse, and coin pouch belt.
+- Bottom-left 3x4 block: Friendly young male townsfolk with neat black hair, wearing a casual teal-blue linen shirt, dark vest, and trousers.
+- Bottom-right 3x4 block: Gentle female herbalist/florist with soft mint-green braided hair, wearing a forest-green peasant dress with white laced bodice and apron.
+Exact uniform cell alignment, pure flat #FF00FF magenta background only.
+
+
+------------------------------------------------------------------------
+[NPC 시트 6] 왕 & 왕족 4종 (국왕 / 여왕 / 동양 왕자 / 화려한 공주) — 2x2 블록
+  좌상: npc_royal_king     (황금 왕관·진홍 망토 국왕)
+  우상: npc_royal_queen    (은발 티아라·로열 드레스 여왕)
+  좌하: npc_royal_prince   (동양 황금 곤룡포 왕자)
+  우하: npc_royal_princess (분홍빛·금발 화려한 공주)
+------------------------------------------------------------------------
+2D RPG Maker MZ style chibi pixel-HD NPC royalty sprite sheet containing 4 distinct monarchs and royals arranged in a clean 2x2 grid (total 6 columns by 8 rows of sprites). Each character occupies a 3-column by 4-row sub-grid (Row 1: facing down, Row 2: strictly facing left, Row 3: strictly facing right, Row 4: facing up; Columns: left step, idle, right step).
+Completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background, crisp dark outlines, generous margin inside every cell, zero grid lines, zero text.
+- Top-left 3x4 block: Majestic fantasy King with neat golden-brown hair, short royal beard, ornate golden crown, wearing a regal crimson-and-white ermine-trimmed royal mantle over navy velvet.
+- Top-right 3x4 block: Graceful fantasy Queen with long silver-blonde hair and sapphire tiara, wearing an opulent royal-blue and gold embroidered palace gown.
+- Bottom-left 3x4 block: Noble East Asian Crown Prince with sleek black hair and golden royal topknot crown, wearing a grand crimson-and-gold dragon-embroidered royal silk robe.
+- Bottom-right 3x4 block: Charming young Princess with wavy pastel-pink hair and pearl coronet, wearing a fluffy white-and-rose silk ballgown with golden ribbons.
+Exact uniform cell alignment, pure flat #FF00FF magenta background only.
+
+
+------------------------------------------------------------------------
+[NPC 시트 7] 교사 & 학자 4종 (남성 교수 / 여성 교사 / 마법 사서 / 연금술 학자) — 2x2 블록
+  좌상: npc_teacher_prof   (흑발 안경 아카데미 남성 교수)
+  우상: npc_teacher_lady   (갈발 단정한 여성 교사)
+  좌하: npc_teacher_lib    (보라발 신비한 도서관 사서)
+  우하: npc_teacher_alch   (은발 고글 연금술 연구원)
+------------------------------------------------------------------------
+2D RPG Maker MZ style chibi pixel-HD NPC teachers and scholars sprite sheet containing 4 distinct academy faculty members arranged in a clean 2x2 grid (total 6 columns by 8 rows of sprites). Each character occupies a 3-column by 4-row sub-grid (Row 1: facing down, Row 2: strictly facing left, Row 3: strictly facing right, Row 4: facing up; Columns: left step, idle, right step).
+Completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background, crisp dark outlines, generous margin inside every cell, zero grid lines, zero text.
+- Top-left 3x4 block: Intelligent male academy professor with neat black hair and thin glasses, wearing a tweed brown-and-navy blazer jacket with red tie and scholar sash.
+- Top-right 3x4 block: Warm female academy teacher with auburn-brown hair in a low bun and glasses, wearing a crisp white blouse, emerald-green cardigan, and long pleated skirt.
+- Bottom-left 3x4 block: Mysterious female magic librarian with long lavender-purple hair, wearing a dark indigo scholar robe with gold book-clasp brooch.
+- Bottom-right 3x4 block: Eccentric young male alchemy scholar with messy silver hair and brass goggles on forehead, wearing a white lab coat over a teal vest with potion belt.
+Exact uniform cell alignment, pure flat #FF00FF magenta background only.

@@ -12,6 +12,8 @@ import { DISTRICT_CONFIG } from '../constants';
 import {
     HUMAN_GLOBAL_REGION_KEYS,
     mapRegionToSpriteKey,
+    pickDiverseRegionalSpriteKey,
+    pickRoleMatchedNpcSpriteKey,
     RpgSpriteRegionKey,
     SpriteDirection
 } from './rpgSpriteManifest';
@@ -84,6 +86,7 @@ export interface CityNpcEntity {
     role: string;
     regionKey: RpgSpriteRegionKey;
     gender: 'male' | 'female';
+    spriteKey?: string;
     x: number;
     y: number;
     homeX: number;
@@ -298,6 +301,8 @@ export interface BuildCityTilemapParams {
     timeLabel: string;
     isMythicBoss: boolean;
     bossName?: string;
+    baseLevel?: number;
+    playerAge?: number;
 }
 
 export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapData => {
@@ -431,20 +436,23 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
 
     if (isShingye) {
         // === 신계 전용 시설만 배치 (상업지구·학교·용병길드·군사구역·심연의 탑 없음!) ===
-        // 1. 북쪽 중앙: 신의 사자 신전
+        // 1. 북쪽 중앙: 신의 사자 신전 (기존 성전 일러스트 유지 + 웅장하게 크기 확대!)
+        const templeW = Math.min(cols - sideW * 2 - 6, northW + 2);
+        const templeH = northH + 1;
+        const templeX = cx - Math.floor(templeW / 2);
         placeBuilding({
             id: 'shingye_temple', label: '신의 사자 신전', subLabel: `${params.city} 성전 진입`,
             actionType: 'district', district: 'Imperial', spriteKind: 'landmark',
-            buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
-            doorX: cx, doorY: 2 + northH - 1, roofColor: '#d97706', accentColor: '#fde047', iconText: '✨'
+            buildingX: templeX, buildingY: 2, buildingW: templeW, buildingH: templeH,
+            doorX: cx, doorY: 2 + templeH - 1, roofColor: '#d97706', accentColor: '#fde047', iconText: '✨'
         });
 
-        // 2. 북서쪽: 신성 던전 (보스 토벌)
+        // 2. 북서쪽: 신성 던전 (보스 토벌 — 성전별 고유 divine_dungeon 적용)
         placeBuilding({
             id: 'shingye_dungeon',
             label: params.isMythicBoss ? `차원의 틈새 (${params.bossName || '시즌 보스'})` : '신성 던전',
             subLabel: '신계 보스 토벌',
-            actionType: 'dungeon', spriteKind: 'special_dungeon',
+            actionType: 'dungeon', spriteKind: 'divine_dungeon',
             buildingX: 2, buildingY: 2, buildingW: sideW, buildingH: sideH,
             doorX: 2 + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
             roofColor: params.isMythicBoss ? '#7e22ce' : '#4338ca',
@@ -456,7 +464,7 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
         const rx = cols - 2 - sideW;
         placeBuilding({
             id: 'shingye_field', label: '성스러운 필드', subLabel: '신계 구역 탐색',
-            actionType: 'district', district: 'Outskirts', openHuntMap: true, spriteKind: 'house',
+            actionType: 'district', district: 'Outskirts', openHuntMap: true, spriteKind: 'hunting_field',
             buildingX: rx, buildingY: 2, buildingW: sideW, buildingH: sideH,
             doorX: rx + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
             roofColor: '#059669', accentColor: '#6ee7b7', iconText: '🌿'
@@ -563,7 +571,7 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
         if (hasDistrict('Commercial')) {
             placeBuilding({
                 id: 'commercial', label: DISTRICT_CONFIG.Commercial.label, subLabel: '상점 · 대장간 · 거래소',
-                actionType: 'district', district: 'Commercial', spriteKind: 'shop',
+                actionType: 'district', district: 'Commercial', spriteKind: 'commercial',
                 buildingX: 2, buildingY: 2, buildingW: sideW, buildingH: sideH,
                 doorX: 2 + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
                 roofColor: '#d97706', accentColor: '#fcd34d', iconText: '🏪'
@@ -575,7 +583,7 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
             const rx = cols - 2 - sideW;
             placeBuilding({
                 id: 'residential', label: DISTRICT_CONFIG.Residential.label, subLabel: '여관 · 주택 · 암시장',
-                actionType: 'district', district: 'Residential', spriteKind: 'house',
+                actionType: 'district', district: 'Residential', spriteKind: 'residential',
                 buildingX: rx, buildingY: 2, buildingW: sideW, buildingH: sideH,
                 doorX: rx + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
                 roofColor: '#15803d', accentColor: '#86efac', iconText: '🏠'
@@ -591,19 +599,26 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
             const mx = isSmall ? 2 : 6;
             placeBuilding({
                 id: 'mercenary', label: DISTRICT_CONFIG.Mercenary.label, subLabel: '의뢰 · 파티 모집',
-                actionType: 'district', district: 'Mercenary', spriteKind: 'shop',
+                actionType: 'district', district: 'Mercenary', spriteKind: 'mercenary_guild',
                 buildingX: mx, buildingY: midY, buildingW: midW, buildingH: midH,
                 doorX: mx + Math.floor(midW / 2), doorY: midY + midH - 1,
                 roofColor: '#b91c1c', accentColor: '#fca5a5', iconText: '⚔️'
             });
         }
 
-        // 동쪽 중하단: 레귤러스 학교
+        // 동쪽 중하단: 레귤러스 학교 (초급/중급/고급 학교 전용 스프라이트 자동 매칭!)
         if (hasDistrict('Academic')) {
             const ax = isSmall ? cols - 2 - midW : cols - 6 - midW;
+            const age = params.playerAge ?? 17;
+            const schoolSprite =
+                isCapital || age >= 17
+                    ? 'school_high'
+                    : params.tier === 'City' || age >= 14
+                    ? 'school_middle'
+                    : 'school_elementary';
             placeBuilding({
                 id: 'academic', label: DISTRICT_CONFIG.Academic.label, subLabel: '학교 · 도서관',
-                actionType: 'district', district: 'Academic', spriteKind: 'house',
+                actionType: 'district', district: 'Academic', spriteKind: schoolSprite,
                 buildingX: ax, buildingY: midY, buildingW: midW, buildingH: midH,
                 doorX: ax + Math.floor(midW / 2), doorY: midY + midH - 1,
                 roofColor: '#0e7490', accentColor: '#67e8f9', iconText: '📚'
@@ -614,7 +629,7 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
         if (hasDistrict('Military')) {
             placeBuilding({
                 id: 'military', label: DISTRICT_CONFIG.Military.label, subLabel: '병영 · 군사 훈련',
-                actionType: 'district', district: 'Military', spriteKind: 'house',
+                actionType: 'district', district: 'Military', spriteKind: 'military_zone',
                 buildingX: 2, buildingY: botY, buildingW: botW, buildingH: 2,
                 doorX: 2 + Math.floor(botW / 2), doorY: botY + 1,
                 roofColor: '#334155', accentColor: '#94a3b8', iconText: '🛡️'
@@ -626,7 +641,7 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
             const ox = cols - 2 - botW * 2 - 1;
             placeBuilding({
                 id: 'outskirts', label: '야외 사냥터', subLabel: '필드 몬스터 토벌',
-                actionType: 'district', district: 'Outskirts', openHuntMap: true, spriteKind: 'house',
+                actionType: 'district', district: 'Outskirts', openHuntMap: true, spriteKind: 'hunting_field',
                 buildingX: Math.max(cx + 2, ox), buildingY: botY, buildingW: botW, buildingH: 2,
                 doorX: Math.max(cx + 2, ox) + Math.floor(botW / 2), doorY: botY + 1,
                 roofColor: '#c2410c', accentColor: '#fdba74', iconText: '🏕️'
@@ -636,10 +651,10 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
         const dunX = cols - 2 - botW;
         placeBuilding({
             id: 'dungeon',
-            label: params.isMythicBoss ? `차원의 틈새 (${params.bossName || '시즌 보스'})` : '시험 던전',
+            label: params.isMythicBoss ? `차원의 틈새 (${params.bossName || '시즌 보스'})` : '차원의 틈새 · 시험 던전',
             subLabel: '2D 미궁 탐험 진입',
             actionType: 'dungeon',
-            spriteKind: 'special_dungeon',
+            spriteKind: 'dimensional_rift',
             buildingX: dunX, buildingY: botY, buildingW: botW, buildingH: 2,
             doorX: dunX + Math.floor(botW / 2), doorY: botY + 1,
             roofColor: params.isMythicBoss ? '#7e22ce' : '#7f1d1d',
@@ -648,15 +663,20 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
         });
     }
 
-    // 내 기지 (현재 도시에 보유 중인 경우에만 표시)
+    // 내 기지 (현재 도시에 보유 중인 경우에만 표시 — 기지 Lv.1~Lv.5 외형 및 크기 단계별 확대!)
     if (params.hasBaseInCurrentLocation) {
-        const baseX = Math.min(cols - 5, cx + plazaHalfW + 1);
-        const baseY = Math.max(2, cy - plazaHalfH - 1);
+        const clampedLv = Math.max(1, Math.min(5, Math.floor(params.baseLevel || 1)));
+        const baseSprite = `base_lv${clampedLv}` as BuildingSpriteKind;
+        // 레벨별 기지 타일 크기 확대 (Lv.1~2: 3x2, Lv.3: 4x2, Lv.4: 4x3, Lv.5: 5x3)
+        const baseW = clampedLv >= 5 ? 5 : clampedLv >= 3 ? 4 : 3;
+        const baseH = clampedLv >= 4 ? 3 : 2;
+        const baseX = Math.max(2, Math.min(cols - baseW - 2, cx + plazaHalfW + 1));
+        const baseY = Math.max(2, Math.min(cy - baseH + 1, cy - plazaHalfH - 1));
         placeBuilding({
-            id: 'my_base', label: '내 거점 (기지)', subLabel: '시설 관리 · 동료 배치',
-            actionType: 'base', spriteKind: 'special_base',
-            buildingX: baseX, buildingY: baseY, buildingW: 3, buildingH: 2,
-            doorX: baseX + 1, doorY: baseY + 1,
+            id: 'my_base', label: `내 거점 (기지 Lv.${clampedLv})`, subLabel: '시설 관리 · 동료 배치',
+            actionType: 'base', spriteKind: baseSprite,
+            buildingX: baseX, buildingY: baseY, buildingW: baseW, buildingH: baseH,
+            doorX: baseX + Math.floor(baseW / 2), doorY: baseY + baseH - 1,
             roofColor: '#047857', accentColor: '#34d399', iconText: '🏰'
         });
     }
@@ -990,7 +1010,8 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
         }
     ];
 
-    const npcLimit = isCapital ? 7 : isSmall ? 3 : 5;
+    const npcLimit = isCapital ? 7 : isSmall ? 4 : 5;
+    const usedNpcSprites = new Set<string>();
     const npcs: CityNpcEntity[] = allNpcSpecs.slice(0, npcLimit).map((t, idx) => {
         // 안전한 비충돌 좌표 보정
         let nx = Math.max(2, Math.min(cols - 3, t.x));
@@ -1000,13 +1021,22 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
             ny = cy + 1;
         }
         const npcRegionKey: RpgSpriteRegionKey = isHumanWorld
-            ? (idx === 0 ? regionKey : HUMAN_GLOBAL_REGION_KEYS[(cityHash + idx * 2) % HUMAN_GLOBAL_REGION_KEYS.length])
+            ? (idx < 3 ? regionKey : HUMAN_GLOBAL_REGION_KEYS[(cityHash + idx * 2) % HUMAN_GLOBAL_REGION_KEYS.length])
             : regionKey;
+        const spriteKey = pickRoleMatchedNpcSpriteKey(
+            t.role,
+            npcRegionKey,
+            t.gender,
+            cityHash + idx,
+            isHumanWorld,
+            usedNpcSprites
+        );
         return {
             ...t,
             x: nx,
             y: ny,
             regionKey: npcRegionKey,
+            spriteKey,
             homeX: nx,
             homeY: ny,
             dir: 'down'

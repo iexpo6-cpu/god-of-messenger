@@ -5,7 +5,7 @@ import {
   AlertTriangle, ArrowUpCircle, Sparkles, Zap, Activity, Brain, Utensils, Ruler, Weight, Clock, 
   Play, Edit, User, Info, Target, UserPlus, ArrowLeft, ChevronRight, Sparkle, Gauge, Compass
 } from 'lucide-react';
-import { generateProceduralEnemy, generateHatchedMonster, addDays, calculateTotalMonsterCapacity, calculateTotalIncubatorCapacity, calculateFinalStats, gainProfessionExp, getStatPointsPerLevel } from '../utils';
+import { generateProceduralEnemy, generateHatchedMonster, addDays, calculateTotalMonsterCapacity, calculateTotalIncubatorCapacity, getMonsterMaxLevel, calculateFinalStats, gainProfessionExp, getStatPointsPerLevel } from '../utils';
 import { generateMonsterEvolution, generateMonsterSkills } from '../services/geminiService';
 import { recruitMonster } from '../services/monsterManager';
 import { advanceGameTime } from '../services/gameTimeService';
@@ -262,8 +262,9 @@ const MonsterFarmModal: React.FC<Props> = ({ character, instanceId, onClose, onU
       let m = { ...monster };
       if (!m.maxExp) m.maxExp = (m.level || 1) * 100;
       
+      const monsterMaxLv = Math.max(m.level || 1, getMonsterMaxLevel(m as any, character.base));
       let leveledUp = false;
-      while ((m.currentExp || 0) >= (m.maxExp || 100)) {
+      while ((m.currentExp || 0) >= (m.maxExp || 100) && (m.level || 1) < monsterMaxLv) {
           m.currentExp = (m.currentExp || 0) - (m.maxExp || 100);
           m.level = (m.level || 1) + 1;
           m.maxExp = Math.floor(m.maxExp * 1.2);

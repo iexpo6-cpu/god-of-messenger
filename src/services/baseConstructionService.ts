@@ -236,6 +236,25 @@ export function checkAndCompleteBaseConstructions(character: Character): {
         }
     }
 
+    // 1-2. 기지 외형 개축 공사 완공 검사
+    if (newBase.exteriorRemodelUnderConstruction && newBase.exteriorRemodelCompletionDate && newBase.exteriorRemodelCompletionTime) {
+        const check = getConstructionRemainingTime(curDate, curTime, newBase.exteriorRemodelCompletionDate, newBase.exteriorRemodelCompletionTime);
+        if (check.isCompleted) {
+            hasChanges = true;
+            newBase.customBuildingPack = newBase.targetBuildingPack || undefined;
+            newBase.exteriorRemodelUnderConstruction = false;
+            newBase.targetBuildingPack = undefined;
+            newBase.exteriorRemodelStartDate = undefined;
+            newBase.exteriorRemodelStartTime = undefined;
+            newBase.exteriorRemodelCompletionDate = undefined;
+            newBase.exteriorRemodelCompletionTime = undefined;
+            newBase.exteriorRemodelTotalMinutes = undefined;
+
+            completedList.push({ name: '기지 외형 개축', level: newBase.level || 1 });
+            logs.push(`[기지 외형 완공] 기지 외형 개축 공사가 완료되어 새로운 Lv.${newBase.level || 1} 건축 양식이 적용되었습니다!`);
+        }
+    }
+
     // 2. 배치된 개별 시설 건설 및 레벨업 완공 검사
     if (newBase.layout && Array.isArray(newBase.layout)) {
         newBase.layout = newBase.layout.map(inst => {

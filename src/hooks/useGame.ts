@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Character, CombatState, Enemy, DivineDiplomacyStatus, Companion, ClubType, ClassTier, SkillType,Item, ItemRarity, MythicOptionType, MagyeOptionType, Skill, SkillTarget, Stats, GameResponse, ActiveStatus, SimpleStudent, Location, MercenaryRank, JobType, MilitaryRank, DiplomaticStatus, RelationType, MonsterStage, BattleRole, SecondaryBattleRole, BattlePosition, TrainerBranch, WeaponType, DailyReportData, WorldNewsItem, TournamentPostMatchData } from '../types';
 import { INITIAL_CHARACTER, START_DATE, MAGYE_LEADERS, BASE_LEVEL_CONFIG, INITIAL_BASE, FACILITIES_INFO, ENHANCEMENT_CAPS, PRESET_ENEMIES, SHINRYOKU_TYPES_LIST, STATUS_AILMENTS_DATA, STATUS_AILMENTS_LIST, WEAPON_TYPE_KOREAN, SCHOOL_CONFIG, MAX_PARTY_SIZE, MILITARY_RANK_ORDER, WORLD_GEOGRAPHY, TEMPLE_MESSENGER_MAP } from '../constants';
-import { calculateInventorySize, calculateRewardBonuses, getTrainerBranchMultiplier, getDropRateMultiplier, getWeaponMasteryMultiplier, getSkillMasteryMultiplier, getRequiredExp, getStatPointsPerLevel } from '../utils';
+import { calculateInventorySize, calculateRewardBonuses, getTrainerBranchMultiplier, getDropRateMultiplier, getWeaponMasteryMultiplier, getSkillMasteryMultiplier, getRequiredExp, getStatPointsPerLevel, getCharacterMaxLevel } from '../utils';
 import { calculateFinalStats, calculateTotalStats, calculateItemPrice, getYear, updateSocialNetworkGrowth, calculateBuffSuccessRate, calculateAgeFromYear, addDays, determineTimePassage, migrateCompanion, checkAndApplyLevelUp, formatDate, generateProceduralEnemy, calculateDamage, calculateStatusChance, calculateDerivedStats, getActorDerivedStats, generateLoot, calculateDebuffSuccessRate, getWeaponTypeFromItem, applyConsumableEffect, generateEnemyStats, generateClassmates, generateName, generateTournamentBracket, checkAndApplyDeparture, getSaveSlotKey, optimizeSaveData, extractSurname, generateNameWithSurname, addMasteryExp, gainProfessionExp, getEffectiveBattleRole, getEffectiveSecondaryBattleRole, processCombatStyleKillProgress, getEntityAllCombatSkills, hasCombatStyleSpecialtyEquipped } from '../utils';
 import { isAttackSkillWithBuff, isAttackSkillWithDebuff, extractAttackSkillBuffEffectsFromFormula } from '../utils/finalClassSkillHelper';
 import { getTierBuffScale } from '../services/skillBuffScaleService';
@@ -185,7 +185,8 @@ export const useGame = () => {
         
         if (!updatedChar.maxExp) updatedChar.maxExp = getRequiredExp(updatedChar.level);
 
-        while (updatedChar.currentExp >= updatedChar.maxExp) {
+        const maxLv = Math.max(updatedChar.level || 1, getCharacterMaxLevel(updatedChar, updatedChar.base));
+        while (updatedChar.currentExp >= updatedChar.maxExp && updatedChar.level < maxLv) {
           leveledUp = true;
           updatedChar.currentExp -= updatedChar.maxExp;
           updatedChar.level += 1;

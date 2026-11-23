@@ -329,8 +329,8 @@ export const CompanionStatusModal: React.FC<Props> = ({ character, companion, pl
   const [isPersuading, setIsPersuading] = useState(false);
   
   // [NEW] 스킬 탭 필터링 상태
-  const isMonsterCompanionCheck = Boolean(companion.isMonster || companion.monsterData || companion.race === '몬스터' || companion.race?.includes('Monster') || (companion.job as any) === '마수' || (companion.job as any) === '몬스터' || companion.classType === '마수/몬스터' || companion.classType === '몬스터');
-  const [selectedTier, setSelectedTier] = useState<string>(() => companion.combatStyle ? '전투 계열' : (isMonsterCompanionCheck ? '유아기' : '미해방'));
+  const isMonsterCompanionCheck = Boolean(companion?.isMonster || companion?.monsterData || companion?.race === '몬스터' || (typeof companion?.race === 'string' && companion.race.includes('Monster')) || (companion?.job as any) === '마수' || (companion?.job as any) === '몬스터' || companion?.classType === '마수/몬스터' || companion?.classType === '몬스터');
+  const [selectedTier, setSelectedTier] = useState<string>(() => companion?.combatStyle ? '전투 계열' : (isMonsterCompanionCheck ? '유아기' : '미해방'));
 
   // [NEW] 숏컷 지정 모달 대상 상태
   const [shortcutTarget, setShortcutTarget] = useState<{
@@ -418,7 +418,15 @@ export const CompanionStatusModal: React.FC<Props> = ({ character, companion, pl
   const [showBreakUpConfirm, setShowBreakUpConfirm] = useState(false);
   const [resultData, setResultData] = useState<any | null>(null);
 
-  const chatHistory = companion.chatHistory || [];
+  const chatHistory = companion?.chatHistory || [];
+
+  // Initialize liberation potential and eligibility consistently across all tabs (must be declared before any early return to satisfy Rules of Hooks)
+  const initializedCompanion = useMemo(() => {
+    if (!companion || !companion.stats) return companion;
+    const cp = getCompanionCP(companion);
+    const cloned = { ...companion };
+    return checkAndInitializeLiberationEligibility(cloned, cp);
+  }, [companion]);
 
   useEffect(() => {
       if (activeTab === 'chat') {
@@ -496,50 +504,42 @@ const handleRenameSubmit = () => {
         equippedWeaponType = getWeaponTypeFromItem(companion.equipment.weapon);
     }
 
-    companion.skills.forEach(skill => {
-        if (skill.type === SkillType.PASSIVE && skill.effectFormula) {
-            const regex = /PASSIVE: \[([\s\w가-힣:]+)\] \+(\d+(?:\.\d+)?)% \(\+(\d+(?:\.\d+)?)% per Lv\)(?: \[COND: (.+)\])?/;
-            const match = skill.effectFormula.match(regex);
+    (Array.isArray(companion.skills) ? companion.skills : []).forEach(skill => {
+        if (!skill || skill.type !== SkillType.PASSIVE || typeof skill.effectFormula !== 'string' || !skill.effectFormula) return;
+        const regex = /PASSIVE: \[([\s\w가-힣:]+)\] \+(\d+(?:\.\d+)?)% \(\+(\d+(?:\.\d+)?)% per Lv\)(?: \[COND: (.+)\])?/;
+        const match = skill.effectFormula.match(regex);
 
-            if (match) {
-                const target = match[1]; 
-                const basePercent = parseFloat(match[2]);
-                const scalePercent = parseFloat(match[3]);
-                const condition = match[4];
+        if (match) {
+            const target = match[1]; 
+            const basePercent = parseFloat(match[2]);
+            const scalePercent = parseFloat(match[3]);
+            const condition = match[4];
 
-                let isConditionMet = true;
-                if (condition && condition !== equippedWeaponType) {
-                    isConditionMet = false;
-                }
-
-                if (isConditionMet) {
-                    const level = skill.level || 1;
-                    const totalPercent = (basePercent + (scalePercent * level)).toFixed(1);
-                    list.push({
-                        name: skill.name,
-                        effect: `${target} +${totalPercent}%`
-                    });
-                } else if (condition) {
-                    list.push({
-                        name: skill.name,
-                        effect: `비활성 (필요: ${condition})`
-                    });
-                }
-            } else if (skill.effectFormula.includes('HEAT') || skill.effectFormula.includes('REGEN') || skill.effectFormula.includes('SYNTH')) {
-                 // Special predefined passives
-                 list.push({ name: skill.name, effect: "특수 능력 활성화 중" });
+            let isConditionMet = true;
+            if (condition && condition !== equippedWeaponType) {
+                isConditionMet = false;
             }
+
+            if (isConditionMet) {
+                const level = skill.level || 1;
+                const totalPercent = (basePercent + (scalePercent * level)).toFixed(1);
+                list.push({
+                    name: skill.name,
+                    effect: `${target} +${totalPercent}%`
+                });
+            } else if (condition) {
+                list.push({
+                    name: skill.name,
+                    effect: `비활성 (필요: ${condition})`
+                });
+            }
+        } else if (skill.effectFormula.includes('HEAT') || skill.effectFormula.includes('REGEN') || skill.effectFormula.includes('SYNTH')) {
+             // Special predefined passives
+             list.push({ name: skill.name, effect: "특수 능력 활성화 중" });
         }
     });
     return list;
   })();
-
-  // Initialize liberation potential and eligibility consistently across all tabs of this companion
-  const initializedCompanion = useMemo(() => {
-    const cp = getCompanionCP(companion);
-    const cloned = { ...companion };
-    return checkAndInitializeLiberationEligibility(cloned, cp);
-  }, [companion]);
 
   // 클래스 해방 가능 여부: 커스텀 동료(isCustom === true)만 수동 해방 가능 (일반 동료는 불가능)
   // 해방 포텐셜 한계치(liberationPotential)에 맞게 클래스해방버튼 활성화 여부를 필터링합니다.
@@ -593,7 +593,7 @@ const handleRenameSubmit = () => {
     }
   }
 
-  const isMonster = !!(companion.isMonster || companion.monsterData || companion.race === '몬스터' || companion.race.includes('Monster'));
+  const isMonster = !!(companion.isMonster || companion.monsterData || companion.race === '몬스터' || (typeof companion.race === 'string' && companion.race.includes('Monster')));
   const isCustom = Boolean(companion.isCustom || (companion as any).isCustomMonster || companion.monsterData?.isCustomMonster);
   const isGuardian = companion.classType === "성전 수호자"; 
   
@@ -1337,7 +1337,7 @@ const handleRenameSubmit = () => {
         partnerName: undefined,
         isSpouse: false,
         affection: Math.min(100, targetComp.affection + 30),
-        classType: targetComp.classType.replace(/노예|Slave/g, '').replace(/\s*\(\s*\)/g, '').trim() || "해방된 모험가"
+        classType: (targetComp.classType || '').replace(/노예|Slave/g, '').replace(/\s*\(\s*\)/g, '').trim() || "해방된 모험가"
     };
 
     // Remove bond skills associated with this companion
@@ -2578,15 +2578,16 @@ const groupedPlayerInventory = groupItemsInModal(playerInventory);
                              <div className="bg-slate-800/30 p-4 rounded-lg border border-slate-700/50">
                                  <div className="mb-4 space-y-3">
                                     {(() => {
-                                        const shield = companion.statusEffects?.find(s => s.name === '마나 쉴드')?.val || 0;
-                                        const safeHpMax = finalStats.maxHp > 0 ? finalStats.maxHp : 100;
-                                        const hpPercent = Math.min(100, Math.max(0, (companion.stats.hp / safeHpMax) * 100));
+                                        const shield = companion.statusEffects?.find(s => s?.name === '마나 쉴드')?.val || 0;
+                                        const safeHpMax = (finalStats?.maxHp || 0) > 0 ? finalStats.maxHp : 100;
+                                        const safeHpCur = Number(companion.stats?.hp || 0);
+                                        const hpPercent = Math.min(100, Math.max(0, (safeHpCur / safeHpMax) * 100));
                                         const shieldPercent = Math.min(100, Math.max(0, (shield / safeHpMax) * 100));
 
                                         return (
                                             <div>
                                                 <div className="flex justify-between text-[10px] text-red-400 font-bold mb-1 px-0.5">
-                                                    <span>HP {Math.floor(companion.stats.hp).toLocaleString()} {shield > 0 ? `(+${Math.floor(shield).toLocaleString()})` : ''} / {safeHpMax.toLocaleString()}</span>
+                                                    <span>HP {Math.floor(safeHpCur).toLocaleString()} {shield > 0 ? `(+${Math.floor(shield).toLocaleString()})` : ''} / {Math.floor(safeHpMax).toLocaleString()}</span>
                                                     <span>{hpPercent.toFixed(1)}%</span>
                                                 </div>
                                                 <div className="h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 relative shadow-inner">
@@ -2602,25 +2603,39 @@ const groupedPlayerInventory = groupItemsInModal(playerInventory);
                                         );
                                     })()}
 
-                                    <div>
-                                        <div className="flex justify-between text-[10px] text-blue-400 font-bold mb-1 px-0.5">
-                                            <span>MP {Math.floor(companion.stats.mp).toLocaleString()} / {finalStats.maxMp.toLocaleString()}</span>
-                                            <span>{((companion.stats.mp / (finalStats.maxMp || 1)) * 100).toFixed(1)}%</span>
-                                        </div>
-                                        <div className="h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 shadow-inner">
-                                            <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${Math.min(100, (companion.stats.mp / (finalStats.maxMp || 1)) * 100)}%` }}></div>
-                                        </div>
-                                    </div>
+                                    {(() => {
+                                        const safeMpCur = Number(companion.stats?.mp || 0);
+                                        const safeMpMax = Math.max(1, Number(finalStats?.maxMp || 1));
+                                        const mpPercent = Math.min(100, Math.max(0, (safeMpCur / safeMpMax) * 100));
+                                        return (
+                                            <div>
+                                                <div className="flex justify-between text-[10px] text-blue-400 font-bold mb-1 px-0.5">
+                                                    <span>MP {Math.floor(safeMpCur).toLocaleString()} / {Math.floor(finalStats?.maxMp || 0).toLocaleString()}</span>
+                                                    <span>{mpPercent.toFixed(1)}%</span>
+                                                </div>
+                                                <div className="h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 shadow-inner">
+                                                    <div className="h-full bg-blue-600 transition-all duration-300" style={{ width: `${mpPercent}%` }}></div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
 
-                                    <div>
-                                        <div className="flex justify-between text-[10px] text-amber-500 font-bold mb-1 px-0.5">
-                                            <span>EXP {companion.currentExp} / {companion.maxExp}</span>
-                                            <span>{((companion.currentExp / companion.maxExp) * 100).toFixed(1)}%</span>
-                                        </div>
-                                        <div className="h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                                            <div className="h-full bg-amber-600 transition-all duration-300" style={{ width: `${Math.min(100, (companion.currentExp / companion.maxExp) * 100)}%` }}></div>
-                                        </div>
-                                    </div>
+                                    {(() => {
+                                        const safeExpCur = Number(companion.currentExp || 0);
+                                        const safeExpMax = Math.max(1, Number(companion.maxExp || 100));
+                                        const expPercent = Math.min(100, Math.max(0, (safeExpCur / safeExpMax) * 100));
+                                        return (
+                                            <div>
+                                                <div className="flex justify-between text-[10px] text-amber-500 font-bold mb-1 px-0.5">
+                                                    <span>EXP {Math.floor(safeExpCur).toLocaleString()} / {Math.floor(safeExpMax).toLocaleString()}</span>
+                                                    <span>{expPercent.toFixed(1)}%</span>
+                                                </div>
+                                                <div className="h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                                                    <div className="h-full bg-amber-600 transition-all duration-300" style={{ width: `${expPercent}%` }}></div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
 
                                 </div>
 
@@ -2671,13 +2686,13 @@ const groupedPlayerInventory = groupItemsInModal(playerInventory);
                          <div className="bg-slate-800/30 p-3 sm:p-4 rounded-lg border border-slate-700/50 flex flex-col max-h-[30vh] sm:max-h-[35vh] md:max-h-none overflow-y-auto md:overflow-visible shrink-0 md:shrink">
                              <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">착용 장비</h3>
                              <div className="space-y-1">
-                                <EquipmentSlot label="무기" item={companion.equipment.weapon} slotKey="weapon" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'weapon'} onSelect={() => companion.equipment.weapon && setSelectedCompanionItem({ item: companion.equipment.weapon, isEquipped: true, slotKey: 'weapon' })} />
-                                <EquipmentSlot label="보조무기" item={companion.equipment.subWeapon} slotKey="subWeapon" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'subWeapon'} onSelect={() => companion.equipment.subWeapon && setSelectedCompanionItem({ item: companion.equipment.subWeapon, isEquipped: true, slotKey: 'subWeapon' })} />
-                                <EquipmentSlot label="머리" item={companion.equipment.head} slotKey="head" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'head'} onSelect={() => companion.equipment.head && setSelectedCompanionItem({ item: companion.equipment.head, isEquipped: true, slotKey: 'head' })} />
-                                <EquipmentSlot label="상의/하의" item={companion.equipment.body} slotKey="body" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'body'} onSelect={() => companion.equipment.body && setSelectedCompanionItem({ item: companion.equipment.body, isEquipped: true, slotKey: 'body' })} />
-                                <EquipmentSlot label="신발" item={companion.equipment.feet} slotKey="feet" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'feet'} onSelect={() => companion.equipment.feet && setSelectedCompanionItem({ item: companion.equipment.feet, isEquipped: true, slotKey: 'feet' })} />
-                                <EquipmentSlot label="장갑" item={companion.equipment.hand} slotKey="hand" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'hand'} onSelect={() => companion.equipment.hand && setSelectedCompanionItem({ item: companion.equipment.hand, isEquipped: true, slotKey: 'hand' })} />
-                                <EquipmentSlot label="장신구" item={companion.equipment.accessory} slotKey="accessory" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'accessory'} onSelect={() => companion.equipment.accessory && setSelectedCompanionItem({ item: companion.equipment.accessory, isEquipped: true, slotKey: 'accessory' })} />
+                                <EquipmentSlot label="무기" item={companion.equipment?.weapon} slotKey="weapon" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'weapon'} onSelect={() => companion.equipment?.weapon && setSelectedCompanionItem({ item: companion.equipment.weapon, isEquipped: true, slotKey: 'weapon' })} />
+                                <EquipmentSlot label="보조무기" item={companion.equipment?.subWeapon} slotKey="subWeapon" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'subWeapon'} onSelect={() => companion.equipment?.subWeapon && setSelectedCompanionItem({ item: companion.equipment.subWeapon, isEquipped: true, slotKey: 'subWeapon' })} />
+                                <EquipmentSlot label="머리" item={companion.equipment?.head} slotKey="head" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'head'} onSelect={() => companion.equipment?.head && setSelectedCompanionItem({ item: companion.equipment.head, isEquipped: true, slotKey: 'head' })} />
+                                <EquipmentSlot label="상의/하의" item={companion.equipment?.body} slotKey="body" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'body'} onSelect={() => companion.equipment?.body && setSelectedCompanionItem({ item: companion.equipment.body, isEquipped: true, slotKey: 'body' })} />
+                                <EquipmentSlot label="신발" item={companion.equipment?.feet} slotKey="feet" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'feet'} onSelect={() => companion.equipment?.feet && setSelectedCompanionItem({ item: companion.equipment.feet, isEquipped: true, slotKey: 'feet' })} />
+                                <EquipmentSlot label="장갑" item={companion.equipment?.hand} slotKey="hand" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'hand'} onSelect={() => companion.equipment?.hand && setSelectedCompanionItem({ item: companion.equipment.hand, isEquipped: true, slotKey: 'hand' })} />
+                                <EquipmentSlot label="장신구" item={companion.equipment?.accessory} slotKey="accessory" onUnequip={onUnequipItem} companion={companion} isSelected={selectedCompanionItem?.isEquipped && selectedCompanionItem?.slotKey === 'accessory'} onSelect={() => companion.equipment?.accessory && setSelectedCompanionItem({ item: companion.equipment.accessory, isEquipped: true, slotKey: 'accessory' })} />
                                 <div className="flex justify-between items-center text-xs py-2 border-t border-slate-800/30 mt-2">
                                     <span className="text-slate-500 w-16 shrink-0">탈것</span>
                                     <div className="w-8 h-8 rounded bg-slate-950 border border-slate-800 shrink-0 mx-2 overflow-hidden flex items-center justify-center">
@@ -2853,8 +2868,9 @@ const groupedPlayerInventory = groupItemsInModal(playerInventory);
                                      // 1. 분류 필터링
                                      let itemsToDisplay = groupedPlayerInventory.filter(group => {
                                          const { item } = group;
-                                         const isEquippable = ['Weapon', 'SubWeapon', 'Head', 'Body', 'Feet', 'Hand', 'Accessory'].some(t => item.type.includes(t));
-                                         const isConsumable = ['Consumable', '소비', '물약', '음식', '소모품'].some(t => item.type.includes(t));
+                                         const itemTypeStr = typeof item?.type === 'string' ? item.type : '';
+                                         const isEquippable = ['Weapon', 'SubWeapon', 'Head', 'Body', 'Feet', 'Hand', 'Accessory'].some(t => itemTypeStr.includes(t));
+                                         const isConsumable = ['Consumable', '소비', '물약', '음식', '소모품'].some(t => itemTypeStr.includes(t));
 
                                          if (equipSubTab === 'equip') {
                                              if (equipCategoryFilter === 'equipment' && !isEquippable) return false;
@@ -2912,8 +2928,9 @@ const groupedPlayerInventory = groupItemsInModal(playerInventory);
 
                                      return itemsToDisplay.map((group, groupIdx) => {
                                          const { item, count, indices } = group;
-                                         const isEquippable = ['Weapon', 'SubWeapon', 'Head', 'Body', 'Feet', 'Hand', 'Accessory'].some(t => item.type.includes(t));
-                                         const isConsumable = ['Consumable', '소비', '물약', '음식', '소모품'].some(t => item.type.includes(t));
+                                         const itemTypeStr = typeof item?.type === 'string' ? item.type : '';
+                                         const isEquippable = ['Weapon', 'SubWeapon', 'Head', 'Body', 'Feet', 'Hand', 'Accessory'].some(t => itemTypeStr.includes(t));
+                                         const isConsumable = ['Consumable', '소비', '물약', '음식', '소모품'].some(t => itemTypeStr.includes(t));
                                          const primaryIndex = indices[0];
 
                                          return (

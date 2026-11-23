@@ -1,5 +1,5 @@
 import { Companion, MonsterStage, Skill, SkillType, SkillTarget, ClassTier, Character, CapturedMonster, JobType, Stats } from '../types';
-import { getStatPointsPerLevel } from '../utils';
+import { getStatPointsPerLevel, getMonsterMaxLevel } from '../utils';
 export { calculateMonsterFarmTrainingLimit, getMonsterFarmTrainingLimitInfo } from './monsterTrainingLimitService';
 
 export interface MonsterStageSkillDef {
@@ -1389,7 +1389,8 @@ export const processBreederAutoCare = (character: Character): BreederAutoCareRes
                 // 일일 사육 경험치 획득 및 레벨업 판정
                 m.currentExp = (m.currentExp || 0) + 30;
                 if (!m.maxExp) m.maxExp = (m.level || 1) * 100;
-                while ((m.currentExp || 0) >= (m.maxExp || 100)) {
+                const monsterMaxLv1 = Math.max(m.level || 1, getMonsterMaxLevel(m as any, char.base));
+                while ((m.currentExp || 0) >= (m.maxExp || 100) && (m.level || 1) < monsterMaxLv1) {
                     m.currentExp = (m.currentExp || 0) - (m.maxExp || 100);
                     m.level = (m.level || 1) + 1;
                     m.maxExp = Math.floor(m.maxExp * 1.2);
@@ -1469,7 +1470,8 @@ export const processBreederAutoCare = (character: Character): BreederAutoCareRes
                     m.affection = Math.min(100, (m.affection || 0) + 2);
                     if (!m.maxExp) m.maxExp = (m.level || 1) * 100;
                     const oldMonsterLevel = m.level || 1;
-                    while ((m.currentExp || 0) >= (m.maxExp || 100)) {
+                    const monsterMaxLv1 = Math.max(m.level || 1, getMonsterMaxLevel(m as any, char.base));
+                while ((m.currentExp || 0) >= (m.maxExp || 100) && (m.level || 1) < monsterMaxLv1) {
                         m.currentExp = (m.currentExp || 0) - (m.maxExp || 100);
                         m.level = (m.level || 1) + 1;
                         m.maxExp = Math.floor(m.maxExp * 1.2);

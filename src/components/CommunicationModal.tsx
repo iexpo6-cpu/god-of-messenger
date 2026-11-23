@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { Character } from '../types';
-import { X, Radio, Sword, ShieldAlert, Zap, Info, Loader2, Crown, Star, UserPlus, Lock , Boxes, Coins, Sparkles, AlertTriangle, CheckCircle, ArrowRight, ShieldCheck, Package } from 'lucide-react';
+import { X, Radio, Sword, ShieldAlert, Zap, Info, Loader2, Crown, Star, UserPlus, Lock , Boxes, Coins, Sparkles, AlertTriangle, CheckCircle, ArrowRight, ShieldCheck, Package, Share2 } from 'lucide-react';
+import CommunicationSpriteModal from './CommunicationSpriteModal';
 
 interface Props {
     isOpen: boolean;
@@ -16,6 +17,7 @@ interface Props {
 const CommunicationModal: React.FC<Props> = ({ isOpen, onClose, character, onOpenBattle, onOpenSummon, onOpenItem, onUpdateCharacter }) => {
     const [isUnlocking, setIsUnlocking] = useState(false);
     const [showConfirmStep, setShowConfirmStep] = useState(false);
+    const [showSpriteShare, setShowSpriteShare] = useState(false);
     
     if (!isOpen) return null;
 
@@ -167,17 +169,17 @@ const CommunicationModal: React.FC<Props> = ({ isOpen, onClose, character, onOpe
                             </div>
                         )
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full animate-in slide-in-from-bottom-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full animate-in slide-in-from-bottom-4">
                             {/* Battle Center Access */}
                             <button 
                                 onClick={onOpenBattle}
-                                className="p-6 bg-slate-950 border-2 border-slate-800 hover:border-red-500 rounded-3xl flex flex-col items-center gap-4 transition-all group hover:shadow-[0_0_30px_rgba(239,68,68,0.2)]"
+                                className="p-5 bg-slate-950 border-2 border-slate-800 hover:border-red-500 rounded-3xl flex flex-col items-center gap-3 transition-all group hover:shadow-[0_0_30px_rgba(239,68,68,0.2)]"
                             >
-                                <div className="p-4 bg-red-900/20 rounded-2xl group-hover:scale-110 transition-transform">
-                                    <Sword size={32} className="text-red-500"/>
+                                <div className="p-3.5 bg-red-900/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                    <Sword size={28} className="text-red-500"/>
                                 </div>
                                 <div className="text-center">
-                                    <h4 className="text-base font-bold text-white group-hover:text-red-400 uppercase">BATTLE</h4>
+                                    <h4 className="text-sm font-bold text-white group-hover:text-red-400 uppercase">BATTLE</h4>
                                     <p className="text-[9px] text-slate-500 mt-1 uppercase tracking-widest font-bold">차원 결투</p>
                                 </div>
                             </button>
@@ -185,13 +187,13 @@ const CommunicationModal: React.FC<Props> = ({ isOpen, onClose, character, onOpe
                             {/* Summon Center Access */}
                             <button 
                                 onClick={onOpenSummon}
-                                className="p-6 bg-slate-950 border-2 border-slate-800 hover:border-indigo-500 rounded-3xl flex flex-col items-center gap-4 transition-all group hover:shadow-[0_0_30px_rgba(99,102,241,0.2)]"
+                                className="p-5 bg-slate-950 border-2 border-slate-800 hover:border-indigo-500 rounded-3xl flex flex-col items-center gap-3 transition-all group hover:shadow-[0_0_30px_rgba(99,102,241,0.2)]"
                             >
-                                <div className="p-4 bg-indigo-900/20 rounded-2xl group-hover:scale-110 transition-transform">
-                                    <UserPlus size={32} className="text-indigo-400"/>
+                                <div className="p-3.5 bg-indigo-900/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                    <UserPlus size={28} className="text-indigo-400"/>
                                 </div>
                                 <div className="text-center">
-                                    <h4 className="text-base font-bold text-white group-hover:text-indigo-400 uppercase">HERO</h4>
+                                    <h4 className="text-sm font-bold text-white group-hover:text-indigo-400 uppercase">HERO</h4>
                                     <p className="text-[9px] text-slate-500 mt-1 uppercase tracking-widest font-bold">동료 소환</p>
                                 </div>
                             </button>
@@ -199,14 +201,28 @@ const CommunicationModal: React.FC<Props> = ({ isOpen, onClose, character, onOpe
                             {/* Item Center Access */}
                             <button 
                                 onClick={onOpenItem}
-                                className="p-6 bg-slate-950 border-2 border-slate-800 hover:border-amber-500 rounded-3xl flex flex-col items-center gap-4 transition-all group hover:shadow-[0_0_30px_rgba(245,158,11,0.2)]"
+                                className="p-5 bg-slate-950 border-2 border-slate-800 hover:border-amber-500 rounded-3xl flex flex-col items-center gap-3 transition-all group hover:shadow-[0_0_30px_rgba(245,158,11,0.2)]"
                             >
-                                <div className="p-4 bg-amber-900/20 rounded-2xl group-hover:scale-110 transition-transform">
-                                    <Package size={32} className="text-amber-500"/>
+                                <div className="p-3.5 bg-amber-900/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                    <Package size={28} className="text-amber-500"/>
                                 </div>
                                 <div className="text-center">
-                                    <h4 className="text-base font-bold text-white group-hover:text-amber-400 uppercase">VAULT</h4>
+                                    <h4 className="text-sm font-bold text-white group-hover:text-amber-400 uppercase">VAULT</h4>
                                     <p className="text-[9px] text-slate-500 mt-1 uppercase tracking-widest font-bold">아이템 전송</p>
+                                </div>
+                            </button>
+
+                            {/* Sprite Share Access */}
+                            <button 
+                                onClick={() => setShowSpriteShare(true)}
+                                className="p-5 bg-slate-950 border-2 border-slate-800 hover:border-cyan-400 rounded-3xl flex flex-col items-center gap-3 transition-all group hover:shadow-[0_0_30px_rgba(34,211,238,0.2)]"
+                            >
+                                <div className="p-3.5 bg-cyan-900/20 rounded-2xl group-hover:scale-110 transition-transform">
+                                    <Share2 size={28} className="text-cyan-400"/>
+                                </div>
+                                <div className="text-center">
+                                    <h4 className="text-sm font-bold text-white group-hover:text-cyan-300 uppercase">SPRITE</h4>
+                                    <p className="text-[9px] text-slate-500 mt-1 uppercase tracking-widest font-bold">스프라이트 공유</p>
                                 </div>
                             </button>
                         </div>
@@ -225,6 +241,13 @@ const CommunicationModal: React.FC<Props> = ({ isOpen, onClose, character, onOpe
                     <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Dimensional Matrix Status: {isUnlocked ? 'Stable' : 'Offline'}</p>
                 </div>
             </div>
+
+            <CommunicationSpriteModal
+                isOpen={showSpriteShare}
+                onClose={() => setShowSpriteShare(false)}
+                character={character}
+                onUpdateCharacter={onUpdateCharacter}
+            />
         </div>
     );
 };

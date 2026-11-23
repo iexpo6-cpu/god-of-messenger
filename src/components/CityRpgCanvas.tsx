@@ -20,6 +20,7 @@ import {
 } from '../services/rpgSpriteManifest';
 import {
     CultureAssetPart,
+    getBaseBuildingSpriteUrl,
     getBuildingSpriteUrl,
     getCachedCityAssetImage,
     getCultureAssetUrl,
@@ -151,7 +152,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 canOpenAbyssTower,
                 timeLabel,
                 isMythicBoss,
-                bossName
+                bossName,
+                baseLevel: character.base?.level || 1,
+                playerAge: character.age
             }),
         [
             region,
@@ -167,13 +170,15 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             canOpenAbyssTower,
             timeLabel,
             isMythicBoss,
-            bossName
+            bossName,
+            character.base?.level,
+            character.age
         ]
     );
 
     const playerSprite = useMemo(
         () => resolveEntityRpgSprite(character, region, nation),
-        [character.rpgSpriteKey, character.id, character.name, character.gender, character.race, region, nation]
+        [character.rpgSpriteKey, character.customSpriteUrl, character.id, character.name, character.gender, character.race, region, nation]
     );
     const playerRegionKey: RpgSpriteRegionKey = playerSprite.regionKey;
     const playerGenderKey: RpgSpriteGenderKey = playerSprite.genderKey;
@@ -209,7 +214,13 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             ),
             ...mapData.portals
                 .filter(pt => pt.actionType !== 'world_map')
-                .map(pt => getBuildingSpriteUrl(mapData.cultureKey, pt.spriteKind)),
+                .map(pt => {
+                    const customBasePack = (character.base as any)?.customBuildingPack as string | undefined;
+                    if (pt.id === 'my_base' && customBasePack) {
+                        return getBaseBuildingSpriteUrl(customBasePack, character.base?.level || 1);
+                    }
+                    return getBuildingSpriteUrl(mapData.cultureKey, pt.spriteKind);
+                }),
             ...mapData.props.map(pr => getPropAssetUrl(pr.pack, pr.part))
         ]);
 
@@ -227,7 +238,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
         return () => {
             mounted = false;
         };
-    }, [playerSpriteUrl, followers, mapData.npcs, mapData.cultureKey, mapData.portals, mapData.props]);
+    }, [playerSpriteUrl, followers, mapData.npcs, mapData.cultureKey, mapData.portals, mapData.props, (character.base as any)?.customBuildingPack, character.base?.level]);
 
     // 2. 런타임 게임 상태 Refs (60fps 루프용)
     const keysPressedRef = useRef<Set<string>>(new Set());
@@ -987,11 +998,28 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     ctx.fillStyle = 'rgba(0,0,0,0.34)';
                     ctx.fillRect(bx + 6, by + bh - 4, bw, 10);
 
-                    const buildingImg = getCachedCityAssetImage(getBuildingSpriteUrl(mapData.cultureKey, pt.spriteKind));
+                    const customBasePack = (character.base as any)?.customBuildingPack as string | undefined;
+                    const resolvedBuildingUrl =
+                        pt.id === 'my_base' && customBasePack
+                            ? getBaseBuildingSpriteUrl(customBasePack, character.base?.level || 1)
+                            : getBuildingSpriteUrl(mapData.cultureKey, pt.spriteKind);
+                    const buildingImg = getCachedCityAssetImage(resolvedBuildingUrl);
                     if (buildingImg && buildingImg.complete && buildingImg.naturalWidth > 0) {
-                        // 고품질 문화권/특수 건물 PNG 렌더링
-                        ctx.imageSmoothingEnabled = false;
-                        ctx.drawImage(buildingImg, bx - 6, by - 14, bw + 12, bh + 16);
+                        // 고품질 문화권/특수 건물 PNG 렌더링 (기지 Lv.1~5는 레벨별 확대, 신계 성전은 웅장하게 추가 확대!)
+                        const baseLvMatch = typeof pt.spriteKind === 'string' ? pt.spriteKind.match(/^base_lv(\d)$/) : null;
+                        const extraScale =
+                            pt.id === 'shingye_temple'
+                                ? 1.32
+                                : baseLvMatch
+                                ? 1 + (Math.max(1, Math.min(5, Number(baseLvMatch[1]))) - 1) * 0.08
+                                : 1;
+                        const drawW = Math.round((bw + 14) * extraScale);
+                        const drawH = Math.round((bh + 20) * extraScale);
+                        const drawX = Math.round(bx + bw / 2 - drawW / 2);
+                        const drawY = Math.round(by + bh - drawH + 4);
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        ctx.drawImage(buildingImg, drawX, drawY, drawW, drawH);
                     } else {
                         // 국가별 건축 양식 & 특수 건물 전용 폴백 렌더링
                         const cKey = mapData.cultureKey;
@@ -1254,7 +1282,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
 
                 // NPC 추가 (각 NPC의 고유 문화권 스프라이트 사용)
                 npcsRef.current.forEach(npc => {
-                    const npcUrl = getRpgSpriteUrlByKey(`${npc.regionKey}_${npc.gender}`);
+                    const npcUrl = getRpgSpriteUrlByKey(npc.spriteKey || `${npc.regionKey}_${npc.gender}`);
+                    loadRpgSpriteImage(npcUrl);
                     ySortItems.push({
                         y: npc.py + 8,
                         draw: () => {

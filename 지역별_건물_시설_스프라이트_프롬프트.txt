@@ -1,0 +1,641 @@
+============================================================================
+[신의 사자 RPG - 14개 지역별 건물 · 시설 · 기지(Lv.1~5) · 숙소(6종) 일괄 생성 프롬프트]
+============================================================================
+* 코드 분석 반영 (src/types.ts HouseType 숙소 6종 전체 포함):
+  - my_home(나의 집) / house_1f(1층 주택) / house_2f(2층 주택)
+  - villa(빌라) / apartment(아파트) / luxury_house(초호화 대저택)
+* 특수 규칙 반영:
+  - 일반 12개 지역: 1지역당 3장 생성으로 총 20종 완성 (시트 A 6종 + 시트 B 6종 + 시트 C 8종)
+  - 신계 & 마계: 학교 / 용병길드 / 상업지구 / 거주지구 제외 -> 1영역당 2장 생성 (총 14종)
+* 공통 배경: 순수 네온 마젠타 (#FF00FF) 단색 (자동 격자 크롭 & 크로마키 투명화 최적화)
+============================================================================
+
+============================================================================
+1. 동아시아 (East Asia)  [키 접두사: east_asia]  (총 3장 -> 20종 건물)
+============================================================================
+--- [east_asia_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Traditional East Asian (Korean Hanok / Japanese / Chinese) curved tiled roofs, vermilion pillars, wooden lattice doors, stone courtyards, glowing paper lanterns.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [east_asia_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Traditional East Asian (Korean Hanok / Japanese / Chinese) curved tiled roofs, vermilion pillars, wooden lattice doors, stone courtyards, glowing paper lanterns.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [east_asia_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Traditional East Asian (Korean Hanok / Japanese / Chinese) curved tiled roofs, vermilion pillars, wooden lattice doors, stone courtyards, glowing paper lanterns.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+2. 동남아시아 (Southeast Asia)  [키 접두사: southeast_asia]  (총 3장 -> 20종 건물)
+============================================================================
+--- [southeast_asia_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Traditional Southeast Asian (Thai/Khmer/Tropical) tiered golden spire roofs, carved teakwood stilt pavilions, lush palm trees, lotus stone motifs.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [southeast_asia_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Traditional Southeast Asian (Thai/Khmer/Tropical) tiered golden spire roofs, carved teakwood stilt pavilions, lush palm trees, lotus stone motifs.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [southeast_asia_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Traditional Southeast Asian (Thai/Khmer/Tropical) tiered golden spire roofs, carved teakwood stilt pavilions, lush palm trees, lotus stone motifs.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+3. 중동 (Middle East)  [키 접두사: middle_east]  (총 3장 -> 20종 건물)
+============================================================================
+--- [middle_east_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Ornate Middle Eastern Arabian sandstone architecture with turquoise and golden onion domes, horseshoe archways, mosaic tiles, desert lanterns, date palms.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [middle_east_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Ornate Middle Eastern Arabian sandstone architecture with turquoise and golden onion domes, horseshoe archways, mosaic tiles, desert lanterns, date palms.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [middle_east_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Ornate Middle Eastern Arabian sandstone architecture with turquoise and golden onion domes, horseshoe archways, mosaic tiles, desert lanterns, date palms.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+4. 서유럽 (Western Europe)  [키 접두사: west_europe]  (총 3장 -> 20종 건물)
+============================================================================
+--- [west_europe_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Classic Western European medieval-renaissance timber-framed stone buildings, slate roofs, Gothic arches, wrought-iron lamps, royal blue and gold banners.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [west_europe_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Classic Western European medieval-renaissance timber-framed stone buildings, slate roofs, Gothic arches, wrought-iron lamps, royal blue and gold banners.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [west_europe_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Classic Western European medieval-renaissance timber-framed stone buildings, slate roofs, Gothic arches, wrought-iron lamps, royal blue and gold banners.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+5. 동유럽 (Eastern Europe)  [키 접두사: east_europe]  (총 3장 -> 20종 건물)
+============================================================================
+--- [east_europe_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Slavic Eastern European snowy fortress architecture with colorful onion domes, heavy dark timber and whitewashed stone walls, warm snow-dusted steep roofs.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [east_europe_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Slavic Eastern European snowy fortress architecture with colorful onion domes, heavy dark timber and whitewashed stone walls, warm snow-dusted steep roofs.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [east_europe_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Slavic Eastern European snowy fortress architecture with colorful onion domes, heavy dark timber and whitewashed stone walls, warm snow-dusted steep roofs.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+6. 북유럽 (Northern Europe)  [키 접두사: north_europe]  (총 3장 -> 20종 건물)
+============================================================================
+--- [north_europe_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Nordic Viking northern timber-and-stone longhouse architecture with carved dragon-head roof gables, dark pine wood, rune stones, frost-dusted roofs.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [north_europe_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Nordic Viking northern timber-and-stone longhouse architecture with carved dragon-head roof gables, dark pine wood, rune stones, frost-dusted roofs.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [north_europe_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Nordic Viking northern timber-and-stone longhouse architecture with carved dragon-head roof gables, dark pine wood, rune stones, frost-dusted roofs.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+7. 남유럽 (Southern Europe)  [키 접두사: south_europe]  (총 3장 -> 20종 건물)
+============================================================================
+--- [south_europe_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Sunlit Mediterranean Southern European terracotta red-tile roofs, warm cream stucco walls, marble columns, arched balconies, olive vines and flowers.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [south_europe_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Sunlit Mediterranean Southern European terracotta red-tile roofs, warm cream stucco walls, marble columns, arched balconies, olive vines and flowers.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [south_europe_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Sunlit Mediterranean Southern European terracotta red-tile roofs, warm cream stucco walls, marble columns, arched balconies, olive vines and flowers.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+8. 북미 (North America)  [키 접두사: north_america]  (총 3장 -> 20종 건물)
+============================================================================
+--- [north_america_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Modern-fantasy North American brick, steel, and glass urban architecture blended with arcane-tech cyan energy conduits, neon signs, and neat plazas.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [north_america_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Modern-fantasy North American brick, steel, and glass urban architecture blended with arcane-tech cyan energy conduits, neon signs, and neat plazas.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [north_america_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Modern-fantasy North American brick, steel, and glass urban architecture blended with arcane-tech cyan energy conduits, neon signs, and neat plazas.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+9. 남미 (South America)  [키 접두사: south_america]  (총 3장 -> 20종 건물)
+============================================================================
+--- [south_america_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Ancient-vibrant South American stepped Aztec/Incan golden sun-stone temples blended with colorful terracotta plazas, carved jaguar reliefs, and lush jungle vines.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [south_america_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Ancient-vibrant South American stepped Aztec/Incan golden sun-stone temples blended with colorful terracotta plazas, carved jaguar reliefs, and lush jungle vines.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [south_america_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Ancient-vibrant South American stepped Aztec/Incan golden sun-stone temples blended with colorful terracotta plazas, carved jaguar reliefs, and lush jungle vines.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+10. 오세아니아 (Oceania)  [키 접두사: oceania]  (총 3장 -> 20종 건물)
+============================================================================
+--- [oceania_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Bright coastal Oceanian harbor architecture with turquoise-and-white maritime timber structures, coral-stone foundations, lighthouse accents, and swaying palms.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [oceania_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Bright coastal Oceanian harbor architecture with turquoise-and-white maritime timber structures, coral-stone foundations, lighthouse accents, and swaying palms.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [oceania_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Bright coastal Oceanian harbor architecture with turquoise-and-white maritime timber structures, coral-stone foundations, lighthouse accents, and swaying palms.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+11. 수인 - 페랄디아 (Feraldia Beastkin)  [키 접두사: feraldia]  (총 3장 -> 20종 건물)
+============================================================================
+--- [feraldia_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Fierce Feraldia Beastkin arena-tribal architecture made of massive carved red sandstone, giant tusks, wooden totem pillars, fur banners, and blazing braziers.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [feraldia_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Fierce Feraldia Beastkin arena-tribal architecture made of massive carved red sandstone, giant tusks, wooden totem pillars, fur banners, and blazing braziers.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [feraldia_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Fierce Feraldia Beastkin arena-tribal architecture made of massive carved red sandstone, giant tusks, wooden totem pillars, fur banners, and blazing braziers.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+12. 엘프 - 실바나르 (Sylvanar Elf)  [키 접두사: sylvanar]  (총 3장 -> 20종 건물)
+============================================================================
+--- [sylvanar_sheet_A] 핵심 지구·전장·던전 6종 (3열 x 2행) ---
+  1행: hunting_field(야외사냥터) / commercial(상업지구) / residential(거주지구)
+  2행: mercenary_guild(용병길드) / military_zone(군사구역) / divine_dungeon(신성던전)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Ethereal Sylvanar High-Elf living-tree architecture with graceful white-marble spires woven into giant glowing emerald-leaved ancient trees and crystal lanterns.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Rugged outpost archway leading to wild monster hunting grounds with warning banners and torches (hunting_field).
+2. Commercial District Market: Bustling vibrant market bazaar building with colorful awnings, merchant stalls, and coin emblem (commercial).
+3. Residential District Inn & Plaza: Cozy welcoming town inn and neighborhood cluster with warm glowing windows (residential).
+Bottom row (left to right):
+4. Mercenary Guild Hall: Bold adventurer guild headquarters adorned with crossed-swords crest, quest board, and heroic banners (mercenary_guild).
+5. Military Zone Barracks Fortress: Heavily fortified military garrison headquarters with watchtowers, shield emblems, and iron gate (military_zone).
+6. Divine Dungeon Entrance: Mystical ancient portal shrine descending into a sacred dungeon glowing with radiant golden-cyan magic runes (divine_dungeon).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [sylvanar_sheet_B] 학교 3종(초/중/고) + 기지 Lv.1~3 (3열 x 2행 = 6종) ---
+  1행: school_elementary(초급학교) / school_middle(중급학교) / school_high(고급학교)
+  2행: base_lv1(기지 Lv.1) / base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Ethereal Sylvanar High-Elf living-tree architecture with graceful white-marble spires woven into giant glowing emerald-leaved ancient trees and crystal lanterns.
+Top row (left to right - 3 Academy Tiers):
+1. Elementary Academy School: Modest charming beginner training schoolhouse with small courtyard bell (school_elementary).
+2. Intermediate Academy School: Larger two-story academy hall with book-and-sword crest and clocktower (school_middle).
+3. Grand High Academy University: Prestigious majestic royal university campus with grand dome/spire and glowing arcane emblems (school_high).
+Bottom row (left to right - Player Base Progression Lv.1 to Lv.3):
+4. Player Base Lv.1: Small starter wooden palisade outpost camp with command tent and campfire (base_lv1).
+5. Player Base Lv.2: Reinforced timber-and-stone stronghold with a sturdy watchtower and supply depot (base_lv2).
+6. Player Base Lv.3: Medium fortified stone citadel headquarters with twin banners, courtyard, and training yard (base_lv3).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [sylvanar_sheet_C] 기지 Lv.4~5 + 숙소(HouseType) 6종 (4열 x 2행 = 8종) ---
+  1행: base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5) / house_my_home(나의 집) / house_1f(1층 주택)
+  2행: house_2f(2층 주택) / house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Ethereal Sylvanar High-Elf living-tree architecture with graceful white-marble spires woven into giant glowing emerald-leaved ancient trees and crystal lanterns.
+Top row (left to right):
+1. Player Base Lv.4: Grand fortified castle fortress with outer ramparts, tall central keep, and glowing mana crystal (base_lv4).
+2. Player Base Lv.5: Supreme legendary sovereign citadel palace with golden-trimmed spires, radiant divine aura, and monumental gates (base_lv5).
+3. My Home (나의 집): Warm charming personal starter cottage with chimney smoke and little flower garden (house_my_home).
+4. 1-Story House (1층 주택): Neat modest single-story regional residential house for 2 residents (house_1f).
+Bottom row (left to right):
+5. 2-Story House (2층 주택): Comfortable two-story regional townhouse with balcony for 4 residents (house_2f).
+6. Villa (빌라): Stylish medium multi-family regional villa estate with terraced courtyard for 10 residents (house_villa).
+7. Apartment Complex (아파트): Large multi-story regional residential apartment building housing 50 residents (house_apartment).
+8. Ultra-Luxury Mansion (초호화 대저택): Opulent aristocratic palace mansion with golden roof accents, private fountain, and grand gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+13. 신계 (Shingye Celestial Realm)  [키 접두사: shingye]  (학교/용병길드/상업/거주 제외 -> 총 2장 14종)
+============================================================================
+--- [shingye_sheet_A] 전장·군사·던전 + 기지 Lv.1~5 (4열 x 2행 = 8종) ---
+  1행: hunting_field(야외사냥터) / military_zone(군사구역) / divine_dungeon(신성/심연던전) / base_lv1(기지 Lv.1)
+  2행: base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3) / base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Radiant Shingye Celestial Realm floating white-marble and pure-gold divine temple architecture with glowing halos, crystal pillars, azure sky-banners, and golden light rays.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Dramatic dimensional battlefield gate leading to high-tier monster realms (hunting_field).
+2. Military Zone Fortress: Imposing elite legion military fortress with towering war banners and fortified gates (military_zone).
+3. Sacred/Abyssal Dungeon Portal: Monumental ancient dungeon temple gate radiating intense mystical portal energy (divine_dungeon).
+4. Player Base Lv.1: Small forward dimensional outpost shrine/camp (base_lv1).
+Bottom row (left to right):
+5. Player Base Lv.2: Reinforced bastion tower with arcane barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum/stronghold with grand gates (base_lv3).
+7. Player Base Lv.4: Massive grand fortress citadel with twin spires and luminous core (base_lv4).
+8. Player Base Lv.5: Transcendent supreme imperial/celestial palace stronghold radiating epic power (base_lv5).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [shingye_sheet_B] 숙소(HouseType) 6종 (3열 x 2행 = 6종) ---
+  1행: house_my_home(나의 집) / house_1f(1층 주택) / house_2f(2층 주택)
+  2행: house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Radiant Shingye Celestial Realm floating white-marble and pure-gold divine temple architecture with glowing halos, crystal pillars, azure sky-banners, and golden light rays.
+Top row (left to right):
+1. My Home (나의 집): Cozy personal sanctuary residence in this realm style (house_my_home).
+2. 1-Story Residence (1층 주택): Neat single-story realm dwelling for 2 residents (house_1f).
+3. 2-Story Residence (2층 주택): Elegant two-story realm residence with balcony for 4 residents (house_2f).
+Bottom row (left to right):
+4. Villa (빌라): Refined multi-resident noble villa courtyard for 10 residents (house_villa).
+5. Grand Residence Tower / Apartment (아파트): Tall multi-level realm residential spire/complex for 50 residents (house_apartment).
+6. Supreme Luxury Palace Mansion (초호화 대저택): Breathtaking grand aristocratic palace mansion with radiant fountain and gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+============================================================================
+14. 마계 (Magye Demon Empire)  [키 접두사: magye]  (학교/용병길드/상업/거주 제외 -> 총 2장 14종)
+============================================================================
+--- [magye_sheet_A] 전장·군사·던전 + 기지 Lv.1~5 (4열 x 2행 = 8종) ---
+  1행: hunting_field(야외사냥터) / military_zone(군사구역) / divine_dungeon(신성/심연던전) / base_lv1(기지 Lv.1)
+  2행: base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3) / base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 4 columns by 2 rows grid. Architectural theme: Menacing Magye Demon Empire dark obsidian gothic fortress architecture with jagged crimson-trimmed spires, glowing blood-red arcane runes, iron spikes, and purple hellfire braziers.
+Top row (left to right):
+1. Outdoor Hunting Field Gate: Dramatic dimensional battlefield gate leading to high-tier monster realms (hunting_field).
+2. Military Zone Fortress: Imposing elite legion military fortress with towering war banners and fortified gates (military_zone).
+3. Sacred/Abyssal Dungeon Portal: Monumental ancient dungeon temple gate radiating intense mystical portal energy (divine_dungeon).
+4. Player Base Lv.1: Small forward dimensional outpost shrine/camp (base_lv1).
+Bottom row (left to right):
+5. Player Base Lv.2: Reinforced bastion tower with arcane barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum/stronghold with grand gates (base_lv3).
+7. Player Base Lv.4: Massive grand fortress citadel with twin spires and luminous core (base_lv4).
+8. Player Base Lv.5: Transcendent supreme imperial/celestial palace stronghold radiating epic power (base_lv5).
+Solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [magye_sheet_B] 숙소(HouseType) 6종 (3열 x 2행 = 6종) ---
+  1행: house_my_home(나의 집) / house_1f(1층 주택) / house_2f(2층 주택)
+  2행: house_villa(빌라) / house_apartment(아파트) / house_luxury(초호화 대저택)
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, and crisp dark outlines with generous spacing between buildings. Arranged in a clean 3 columns by 2 rows grid. Architectural theme: Menacing Magye Demon Empire dark obsidian gothic fortress architecture with jagged crimson-trimmed spires, glowing blood-red arcane runes, iron spikes, and purple hellfire braziers.
+Top row (left to right):
+1. My Home (나의 집): Cozy personal sanctuary residence in this realm style (house_my_home).
+2. 1-Story Residence (1층 주택): Neat single-story realm dwelling for 2 residents (house_1f).
+3. 2-Story Residence (2층 주택): Elegant two-story realm residence with balcony for 4 residents (house_2f).
+Bottom row (left to right):
+4. Villa (빌라): Refined multi-resident noble villa courtyard for 10 residents (house_villa).
+5. Grand Residence Tower / Apartment (아파트): Tall multi-level realm residential spire/complex for 50 residents (house_apartment).
+6. Supreme Luxury Palace Mansion (초호화 대저택): Breathtaking grand aristocratic palace mansion with radiant fountain and gardens (house_luxury).
+Solid flat #FF00FF magenta background only, no text, no borders.

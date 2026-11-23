@@ -1,0 +1,373 @@
+========================================================================
+[신의 사자 RPG - 고퀄리티 지역별 외형 추가용 쯔꾸르(RPG Maker) 스프라이트 프롬프트]
+========================================================================
+* 퀄리티 최우선 원칙:
+  - 1장당 1캐릭터만 단독 생성 (3열 x 4행 = 12프레임)하여 픽셀 밀도와 디테일을
+    기존 22종 공식 지역 스프라이트와 동일한 최상급 수준으로 유지합니다!
+  - 규격: 3열(왼발·정지·오른발) x 4행(Row 1: 앞/아래, Row 2: 왼쪽, Row 3: 오른쪽, Row 4: 뒤/위)
+  - 배경: 순수 네온 마젠타 (#FF00FF) 단색 (자동 투명화 가능 — 커스텀 연구소/차원 교신에서 바로 업로드도 가능!)
+  - 생성한 이미지는 커스텀 연구소 > [외형 변환] > [2D 스프라이트]에서 직접 업로드해 바로 쓰시거나,
+    `assets/visuals/`에 넣어두고 말씀해 주시면 공식 지역별 카탈로그에 정식 추가해 드립니다!
+========================================================================
+
+[공통 규격 템플릿 - 모든 프롬프트에 자동 포함됨]
+"2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down (front), Row 2: facing left (strictly facing left in all 3 frames), Row 3: facing right (strictly facing right in all 3 frames), Row 4: facing up (back). Columns: left step, idle standing, right step. Crisp dark outlines, vibrant anime RPG shading, full head-to-toe body with plenty of margin inside every cell so feet and head are never cut off. Completely flat solid pure neon magenta (#FF00FF) chroma-key background, zero grid lines, zero shadows on background, zero text."
+
+
+========================================================================
+1. 아시아 (Asia) — 신규 외형 2종
+========================================================================
+[asia_male_2 : 동양 검객/선비 무사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Handsome young East Asian swordsman with sleek black hair tied in a neat half-up ponytail, sharp dark eyes, wearing an ornate royal-navy and white traditional Eastern scholar-warrior robe (hanbok/martial tunic) with golden cloud embroidery and red sash belt.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[asia_female_2 : 동양 무녀/화랑 여검사 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Graceful young East Asian shrine maiden / noble swordswoman with long flowing jet-black hair adorned with a crimson silk ribbon hairpin, wearing an elegant white-and-crimson Eastern ceremonial robe with gold trim and flowing sleeves.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+========================================================================
+2. 유럽 (Europe) — 신규 외형 2종
+========================================================================
+[europe_male_2 : 유럽 귀족 대마법사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Noble young European archmage with wavy chestnut-brown hair and sapphire eyes, wearing a royal-blue and gold embroidered aristocratic mage coat with white cravat, leather boots, and short shoulder cape.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[europe_female_2 : 유럽 백은 여기사/귀족 영애 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Elegant young European noble lady knight with long golden-blonde braided hair and emerald eyes, wearing gleaming silver-white light plate armor over a royal-blue pleated battle skirt with a crimson cape.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+========================================================================
+3. 북아메리카 (North America) — 신규 외형 2종
+========================================================================
+[north_america_male_2 : 어반 택티컬 헌터/요원 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Cool young North American modern tactical hunter with short tousled brown hair, wearing a sleek dark charcoal leather jacket over a cyan tech-wear hoodie, tactical belt, dark cargo pants, and combat boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[north_america_female_2 : 모던 스트릿 거너/레인저 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Energetic young North American modern street ranger with high auburn-red ponytail and stylish goggles resting on her forehead, wearing a cropped denim-and-leather bomber jacket, utility belt, dark shorts, and high-top boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+========================================================================
+4. 남아메리카 (South America) — 신규 외형 2종
+========================================================================
+[south_america_male_2 : 고대 태양 유적 전사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Athletic young South American sun-ruin guardian with warm tanned skin and dark spiky hair, wearing a vibrant turquoise-and-gold woven poncho tunic with ancient golden sun motifs and sturdy leather greaves.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[south_america_female_2 : 정글 정령 무희/탐험가 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Radiant young South American jungle mystic with warm sun-kissed skin, long dark wavy hair decorated with a bright orange feather ornament, wearing an emerald-and-gold embroidered traveler dress with crimson sash.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+========================================================================
+5. 오세아니아 (Oceania) — 신규 외형 2종
+========================================================================
+[oceania_male_2 : 심해 항해사/해적 선장 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Dashing young Oceanian sea captain with sun-bleached sandy-blonde hair and bright aqua eyes, wearing an open ocean-blue nautical coat with gold buttons, white shirt, brown leather belt, and tall sea boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[oceania_female_2 : 산호 해안 마도사 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Cheerful young Oceanian tide-caller mage with wavy sky-blue hair adorned with a pearl seashell clip, wearing a breezy white-and-turquoise coastal sailor dress with golden wave trim and sandals.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+========================================================================
+6. 아프리카 (Africa) — 신규 외형 2종
+========================================================================
+[africa_male_2 : 사막의 황금 왕자/전사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Regally handsome young African desert warrior with rich deep-brown skin, short neat black hair, wearing flowing ivory-white and royal-gold desert robes with crimson scarf and golden bracers.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[africa_female_2 : 태양 사막 대신관 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Graceful young African sun priestess with rich warm-brown skin, intricately braided black hair with golden beads, wearing luminous white-and-gold ceremonial silk garments with turquoise accents.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+========================================================================
+7. 신계 (Shingye) — 신규 외형 2종
+========================================================================
+[shingye_male_2 : 천계 대천사/빛의 심판관 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Divine celestial archangel warrior with shimmering platinum-white hair, glowing golden eyes, small radiant white feathered wings on his back, wearing sacred white-and-gold divine vestments with celestial blue mantle.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[shingye_female_2 : 천계 빛의 성녀 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Ethereal celestial saintess with long luminous golden-white hair and a delicate floating golden halo crown, wearing a flowing pearlescent-white and sky-gold heavenly gown with subtle angelic light ribbons.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+========================================================================
+8. 마계 (Magye) — 신규 외형 2종
+========================================================================
+[magye_male_2 : 마계 제국 황태자/암흑 군주 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Charismatic dark-fantasy imperial demon prince with sleek silver-white hair and piercing crimson eyes, wearing an ornate jet-black and blood-red military imperial longcoat with silver pauldrons and high collar.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[magye_female_2 : 마계 홍련 여장군/여황제 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Commanding dark-fantasy imperial demon empress with long crimson-red hair and sharp golden eyes, wearing a regal black-and-scarlet armored gothic uniform coat with gold filigree and dark cape.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+========================================================================
+9. 실바나르 - 엘프 (Sylvanar) — 신규 외형 2종
+========================================================================
+[sylvanar_male_2 : 고대 숲의 엘프 성기사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Noble high-elf forest paladin with pointed elf ears, long flowing pale-silver hair, wearing intricate emerald-green and ivory-gold leaf-patterned elven armor with a graceful hooded forest cloak.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[sylvanar_female_2 : 달빛 엘프 대드루이드 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Enchanting high-elf archdruidess with pointed elf ears, long mint-silver hair crowned with glowing tiny blossoms, wearing a flowing forest-green and white-gold botanical silk dress.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+========================================================================
+10. 페랄디아 - 수인 (Feraldia) — 신규 외형 2종
+========================================================================
+[feraldia_male_2 : 백호/늑대 수인 투사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Fierce young wolf-kin beastman fighter with fluffy silver-white wolf ears, matching wolf tail, wild silver hair, wearing rugged dark-brown and crimson gladiator leather armor with fur-trimmed shoulders.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[feraldia_female_2 : 구미호/여우 수인 무희 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Cute energetic fox-kin beastgirl with fluffy golden-orange fox ears, fluffy tail, wavy amber hair, wearing an agile crimson-and-white martial dancer tunic with golden bells and knee-high boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+========================================================================
+11. 아비살론 - 마족 (Abyssalon) — 신규 외형 2종
+========================================================================
+[abyssalon_male_2 : 심연의 마족 사령술사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Mysterious Abyssalon demon necromancer with curved obsidian demon horns, pale lavender-gray hair, glowing violet eyes, wearing dark midnight-indigo and amethyst-trimmed arcane robes with skull clasp.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[abyssalon_female_2 : 심연의 마족 뱀파이어 귀족 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Alluring Abyssalon demon noblewoman with small sleek black demon horns, long silver-violet hair, ruby-red eyes, wearing an ornate obsidian-black and deep-purple gothic vampire ballgown with bat-wing collar.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+
+========================================================================
+========================================================================
+[3차 확장 팩] 14개 세부 문화권 · 종족별 고퀄리티 외형 28종 (남/여 각 14종)
+(아시아 / 동남아시아 / 중동 / 서유럽 / 남유럽 / 동유럽 / 북유럽 /
+ 남미 / 북미 / 아프리카 / 오세아니아 / 마계 / 엘프 / 수인)
+========================================================================
+========================================================================
+
+------------------------------------------------------------------------
+1. 아시아 (동아시아 - Asia) — 3차 확장 2종
+------------------------------------------------------------------------
+[asia_male_3 : 동아시아 황실 호위무사/낭인 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Stoic handsome East Asian royal bodyguard swordsman with layered jet-black hair and crimson headband ribbon, wearing dark-emerald and black layered samurai-hanbok hybrid armor vest over crisp white sleeves with golden dragon trim.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[asia_female_3 : 동아시아 궁중 여협/자객 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Sleek young East Asian female martial artist with twin braided black hair loops tied with jade ornaments, wearing a vibrant teal-and-black traditional martial silk tunic with flowing gold-edged sash and agile boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+2. 동남아시아 (Southeast Asia) — 신규 2종
+------------------------------------------------------------------------
+[southeast_asia_male_1 : 동남아 열대 왕국 무투가/장군 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Bold young Southeast Asian royal martial warrior with warm golden-tan skin, short dark hair, wearing an ornate crimson-and-gold traditional Thai/Khmer inspired embroidered silk vest, wrapped ceremonial sarong trousers, and golden armlets.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[southeast_asia_female_1 : 동남아 연꽃 정령 무희/공주 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Graceful young Southeast Asian lotus dancer mystic with warm tan skin, long glossy black hair adorned with a golden lotus tiara, wearing a radiant magenta-gold and emerald traditional silk sabai dress with delicate gold anklets.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+3. 중동 (Middle East) — 신규 2종
+------------------------------------------------------------------------
+[middle_east_male_1 : 중동 사막 술탄 검사/마도사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Charismatic young Middle Eastern desert blade-master with olive-tan skin, dark wavy hair under a stylish white-and-gold embroidered desert turban with sapphire jewel, wearing a royal-blue and gold Arabian silk vest, billowing ivory trousers, and curved-toe boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[middle_east_female_1 : 중동 별빛 오아시스 점성술사 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Enchanting young Middle Eastern starlight astrologer with warm olive skin, long dark-brown wavy hair with a golden crescent-moon forehead chain, wearing flowing turquoise-and-gold silk Arabian dancer robes with translucent veil sleeves.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+4. 서유럽 (Western Europe) — 신규 2종
+------------------------------------------------------------------------
+[west_europe_male_1 : 서유럽 총사/귀족 결투사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Dashing Western European royal musketeer duelist with neat sandy-brown hair and a feathered navy cavalier hat, wearing a tailored royal-blue and gold French/British musketeer doublet with lace cuffs, leather baldric, and tall cavalier boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[west_europe_female_1 : 서유럽 로열 마도 영애/총사 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Refined Western European aristocratic spell-fencer with curled honey-blonde hair and a small feathered tricorne hat, wearing a crimson-and-white tailored Victorian-fantasy waistcoat, ruffled skirt, and laced boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+5. 남유럽 (Southern Europe) — 신규 2종
+------------------------------------------------------------------------
+[south_europe_male_1 : 남유럽 지중해 르네상스 검투사/음유시인 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Passionate Southern European Mediterranean Renaissance fencer with warm sun-tanned skin, dark wavy hair, wearing a crisp white ruffled linen shirt under a wine-red and gold Venetian brocade vest with a short shoulder cloak.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[south_europe_female_1 : 남유럽 태양의 지중해 무희/기사 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Radiant Southern European Mediterranean noble dancer-duelist with glossy dark-chestnut hair tucked with a bright red rose, wearing a vibrant scarlet-and-gold flamenco-inspired fantasy adventurer dress with lace trim.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+6. 동유럽 (Eastern Europe) — 신규 2종
+------------------------------------------------------------------------
+[east_europe_male_1 : 동유럽 설원 후사르 기병장교 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Heroic Eastern European winter hussar officer with sharp ash-blonde hair and icy blue eyes, wearing a heavy crimson-and-navy fur-trimmed Slavic winter military coat with gold braided frogs and tall snow boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[east_europe_female_1 : 동유럽 백설 공녀/빙결 마도사 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Regal Eastern European winter frost princess with long platinum-silver braided hair and a white fur-trimmed traditional Slavic kokoshnik headband, wearing a rich ice-blue and white fur-lined velvet winter coat dress.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+7. 북유럽 (Northern Europe) — 신규 2종
+------------------------------------------------------------------------
+[north_europe_male_1 : 북유럽 바이킹 룬 전사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Stalwart Northern European Nordic Viking rune warrior with braided golden-blonde hair and bright sky-blue eyes, wearing rugged steel-and-leather Norse armor draped with a thick wolf-fur shoulder mantle and rune-engraved belt.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[north_europe_female_1 : 북유럽 방패처녀 스카디 전사 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Fierce Northern European Nordic shieldmaiden with long braided flaxen-blonde hair and silver circlet, wearing teal-and-steel Norse mail armor with white fur-trimmed cape, leather bracers, and Nordic boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+8. 남미 (South America) — 3차 확장 2종
+------------------------------------------------------------------------
+[south_america_male_3 : 남미 안데스 콘도르 수호자 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Proud young Andean mountain guardian with warm bronze skin and dark medium hair with a woven crimson headband, wearing a richly patterned deep-red, gold, and indigo Andean highland poncho cloak over dark adventurer gear.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[south_america_female_3 : 남미 황금 엘도라도 여전사 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Striking young El Dorado golden-temple warrior with warm tanned skin, dark braided hair with golden feathers, wearing sun-gold light armor plates over vibrant turquoise woven battle garments.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+9. 북미 (North America) — 3차 확장 2종
+------------------------------------------------------------------------
+[north_america_male_3 : 북미 서부 마도 보안관/건슬링거 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Stylish North American frontier arcane gunslinger with tousled dark-blonde hair under a brown wide-brimmed cowboy hat, wearing a weathered tan duster trench coat, red bandana, leather vest, and cowboy boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[north_america_female_3 : 북미 사이버 아카데미 마도공학자 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Smart young North American arcane-tech academy engineer with bright platinum-bob hair and sleek blue tech-visor clip, wearing a crisp white-and-navy futuristic lab jacket with glowing neon-cyan trim and dark boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+10. 아프리카 (Africa) — 3차 확장 2종
+------------------------------------------------------------------------
+[africa_male_3 : 아프리카 사바나 사자 부족장 전사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Noble young African savanna lion-clan champion with rich dark-brown skin and short locs hair, wearing vibrant crimson-and-ochre geometric tribal wrap cloak, ornate beaded collar necklace, and golden-trimmed leather greaves.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[africa_female_3 : 아프리카 별빛 사바나 정령 주술사 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Luminous young African spirit shamaness with rich deep-brown skin, stylized afro-puff hair decorated with golden star pins, wearing a vivid cobalt-blue, amber-gold, and crimson patterned royal wrap dress.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+11. 오세아니아 (Oceania) — 3차 확장 2종
+------------------------------------------------------------------------
+[oceania_male_3 : 오세아니아 폴리네시아 파도 수호자 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Strong young Polynesian ocean guardian with warm bronze skin, wavy dark-brown hair, subtle glowing aqua ocean-wave shoulder tattoos, wearing a woven ivory-and-teal island warrior tunic with shell necklace.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[oceania_female_3 : 오세아니아 남십자성 항해 마도사 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Spirited young Oceanian star-navigator with warm sun-tanned skin, long wavy dark hair tucked with a white hibiscus flower, wearing a breezy coral-pink and sea-blue tropical adventurer tunic and woven belt.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+12. 마계 (Magye) — 3차 확장 2종
+------------------------------------------------------------------------
+[magye_male_3 : 마계 심연 백작/혈기사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Aristocratic dark-fantasy Magye crimson blood-knight count with swept-back obsidian-black hair and glowing ruby eyes, wearing an opulent black-and-wine velvet noble coat with silver chain clasps and crimson-lined cape.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[magye_female_3 : 마계 자색 대마도사/공작영애 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Enigmatic Magye noble arch-sorceress with long silky white-lavender hair and sharp amethyst eyes, wearing a sleek obsidian-black and dark-violet gothic royal dress with silver lace and high boots.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+13. 엘프 (Sylvanar - Elf) — 3차 확장 2종
+------------------------------------------------------------------------
+[sylvanar_male_3 : 하이엘프 별빛 왕자/마검사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Ethereal high-elf starlight spellblade prince with pointed elf ears, long golden-platinum hair and slender silver circlet, wearing pristine white-and-emerald royal elven robes accented with golden leaf filigree.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[sylvanar_female_3 : 실바나르 숲의 여왕/정령 궁수 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Graceful high-elf spirit archer with pointed elf ears, long wavy emerald-green hair tied with golden vine ribbons, wearing an agile leaf-green and ivory leather archer tunic with golden shoulder guard.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+
+------------------------------------------------------------------------
+14. 수인 (Feraldia - Beastkin) — 3차 확장 2종
+------------------------------------------------------------------------
+[feraldia_male_3 : 사자 수인 황금 왕자/대투사 (남)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Proud lion-kin beastman champion with round golden lion ears, fluffy lion tail, wild sunlit-gold mane-like hair, wearing royal crimson-and-gold arena plate pauldrons over a dark bronze tunic.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.
+
+[feraldia_female_3 : 흑표범/고양이 수인 암살자 (여)]
+2D RPG Maker MZ style high-detail chibi character walking sprite sheet, single character arranged in an exact clean 3 columns by 4 rows grid (12 frames total). Row 1: facing down, Row 2: strictly facing left in all 3 frames, Row 3: strictly facing right in all 3 frames, Row 4: facing up. Columns: left step, idle, right step.
+Character: Agile black-panther/cat-kin beastgirl rogue with sleek black cat ears, swishing black tail, short jet-black hair and glowing amber-gold eyes, wearing a stylish dark-indigo and gold scarfed scout outfit with fingerless gloves.
+Full head-to-toe body with generous margin inside every cell, crisp dark outlines, vibrant anime pixel-HD shading, completely flat solid pure neon magenta (#FF00FF) background, zero grid lines, zero text.

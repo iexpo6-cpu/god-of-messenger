@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import SpriteTransmutePanel from './SpriteTransmutePanel';
 import { 
   X, Palette, Music, Sparkles, Check, ChevronRight, Lock, 
   Search, Play, Square, Volume2, UserCheck, AlertTriangle, 
@@ -386,7 +387,7 @@ export const CustomLabModal: React.FC<CustomLabModalProps> = ({
   // --------------------------------------------------------------------------
   // Tab 1: Transmute (외형 변환) State
   // --------------------------------------------------------------------------
-  const [transmuteMode, setTransmuteMode] = useState<'companion' | 'monster' | 'player' | 'equipment'>('companion');
+  const [transmuteMode, setTransmuteMode] = useState<'companion' | 'monster' | 'player' | 'equipment' | 'sprite'>('companion');
   const [transmuteBaseIdx, setTransmuteBaseIdx] = useState<number | null>(null);
   const [transmuteBaseEquipKey, setTransmuteBaseEquipKey] = useState<string | null>(null);
   const [transmuteMaterialIdx, setTransmuteMaterialIdx] = useState<number | null>(null);
@@ -1734,10 +1735,28 @@ export const CustomLabModal: React.FC<CustomLabModalProps> = ({
                     >
                       <Sword size={13} /> 장비
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setTransmuteMode('sprite')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        transmuteMode === 'sprite' ? 'bg-amber-600 text-white shadow' : 'bg-slate-900 text-amber-300/90 hover:text-amber-200 border border-amber-500/30'
+                      }`}
+                    >
+                      <Palette size={13} /> 2D 스프라이트 (변환·업로드)
+                    </button>
                   </div>
                 </div>
 
-                {/* Main Transmute Grid */}
+                {transmuteMode === 'sprite' ? (
+                  <SpriteTransmutePanel
+                    character={character}
+                    onUpdateCharacter={(newChar, logMsg) => onUpdateCharacter(newChar, logMsg || '[커스텀 연구소] 2D 스프라이트 변환 완료')}
+                    onSuccessNotice={(title, message) =>
+                      setResultOverlay({ show: true, data: { type: 'success', title, message } })
+                    }
+                  />
+                ) : (
+                /* Main Transmute Grid */
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                   {/* Left: Base Target Selection */}
                   <div className="md:col-span-5 bg-slate-950/80 border border-slate-800 rounded-xl p-3 sm:p-4 space-y-3 flex flex-col h-[520px]">
@@ -2307,6 +2326,7 @@ export const CustomLabModal: React.FC<CustomLabModalProps> = ({
                     )}
                   </div>
                 </div>
+                )}
               </div>
             );
           })()}

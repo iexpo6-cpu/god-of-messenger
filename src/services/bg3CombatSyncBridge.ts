@@ -1203,7 +1203,24 @@ export const getBg3UnitDetailedStats = (unit: Bg3Unit): Bg3UnitDetailedStatsSnap
     if (!entity) return null;
     try {
         const withBuffs = calculateFinalStats(entity).finalStats;
-        const derived = calculateDerivedStats(entity);
+        const derived = calculateDerivedStats(
+            withBuffs,
+            entity.statusEffects || [],
+            entity.weaponMastery,
+            entity.subMastery,
+            false,
+            entity.skills,
+            entity.equipment,
+            entity.shinryokuType,
+            entity.affection,
+            0,
+            entity.elementalDamageBoosts,
+            entity.elementalResistanceBoosts,
+            entity.battlePosition,
+            entity.combatStyle,
+            entity.battleRole,
+            entity.secondaryBattleRole
+        );
         // 버프/디버프 제외한 순수 장비+기본 스탯 비교용
         const entityWithoutStatus = { ...entity, statusEffects: [] };
         const withoutBuffs = calculateFinalStats(entityWithoutStatus).finalStats;

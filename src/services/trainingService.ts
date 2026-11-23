@@ -1,5 +1,5 @@
 import { Character, Companion, TrainerRank, TrainerBranch, TRAINER_RANK_CONFIG, JobType, CombatTrainingTrainee, CombatTrainingReportItem, FacilityInstance, WeaponType, SkillType } from '../types';
-import { getTrainerBranchMultiplier, calculateFinalStats, getRequiredExp, getStatPointsPerLevel, addMasteryExp, processSkillLevelUp, checkAndApplySkillLevelUp } from '../utils';
+import { getTrainerBranchMultiplier, calculateFinalStats, getRequiredExp, getStatPointsPerLevel, addMasteryExp, getCharacterMaxLevel, getMonsterMaxLevel, processSkillLevelUp, checkAndApplySkillLevelUp } from '../utils';
 import { getReducedMpCostOnLevelUp } from './skillMpService';
 import { WEAPON_TYPE_KOREAN } from '../constants';
 
@@ -786,7 +786,13 @@ export const advanceCombatTrainingTime = (
                     trainee.currentExp = (trainee.currentExp || 0) + expGain;
                     trainee.maxExp = getRequiredExp(trainee.level);
 
-                    while (trainee.currentExp >= trainee.maxExp) {
+                    const traineeMaxLv = Math.max(
+                        trainee.level || 1,
+                        ((trainee as any).isMonster || (trainee as any).monsterData || (trainee as any).race === '몬스터')
+                            ? getMonsterMaxLevel(trainee as any, char.base)
+                            : getCharacterMaxLevel(trainee as any, char.base)
+                    );
+                    while (trainee.currentExp >= trainee.maxExp && trainee.level < traineeMaxLv) {
                         anyLeveledUp = true;
                         trainee.currentExp -= trainee.maxExp;
                         trainee.level += 1;

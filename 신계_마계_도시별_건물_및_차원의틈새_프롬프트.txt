@@ -1,0 +1,389 @@
+================================================================================
+[신의 사자 RPG - 신계(14도시) · 마계(12도시) 고유 건물 + 기지 Lv.1~5 & 통합 차원의 틈새 프롬프트]
+================================================================================
+* 구성:
+  0. [통합 차원의 틈새] (1장 단독 — 신계/마계 제외 전 세계 시즌 신화 보스 던전 공용!)
+  1. [신계 14개 성전 도시별 시트] (도시당 1장, 4열 x 2행 = 8종: 성전본관·야외사냥터·시련던전 + 기지 Lv.1~Lv.5)
+  2. [마계 12개 제국 도시별 시트] (도시당 1장, 4열 x 2행 = 8종: 궁궐/영주관·마계전장·심연던전 + 기지 Lv.1~Lv.5)
+* 공통 배경: 순수 네온 마젠타 (#FF00FF) 단색, 건물 간 충분한 여백 확보 (잘림 방지!)
+================================================================================
+
+================================================================================
+[0] 통합 차원의 틈새 (Dimensional Rift) — 신계/마계 제외 전 세계 던전 공용! (1장 단독)
+저장 파일명: dimensional_rift.png
+================================================================================
+2D RPG Maker MZ style ultra-high-detail top-down 3/4 view fantasy RPG special landmark sprite: a monumental Dimensional Rift Portal (차원의 틈새) for a mythic seasonal boss dungeon. Towering fractured obsidian and ancient gold-runed monolith archway torn open by a swirling cosmic purple-crimson-cyan space-time vortex in the center, with floating shattered stone debris, crackling arcane lightning, and a glowing circular summoning dais at the base. Crisp dark hand-painted pixel-HD outlines, generous margin around all edges, isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero text, zero borders.
+
+================================================================================
+[PART 1] 신계 (Shingye) 14개 성전 도시별 고유 건물 + 기지 Lv.1~5 (4열 x 2행 = 8종)
+  1행: landmark(성전 본관) / hunting_field(성스러운 필드) / divine_dungeon(시련 던전) / base_lv1(기지 Lv.1)
+  2행: base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3) / base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5)
+================================================================================
+--- [신계 01/14] 신의 거처 (수도) (shingye_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Supreme white-marble and pure-gold divine sanctuary with radiant angelic halo domes, crystal pillars, and celestial arena arch.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 02/14] 태양의 사자의 성전 (shingye_sun_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Blazing golden Sun Temple with giant rotating solar disk crest, radiant amber sunbeams, and warm ivory-gold colonnades.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 03/14] 광휘의 사자의 성소 (shingye_light_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Luminous Prismatic Light Sanctuary built of crystalline white diamond spires, rainbow stained-glass windows, and floating light orbs.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 04/14] 초화의 사자의 성초 (shingye_flora_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Verdant Sacred Flora Sanctuary woven into blooming giant white-bark trees, emerald vines, glowing lotus pools, and floral arches.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 05/14] 화염의 사자의 성화 (shingye_flame_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Sacred Crimson Flame Temple with towering phoenix braziers, glowing golden-red lava channels, and charred obsidian-gold spires.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 06/14] 해수의 사자의 성수전 (shingye_ocean_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Celestial Ocean Water Palace with cascading turquoise waterfalls, pearl-white coral domes, and glowing sapphire wave crests.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 07/14] 전격의 사자의 성전 (shingye_thunder_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Thunderstorm Citadel Temple crowned with golden lightning-rod spires, crackling cyan-blue electric arcs, and storm-cloud motifs.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 08/14] 월광의 사자의 성 (shingye_moon_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Serene Moonlight Castle made of silver-trimmed midnight-blue marble, crescent-moon spires, and glowing starlight lanterns.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 09/14] 질풍의 사자의 질풍전 (shingye_wind_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Floating Gale Temple with graceful white-and-emerald wind-sail spires, swirling cloud ribbons, and ornate sky windmills.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 10/14] 빙결의 사자의 빙궁 (shingye_ice_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Crystalline Frost Ice Palace sculpted from translucent glacier blue ice, sparkling icicle towers, and frosted silver arches.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 11/14] 강철의 사자의 강성 (shingye_steel_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Monumental Celestial Steel Fortress with gleaming titanium battlements, interlocking golden gears, and armored bastion gates.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 12/14] 지령의 사자의 궁궐 (shingye_earth_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Ancient Earth-Spirit Palace carved from massive amber-veined monoliths, glowing terracotta rune pillars, and emerald moss terraces.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 13/14] 암연의 사자의 심연 (shingye_abyss_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Solemn Divine Abyssal Sanctum of polished black marble, deep violet arcane veil arches, and floating silver-purple eye sigils.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [신계 14/14] 무의 궁궐 (shingye_void_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Sanctuary Theme: Transcendent Palace of Void/Nothingness featuring floating monochrome black-and-white geometric monoliths and shimmering space-time rings.
+Top row (left to right):
+1. Grand Central Sanctuary Palace representing this elemental realm (landmark).
+2. Sacred Hunting Field Archway Gate leading into this elemental sanctuary wilds (hunting_field).
+3. Ancient Trial Dungeon Portal Shrine radiating intense elemental magic (divine_dungeon).
+4. Player Base Lv.1: Small starter outpost shrine in this elemental sanctuary style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced bastion tower with elemental barrier pillars (base_lv2).
+6. Player Base Lv.3: Medium fortified command sanctum stronghold with glowing banners (base_lv3).
+7. Player Base Lv.4: Large grand castle citadel with twin spires and luminous elemental core (base_lv4).
+8. Player Base Lv.5: Supreme transcendent sovereign palace fortress radiating legendary aura (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+================================================================================
+[PART 2] 마계 (Magye) 12개 제국 도시별 고유 건물 + 기지 Lv.1~5 (4열 x 2행 = 8종)
+  1행: landmark(궁궐/영주관) / hunting_field(마계 전장) / divine_dungeon(심연 던전) / base_lv1(기지 Lv.1)
+  2행: base_lv2(기지 Lv.2) / base_lv3(기지 Lv.3) / base_lv4(기지 Lv.4) / base_lv5(기지 Lv.5)
+================================================================================
+--- [마계 01/12] 임페리얼 (마계 수도) (magye_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Supreme Magye Imperial Demon Capital with towering jet-black obsidian gothic spires, crimson royal banners, and giant abyssal tower silhouette.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [마계 02/12] 눌바리온 (magye_nulbarion_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Nulbarion Void-Null Citadel of floating pitch-black obsidian crystals, pale silver-violet anti-magic barriers, and stark geometric monoliths.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [마계 03/12] 딜리리움 (magye_delirium_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Delirium Madness Fortress with twisted surreal asymmetrical gothic towers, glowing psychedelic magenta-violet eyes, and crooked staircases.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [마계 04/12] 노크티아 (magye_noctia_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Noctia Eternal Night City with sleek raven-black spires, starry dark-indigo stained glass, and silver shadow-owl lanterns.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [마계 05/12] 엔드라실 (magye_endrasil_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Endrasil Withered Demon-Tree Stronghold built inside colossal dead charcoal-black ancient roots, thorny vines, and eerie emerald-purple sap glow.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [마계 06/12] 세라피엘 몰락지 (magye_seraphiel_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Fallen Seraphiel Ruined Cathedral Fortress with cracked golden angel statues, broken marble wings, and dark crimson corrupted spires.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [마계 07/12] 카르나쥬 (magye_carnage_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Carnage War-Slaughter Fortress bristling with giant iron spikes, heavy blood-stained chains, crimson colosseum walls, and blazing war braziers.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [마계 08/12] 인페르노스 (magye_infernos_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Infernos Hellfire Volcano Citadel built over molten orange-red magma rivers with jagged basalt chimneys and roaring demon furnaces.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [마계 09/12] 베놈가든 (magye_venomgarden_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Venomgarden Toxic Fortress with dark iron gothic greenhouses, glowing neon-green acid pools, giant thorny venomous blossoms, and poison mist.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [마계 10/12] 크로노폴 (magye_chronopol_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Chronopol Dark Clockwork Citadel adorned with colossal bronze-and-obsidian gears, glowing arcane clock faces, and brass pendulum spires.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [마계 11/12] 블러드문 (magye_bloodmoon_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Bloodmoon Crimson Vampire Castle with steep scarlet-and-black gothic roofs, blood-red crescent crests, and bat-wing iron gates.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.
+
+--- [마계 12/12] 네크로폴리스 (magye_necropolis_sheet.png) ---
+2D RPG Maker MZ style top-down 3/4 view hand-painted pixel-HD fantasy RPG building sprite sheet, arranged neatly in a clean 4 columns by 2 rows grid (8 distinct buildings with generous empty magenta space between every single building so none touch or overlap), isolated on a completely flat, solid, uniform pure neon magenta (#FF00FF) chroma-key background with zero shadows on background, zero grid lines, zero text, crisp dark outlines. Unique Demon City Theme: Necropolis Undead Bone Citadel featuring giant carved skull archways, eerie cyan-blue soul-fire braziers, and ancient crypt mausoleums.
+Top row (left to right):
+1. Grand Imperial Palace / Demon Lord Citadel representing this city (landmark).
+2. Sinister Demon Battlefield Outpost Gate leading to the hunting grounds (hunting_field).
+3. Abyssal Dungeon Portal Gate pulsing with dark magic of this city (divine_dungeon).
+4. Player Base Lv.1: Small forward dark outpost camp in this demon city style (base_lv1).
+Bottom row (left to right - progressive Base upgrade Lv.2 to Lv.5):
+5. Player Base Lv.2: Reinforced dark watchtower stronghold with iron spikes (base_lv2).
+6. Player Base Lv.3: Medium fortified demon command fortress with war banners (base_lv3).
+7. Player Base Lv.4: Massive grand gothic castle citadel with twin spires and glowing dark core (base_lv4).
+8. Player Base Lv.5: Supreme imperial demon palace fortress radiating overwhelming majesty (base_lv5).
+Exact 4x2 grid with wide spacing, solid flat #FF00FF magenta background only, no text, no borders.

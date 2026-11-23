@@ -71,9 +71,40 @@ export type SpecialBuildingKey =
     | 'special_abyss'
     | 'special_elf'
     | 'special_beast'
-    | 'special_demon';
+    | 'special_demon'
+    | 'dimensional_rift';
 
-export type BuildingSpriteKind = 'landmark' | 'shop' | 'house' | SpecialBuildingKey;
+export type RegionalBuildingPart =
+    | 'hunting_field'
+    | 'commercial'
+    | 'residential'
+    | 'mercenary_guild'
+    | 'military_zone'
+    | 'divine_dungeon'
+    | 'school_elementary'
+    | 'school_middle'
+    | 'school_high'
+    | 'base_lv1'
+    | 'base_lv2'
+    | 'base_lv3'
+    | 'base_lv4'
+    | 'base_lv5';
+
+export type HousingBuildingPart =
+    | 'house_my_home'
+    | 'house_1f'
+    | 'house_2f'
+    | 'house_villa'
+    | 'house_apartment'
+    | 'house_luxury';
+
+const REGIONAL_BUILDING_PART_SET = new Set<string>([
+    'hunting_field', 'commercial', 'residential', 'mercenary_guild', 'military_zone', 'divine_dungeon',
+    'school_elementary', 'school_middle', 'school_high',
+    'base_lv1', 'base_lv2', 'base_lv3', 'base_lv4', 'base_lv5'
+]);
+
+export type BuildingSpriteKind = 'landmark' | 'shop' | 'house' | SpecialBuildingKey | RegionalBuildingPart;
 
 export type TerrainBiomeKey =
     | 'east_asia'
@@ -227,8 +258,104 @@ export const getSpecialBuildingUrl = (specialKey: SpecialBuildingKey): string =>
     return `${getBaseUrl()}assets/visuals/city_tiles/special/${specialKey}.png`;
 };
 
+export interface BaseBuildingSkinOption {
+    packKey: string;
+    label: string;
+    category: '지구권' | '판타지권' | '신계 성전권';
+}
+
+export const BASE_BUILDING_SKIN_OPTIONS: BaseBuildingSkinOption[] = [
+    { packKey: 'east_asia', label: '동아시아 성채', category: '지구권' },
+    { packKey: 'southeast_asia', label: '동남아 열대 요새', category: '지구권' },
+    { packKey: 'middle_east', label: '중동·사막 성채', category: '지구권' },
+    { packKey: 'west_europe', label: '서유럽 기사단 성', category: '지구권' },
+    { packKey: 'south_europe', label: '남유럽 지중해 성채', category: '지구권' },
+    { packKey: 'east_europe', label: '동유럽 고딕 요새', category: '지구권' },
+    { packKey: 'north_europe', label: '북유럽 바이킹 요새', category: '지구권' },
+    { packKey: 'north_america', label: '북미 개척 요새', category: '지구권' },
+    { packKey: 'south_america', label: '남미 태양 신전 요새', category: '지구권' },
+    { packKey: 'oceania', label: '오세아니아 해양 요새', category: '지구권' },
+    { packKey: 'sylvanar', label: '실바나르 엘프 성채', category: '판타지권' },
+    { packKey: 'feraldia', label: '페랄디아 수인 성채', category: '판타지권' },
+    { packKey: 'magye', label: '마계 흑요석 성채', category: '판타지권' },
+    { packKey: 'shingye', label: '신계 만신전 백옥 성채', category: '신계 성전권' },
+    { packKey: 'shingye_sun', label: '태양의 성전 양식', category: '신계 성전권' },
+    { packKey: 'shingye_light', label: '광휘의 성소 양식', category: '신계 성전권' },
+    { packKey: 'shingye_flora', label: '초화의 성초 양식', category: '신계 성전권' },
+    { packKey: 'shingye_flame', label: '화염의 성화 양식', category: '신계 성전권' },
+    { packKey: 'shingye_ocean', label: '해수의 성수전 양식', category: '신계 성전권' },
+    { packKey: 'shingye_thunder', label: '전격의 성전 양식', category: '신계 성전권' },
+    { packKey: 'shingye_moon', label: '월광의 성 양식', category: '신계 성전권' },
+    { packKey: 'shingye_wind', label: '질풍의 질풍전 양식', category: '신계 성전권' },
+    { packKey: 'shingye_ice', label: '빙결의 빙궁 양식', category: '신계 성전권' },
+    { packKey: 'shingye_steel', label: '강철의 강성 양식', category: '신계 성전권' },
+    { packKey: 'shingye_earth', label: '지령의 궁궐 양식', category: '신계 성전권' },
+    { packKey: 'shingye_abyss', label: '암연의 심연 양식', category: '신계 성전권' },
+    { packKey: 'shingye_void', label: '무의 궁궐 양식', category: '신계 성전권' }
+];
+
+export const getBaseBuildingSpriteUrl = (packKey: string, level: number): string => {
+    const lv = Math.max(1, Math.min(5, Math.floor(level || 1)));
+    return `${getBaseUrl()}assets/visuals/city_tiles/buildings/${packKey}/base_lv${lv}.png`;
+};
+
+export const resolveBuildingPackKey = (cultureKey: CityCultureKey): string => {
+    // 신계 각 성전별 전용 건물 팩 13종 직접 매핑 (신의 거처는 공용 shingye)
+    if (cultureKey.startsWith('shingye_')) return cultureKey;
+    if (cultureKey === 'shingye') return 'shingye';
+    if (cultureKey.startsWith('magye') || cultureKey === 'abyssalon') return 'magye';
+    if (cultureKey === 'sylvanar') return 'sylvanar';
+    if (cultureKey === 'feraldia') return 'feraldia';
+    switch (cultureKey) {
+        case 'korea':
+        case 'japan':
+        case 'china':
+        case 'asia':
+        case 'central_asia':
+            return 'east_asia';
+        case 'southeast_asia':
+        case 'south_asia':
+            return 'southeast_asia';
+        case 'middle_east':
+        case 'africa':
+        case 'north_africa':
+        case 'west_africa':
+        case 'south_africa':
+            return 'middle_east';
+        case 'europe':
+            return 'west_europe';
+        case 'southern_europe':
+            return 'south_europe';
+        case 'eastern_europe':
+            return 'east_europe';
+        case 'northern_europe':
+            return 'north_europe';
+        case 'north_america':
+            return 'north_america';
+        case 'south_america':
+            return 'south_america';
+        case 'oceania':
+            return 'oceania';
+        default:
+            return 'east_asia';
+    }
+};
+
+export const getRegionalBuildingUrl = (cultureKey: CityCultureKey, part: RegionalBuildingPart): string => {
+    const pack = resolveBuildingPackKey(cultureKey);
+    return `${getBaseUrl()}assets/visuals/city_tiles/buildings/${pack}/${part}.png`;
+};
+
+export const getHousingBuildingUrl = (cultureKey: CityCultureKey, part: HousingBuildingPart): string => {
+    const pack = resolveBuildingPackKey(cultureKey);
+    return `${getBaseUrl()}assets/visuals/city_tiles/housing/${pack}/${part}.png`;
+};
+
 export const getBuildingSpriteUrl = (cultureKey: CityCultureKey, kind: BuildingSpriteKind): string => {
-    if (kind.startsWith('special_')) {
+    if (REGIONAL_BUILDING_PART_SET.has(kind)) {
+        return getRegionalBuildingUrl(cultureKey, kind as RegionalBuildingPart);
+    }
+    if (kind.startsWith('special_') || kind === 'dimensional_rift') {
         return getSpecialBuildingUrl(kind as SpecialBuildingKey);
     }
     return getCultureAssetUrl(cultureKey, kind as CultureAssetPart);

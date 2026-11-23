@@ -7,6 +7,7 @@ import { advanceGameTime, getTimeOfDay } from '../services/gameTimeService';
 import { getCompanionRoutine } from '../services/npcRoutineService';
 import { DailyFacilityHomework } from './base/DailyFacilityHomework';
 import { ResidentFacilityModal, getResidentDutySummary } from './base/ResidentFacilityModal';
+import { BaseExteriorRemodelPanel } from './base/BaseExteriorRemodelPanel';
 import { ItemTooltip, getItemImage } from './CharacterSheet';
 import { 
   getFacilityConstructionDuration, 
@@ -5693,6 +5694,12 @@ const BaseModal: React.FC<Props> = ({
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* 기지 외형 개축 공사 (동일 레벨 타 지역/성전 건축 양식 변경) */}
+                                    <BaseExteriorRemodelPanel
+                                        character={character}
+                                        onUpdateCharacter={onUpdateCharacter}
+                                    />
 
                                     {/* 즐겨찾기 시설 바로가기 숏컷 구역 */}
                                     {base && (

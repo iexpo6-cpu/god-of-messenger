@@ -105,7 +105,175 @@ export const RPG_SPRITE_CATALOG: RpgSpriteCatalogItem[] = [
     { key: 'feraldia_female', regionKey: 'feraldia', gender: 'female', label: '수인 격투가 (여)', tag: '이종족' },
     { key: 'abyssalon_male', regionKey: 'abyssalon', gender: 'male', label: '마족 암흑기사 (남)', tag: '이종족' },
     { key: 'abyssalon_female', regionKey: 'abyssalon', gender: 'female', label: '마족 흑마녀 (여)', tag: '이종족' },
+    // === 고퀄리티 지역별 외형 2차 확장 22종 ===
+    { key: 'asia_male_2', regionKey: 'asia', gender: 'male', label: '동양 검객/선비 무사 (남)', tag: '인간계' },
+    { key: 'asia_female_2', regionKey: 'asia', gender: 'female', label: '동양 무녀/화랑 여검사 (여)', tag: '인간계' },
+    { key: 'europe_male_2', regionKey: 'europe', gender: 'male', label: '유럽 귀족 대마법사 (남)', tag: '인간계' },
+    { key: 'europe_female_2', regionKey: 'europe', gender: 'female', label: '유럽 백은 여기사 (여)', tag: '인간계' },
+    { key: 'north_america_male_2', regionKey: 'north_america', gender: 'male', label: '어반 택티컬 헌터 (남)', tag: '인간계' },
+    { key: 'north_america_female_2', regionKey: 'north_america', gender: 'female', label: '모던 스트릿 레인저 (여)', tag: '인간계' },
+    { key: 'south_america_male_2', regionKey: 'south_america', gender: 'male', label: '태양 유적 전사 (남)', tag: '인간계' },
+    { key: 'south_america_female_2', regionKey: 'south_america', gender: 'female', label: '정글 정령 무희 (여)', tag: '인간계' },
+    { key: 'oceania_male_2', regionKey: 'oceania', gender: 'male', label: '심해 항해사 선장 (남)', tag: '인간계' },
+    { key: 'oceania_female_2', regionKey: 'oceania', gender: 'female', label: '산호 해안 마도사 (여)', tag: '인간계' },
+    { key: 'africa_male_2', regionKey: 'africa', gender: 'male', label: '사막 황금 전사 (남)', tag: '인간계' },
+    { key: 'africa_female_2', regionKey: 'africa', gender: 'female', label: '태양 사막 대신관 (여)', tag: '인간계' },
+    { key: 'shingye_male_2', regionKey: 'shingye', gender: 'male', label: '천계 대천사 심판관 (남)', tag: '신계' },
+    { key: 'shingye_female_2', regionKey: 'shingye', gender: 'female', label: '천계 빛의 성녀 (여)', tag: '신계' },
+    { key: 'magye_male_2', regionKey: 'magye', gender: 'male', label: '마계 제국 황태자 (남)', tag: '마계' },
+    { key: 'magye_female_2', regionKey: 'magye', gender: 'female', label: '마계 홍련 여장군 (여)', tag: '마계' },
+    { key: 'sylvanar_male_2', regionKey: 'sylvanar', gender: 'male', label: '고대 숲 엘프 성기사 (남)', tag: '이종족' },
+    { key: 'sylvanar_female_2', regionKey: 'sylvanar', gender: 'female', label: '달빛 엘프 대드루이드 (여)', tag: '이종족' },
+    { key: 'feraldia_male_2', regionKey: 'feraldia', gender: 'male', label: '백호/늑대 수인 투사 (남)', tag: '이종족' },
+    { key: 'feraldia_female_2', regionKey: 'feraldia', gender: 'female', label: '여우 수인 무희 (여)', tag: '이종족' },
+    { key: 'abyssalon_male_2', regionKey: 'abyssalon', gender: 'male', label: '심연 마족 사령술사 (남)', tag: '이종족' },
+    { key: 'abyssalon_female_2', regionKey: 'abyssalon', gender: 'female', label: '심연 뱀파이어 귀족 (여)', tag: '이종족' },
+    // === 고퀄리티 14개 세부 문화권·종족별 3차 확장 25종 (총 69종!) ===
+    { key: 'asia_male_3', regionKey: 'asia', gender: 'male', label: '동아시아 황실 호위무사 (남)', tag: '인간계' },
+    { key: 'asia_female_3', regionKey: 'asia', gender: 'female', label: '동아시아 궁중 여협 (여)', tag: '인간계' },
+    { key: 'southeast_asia_male_1', regionKey: 'asia', gender: 'male', label: '동남아 열대 왕국 무투가 (남)', tag: '인간계' },
+    { key: 'southeast_asia_female_1', regionKey: 'asia', gender: 'female', label: '동남아 연꽃 정령 공주 (여)', tag: '인간계' },
+    { key: 'middle_east_female_1', regionKey: 'africa', gender: 'female', label: '중동 별빛 오아시스 점성술사 (여)', tag: '인간계' },
+    { key: 'west_europe_male_1', regionKey: 'europe', gender: 'male', label: '서유럽 로열 총사 (남)', tag: '인간계' },
+    { key: 'west_europe_female_1', regionKey: 'europe', gender: 'female', label: '서유럽 로열 마도 영애 (여)', tag: '인간계' },
+    { key: 'south_europe_male_1', regionKey: 'europe', gender: 'male', label: '남유럽 르네상스 검투사 (남)', tag: '인간계' },
+    { key: 'south_europe_female_1', regionKey: 'europe', gender: 'female', label: '남유럽 태양 지중해 무희 (여)', tag: '인간계' },
+    { key: 'east_europe_male_1', regionKey: 'europe', gender: 'male', label: '동유럽 설원 후사르 장교 (남)', tag: '인간계' },
+    { key: 'east_europe_female_1', regionKey: 'europe', gender: 'female', label: '동유럽 백설 공녀 (여)', tag: '인간계' },
+    { key: 'north_europe_male_1', regionKey: 'europe', gender: 'male', label: '북유럽 바이킹 룬 전사 (남)', tag: '인간계' },
+    { key: 'north_europe_female_1', regionKey: 'europe', gender: 'female', label: '북유럽 방패처녀 전사 (여)', tag: '인간계' },
+    { key: 'north_america_male_3', regionKey: 'north_america', gender: 'male', label: '북미 서부 마도 건슬링거 (남)', tag: '인간계' },
+    { key: 'north_america_female_3', regionKey: 'north_america', gender: 'female', label: '북미 사이버 마도공학자 (여)', tag: '인간계' },
+    { key: 'south_america_male_3', regionKey: 'south_america', gender: 'male', label: '남미 안데스 수호자 (남)', tag: '인간계' },
+    { key: 'south_america_female_3', regionKey: 'south_america', gender: 'female', label: '남미 황금 엘도라도 여전사 (여)', tag: '인간계' },
+    { key: 'africa_male_3', regionKey: 'africa', gender: 'male', label: '아프리카 사자 부족 전사 (남)', tag: '인간계' },
+    { key: 'africa_female_3', regionKey: 'africa', gender: 'female', label: '아프리카 별빛 주술사 (여)', tag: '인간계' },
+    { key: 'magye_male_3', regionKey: 'magye', gender: 'male', label: '마계 심연 혈기사 백작 (남)', tag: '마계' },
+    { key: 'magye_female_3', regionKey: 'magye', gender: 'female', label: '마계 자색 공작영애 (여)', tag: '마계' },
+    { key: 'sylvanar_male_3', regionKey: 'sylvanar', gender: 'male', label: '하이엘프 별빛 마검사 (남)', tag: '이종족' },
+    { key: 'sylvanar_female_3', regionKey: 'sylvanar', gender: 'female', label: '실바나르 정령 궁수 (여)', tag: '이종족' },
+    { key: 'feraldia_male_3', regionKey: 'feraldia', gender: 'male', label: '사자 수인 황금 대투사 (남)', tag: '이종족' },
+    { key: 'feraldia_female_3', regionKey: 'feraldia', gender: 'female', label: '흑표범 수인 암살자 (여)', tag: '이종족' },
+    // === NPC 다양화 28종 (노인 · 아이 · 군인 · 용병 · 평민 · 왕족 · 교사) ===
+    { key: 'npc_elder_grandpa', regionKey: 'asia', gender: 'male', label: '원로 할아버지', tag: 'NPC' },
+    { key: 'npc_elder_grandma', regionKey: 'europe', gender: 'female', label: '인자한 할머니', tag: 'NPC' },
+    { key: 'npc_elder_sage', regionKey: 'europe', gender: 'male', label: '백발 대현자 원로', tag: 'NPC' },
+    { key: 'npc_elder_general', regionKey: 'europe', gender: 'male', label: '백발 베테랑 노장군', tag: 'NPC' },
+    { key: 'npc_child_boy', regionKey: 'asia', gender: 'male', label: '마을 소년', tag: 'NPC' },
+    { key: 'npc_child_girl', regionKey: 'europe', gender: 'female', label: '마을 소녀', tag: 'NPC' },
+    { key: 'npc_child_squire', regionKey: 'europe', gender: 'male', label: '견습 기사 소년', tag: 'NPC' },
+    { key: 'npc_child_apprentice', regionKey: 'europe', gender: 'female', label: '견습 마법 소녀', tag: 'NPC' },
+    { key: 'npc_soldier_asia', regionKey: 'asia', gender: 'male', label: '동양 철갑 호위병', tag: 'NPC' },
+    { key: 'npc_soldier_europe', regionKey: 'europe', gender: 'male', label: '유럽 성문 경비병', tag: 'NPC' },
+    { key: 'npc_soldier_modern', regionKey: 'north_america', gender: 'male', label: '현대 전술 군인', tag: 'NPC' },
+    { key: 'npc_soldier_magye', regionKey: 'magye', gender: 'male', label: '마계 흑갑 보병', tag: 'NPC' },
+    { key: 'npc_merc_red', regionKey: 'europe', gender: 'male', label: '적발 대검 용병', tag: 'NPC' },
+    { key: 'npc_merc_blue', regionKey: 'asia', gender: 'female', label: '청발 여검객 용병', tag: 'NPC' },
+    { key: 'npc_merc_desert', regionKey: 'africa', gender: 'male', label: '사막 쌍검 용병', tag: 'NPC' },
+    { key: 'npc_merc_veteran', regionKey: 'europe', gender: 'male', label: '은발 안대 용병단장', tag: 'NPC' },
+    { key: 'npc_civil_smith', regionKey: 'europe', gender: 'male', label: '마을 대장장이', tag: 'NPC' },
+    { key: 'npc_civil_merchant', regionKey: 'europe', gender: 'female', label: '상단 여상인', tag: 'NPC' },
+    { key: 'npc_civil_youth', regionKey: 'asia', gender: 'male', label: '마을 청년', tag: 'NPC' },
+    { key: 'npc_civil_herbalist', regionKey: 'europe', gender: 'female', label: '약초상·꽃집 소녀', tag: 'NPC' },
+    { key: 'npc_royal_king', regionKey: 'europe', gender: 'male', label: '황금 왕관 국왕', tag: 'NPC' },
+    { key: 'npc_royal_queen', regionKey: 'europe', gender: 'female', label: '은발 로열 여왕', tag: 'NPC' },
+    { key: 'npc_royal_prince', regionKey: 'asia', gender: 'male', label: '동양 세자 왕자', tag: 'NPC' },
+    { key: 'npc_royal_princess', regionKey: 'europe', gender: 'female', label: '분홍빛 공주', tag: 'NPC' },
+    { key: 'npc_teacher_prof', regionKey: 'asia', gender: 'male', label: '아카데미 남성 교수', tag: 'NPC' },
+    { key: 'npc_teacher_lady', regionKey: 'europe', gender: 'female', label: '아카데미 여성 교사', tag: 'NPC' },
+    { key: 'npc_teacher_lib', regionKey: 'europe', gender: 'female', label: '마법 도서관 사서', tag: 'NPC' },
+    { key: 'npc_teacher_alch', regionKey: 'europe', gender: 'male', label: '연금술 연구 학자', tag: 'NPC' },
 ];
+
+/**
+ * 도시 NPC 역할(경비·상인·학자·용병·주민·노인·아이·왕족) + 지역 문화권 매칭 스프라이트 선택기
+ */
+export const pickRoleMatchedNpcSpriteKey = (
+    role: string,
+    regionKey: RpgSpriteRegionKey,
+    gender: RpgSpriteGenderKey,
+    seedIndex: number,
+    isHumanWorld: boolean,
+    usedKeys?: Set<string>
+): string => {
+    const r = (role || '').toLowerCase();
+    let roleCandidates: string[] = [];
+
+    if (r.includes('경비') || r.includes('위병') || r.includes('병사') || r.includes('군인') || r.includes('순찰')) {
+        if (regionKey === 'magye') roleCandidates = ['npc_soldier_magye', 'npc_elder_general'];
+        else if (regionKey === 'asia') roleCandidates = ['npc_soldier_asia', 'npc_soldier_modern', 'npc_elder_general'];
+        else if (regionKey === 'north_america' || regionKey === 'oceania') roleCandidates = ['npc_soldier_modern', 'npc_soldier_europe'];
+        else roleCandidates = ['npc_soldier_europe', 'npc_soldier_asia', 'npc_elder_general'];
+    } else if (r.includes('상인') || r.includes('행상') || r.includes('장인') || r.includes('대장')) {
+        roleCandidates = gender === 'female'
+            ? ['npc_civil_merchant', 'npc_civil_herbalist']
+            : ['npc_civil_smith', 'npc_civil_youth', 'npc_elder_grandpa'];
+    } else if (r.includes('학자') || r.includes('교사') || r.includes('교수') || r.includes('사서') || r.includes('연금')) {
+        roleCandidates = gender === 'female'
+            ? ['npc_teacher_lady', 'npc_teacher_lib']
+            : ['npc_teacher_prof', 'npc_teacher_alch', 'npc_elder_sage'];
+    } else if (r.includes('모험') || r.includes('용병') || r.includes('헌터') || r.includes('투사')) {
+        roleCandidates = gender === 'female'
+            ? ['npc_merc_blue', 'npc_child_apprentice']
+            : ['npc_merc_red', 'npc_merc_veteran', 'npc_merc_desert'];
+    } else if (r.includes('왕') || r.includes('귀족') || r.includes('공주') || r.includes('황')) {
+        roleCandidates = gender === 'female'
+            ? ['npc_royal_queen', 'npc_royal_princess']
+            : [regionKey === 'asia' ? 'npc_royal_prince' : 'npc_royal_king', 'npc_royal_prince'];
+    } else {
+        // 일반 시민/주민/안내자: 노인, 아이, 평민, 교사, 지역 주민이 자연스럽게 어우러지도록 구성!
+        roleCandidates = gender === 'female'
+            ? ['npc_elder_grandma', 'npc_child_girl', 'npc_civil_herbalist', 'npc_child_apprentice', 'npc_royal_princess']
+            : ['npc_elder_grandpa', 'npc_child_boy', 'npc_civil_youth', 'npc_child_squire', 'npc_elder_sage'];
+    }
+
+    // 비인간계(신계/엘프/수인/아비살론)는 종족 고유 외형을 우선하되 마계 경비병 등 특수 NPC는 반영
+    if (!isHumanWorld && regionKey !== 'magye') {
+        return pickDiverseRegionalSpriteKey(regionKey, gender, seedIndex, false, usedKeys);
+    }
+
+    const unused = usedKeys ? roleCandidates.filter(k => !usedKeys.has(k)) : roleCandidates;
+    if (unused.length > 0) {
+        const picked = unused[Math.abs(seedIndex) % unused.length];
+        usedKeys?.add(picked);
+        return picked;
+    }
+
+    return pickDiverseRegionalSpriteKey(regionKey, gender, seedIndex, isHumanWorld, usedKeys);
+};
+
+/**
+ * 도시 NPC 및 랜덤 모험가용 지역 문화권 기반 중복 방지 스프라이트 선택기 (69종 전체 활용!)
+ */
+export const pickDiverseRegionalSpriteKey = (
+    regionKey: RpgSpriteRegionKey,
+    gender: RpgSpriteGenderKey,
+    seedIndex: number,
+    isHumanWorld: boolean,
+    usedKeys?: Set<string>
+): string => {
+    // 1순위: 해당 지역(문화권) + 성별 일치 스프라이트 풀
+    const regionalPool = RPG_SPRITE_CATALOG.filter(
+        item => item.regionKey === regionKey && item.gender === gender
+    );
+    // 2순위: 인간계 도시라면 전 세계 여행자/모험가 풀까지 확장해 NPC 다양성 극대화!
+    const broadPool = isHumanWorld
+        ? RPG_SPRITE_CATALOG.filter(item => item.tag === '인간계' && item.gender === gender)
+        : RPG_SPRITE_CATALOG.filter(item => item.regionKey === regionKey && item.gender === gender);
+
+    const combined = [...regionalPool, ...broadPool.filter(b => !regionalPool.some(r => r.key === b.key))];
+    const available = usedKeys ? combined.filter(item => !usedKeys.has(item.key)) : combined;
+    const finalPool = available.length > 0 ? available : (combined.length > 0 ? combined : RPG_SPRITE_CATALOG);
+
+    // 앞쪽 NPC는 지역 고유 외형을 우선, 뒤쪽 NPC는 다양한 문화권 외형을 섞어 배치
+    const picked =
+        seedIndex < regionalPool.length && available.some(a => a.regionKey === regionKey)
+            ? available.filter(a => a.regionKey === regionKey)[seedIndex % available.filter(a => a.regionKey === regionKey).length]
+            : finalPool[Math.abs(seedIndex) % finalPool.length];
+
+    usedKeys?.add(picked.key);
+    return picked.key;
+};
 
 export const HUMAN_GLOBAL_REGION_KEYS: RpgSpriteRegionKey[] = [
     'asia', 'europe', 'north_america', 'south_america', 'oceania', 'africa'
@@ -137,14 +305,26 @@ export const pickRandomRpgSpriteKey = (gender?: string, pool: 'human' | 'all' = 
 
 /**
  * 캐릭터/동료의 쯔꾸르 스프라이트 해석기:
- * 1) rpgSpriteKey가 직접 지정되어 있으면 어느 지역에 있든 유저가 선택한 스프라이트를 우선 적용
- * 2) 미지정(기존 세이브/동료)이면 지역에 정형화하지 않고 이름/ID 시드 기반으로 다양한 외형을 결정적 배정
+ * 1) customSpriteUrl(커스텀 연구소 업로드 / 차원 교신 공유)이 있으면 최우선 적용
+ * 2) rpgSpriteKey가 직접 지정되어 있으면 어느 지역에 있든 유저가 선택한 스프라이트를 우선 적용
+ * 3) 미지정이면 종족/시드 기반으로 다양한 지역 외형을 결정적 배정
  */
 export const resolveEntityRpgSprite = (
-    entity: { rpgSpriteKey?: string; id?: string; name?: string; gender?: string; race?: string },
+    entity: { rpgSpriteKey?: string; customSpriteUrl?: string; id?: string; name?: string; gender?: string; race?: string },
     fallbackRegion?: string,
     fallbackNation?: string
 ): { key: string; url: string; regionKey: RpgSpriteRegionKey; genderKey: RpgSpriteGenderKey } => {
+    const genderKey = normalizeGenderKey(entity.gender);
+
+    if (entity.customSpriteUrl && entity.customSpriteUrl.trim().length > 0) {
+        return {
+            key: `custom_upload_${entity.id || entity.name || 'unit'}`,
+            url: entity.customSpriteUrl,
+            regionKey: mapRegionToSpriteKey(fallbackRegion, fallbackNation),
+            genderKey
+        };
+    }
+
     if (entity.rpgSpriteKey) {
         const found = RPG_SPRITE_CATALOG.find(item => item.key === entity.rpgSpriteKey);
         if (found) {
@@ -157,7 +337,6 @@ export const resolveEntityRpgSprite = (
         }
     }
 
-    const genderKey = normalizeGenderKey(entity.gender);
     const raceStr = (entity.race || '').toLowerCase();
     let regionKey: RpgSpriteRegionKey;
 
@@ -172,11 +351,38 @@ export const resolveEntityRpgSprite = (
     } else {
         const seed = entity.id || entity.name || '';
         if (seed) {
+            const humanPool = RPG_SPRITE_CATALOG.filter(
+                item => item.tag === '인간계' && item.gender === genderKey
+            );
+            if (humanPool.length > 0) {
+                const picked = humanPool[simpleHash(seed) % humanPool.length];
+                return {
+                    key: picked.key,
+                    url: getRpgSpriteUrlByKey(picked.key),
+                    regionKey: picked.regionKey,
+                    genderKey: picked.gender
+                };
+            }
             const idx = simpleHash(seed) % HUMAN_GLOBAL_REGION_KEYS.length;
             regionKey = HUMAN_GLOBAL_REGION_KEYS[idx];
         } else {
             regionKey = mapRegionToSpriteKey(fallbackRegion, fallbackNation);
         }
+    }
+
+    // 비인간 종족(엘프/수인/마족/신계/마계)도 이름/ID 시드 기반으로 2~3종 변형 스프라이트를 골고루 배정!
+    const seedStr = entity.id || entity.name || '';
+    const racePool = RPG_SPRITE_CATALOG.filter(
+        item => item.regionKey === regionKey && item.gender === genderKey
+    );
+    if (seedStr && racePool.length > 1) {
+        const picked = racePool[simpleHash(seedStr) % racePool.length];
+        return {
+            key: picked.key,
+            url: getRpgSpriteUrlByKey(picked.key),
+            regionKey: picked.regionKey,
+            genderKey: picked.gender
+        };
     }
 
     const key = `${regionKey}_${genderKey}`;
@@ -192,6 +398,122 @@ export const getRpgSpriteAssetPath = (region?: string, gender?: string, nation?:
     const regionKey = mapRegionToSpriteKey(region, nation);
     const genderKey = normalizeGenderKey(gender);
     return getRpgSpriteUrlByKey(`${regionKey}_${genderKey}`);
+};
+
+export interface SpriteChromaOptions {
+    mode: 'auto' | 'magenta' | 'custom' | 'none';
+    colorHex?: string; // mode === 'custom'일 때 제거할 배경색 (예: '#00ff00', '#ffffff')
+    tolerance?: number; // 10 ~ 140 (기본 58)
+}
+
+const hexToRgb = (hex: string): [number, number, number] => {
+    const clean = (hex || '#ff00ff').replace('#', '').trim();
+    if (clean.length === 3) {
+        return [
+            parseInt(clean[0] + clean[0], 16) || 0,
+            parseInt(clean[1] + clean[1], 16) || 0,
+            parseInt(clean[2] + clean[2], 16) || 0
+        ];
+    }
+    return [
+        parseInt(clean.slice(0, 2), 16) || 0,
+        parseInt(clean.slice(2, 4), 16) || 0,
+        parseInt(clean.slice(4, 6), 16) || 0
+    ];
+};
+
+/**
+ * 원본 이미지 Data URL에서 지정한 배경색(또는 모서리 자동 추출색)을 투명화하여 144x192 PNG Data URL 반환
+ */
+export const processSpriteDataUrlWithChroma = (
+    rawDataUrl: string,
+    options: SpriteChromaOptions = { mode: 'auto', tolerance: 58 }
+): Promise<{ dataUrl: string; detectedHex: string }> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('유효한 이미지 파일이 아닙니다.'));
+        img.onload = () => {
+            const targetW = 144;
+            const targetH = 192;
+            const canvas = document.createElement('canvas');
+            canvas.width = targetW;
+            canvas.height = targetH;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                reject(new Error('캔버스 컨텍스트를 생성할 수 없습니다.'));
+                return;
+            }
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.clearRect(0, 0, targetW, targetH);
+            ctx.drawImage(img, 0, 0, targetW, targetH);
+
+            const imgData = ctx.getImageData(0, 0, targetW, targetH);
+            const d = imgData.data;
+
+            // 좌상단 모서리 픽셀 자동 감지
+            const autoR = d[0];
+            const autoG = d[1];
+            const autoB = d[2];
+            const toHex = (v: number) => v.toString(16).padStart(2, '0');
+            const detectedHex = `#${toHex(autoR)}${toHex(autoG)}${toHex(autoB)}`;
+
+            if (options.mode !== 'none') {
+                const tol = Math.max(10, Math.min(160, options.tolerance ?? 58));
+                const softBand = Math.max(18, tol * 0.45);
+                let kr = 255, kg = 0, kb = 255;
+                if (options.mode === 'auto') {
+                    kr = autoR; kg = autoG; kb = autoB;
+                } else if (options.mode === 'custom' && options.colorHex) {
+                    [kr, kg, kb] = hexToRgb(options.colorHex);
+                }
+
+                for (let i = 0; i < d.length; i += 4) {
+                    const r = d[i];
+                    const g = d[i + 1];
+                    const b = d[i + 2];
+                    const a = d[i + 3];
+                    if (a === 0) continue;
+
+                    const dist = Math.hypot(r - kr, g - kg, b - kb);
+                    if (dist <= tol) {
+                        d[i + 3] = 0;
+                    } else if (dist <= tol + softBand) {
+                        const factor = (dist - tol) / softBand;
+                        d[i + 3] = Math.round(a * factor);
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+            }
+
+            resolve({ dataUrl: canvas.toDataURL('image/png'), detectedHex });
+        };
+        img.src = rawDataUrl;
+    });
+};
+
+export const readFileAsDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('파일을 읽지 못했습니다.'));
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.readAsDataURL(file);
+    });
+};
+
+/**
+ * 사용자가 직접 업로드한 3x4 쯔꾸르 스프라이트 이미지를 144x192 PNG Data URL로 정규화
+ */
+export const normalizeUploadedSpriteFile = async (
+    file: File,
+    removeMagentaBg: boolean = true
+): Promise<string> => {
+    const raw = await readFileAsDataUrl(file);
+    const { dataUrl } = await processSpriteDataUrlWithChroma(raw, {
+        mode: removeMagentaBg ? 'magenta' : 'none',
+        tolerance: 62
+    });
+    return dataUrl;
 };
 
 // 인메모리 스프라이트 이미지 캐시

@@ -1160,6 +1160,7 @@ export interface Companion {
   birthYear?: number;
   gender: string;
   rpgSpriteKey?: string; // 쯔꾸르 2D 필드 캐릭터 스프라이트 키 (미지정 시 기본/랜덤)
+  customSpriteUrl?: string; // 커스텀 연구소/차원 교신으로 업로드·공유된 사용자 지정 2D 스프라이트 (Data URL)
   race: string;
   hairStyle?: string;
   appearance: string;
@@ -1782,6 +1783,7 @@ export interface Character {
   birthYear?: number;
   gender: string;
   rpgSpriteKey?: string; // 쯔꾸르 2D 필드 캐릭터 스프라이트 키 (미지정 시 기본/랜덤)
+  customSpriteUrl?: string; // 커스텀 연구소/차원 교신으로 업로드·공유된 사용자 지정 2D 스프라이트 (Data URL)
   race: string;
   hairStyle: string;
   appearance: string;
@@ -2360,6 +2362,14 @@ export interface Base {
   gridExpansionCompletionDate?: string;
   gridExpansionCompletionTime?: string;
   gridExpansionTotalMinutes?: number;
+  customBuildingPack?: string; // [NEW] 커스텀 기지 외형 팩 (같은 레벨의 타 지역/성전 양식)
+  exteriorRemodelUnderConstruction?: boolean; // [NEW] 기지 외형 개축 공사 진행 여부
+  targetBuildingPack?: string; // [NEW] 완공 시 적용될 목표 외형 팩
+  exteriorRemodelStartDate?: string;
+  exteriorRemodelStartTime?: string;
+  exteriorRemodelCompletionDate?: string;
+  exteriorRemodelCompletionTime?: string;
+  exteriorRemodelTotalMinutes?: number;
   dailyCounts: Record<string, number>;
   lastDailyReset?: string;
   elementalShards: Record<string, number>;

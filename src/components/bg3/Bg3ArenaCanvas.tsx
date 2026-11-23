@@ -290,8 +290,8 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
     character,
     companions,
     enemies,
-    title = '전술 결전 아레나 (BG3)',
-    subtitle = '무격자 자유 이동 · 발더스 게이트 3 액티브 전술 전투',
+    title = '전술 전투',
+    subtitle = '자유 이동 · 전술 전투',
     region,
     nation,
     city,
@@ -445,15 +445,19 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
     }, []);
     const [autoBattle, setAutoBattle] = useState<boolean>(false);
     const [fastMode, setFastMode] = useState<boolean>(false);
-    const [bannerMsg, setBannerMsg] = useState<string>('무격자 자유 전술 아레나 개시! 바닥을 클릭해 자유롭게 이동하거나 스킬을 선택하세요.');
+    const [bannerMsg, setBannerMsg] = useState<string>('전투 개시! 바닥을 눌러 이동하거나 스킬을 선택하세요.');
     const [combatLogs, setCombatLogs] = useState<Array<{ id: string; round: number; text: string; tone?: 'info' | 'dmg' | 'heal' | 'warn' }>>([
         { id: 'init_0', round: 1, text: `⚔️ [${title}] 전투 개시! (${Math.round(arenaW / PX_PER_METER)}m × ${Math.round(arenaH / PX_PER_METER)}m 전장)`, tone: 'info' }
     ]);
     const [showLogDrawer, setShowLogDrawer] = useState<boolean>(false);
-    // 모바일(< 768px)에서는 좌측 하단 스탯 패널을 기본 접힘 상태로 시작해 전장 시야 확보!
+    // 모바일(< 768px)에서는 좌측 하단 스탯 패널 및 우측 상단 인연 패널을 기본 접힘 상태로 시작해 전장 시야 확보!
     const [statsPanelOpen, setStatsPanelOpen] = useState<boolean>(() =>
         typeof window !== 'undefined' ? window.innerWidth >= 768 : true
     );
+    const [bondPanelOpen, setBondPanelOpen] = useState<boolean>(() =>
+        typeof window !== 'undefined' ? window.innerWidth >= 768 : false
+    );
+    const [bottomBuffsOpen, setBottomBuffsOpen] = useState<boolean>(false);
     const pushCombatLog = useCallback((text: string, tone: 'info' | 'dmg' | 'heal' | 'warn' = 'info', r = 1) => {
         setCombatLogs(prev => [{ id: `log_${Date.now()}_${Math.random()}`, round: r, text, tone }, ...prev].slice(0, 120));
     }, []);
@@ -579,9 +583,9 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
     const cameraRef = useRef<{ x: number; y: number }>({ x: arenaW * 0.5, y: arenaH - 280 });
     const cameraTargetRef = useRef<{ x: number; y: number }>({ x: arenaW * 0.5, y: arenaH - 280 });
     const panDragRef = useRef<{ dragging: boolean; lastX: number; lastY: number }>({ dragging: false, lastX: 0, lastY: 0 });
-    // 태블릿/모바일 터치 핀치 줌 & 1손가락/2손가락 드래그 카메라 패닝 상태
+    // 태블릿/모바일 터치 핀치 줌 & 1손가락/2손가락 드래그 카메라 패닝 · 스킬 범위 조준 상태
     const touchGestureRef = useRef<{
-        mode: 'none' | 'pan' | 'pinch';
+        mode: 'none' | 'pan' | 'pinch' | 'aim';
         startX: number;
         startY: number;
         lastX: number;
@@ -2263,11 +2267,15 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         runAi();
     }, [activeUnitId, turnIdx, roundNum, autoBattle, battleEnded, arena.obstacles, setBusySafe]);
 
-    // Canvas Click Handler (Gridless Move / Attack / Skill / Shove / Jump)
+    // Canvas Click / Touch-Release World Point Handler (Move / Attack / Skill / Shove / Jump / Item)
     const handleCanvasClick = async (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (!isPlayerTurn || isBusy || !activeUnit || battleEnded) return;
         const pt = screenToWorld(e.clientX, e.clientY);
         if (!pt) return;
+        await handleCanvasWorldClick(pt);
+    };
+
+    const handleCanvasWorldClick = async (pt: { x: number; y: number }) => {
+        if (!isPlayerTurn || isBusy || !activeUnit || battleEnded) return;
 
         // Clicking another ally in the shared initiative group switches active unit!
         // 부활 스킬 선택 중에는 전투불능(hp <= 0) 동료 무덤도 클릭 타겟으로 허용!
@@ -3848,11 +3856,11 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             {/* 상단 헤더 + BG3 이니셔티브 포트레이트 바 (AGI + WIS 순) */}
             <div className="shrink-0 z-20 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 px-3 py-1.5 flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[11px] font-bold">
-                            R{roundNum} · BG3 무격자 전술전
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[11px] font-black whitespace-nowrap shrink-0">
+                            R{roundNum}
                         </span>
-                        <h3 className="text-sm font-black text-white truncate">{title}</h3>
+                        <h3 className="text-xs sm:text-sm font-black text-white truncate">{title}</h3>
                     </div>
                     <p className="text-[11px] text-slate-400 truncate">{bannerMsg}</p>
                 </div>
@@ -4075,17 +4083,47 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     </div>
                 )}
 
-                {/* 💞 인연 게이지 & 준비된 인연 합체기 플로팅 바 (우측 상단, 인연 스킬 보유 시 표시) */}
-                {Array.isArray(character.bondSkills) && character.bondSkills.length > 0 && (
-                    <div className="absolute top-2.5 right-2.5 z-20 flex flex-col gap-1 max-w-[210px] rounded-xl bg-slate-950/85 border border-pink-500/45 p-2 shadow-xl backdrop-blur-sm">
-                        <div className="text-[10px] font-black text-pink-300 flex items-center justify-between">
-                            <span>💞 인연 게이지</span>
-                            <span className="text-[9px] text-slate-400">100% 합체기</span>
-                        </div>
-                        {resolvedCompanions
-                            .filter(c => character.bondSkills?.some(bs => bs.companionId === c.id))
-                            .slice(0, 3)
-                            .map(c => {
+                {/* 💞 인연 게이지 & 준비된 인연 합체기 플로팅 바 (우측 상단, 접기/펼치기 지원!) */}
+                {Array.isArray(character.bondSkills) && character.bondSkills.length > 0 && (() => {
+                    const bondTargets = resolvedCompanions
+                        .filter(c => character.bondSkills?.some(bs => bs.companionId === c.id))
+                        .slice(0, 3);
+                    if (bondTargets.length === 0) return null;
+                    const maxGauge = bondTargets.reduce((m, c) => Math.max(m, bondGauges[c.id] || 0), 0);
+                    const hasReadyBond = maxGauge >= 100;
+
+                    if (!bondPanelOpen) {
+                        return (
+                            <button
+                                type="button"
+                                onClick={() => setBondPanelOpen(true)}
+                                className={`absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 shadow-xl backdrop-blur-sm border text-[11px] font-black transition-all ${
+                                    hasReadyBond
+                                        ? 'bg-gradient-to-r from-pink-600/95 to-amber-500/95 border-amber-300 text-white animate-pulse'
+                                        : 'bg-slate-950/88 border-pink-500/50 text-pink-200 hover:border-pink-400'
+                                }`}
+                                title="인연 게이지 펼치기"
+                            >
+                                <span>💞 {hasReadyBond ? '합체기 준비!' : `인연 ${maxGauge}%`}</span>
+                                <span className="text-[10px] opacity-80">▼</span>
+                            </button>
+                        );
+                    }
+
+                    return (
+                        <div className="absolute top-2.5 right-2.5 z-20 flex flex-col gap-1 w-[178px] sm:w-[205px] rounded-xl bg-slate-950/90 border border-pink-500/45 p-2 shadow-xl backdrop-blur-sm">
+                            <div className="text-[10px] font-black text-pink-300 flex items-center justify-between gap-1 border-b border-pink-500/20 pb-1">
+                                <span>💞 인연 게이지</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setBondPanelOpen(false)}
+                                    className="px-1.5 py-0.5 rounded bg-slate-900 hover:bg-slate-800 border border-pink-500/40 text-[9px] font-bold text-pink-200"
+                                    title="인연 게이지 접기"
+                                >
+                                    접기 ▲
+                                </button>
+                            </div>
+                            {bondTargets.map(c => {
                                 const g = bondGauges[c.id] || 0;
                                 const readySkill = g >= 100 ? character.bondSkills?.find(bs => bs.companionId === c.id) : undefined;
                                 return (
@@ -4106,7 +4144,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                                 onClick={() => {
                                                     setSelectedSkill({ ...(readySkill as any), isBondSkill: true, companionId: c.id });
                                                     setActionMode('skill');
-                                                    setBannerMsg(`💞 인연 합체기 [${readySkill.name}] 준비! 전장의 적을 클릭해 발동하세요!`);
+                                                    setBannerMsg(`💞 인연 합체기 [${readySkill.name}] 준비! 전장을 터치해 조준 후 떼면 발동합니다!`);
                                                 }}
                                                 className="w-full mt-0.5 py-0.5 px-1.5 rounded bg-gradient-to-r from-pink-600 to-amber-500 text-white text-[10px] font-black shadow hover:brightness-110"
                                             >
@@ -4116,8 +4154,9 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                     </div>
                                 );
                             })}
-                    </div>
-                )}
+                        </div>
+                    );
+                })()}
 
                 {/* 태블릿/모바일 친화적 터치 확대·축소 컨트롤 플로팅 바 (좌측 상단) */}
                 <div className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1 rounded-xl bg-slate-950/85 border border-slate-700/80 p-1 shadow-xl backdrop-blur-sm">
@@ -4218,15 +4257,25 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                             tg.lastX = (t0.clientX + t1.clientX) / 2;
                             tg.lastY = (t0.clientY + t1.clientY) / 2;
                             tg.moved = true;
+                            hoverWorldRef.current = null;
                             setOverviewMode(false);
                         } else if (e.touches.length === 1) {
                             const t = e.touches[0];
-                            tg.mode = 'pan';
                             tg.startX = t.clientX;
                             tg.startY = t.clientY;
                             tg.lastX = t.clientX;
                             tg.lastY = t.clientY;
                             tg.moved = false;
+                            // 모바일 스킬/공격/아이템/밀치기/도약 조준 모드:
+                            // 터치하는 즉시 PC와 동일한 스킬 범위(광역 원/사거리/타겟 강조)를 실시간 표시하고,
+                            // 드래그로 위치를 조정한 뒤 터치를 떼면 해당 위치에 즉시 발동!
+                            if (actionMode !== 'move' && isPlayerTurn && !isBusy && !battleEnded) {
+                                tg.mode = 'aim';
+                                const wPt = screenToWorld(t.clientX, t.clientY);
+                                hoverWorldRef.current = wPt;
+                            } else {
+                                tg.mode = 'pan';
+                            }
                         }
                     }}
                     onTouchMove={e => {
@@ -4250,6 +4299,12 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                             cameraTargetRef.current.y = Math.max(120, Math.min(arenaH - 120, cameraTargetRef.current.y - dy / scale));
                             cameraRef.current.x = cameraTargetRef.current.x;
                             cameraRef.current.y = cameraTargetRef.current.y;
+                        } else if (e.touches.length === 1 && tg.mode === 'aim') {
+                            const t = e.touches[0];
+                            tg.lastX = t.clientX;
+                            tg.lastY = t.clientY;
+                            const wPt = screenToWorld(t.clientX, t.clientY);
+                            hoverWorldRef.current = wPt;
                         } else if (e.touches.length === 1 && tg.mode === 'pan') {
                             const t = e.touches[0];
                             const totalMove = Math.hypot(t.clientX - tg.startX, t.clientY - tg.startY);
@@ -4268,7 +4323,21 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                             tg.lastY = t.clientY;
                         }
                     }}
-                    onTouchEnd={() => {
+                    onTouchEnd={e => {
+                        const tg = touchGestureRef.current;
+                        if (tg.mode === 'aim' && e.touches.length === 0) {
+                            const aimedPt = hoverWorldRef.current || screenToWorld(tg.lastX, tg.lastY);
+                            tg.moved = true; // 브라우저 합성 onClick 중복 실행 방지
+                            tg.mode = 'none';
+                            hoverWorldRef.current = null;
+                            if (aimedPt) {
+                                void handleCanvasWorldClick(aimedPt);
+                            }
+                            window.setTimeout(() => {
+                                touchGestureRef.current.moved = false;
+                            }, 280);
+                            return;
+                        }
                         window.setTimeout(() => {
                             touchGestureRef.current.mode = 'none';
                             touchGestureRef.current.moved = false;
@@ -4323,9 +4392,9 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     </button>
                 )}
                 {activeUnit && statsPanelOpen && (
-                    <div className="absolute bottom-2.5 left-2.5 z-20 w-64 sm:w-72 max-w-[82vw] max-h-[62vh] overflow-y-auto rounded-xl bg-slate-950/92 border border-slate-700/85 p-2.5 shadow-2xl backdrop-blur-md space-y-2">
-                        {/* 캐릭터 헤더 */}
-                        <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-1.5">
+                    <div className="absolute bottom-2 left-2 z-30 w-64 sm:w-72 max-w-[84vw] max-h-[calc(100%-16px)] overflow-y-auto rounded-xl bg-slate-950/95 border border-amber-500/45 p-2.5 shadow-2xl backdrop-blur-md space-y-2">
+                        {/* 캐릭터 헤더 (상단 고정 + 명확한 접기 버튼!) */}
+                        <div className="sticky -top-2.5 -mx-2.5 -mt-2.5 px-2.5 pt-2 pb-1.5 bg-slate-950/98 backdrop-blur-md flex items-center justify-between gap-2 border-b border-slate-800 z-10">
                             <div className="flex items-center gap-2 min-w-0">
                                 {activeUnit.visualUrl ? (
                                     <img
@@ -4359,14 +4428,14 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => setStatsPanelOpen(false)}
-                                    className="text-[10px] font-bold text-slate-400 hover:text-white px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700"
+                                    className="text-[11px] font-black text-amber-200 hover:text-white px-2 py-0.5 rounded-lg bg-amber-950/90 hover:bg-amber-800 border border-amber-400/70 shadow"
                                     title="스탯 패널 접기"
                                 >
                                     접기 ▼
                                 </button>
                                 {(activeUnit.maxBreakGauge || 0) > 0 && (
                                     <span className="text-[10px] font-black text-amber-300 bg-amber-950/80 border border-amber-500/50 px-1.5 py-0.5 rounded">
-                                        ⚡ 신력쉴드 {activeUnit.breakGauge ?? activeUnit.maxBreakGauge}/{activeUnit.maxBreakGauge}
+                                        ⚡ 쉴드 {activeUnit.breakGauge ?? activeUnit.maxBreakGauge}/{activeUnit.maxBreakGauge}
                                     </span>
                                 )}
                                 {(activeUnit.shieldHp || 0) > 0 && (
@@ -4440,10 +4509,10 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                     </div>
                                     {derived && (
                                         <div className="grid grid-cols-4 gap-1 text-[9px] font-mono bg-slate-900/60 border border-slate-800/80 rounded-md px-1.5 py-1">
-                                            <div><span className="text-slate-500">물공</span> <span className="text-rose-200 font-bold">{formatCompactKorean(Math.round(derived.physAtk || 0))}</span></div>
-                                            <div><span className="text-slate-500">마공</span> <span className="text-sky-200 font-bold">{formatCompactKorean(Math.round(derived.magAtk || 0))}</span></div>
-                                            <div><span className="text-slate-500">물방</span> <span className="text-amber-200 font-bold">{formatCompactKorean(Math.round(derived.physDef || 0))}</span></div>
-                                            <div><span className="text-slate-500">마방</span> <span className="text-indigo-200 font-bold">{formatCompactKorean(Math.round(derived.magDef || 0))}</span></div>
+                                            <div><span className="text-slate-500">물공</span> <span className="text-rose-200 font-bold">{formatCompactKorean(Math.round((derived as any).pAtk ?? (derived as any).physAtk ?? 0))}</span></div>
+                                            <div><span className="text-slate-500">마공</span> <span className="text-sky-200 font-bold">{formatCompactKorean(Math.round((derived as any).mAtk ?? (derived as any).magAtk ?? 0))}</span></div>
+                                            <div><span className="text-slate-500">물방</span> <span className="text-amber-200 font-bold">{formatCompactKorean(Math.round((derived as any).pDef ?? (derived as any).physDef ?? 0))}</span></div>
+                                            <div><span className="text-slate-500">마방</span> <span className="text-indigo-200 font-bold">{formatCompactKorean(Math.round((derived as any).mDef ?? (derived as any).magDef ?? 0))}</span></div>
                                             <div className="col-span-2"><span className="text-slate-500">치명</span> <span className="text-yellow-300 font-bold">{Math.round(derived.critChance || 0)}%</span></div>
                                             <div><span className="text-slate-500">명중</span> <span className="text-emerald-300 font-bold">{Math.round(derived.accuracy || 0)}</span></div>
                                             <div><span className="text-slate-500">회피</span> <span className="text-cyan-300 font-bold">{Math.round(derived.evasion || 0)}</span></div>
@@ -4515,6 +4584,13 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                 </div>
                             )}
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => setStatsPanelOpen(false)}
+                            className="w-full py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-amber-500/40 text-[10px] font-black text-amber-200 transition-colors"
+                        >
+                            ▼ 스탯 창 접기
+                        </button>
                     </div>
                 )}
 
@@ -4661,23 +4737,48 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                     </span>
                                 )}
                             </div>
-                            {/* 적용 중인 버프 & 상태이상 남은 턴수 명확 표시 */}
+                            {/* 적용 중인 버프 & 상태이상: 모바일에서도 한 줄 요약 + 클릭 펼치기/접기로 깔끔하게! */}
                             {((activeUnit.activeBuffs || []).length > 0 || (activeUnit.activeStatuses || []).length > 0) && (
-                                <div className="flex items-center gap-1 mt-1 flex-wrap">
-                                    {(activeUnit.activeBuffs || []).map(b => (
-                                        <span key={b.name} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-400/50 text-amber-200">
-                                            ✨ {b.name} · {b.turns}턴 남음
-                                        </span>
-                                    ))}
-                                    {(activeUnit.activeStatuses || []).map(s => (
-                                        <span key={s.name} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-950/70 border border-rose-400/50 text-rose-200">
-                                            ⚠️ {s.name} · {s.turns}턴
-                                        </span>
-                                    ))}
+                                <div className="mt-1">
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                        <button
+                                            type="button"
+                                            onClick={() => setBottomBuffsOpen(v => !v)}
+                                            className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-950/85 hover:bg-amber-900/90 border border-amber-400/60 text-amber-200 transition-colors"
+                                        >
+                                            <span>✨ 버프 {(activeUnit.activeBuffs || []).length}</span>
+                                            {(activeUnit.activeStatuses || []).length > 0 && (
+                                                <span className="text-rose-300">· ⚠️{(activeUnit.activeStatuses || []).length}</span>
+                                            )}
+                                            <span className="text-[9px] text-amber-300/90">{bottomBuffsOpen ? '접기 ▲' : '보기 ▼'}</span>
+                                        </button>
+                                        {!bottomBuffsOpen && (activeUnit.activeBuffs || []).slice(0, 2).map(b => (
+                                            <span
+                                                key={b.name}
+                                                className="hidden sm:inline-block text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950/60 border border-amber-400/40 text-amber-200 truncate max-w-[140px]"
+                                            >
+                                                {b.name} ({b.turns}T)
+                                            </span>
+                                        ))}
+                                    </div>
+                                    {bottomBuffsOpen && (
+                                        <div className="flex items-center gap-1 mt-1 flex-wrap max-h-24 overflow-y-auto pr-1">
+                                            {(activeUnit.activeBuffs || []).map(b => (
+                                                <span key={b.name} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950/75 border border-amber-400/50 text-amber-200">
+                                                    ✨ {b.name} · {b.turns}T
+                                                </span>
+                                            ))}
+                                            {(activeUnit.activeStatuses || []).map(s => (
+                                                <span key={s.name} className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-950/75 border border-rose-400/50 text-rose-200">
+                                                    ⚠️ {s.name} · {s.turns}T
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
-                        <div className="flex items-center gap-1 text-[10px] font-bold">
+                        <div className="flex items-center gap-1 text-[10px] font-bold flex-wrap shrink-0">
                             <span
                                 className="px-1.5 py-0.5 rounded bg-sky-500/20 border border-sky-400/50 text-sky-300"
                                 title={`AGI ${formatCompactKorean(activeUnit.agi)} 기반 1턴 이동 거리: 최대 ${activeUnit.moveMeters.toFixed(1)}m`}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Character, CityTier, DistrictType } from '../types';
 import { WORLD_GEOGRAPHY, TIER_DISTRICTS, DISTRICT_CONFIG } from '../constants';
 import { getBossByLocation } from '../bossMonsters';
@@ -12,6 +12,7 @@ import MidnightPenaltyModal from './MidnightPenaltyModal';
 import MilitaryCityActionPanel from './MilitaryCityActionPanel';
 import MilitaryInfiltrationModal from './MilitaryInfiltrationModal';
 import CityRpgCanvas from './CityRpgCanvas';
+import BaseRpgCanvas from './BaseRpgCanvas';
 import { 
     Building2, Store, Users2, Clock, Shield, Tent, Crown, Home, Sword, 
     MapPin, BookOpen, Map, ShieldAlert, Compass, ChevronRight, HelpCircle, Calendar,
@@ -24,7 +25,9 @@ interface Props {
     onEnterCity: (district?: DistrictType | 'Gate', openHuntMap?: boolean) => void;
     onOpenDungeon: () => void;
     onOpenMap: () => void;
-    onOpenBase?: () => void;
+    onOpenBase?: (initialSubModal?: string) => void;
+    activeMapZone?: 'city' | 'base';
+    onChangeMapZone?: (zone: 'city' | 'base') => void;
     onOpenElfCity?: () => void;
     onOpenDemonCity?: () => void;
     onOpenBeastCity?: () => void;
@@ -43,6 +46,8 @@ const CityMapBoard: React.FC<Props> = ({
     onOpenDungeon, 
     onOpenMap,
     onOpenBase,
+    activeMapZone: externalMapZone,
+    onChangeMapZone,
     onOpenElfCity,
     onOpenDemonCity,
     onOpenBeastCity,
@@ -57,6 +62,13 @@ const CityMapBoard: React.FC<Props> = ({
     const [isQuickTravelOpen, setIsQuickTravelOpen] = useState(false);
     const [isMidnightModalOpen, setIsMidnightModalOpen] = useState(false);
     const [isInfiltrationModalOpen, setIsInfiltrationModalOpen] = useState(false);
+    const [internalMapZone, setInternalMapZone] = useState<'city' | 'base'>('city');
+    const activeMapZone = externalMapZone ?? internalMapZone;
+    const setActiveMapZone = (next: 'city' | 'base') => {
+        setInternalMapZone(next);
+        onChangeMapZone?.(next);
+    };
+    const [isZoneFading, setIsZoneFading] = useState(false);
     const [mapViewMode, setMapViewMode] = useState<'rpg' | 'classic'>(() => {
         try {
             const saved = localStorage.getItem('shinryoku_city_map_view_mode');
@@ -72,6 +84,27 @@ const CityMapBoard: React.FC<Props> = ({
         } catch {}
     };
     const loc = character.currentLocation || { region: "아시아", nation: "대한민국", city: "서울" };
+
+    useEffect(() => {
+        setActiveMapZone('city');
+    }, [loc.city, Boolean(character.base)]);
+
+    const switchMapZone = (nextZone: 'city' | 'base') => {
+        setIsZoneFading(true);
+        window.setTimeout(() => {
+            setActiveMapZone(nextZone);
+            window.setTimeout(() => setIsZoneFading(false), 140);
+        }, 160);
+    };
+
+    const handleEnterBaseFromMap = () => {
+        // 기지가 건설되어 있는 경우에만 2D 기지 RPG 맵으로 진입, 미보유 시 기존 BaseModal 건설 화면 오픈
+        if (character.base) {
+            switchMapZone('base');
+        } else {
+            onOpenBase?.();
+        }
+    };
 
     // 군대 첩보 임무 판별
     const activeMilitaryMissions = character.militaryData?.activeMissions || [];
@@ -709,41 +742,65 @@ const CityMapBoard: React.FC<Props> = ({
                 </div>
             </div>
 
-            {mapViewMode === 'rpg' ? (
-                <div className="z-10 flex-1 mt-1 mb-[62px] sm:mb-[54px] flex flex-col w-full min-h-[320px] sm:min-h-[calc(100vh-165px)]">
-                    <CityRpgCanvas
+            {activeMapZone === 'base' && character.base ? (
+                <div className="z-10 flex-1 mt-1 mb-[62px] sm:mb-[54px] flex flex-col w-full min-h-[320px] sm:min-h-[calc(100vh-165px)] relative">
+                    <BaseRpgCanvas
                         character={character}
-                        region={loc.region}
-                        nation={loc.nation}
-                        city={loc.city}
-                        tier={tier}
-                        activeDistricts={activeDistricts}
-                        hasBaseInCurrentLocation={hasBaseInCurrentLocation}
-                        isElfNation={isElfNation}
-                        isBeastNation={isBeastNation}
-                        isDemonNation={isDemonNation}
-                        canOpenTranscendentArena={Boolean(isShingye && loc.city === '신의 거처' && onOpenTranscendentArena)}
-                        canOpenAbyssTower={Boolean(isMagye && loc.city === '임페리얼' && onOpenAbyssTower)}
-                        timePeriod={timeAtmosphere.period as any}
-                        timeLabel={timeAtmosphere.label}
-                        currentTime={character.currentTime || '08:00'}
-                        backgroundImageUrl={getResolvedBackgroundUrl(cityBg.url)}
-                        backgroundFallbackUrl={cityBg.fallbackUrl ? getResolvedBackgroundUrl(cityBg.fallbackUrl) : undefined}
-                        backgroundRawUrl={cityBg.url}
-                        backgroundFilterClass={isShingye ? (isMidnightLabor ? 'brightness-90 contrast-110 saturate-120' : 'brightness-105 contrast-105 saturate-110') : timeFilter.filterClass}
-                        isMythicBoss={isMythicBoss}
-                        bossName={currentBoss?.name}
-                        onEnterCity={onEnterCity}
-                        onOpenDungeon={onOpenDungeon}
-                        onOpenMap={onOpenMap}
-                        onOpenBase={onOpenBase}
-                        onOpenElfCity={onOpenElfCity}
-                        onOpenDemonCity={onOpenDemonCity}
-                        onOpenBeastCity={onOpenBeastCity}
-                        onOpenTranscendentArena={onOpenTranscendentArena}
-                        onOpenAbyssTower={onOpenAbyssTower}
+                        onExitToCity={() => switchMapZone('city')}
+                        onOpenBaseModal={(subModal) => onOpenBase?.(subModal)}
                         onInspectCompanion={onInspectCompanion}
+                        onUpdateCharacter={onUpdateCharacter}
                     />
+                    {isZoneFading && (
+                        <div className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center transition-opacity duration-150 pointer-events-none">
+                            <span className="text-amber-200 font-black text-sm tracking-widest animate-pulse">
+                                🏙️ 도시 광장으로 이동 중...
+                            </span>
+                        </div>
+                    )}
+                </div>
+            ) : mapViewMode === 'rpg' ? (
+                <div className="z-10 flex-1 mt-1 mb-[62px] sm:mb-[54px] flex flex-col w-full min-h-[320px] sm:min-h-[calc(100vh-165px)] relative">
+                    <CityRpgCanvas
+                            character={character}
+                            region={loc.region}
+                            nation={loc.nation}
+                            city={loc.city}
+                            tier={tier}
+                            activeDistricts={activeDistricts}
+                            hasBaseInCurrentLocation={hasBaseInCurrentLocation}
+                            isElfNation={isElfNation}
+                            isBeastNation={isBeastNation}
+                            isDemonNation={isDemonNation}
+                            canOpenTranscendentArena={Boolean(isShingye && loc.city === '신의 거처' && onOpenTranscendentArena)}
+                            canOpenAbyssTower={Boolean(isMagye && loc.city === '임페리얼' && onOpenAbyssTower)}
+                            timePeriod={timeAtmosphere.period as any}
+                            timeLabel={timeAtmosphere.label}
+                            currentTime={character.currentTime || '08:00'}
+                            backgroundImageUrl={getResolvedBackgroundUrl(cityBg.url)}
+                            backgroundFallbackUrl={cityBg.fallbackUrl ? getResolvedBackgroundUrl(cityBg.fallbackUrl) : undefined}
+                            backgroundRawUrl={cityBg.url}
+                            backgroundFilterClass={isShingye ? (isMidnightLabor ? 'brightness-90 contrast-110 saturate-120' : 'brightness-105 contrast-105 saturate-110') : timeFilter.filterClass}
+                            isMythicBoss={isMythicBoss}
+                            bossName={currentBoss?.name}
+                            onEnterCity={onEnterCity}
+                            onOpenDungeon={onOpenDungeon}
+                            onOpenMap={onOpenMap}
+                            onOpenBase={handleEnterBaseFromMap}
+                            onOpenElfCity={onOpenElfCity}
+                            onOpenDemonCity={onOpenDemonCity}
+                            onOpenBeastCity={onOpenBeastCity}
+                            onOpenTranscendentArena={onOpenTranscendentArena}
+                            onOpenAbyssTower={onOpenAbyssTower}
+                            onInspectCompanion={onInspectCompanion}
+                        />
+                    {isZoneFading && (
+                        <div className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center transition-opacity duration-150 pointer-events-none">
+                            <span className="text-amber-200 font-black text-sm tracking-widest animate-pulse">
+                                🏰 기지 구역으로 이동 중...
+                            </span>
+                        </div>
+                    )}
                 </div>
             ) : (
             /* Main Interactive Tactical City Map Visualizer */
@@ -1087,7 +1144,7 @@ const CityMapBoard: React.FC<Props> = ({
                 {hasBaseInCurrentLocation && (
                     <div className="absolute right-[3%] xs:right-[6%] sm:right-[20%] bottom-[24%] sm:bottom-[18%] z-10">
                         <button 
-                            onClick={() => onOpenBase?.()}
+                            onClick={handleEnterBaseFromMap}
                             className="w-[56px] xs:w-[68px] sm:w-[76px] flex flex-col items-center group cursor-pointer"
                         >
                             <div className="w-8 h-8 xs:w-10 xs:h-10 sm:w-11 sm:h-11 rounded-full bg-slate-950 hover:bg-slate-900 border border-cyan-500/70 hover:border-cyan-400 flex items-center justify-center transition-all duration-300 relative shadow-lg shadow-cyan-500/20 group-hover:scale-105 active:scale-95">
