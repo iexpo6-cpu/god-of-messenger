@@ -123,9 +123,9 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
         const torchBonus = Number((obsMaxLv * 0.5).toFixed(1));
         const isCityScouted = Boolean(character.scoutedDungeons?.includes(city));
 
-        if (character.dungeonProgress?.gridDungeon) {
+        if (character.dungeonProgress?.gridDungeon && character.dungeonProgress.gridDungeon.width >= 21) {
             const saved = character.dungeonProgress.gridDungeon as GridDungeonState;
-            const baseTorch = saved.dungeonType === 'mythic' ? 1.5 : 1.8;
+            const baseTorch = saved.dungeonType === 'mythic' ? 3.5 : 3.8;
             const updatedTorchRadius = Math.max(saved.torchRadius, Number((baseTorch + torchBonus).toFixed(1)));
             const restoredTiles = saved.tiles.map(row => row.map(tile => ({
                 ...tile,

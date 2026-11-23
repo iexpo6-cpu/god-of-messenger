@@ -187,7 +187,7 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [zoom, setZoom] = useState<number>(1.05);
+    const [zoom, setZoom] = useState<number>(0.92);
     const [viewportSize, setViewportSize] = useState({ width: 720, height: 500 });
     const [hoverTile, setHoverTile] = useState<{ x: number; y: number } | null>(null);
 

@@ -104,9 +104,9 @@ export const generateGridDungeonFloor = (
     const maxFloors = isMythic ? 5 : 3;
     const isFinalFloor = floor === maxFloors - 1;
 
-    // 혁신안 2: 맵 스케일 확장 (일반 13x13, 일반 보스층 15x15 / 신화 17x17, 신화 보스층 17x17)
-    const width = isMythic ? 17 : (isFinalFloor ? 15 : 13);
-    const height = isMythic ? 17 : (isFinalFloor ? 15 : 13);
+    // 광활한 미궁 스케일 확장 (일반 21x21, 보스층 23x23 / 신화 25x25)
+    const width = isMythic ? 25 : (isFinalFloor ? 23 : 21);
+    const height = isMythic ? 25 : (isFinalFloor ? 23 : 21);
 
     const tiles = createEmptyGrid(width, height);
 
@@ -121,34 +121,34 @@ export const generateGridDungeonFloor = (
     }
 
     const rooms: Room[] = [];
-    const minRoomSize = 3;
-    const maxRoomSize = isMythic ? 5 : 5;
-    const targetRoomCount = isFinalFloor ? (isMythic ? 5 : 4) : (isMythic ? 8 : 6);
+    // 3x3 섹터 그리드 기반으로 맵 전역에 7~9개의 큼직한 방을 고르게 배치 (절대 방 2개로 끝나지 않음!)
+    const gridCols = 3;
+    const gridRows = 3;
+    const cellW = Math.floor((width - 2) / gridCols);
+    const cellH = Math.floor((height - 2) / gridRows);
 
-    // 보스 층이면 마지막에 들어갈 넓직한 보스 알현실(5x5)을 우측 하단/중앙 하단에 우선 확보
-    for (let attempts = 0; attempts < 90 && rooms.length < targetRoomCount; attempts++) {
-        const isLastSlotForBoss = isFinalFloor && rooms.length === targetRoomCount - 1;
-        const rw = isLastSlotForBoss ? 5 : (minRoomSize + Math.floor(Math.random() * (maxRoomSize - minRoomSize + 1)));
-        const rh = isLastSlotForBoss ? 5 : (minRoomSize + Math.floor(Math.random() * (maxRoomSize - minRoomSize + 1)));
-        const rx = 1 + Math.floor(Math.random() * Math.max(1, width - rw - 2));
-        const ry = 1 + Math.floor(Math.random() * Math.max(1, height - rh - 2));
-
-        let overlap = false;
-        for (const r of rooms) {
-            if (
-                rx <= r.x + r.w &&
-                rx + rw >= r.x &&
-                ry <= r.y + r.h &&
-                ry + rh >= r.y
-            ) {
-                overlap = true;
-                break;
+    for (let gy = 0; gy < gridRows; gy++) {
+        for (let gx = 0; gx < gridCols; gx++) {
+            // 중간 섹터 중 1개만 확률적으로 생략해 자연스러운 비대칭 미궁 구조 형성
+            if (rooms.length >= 3 && gx === 1 && gy === 1 && !isFinalFloor && Math.random() < 0.35) {
+                continue;
             }
-        }
+            const isStartSector = gx === 0 && gy === 0;
+            const isEndSector = gx === gridCols - 1 && gy === gridRows - 1;
+            const minW = isEndSector && isFinalFloor ? 5 : 4;
+            const maxW = Math.min(cellW - 1, isEndSector && isFinalFloor ? 6 : 5);
+            const rw = Math.max(3, minW + Math.floor(Math.random() * Math.max(1, maxW - minW + 1)));
+            const rh = Math.max(3, minW + Math.floor(Math.random() * Math.max(1, maxW - minW + 1)));
 
-        if (!overlap) {
-            const role: GridRoomRole = rooms.length === 0 ? 'start' : 'normal';
-            rooms.push({
+            const baseX = 1 + gx * cellW;
+            const baseY = 1 + gy * cellH;
+            const slackX = Math.max(0, cellW - rw - 1);
+            const slackY = Math.max(0, cellH - rh - 1);
+            const rx = Math.min(width - rw - 1, baseX + Math.floor(Math.random() * (slackX + 1)));
+            const ry = Math.min(height - rh - 1, baseY + Math.floor(Math.random() * (slackY + 1)));
+
+            const role: GridRoomRole = isStartSector ? 'start' : (isEndSector && isFinalFloor ? 'boss' : 'normal');
+            const rm: Room = {
                 x: rx,
                 y: ry,
                 w: rw,
@@ -156,7 +156,8 @@ export const generateGridDungeonFloor = (
                 cx: Math.floor(rx + rw / 2),
                 cy: Math.floor(ry + rh / 2),
                 role
-            });
+            };
+            rooms.push(rm);
 
             for (let y = ry; y < ry + rh; y++) {
                 for (let x = rx; x < rx + rw; x++) {
@@ -167,24 +168,11 @@ export const generateGridDungeonFloor = (
         }
     }
 
-    // 비상 방 보장
-    if (rooms.length < 2) {
-        for (let y = 1; y <= 4; y++) {
-            for (let x = 1; x <= 4; x++) tiles[y][x].type = 'floor';
-        }
-        rooms.push({ x: 1, y: 1, w: 4, h: 4, cx: 2, cy: 2, role: 'start' });
-
-        for (let y = height - 6; y <= height - 2; y++) {
-            for (let x = width - 6; x <= width - 2; x++) tiles[y][x].type = 'floor';
-        }
-        rooms.push({ x: width - 6, y: height - 6, w: 5, h: 5, cx: width - 4, cy: height - 4, role: isFinalFloor ? 'boss' : 'normal' });
-    }
-
-    // 2. 방과 방 사이를 광폭 회랑(2칸 폭 복도 + 메인 통로)으로 연결
+    // 2. 방과 방 사이를 광폭 회랑(2칸 폭 복도 + 순환 통로)으로 시원하게 연결
     for (let i = 0; i < rooms.length - 1; i++) {
         let { cx: x1, cy: y1 } = rooms[i];
         let { cx: x2, cy: y2 } = rooms[i + 1];
-        const isGrandCorridor = i === 0 || i === rooms.length - 2 || isMythic;
+        const isGrandCorridor = i % 2 === 0 || isMythic;
 
         while (x1 !== x2) {
             tiles[y1][x1].type = 'floor';
@@ -199,6 +187,23 @@ export const generateGridDungeonFloor = (
                 tiles[y1][x1 + 1].type = 'floor';
             }
             y1 += y1 < y2 ? 1 : -1;
+        }
+    }
+    // 첫 방과 중간 방, 중간 방과 끝 방을 추가 연결해 갈림길 탐험 재미 부여
+    if (rooms.length >= 6) {
+        const extraPairs = [[0, 3], [1, 4], [2, rooms.length - 1]];
+        for (const [aIdx, bIdx] of extraPairs) {
+            if (!rooms[aIdx] || !rooms[bIdx]) continue;
+            let { cx: x1, cy: y1 } = rooms[aIdx];
+            let { cx: x2, cy: y2 } = rooms[bIdx];
+            while (y1 !== y2) {
+                tiles[y1][x1].type = 'floor';
+                y1 += y1 < y2 ? 1 : -1;
+            }
+            while (x1 !== x2) {
+                tiles[y1][x1].type = 'floor';
+                x1 += x1 < x2 ? 1 : -1;
+            }
         }
     }
 
@@ -234,17 +239,20 @@ export const generateGridDungeonFloor = (
         tiles[endRoom.cy][endRoom.cx].isIdentified = true;
     }
 
-    // 4. 테마 룸 인테리어 (석주 열주 + 가고일 수호 석상 + 왕실 레드카펫 러너 대칭 배치)
+    // 4. 테마 룸 인테리어 (보스방에만 왕실 레드카펫 & 주요 대형 홀 모서리에만 석주/가고일 절제 배치)
     for (let rIdx = 0; rIdx < rooms.length; rIdx++) {
         const rm = rooms[rIdx];
-        // 보스 알현실 및 주요 대형 홀 중앙 통로에 royal_carpet 깔기
-        for (let cy = rm.y; cy < rm.y + rm.h; cy++) {
-            const carpetTile = tiles[cy]?.[rm.cx];
-            if (carpetTile && carpetTile.type === 'floor') {
-                carpetTile.hasCarpet = true;
+        // 보스 알현실(또는 마지막 방) 중앙 세로열에만 royal_carpet 깔기 (어수선함 방지)
+        if (rIdx === rooms.length - 1) {
+            for (let cy = rm.y; cy < rm.y + rm.h; cy++) {
+                const carpetTile = tiles[cy]?.[rm.cx];
+                if (carpetTile && carpetTile.type === 'floor') {
+                    carpetTile.hasCarpet = true;
+                }
             }
         }
-        if (rm.w >= 4 && rm.h >= 4) {
+        // 시작 방(rIdx === 0)은 시야가 탁 트이도록 기둥을 두지 않고, 5x5 이상 대형 방이나 보스방 모서리에만 기둥/가고일 배치
+        if (rIdx > 0 && (rm.w >= 5 || rm.h >= 5 || rIdx === rooms.length - 1)) {
             const corners = [
                 { x: rm.x, y: rm.y },
                 { x: rm.x + rm.w - 1, y: rm.y },
@@ -273,16 +281,19 @@ export const generateGridDungeonFloor = (
         }
     }
 
-    // 5. 사용 가능한 바닥 타일 수집 (입구, 출구, 석주/가고일 타일 제외)
+    // 5. 사용 가능한 바닥 타일 수집 + 최소 간격(Spacing >= 2칸) 보장 픽커!
+    // 시작점(playerPos) 주변 반경 2칸 이내에는 어떤 오브젝트/몬스터도 배치하지 않아 첫 화면을 깔끔하게 유지합니다.
     const availableFloors: { x: number; y: number }[] = [];
     for (let y = 1; y < height - 1; y++) {
         for (let x = 1; x < width - 1; x++) {
+            const distFromStart = Math.max(Math.abs(x - startRoom.cx), Math.abs(y - startRoom.cy));
+            const distFromEnd = Math.max(Math.abs(x - endRoom.cx), Math.abs(y - endRoom.cy));
             if (
                 tiles[y][x].type === 'floor' &&
                 !tiles[y][x].propType &&
                 !tiles[y][x].content &&
-                !(x === startRoom.cx && y === startRoom.cy) &&
-                !(x === endRoom.cx && y === endRoom.cy)
+                distFromStart >= 2 &&
+                distFromEnd >= 1
             ) {
                 availableFloors.push({ x, y });
             }
@@ -294,20 +305,46 @@ export const generateGridDungeonFloor = (
         [availableFloors[i], availableFloors[j]] = [availableFloors[j], availableFloors[i]];
     }
 
+    const occupiedCoords: { x: number; y: number }[] = [
+        { x: startRoom.cx, y: startRoom.cy },
+        { x: endRoom.cx, y: endRoom.cy }
+    ];
+
+    // 다른 오브젝트와 최소 minDist(체비쇼프 거리) 이상 떨어진 타일을 우선 선택하여 다닥다닥 붙는 현상을 원천 차단!
+    const pickSpacedTile = (minDist: number = 2): { x: number; y: number } | null => {
+        for (let d = minDist; d >= 1; d--) {
+            for (let i = availableFloors.length - 1; i >= 0; i--) {
+                const cand = availableFloors[i];
+                const tooClose = occupiedCoords.some(
+                    occ => Math.max(Math.abs(occ.x - cand.x), Math.abs(occ.y - cand.y)) < d
+                );
+                if (!tooClose) {
+                    availableFloors.splice(i, 1);
+                    occupiedCoords.push(cand);
+                    return cand;
+                }
+            }
+        }
+        return null;
+    };
+
     // 신화 보스 던전 2~4층에는 봉인석 1개씩 배치
-    if (isMythic && floor > 0 && floor < maxFloors - 1 && availableFloors.length > 0) {
-        const p = availableFloors.pop()!;
-        tiles[p.y][p.x].content = 'rune_stone';
-        tiles[p.y][p.x].roomRole = 'rune';
-        tiles[p.y][p.x].name = `고대 신화 봉인석 [제${floor} 각인]`;
-        tiles[p.y][p.x].description = '최종 보스 제단의 결계를 해제하기 위해 파괴해야 할 신성한 룬 오벨리스크입니다.';
-        tiles[p.y][p.x].isIdentified = true;
+    if (isMythic && floor > 0 && floor < maxFloors - 1) {
+        const p = pickSpacedTile(3);
+        if (p) {
+            tiles[p.y][p.x].content = 'rune_stone';
+            tiles[p.y][p.x].roomRole = 'rune';
+            tiles[p.y][p.x].name = `고대 신화 봉인석 [제${floor} 각인]`;
+            tiles[p.y][p.x].description = '최종 보스 제단의 결계를 해제하기 위해 파괴해야 할 신성한 룬 오벨리스크입니다.';
+            tiles[p.y][p.x].isIdentified = true;
+        }
     }
 
-    // 계단/보스 앞 정예 수호자(MiniBoss) 배치 (붉은 암흑기사 & 고대 골렘 수호병)
-    const miniBossCount = isMythic ? 2 : 2;
-    for (let i = 0; i < miniBossCount && availableFloors.length > 0; i++) {
-        const p = availableFloors.pop()!;
+    // 계단/보스 앞 정예 수호자(MiniBoss) 배치 (2마리, 서로 3칸 이상 간격)
+    const miniBossCount = 2;
+    for (let i = 0; i < miniBossCount; i++) {
+        const p = pickSpacedTile(3);
+        if (!p) break;
         const isGolem = i % 2 === 1;
         tiles[p.y][p.x].content = 'miniboss';
         tiles[p.y][p.x].enemyVariant = isGolem ? 'golem' : 'shadow';
@@ -318,10 +355,11 @@ export const generateGridDungeonFloor = (
         tiles[p.y][p.x].isIdentified = true;
     }
 
-    // 보물 상자 배치 (일반 2~3개, 신화 3~5개)
-    const chestCount = isMythic ? (3 + Math.floor(Math.random() * 3)) : (2 + Math.floor(Math.random() * 2));
-    for (let i = 0; i < chestCount && availableFloors.length > 0; i++) {
-        const p = availableFloors.pop()!;
+    // 보물 상자 배치 (일반 2~3개, 신화 3~4개, 최소 3칸 간격)
+    const chestCount = isMythic ? 3 : 2;
+    for (let i = 0; i < chestCount; i++) {
+        const p = pickSpacedTile(3);
+        if (!p) break;
         tiles[p.y][p.x].content = 'chest';
         tiles[p.y][p.x].roomRole = 'treasure';
         tiles[p.y][p.x].name = '황금 보물 상자';
@@ -333,26 +371,29 @@ export const generateGridDungeonFloor = (
         };
     }
 
-    // 치유의 신성한 샘(Shrine) 배치 (매 층 1개 보장 + 바닥 성역 오라)
-    if (availableFloors.length > 0) {
-        const p = availableFloors.pop()!;
-        tiles[p.y][p.x].content = 'shrine';
-        tiles[p.y][p.x].zoneType = 'holy';
-        tiles[p.y][p.x].roomRole = 'shrine';
-        tiles[p.y][p.x].name = '치유의 신성한 샘';
-        tiles[p.y][p.x].description = '마시면 파티 전체의 생명력과 마력이 60% 회복되는 영험한 성소입니다.';
-        tiles[p.y][p.x].isIdentified = true;
-        tiles[p.y][p.x].shrineData = {
-            title: '신성한 샘의 가호',
-            buffType: 'heal',
-            valueDesc: '파티 전체 HP/MP 60% 회복'
-        };
+    // 치유의 신성한 샘(Shrine) 배치 (매 층 1개 보장)
+    {
+        const p = pickSpacedTile(3);
+        if (p) {
+            tiles[p.y][p.x].content = 'shrine';
+            tiles[p.y][p.x].zoneType = 'holy';
+            tiles[p.y][p.x].roomRole = 'shrine';
+            tiles[p.y][p.x].name = '치유의 신성한 샘';
+            tiles[p.y][p.x].description = '마시면 파티 전체의 생명력과 마력이 60% 회복되는 영험한 성소입니다.';
+            tiles[p.y][p.x].isIdentified = true;
+            tiles[p.y][p.x].shrineData = {
+                title: '신성한 샘의 가호',
+                buffType: 'heal',
+                valueDesc: '파티 전체 HP/MP 60% 회복'
+            };
+        }
     }
 
-    // 일반 마물 심볼 배치 (그림자 마수 + 망령 사신 wraith_reaper + 탐욕의 미믹 mimic_chest)
-    const enemyCount = isMythic ? (7 + Math.floor(Math.random() * 4)) : (5 + Math.floor(Math.random() * 2));
-    for (let i = 0; i < enemyCount && availableFloors.length > 0; i++) {
-        const p = availableFloors.pop()!;
+    // 일반 마물 심볼 배치 (넓은 맵에 최소 2~3칸 간격으로 여유롭게 배치)
+    const enemyCount = isMythic ? 7 : 5;
+    for (let i = 0; i < enemyCount; i++) {
+        const p = pickSpacedTile(2);
+        if (!p) break;
         const variant: GridEnemyVariant = i === 0 ? 'mimic' : (i % 2 === 1 ? 'wraith' : 'shadow');
         tiles[p.y][p.x].content = 'enemy';
         tiles[p.y][p.x].enemyVariant = variant;
@@ -367,7 +408,7 @@ export const generateGridDungeonFloor = (
         tiles[p.y][p.x].isIdentified = true;
     }
 
-    // 혁신안 3 확장: g2 & g3 신규 인테리어·함정·상인·휴식처 포함 총 10종 인터랙티브 프롭 배치!
+    // 인터랙티브 프롭 10종을 각 방마다 1~2개씩만 여유 있는 간격(minDist=2)으로 배치
     const interactiveProps: { type: GridPropType; name: string; desc: string; count: number }[] = [
         {
             type: 'campfire',
@@ -385,7 +426,7 @@ export const generateGridDungeonFloor = (
             type: 'bookshelf',
             name: '고대 마도서 서가',
             desc: '빛나는 비전 마도서가 꽂힌 책장입니다. 열람 시 고대 지식(경험치 및 마정석)을 획득합니다.',
-            count: isMythic ? 2 : 1
+            count: 1
         },
         {
             type: 'altar',
@@ -409,31 +450,32 @@ export const generateGridDungeonFloor = (
             type: 'spike_trap',
             name: '기계식 강철 가시 함정',
             desc: '바닥에서 날카로운 강철 가시가 솟구치는 함정입니다. 밟으면 피해를 입지만 해체 부품을 회수합니다.',
-            count: isMythic ? 3 : 2
+            count: 2
         },
         {
             type: 'crate',
             name: '던전 보급품 오크통',
             desc: '밟으면 부서지며 숨겨진 골드나 회복약, 횃불 기름을 얻을 수 있는 보급통입니다.',
-            count: isMythic ? 3 : 2
+            count: 2
         },
         {
             type: 'bones',
             name: '쓰러진 탐험가의 유골',
             desc: '선대 모험가의 유품입니다. 조사 시 마정석을 얻고 현재 층의 숨겨진 방 시야를 밝혀줍니다.',
-            count: isMythic ? 2 : 1
+            count: 1
         },
         {
             type: 'crystal',
             name: '공명하는 마력 수정',
             desc: '순수한 마나가 응축된 크리스탈입니다. 접촉 시 파티 MP를 충전하고 주변 어둠을 영구히 밝힙니다.',
-            count: isMythic ? 3 : 2
+            count: 2
         }
     ];
 
     for (const spec of interactiveProps) {
-        for (let i = 0; i < spec.count && availableFloors.length > 0; i++) {
-            const p = availableFloors.pop()!;
+        for (let i = 0; i < spec.count; i++) {
+            const p = pickSpacedTile(2);
+            if (!p) break;
             tiles[p.y][p.x].propType = spec.type;
             tiles[p.y][p.x].name = spec.name;
             tiles[p.y][p.x].description = spec.desc;
@@ -441,7 +483,7 @@ export const generateGridDungeonFloor = (
         }
     }
 
-    // 혁신안 3: 6종 원소 지형 장판 배치 (화염/물/빙결/독/신성/번개)
+    // 6종 원소 지형 장판도 최소 2~3칸 간격을 두고 각기 다른 방/복도에 1개씩 총 6개만 깔끔하게 배치
     const zoneSpecs: { type: GridZoneType; name: string; desc: string }[] = [
         { type: 'fire', name: '용암 화염 지대', desc: '뜨거운 마그마가 솟구치는 지대입니다. 밟으면 약간의 화상을 입지만 투지가 불타올라 체력을 정화합니다.' },
         { type: 'water', name: '맑은 지하수 웅덩이', desc: '시원한 지하수가 고인 웅덩이입니다. 밟으면 갈증을 해소하여 파티 MP를 15% 회복합니다.' },
@@ -451,18 +493,18 @@ export const generateGridDungeonFloor = (
         { type: 'thunder', name: '낙뢰 마력 균열', desc: '푸른 번개가 치는 대지 균열입니다. 밟으면 전격 에너지가 횃불에 공명하여 시야 반경이 확장됩니다.' }
     ];
 
-    const zoneCount = isMythic ? 9 : 6;
-    for (let i = 0; i < zoneCount && availableFloors.length > 0; i++) {
-        const p = availableFloors.pop()!;
-        const z = zoneSpecs[i % zoneSpecs.length];
+    for (let i = 0; i < zoneSpecs.length; i++) {
+        const p = pickSpacedTile(2);
+        if (!p) break;
+        const z = zoneSpecs[i];
         tiles[p.y][p.x].zoneType = z.type;
         tiles[p.y][p.x].name = z.name;
         tiles[p.y][p.x].description = z.desc;
         tiles[p.y][p.x].isIdentified = true;
     }
 
-    // 6. 플레이어 초기 시야 밝히기 (넓어진 맵에 맞춰 기본 시야를 2.2 / 2.5로 상향!)
-    const baseTorchRadius = isMythic ? 2.2 : 2.5;
+    // 6. 넓어진 21x21~25x25 맵에 맞춰 기본 횃불 시야 반경을 3.5 / 3.8로 시원하게 확장!
+    const baseTorchRadius = isMythic ? 3.5 : 3.8;
     const finalTorchRadius = Number((baseTorchRadius + (options?.torchBonus || 0)).toFixed(1));
     revealFogOfWar(tiles, playerPos.x, playerPos.y, finalTorchRadius);
     if (options?.isScouted) {
