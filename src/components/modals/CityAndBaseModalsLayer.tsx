@@ -151,7 +151,7 @@ export const CityAndBaseModalsLayer: React.FC<Props> = ({
 }) => {
   return (
     <>
-      {isMapOpen && (
+      {isMapOpen && sceneType === 'normal' && (
         <Suspense fallback={<SceneLoadingFallback mode="general" title="대륙 지도 불러오는 중" />}>
           <MapModal 
             isOpen={isMapOpen} 
@@ -162,6 +162,8 @@ export const CityAndBaseModalsLayer: React.FC<Props> = ({
             }} 
             character={character} 
             onTravel={handleTravel} 
+            onUpdateCharacter={handleUpdateCharacter}
+            onBattle={handleBattleTrigger}
             mode={mapMode} 
             residentCount={1 + (character.companions?.length || 0) + (character.inactiveCompanions?.length || 0)} 
             initialTargetLocationName={mapInitialTargetLocationName} 

@@ -346,6 +346,28 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
             return;
         }
 
+        // 3-1. 인접 칸 몬스터 접촉 전투 (상하좌우 우선, 대각선 포함)
+        const adjOffsets = [
+            { dx: 0, dy: -1 },
+            { dx: 0, dy: 1 },
+            { dx: -1, dy: 0 },
+            { dx: 1, dy: 0 },
+            { dx: -1, dy: -1 },
+            { dx: 1, dy: -1 },
+            { dx: -1, dy: 1 },
+            { dx: 1, dy: 1 }
+        ];
+        for (const { dx, dy } of adjOffsets) {
+            const ax = playerPos.x + dx;
+            const ay = playerPos.y + dy;
+            if (ax < 0 || ax >= currentGrid.width || ay < 0 || ay >= currentGrid.height) continue;
+            const adjTile = tiles[ay][ax];
+            if (adjTile && !adjTile.isCleared && (adjTile.content === 'enemy' || adjTile.content === 'miniboss')) {
+                triggerGridBattle(adjTile.content, adjTile, activeChar, currentGrid);
+                return;
+            }
+        }
+
         // 4. 보물 상자 (Chest)
         if (targetTile.content === 'chest' && !targetTile.isCleared) {
             const gold = targetTile.treasureData?.gold || 10000;

@@ -87,7 +87,7 @@ import { calculateTravelCostAndDays } from './services/travelCalculationService'
 import { calculateBaseRelocationPlan, executeBaseRelocation } from './services/baseRelocationService';
 import { getBaseGridExpansionDuration, getBaseUpgradeDuration, getFacilityConstructionDuration, calculateCompletionDateTime, getConstructionRemainingTime } from './services/baseConstructionService';
 import { validateFacilityLevelUpSpace } from './services/baseTilemapEngine';
-import { advanceGameTime, applyRestHealing, flushBufferedReports } from './services/gameTimeService';
+import { advanceGameTime, applyRestHealing, flushBufferedReports, formatDuration } from './services/gameTimeService';
 import { MobileBottomNavigationBar } from './components/common/MobileBottomNavigationBar';
 import { InventoryModal } from './components/InventoryModal';
 import CompanionModal from './components/CompanionModal';
@@ -2471,18 +2471,33 @@ useEffect(() => {
       setIsTutorialGuideOpen(true);
   };
 
- const handleTravel = (destination: Location, cost: number, days: number, totalMinutes?: number) => {
+ const handleTravel = (
+      destination: Location,
+      cost: number,
+      days: number,
+      totalMinutes?: number,
+      options?: { skipLoadingAndMonsterAmbush?: boolean; alreadyInAmbushBattle?: boolean }
+  ) => {
       if (mapMode === "relocate") {
           handleRelocateBase(destination, totalMinutes);
           return;
       }
 
       const travelCalc = calculateTravelCostAndDays(character.currentLocation, destination, character);
-      const minutesToAdvance = travelCalc.totalMinutes > 0 ? travelCalc.totalMinutes : Math.max(1, (days || 1) * 1440);
+      const minutesToAdvance =
+          typeof totalMinutes === 'number' && totalMinutes > 0
+              ? totalMinutes
+              : travelCalc.totalMinutes > 0
+                  ? travelCalc.totalMinutes
+                  : Math.max(1, (days || 1) * 1440);
       const actualDays = Math.floor(minutesToAdvance / 1440);
+      const durationLabel =
+          typeof totalMinutes === 'number' && totalMinutes > 0
+              ? formatDuration(minutesToAdvance)
+              : travelCalc.durationText;
 
-      if (actualDays < 1) {
-          // 당일 이동 (시간/분 단위 이동): 즉각 완료 및 시간 전진
+      if (actualDays < 1 || options?.skipLoadingAndMonsterAmbush) {
+          // 당일 이동 또는 캔버스 여정 완료 후 즉시 도착 처리 (호위 기습/완료/일일 리포트 포함)
           setIsMapOpen(false);
           const timeResult = advanceGameTime(character, minutesToAdvance, {
               activityName: destination.city + " 이동"
@@ -2498,6 +2513,27 @@ useEffect(() => {
           const newChar = { ...timeResult.updatedCharacter };
           newChar.money -= cost;
           newChar.currentLocation = destination;
+
+          let travelAmbushOccurred = Boolean(options?.alreadyInAmbushBattle);
+          const allActiveEscortQuests = [...(newChar.mercenaryData?.activeQuests || []), ...(newChar.militaryData?.activeMissions || [])];
+          const activeEscort = allActiveEscortQuests.find(q => (q.type === "EscortKing" || q.type === "EscortNoble" || q.type === "MercenaryEscort" || q.type === "MilitaryEscort" || q.type === "MilitaryDiplomaticEscort") && q.isEscortStarted);
+          if (activeEscort && !options?.alreadyInAmbushBattle && Math.random() < 0.35) {
+              travelAmbushOccurred = true;
+              const ambushData = generateEscortAmbushEnemies(activeEscort, newChar);
+              if (newChar.pendingAmbush) {
+                  if (!newChar.queuedAmbushes) newChar.queuedAmbushes = [];
+                  newChar.queuedAmbushes.push(newChar.pendingAmbush);
+                  newChar.queuedAmbush = newChar.queuedAmbushes[0];
+                  delete newChar.pendingAmbush;
+              }
+              handleBattleTrigger(ambushData.enemies, 'normal', activeEscort.id);
+              setResultModalData({
+                  type: 'warning',
+                  title: ambushData.title,
+                  message: ambushData.message,
+                  items: [{ label: '적 세력', after: ambushData.enemyGroupLabel }]
+              });
+          }
 
           // 호위 퀘스트 완료 체크
           const allQuests = [...(newChar.mercenaryData?.activeQuests || []), ...(newChar.militaryData?.activeMissions || [])];
@@ -2536,19 +2572,21 @@ useEffect(() => {
           setCharacter(newChar);
           if (timeResult.logMessage) addToLog(timeResult.logMessage);
           if (timeResult.toastNotice) triggerDayChangeToast(timeResult.toastNotice);
-          addToLog("[시스템] " + destination.city + "에 도착했습니다. (여정 소요: " + travelCalc.durationText + ", 비용: " + cost.toLocaleString() + "G)");
+          addToLog("[시스템] " + destination.city + "에 도착했습니다. (여정 소요: " + durationLabel + ", 비용: " + cost.toLocaleString() + "G)");
 
-          setResultModalData({
-              type: "info",
-              title: "이동 완료",
-              message: destination.city + "에 무사히 도착했습니다." + questCompletedMessage,
-              items: [
-                  { label: "도착지", after: destination.nation + ", " + destination.city },
-                  { label: "소요 시간", after: travelCalc.durationText },
-                  { label: "현재 일시", after: (newChar.currentDate || "2000-03-02") + " " + (newChar.currentTime || "08:00") },
-                  { label: "비용", after: cost.toLocaleString() + "G" }
-              ]
-          });
+          if (!travelAmbushOccurred && !newChar.pendingAmbush) {
+              setResultModalData({
+                  type: "info",
+                  title: "이동 완료",
+                  message: destination.city + "에 무사히 도착했습니다." + questCompletedMessage,
+                  items: [
+                      { label: "도착지", after: destination.nation + ", " + destination.city },
+                      { label: "소요 시간", after: durationLabel },
+                      { label: "현재 일시", after: (newChar.currentDate || "2000-03-02") + " " + (newChar.currentTime || "08:00") },
+                      { label: "비용", after: cost.toLocaleString() + "G" }
+                  ]
+              });
+          }
           return;
       }
 

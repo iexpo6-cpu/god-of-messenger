@@ -1,10 +1,19 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Character, Location } from '../types';
+import { Character, Enemy, Location } from '../types';
 import { WORLD_GEOGRAPHY } from '../constants';
 import { calculateFinalStats } from '../utils';
 import { SEASONAL_BOSS_CONFIG, SEASONAL_BOSSES } from '../mythicbossmonsters';
-import { calculateTravelCostAndDays } from '../services/travelCalculationService';
+import {
+    calculateTravelCostAndDays,
+    calculateTravelOptions,
+    TRANSPORT_CONTRACT_PRICES,
+    TravelOption,
+    TravelTransportType
+} from '../services/travelCalculationService';
+import WorldAtlasCanvas, { AtlasNode } from './map/WorldAtlasCanvas';
+import OverlandExploreCanvas from './map/OverlandExploreCanvas';
+import TravelJourneyOverlay from './map/TravelJourneyOverlay';
 import { 
     X, MapPin, Globe, Flag, Navigation, Footprints, ArrowLeft, ZoomIn, ZoomOut, 
     Star, Maximize, Plane, Crown, Building2, Tent, Home, Truck, Cloud, CloudSun, 
@@ -16,7 +25,15 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   character: Character;
-  onTravel: (destination: Location, cost: number, days: number, totalMinutes?: number) => void;
+  onTravel: (
+    destination: Location,
+    cost: number,
+    days: number,
+    totalMinutes?: number,
+    options?: { skipLoadingAndMonsterAmbush?: boolean; alreadyInAmbushBattle?: boolean }
+  ) => void;
+  onUpdateCharacter?: (newChar: Character, logMsg?: string) => void;
+  onBattle?: (enemies: Enemy | Enemy[], type?: string, source?: string) => void;
   mode?: 'travel' | 'relocate'; 
   residentCount?: number; 
   initialTargetLocationName?: string;
@@ -361,8 +378,35 @@ const getProceduralPosition = (str: string, index: number, total: number, baseX:
     };
 };
 
-const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, mode = 'travel', residentCount = 1, initialTargetLocationName }) => {
+const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, onUpdateCharacter, onBattle, mode = 'travel', residentCount = 1, initialTargetLocationName }) => {
   const [displayMode, setDisplayMode] = useState<DisplayMode>('map');
+  const curLocKey = `${character.currentLocation?.nation}|${character.currentLocation?.city}`;
+  const [isOverlandMode, setIsOverlandMode] = useState<boolean>(() => {
+    try {
+      const raw = sessionStorage.getItem('shinryoku_overland_resume');
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      return parsed?.charId === character.id && parsed?.savedLocationKey === curLocKey;
+    } catch {
+      return false;
+    }
+  });
+  const [overlandTarget, setOverlandTarget] = useState<Location | null>(() => {
+    try {
+      const raw = sessionStorage.getItem('shinryoku_overland_resume');
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed?.charId === character.id && parsed?.savedLocationKey === curLocKey
+        ? (parsed.targetDestination || null)
+        : null;
+    } catch {
+      return null;
+    }
+  });
+  const [selectedTransport, setSelectedTransport] = useState<TravelTransportType | null>(null);
+  const [activeJourney, setActiveJourney] = useState<{ destination: Location; option: TravelOption } | null>(null);
+  const [atlasZoom, setAtlasZoom] = useState(1.08);
+  const [atlasPan, setAtlasPan] = useState({ x: 0, y: 0 });
   const [viewLevel, setViewLevel] = useState<ViewLevel>('world');
   const [realm, setRealm] = useState<RealmType>('mortal');
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
@@ -872,17 +916,100 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, mode 
   };
   const travelInfo = (selectedCity && selectedNation && selectedRegion) ? getTravelInfo(selectedCity, selectedNation, selectedRegion) : null;
 
+  const travelOptions = useMemo<TravelOption[]>(() => {
+      if (!selectedCity || !selectedNation || !selectedRegion || mode !== 'travel') return [];
+      return calculateTravelOptions(
+          originLocation,
+          { region: selectedRegion, nation: selectedNation, city: selectedCity },
+          character
+      );
+  }, [selectedCity, selectedNation, selectedRegion, mode, originLocation, character]);
+
+  const activeTransportOption = useMemo<TravelOption | null>(() => {
+      if (travelOptions.length === 0) return null;
+      return (
+          travelOptions.find(o => o.type === selectedTransport) ||
+          travelOptions.find(o => o.recommended) ||
+          travelOptions[0]
+      );
+  }, [travelOptions, selectedTransport]);
+
+  const applyCharacterDelta = (delta: {
+      goldDelta?: number;
+      expDelta?: number;
+      hpPctDelta?: number;
+      mpPctDelta?: number;
+      reputationDelta?: number;
+      markRescueDate?: string;
+      companionId?: string;
+      affectionDelta?: number;
+      baseResourcesDelta?: { herbs?: number; manaStone?: number; iron?: number; stone?: number };
+      logMessage?: string;
+  }) => {
+      if (!onUpdateCharacter) return;
+      const nextChar: Character = {
+          ...character,
+          stats: { ...character.stats }
+      };
+      if (delta.goldDelta) nextChar.money = Math.max(0, nextChar.money + delta.goldDelta);
+      if (delta.expDelta) nextChar.exp = (nextChar.exp || 0) + delta.expDelta;
+      if (delta.reputationDelta) nextChar.reputation = (nextChar.reputation || 0) + delta.reputationDelta;
+      if (delta.markRescueDate) nextChar.lastTravelRescueDate = delta.markRescueDate;
+      if (delta.baseResourcesDelta && nextChar.base?.resources) {
+          const res = { ...nextChar.base.resources };
+          if (delta.baseResourcesDelta.herbs) res.herbs = (res.herbs || 0) + delta.baseResourcesDelta.herbs;
+          if (delta.baseResourcesDelta.manaStone) res.manaStone = (res.manaStone || 0) + delta.baseResourcesDelta.manaStone;
+          if (delta.baseResourcesDelta.iron) res.iron = (res.iron || 0) + delta.baseResourcesDelta.iron;
+          if (delta.baseResourcesDelta.stone) res.stone = (res.stone || 0) + delta.baseResourcesDelta.stone;
+          nextChar.base = { ...nextChar.base, resources: res };
+      }
+      if (delta.companionId && delta.affectionDelta && Array.isArray(nextChar.companions)) {
+          nextChar.companions = nextChar.companions.map(c =>
+              c.id === delta.companionId
+                  ? { ...c, affection: (c.affection || 0) + delta.affectionDelta! }
+                  : c
+          );
+      }
+      if (delta.hpPctDelta && nextChar.stats) {
+          const maxHp = nextChar.stats.maxHp || 100;
+          nextChar.stats.hp = Math.max(1, Math.min(maxHp, Math.round(nextChar.stats.hp + (maxHp * delta.hpPctDelta) / 100)));
+      }
+      if (delta.mpPctDelta && nextChar.stats) {
+          const maxMp = nextChar.stats.maxMp || 100;
+          nextChar.stats.mp = Math.max(0, Math.min(maxMp, Math.round(nextChar.stats.mp + (maxMp * delta.mpPctDelta) / 100)));
+      }
+      onUpdateCharacter(nextChar, delta.logMessage);
+  };
+
   const handleTravelClick = () => {
       if (travelInfo && selectedCity && selectedNation && selectedRegion) {
           if (selectedRegion === '신계' && character.level < 500) {
               alert('신계는 500레벨 이상만 진입할 수 있습니다.');
               return;
           }
+          const destination: Location = { region: selectedRegion, nation: selectedNation, city: selectedCity };
           if (mode === 'travel') {
-              if (character.money < travelInfo.cost) { alert("골드가 부족합니다."); return; }
-              onTravel({ region: selectedRegion, nation: selectedNation, city: selectedCity }, travelInfo.cost, travelInfo.days, travelInfo.totalMinutes);
+              const opt = activeTransportOption;
+              if (opt?.type === 'walk') {
+                  setOverlandTarget(destination);
+                  setSelectedCity(null);
+                  setDisplayMode('map');
+                  setIsOverlandMode(true);
+                  return;
+              }
+              if (opt?.requiresContract) {
+                  alert(`${opt.label}을(를) 이용하려면 1달 정기계약 또는 영구 구매가 필요합니다.`);
+                  return;
+              }
+              const costToUse = opt ? opt.cost : travelInfo.cost;
+              if (character.money < costToUse) { alert("골드가 부족합니다."); return; }
+              if (opt) {
+                  setActiveJourney({ destination, option: opt });
+              } else {
+                  onTravel(destination, costToUse, travelInfo.days, travelInfo.totalMinutes);
+              }
           } else if (mode === 'relocate') {
-              onTravel({ region: selectedRegion, nation: selectedNation, city: selectedCity }, 0, travelInfo.days, travelInfo.totalMinutes);
+              onTravel(destination, 0, travelInfo.days, travelInfo.totalMinutes);
           }
       }
   };
@@ -1312,9 +1439,9 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, mode 
                 {/* Switch View Mode (Map vs List) */}
                 <div className="flex items-center bg-slate-950 p-0.5 rounded-xl border border-slate-800 shadow-inner">
                     <button 
-                        onClick={() => setDisplayMode('map')} 
+                        onClick={() => { setDisplayMode('map'); setIsOverlandMode(false); }} 
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            displayMode === 'map' 
+                            displayMode === 'map' && !isOverlandMode
                                 ? 'bg-cyan-600 text-white shadow-md' 
                                 : 'text-slate-400 hover:text-slate-200'
                         }`}
@@ -1323,6 +1450,16 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, mode 
                         <MapIcon size={14} />
                         <span>지도</span>
                     </button>
+                    {mode === 'travel' && isOverlandMode && (
+                        <button
+                            onClick={() => { setDisplayMode('map'); setIsOverlandMode(true); setSelectedCity(null); }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-emerald-600 text-white shadow-md"
+                            title="도보 탐험 캔버스 진행 중"
+                        >
+                            <Footprints size={14} />
+                            <span>도보 탐험</span>
+                        </button>
+                    )}
                     <button 
                         onClick={() => setDisplayMode('list')} 
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -1429,7 +1566,13 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, mode 
                 </div>
 
                 {/* Close Button */}
-                <button onClick={onClose} className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+                <button
+                    onClick={() => {
+                        try { sessionStorage.removeItem('shinryoku_overland_resume'); } catch {}
+                        onClose();
+                    }}
+                    className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
                     <X size={18} />
                 </button>
             </div>
@@ -1437,284 +1580,89 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, mode 
 
         {/* MAIN CONTENT: MAP MODE VS LIST MODE */}
         {displayMode === 'map' && (
-            /* =================== MAP VIEW =================== */
-            <div 
-                ref={mapContainerRef}
-                className={`flex-1 relative overflow-hidden ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} ${
-                    realm === 'divine' ? 'bg-[#151632]' : 'bg-[#090b10]'
-                }`}
-                onWheel={handleWheel}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-            >
-                {/* Floating Map Zoom Tools */}
-                <div className="absolute top-4 right-4 z-40 flex flex-col gap-1.5 pointer-events-auto bg-slate-900/90 border border-slate-800 p-1 rounded-xl shadow-2xl backdrop-blur-md">
-                    <button onClick={zoomIn} className="p-2 text-slate-300 rounded-lg hover:text-white hover:bg-slate-800 active:scale-95 transition-all" title="확대"><ZoomIn size={16}/></button>
-                    <button onClick={zoomOut} className="p-2 text-slate-300 rounded-lg hover:text-white hover:bg-slate-800 active:scale-95 transition-all" title="축소"><ZoomOut size={16}/></button>
-                    <div className="h-px bg-slate-800 my-0.5" />
-                    <button onClick={resetView} className="p-2 text-slate-300 rounded-lg hover:text-white hover:bg-slate-800 active:scale-95 transition-all" title="화면 맞춤"><Maximize size={16}/></button>
-                </div>
-
-                {/* Breadcrumb Indicator on Map */}
-                <div className="absolute top-4 left-4 z-30 pointer-events-none">
-                    <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md border border-slate-800 text-xs font-bold text-slate-300 flex items-center gap-1.5 shadow-lg">
-                        <Compass size={14} className="text-cyan-400" />
-                        <span>{selectedRegion ? selectedRegion : '전체 대륙'}</span>
-                        {selectedNation && (
-                            <>
-                                <ChevronRight size={12} className="text-slate-500" />
-                                <span className="text-amber-400">{selectedNation}</span>
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {/* Fixed-Size Virtual Coordinate Map Canvas (2000 x 1000) */}
-                <div 
-                    className="absolute transform-gpu origin-top-left"
-                    style={{ 
-                        width: `${MAP_CANVAS_WIDTH}px`,
-                        height: `${MAP_CANVAS_HEIGHT}px`,
-                        transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-                        transition: isDragging ? 'none' : 'transform 0.1s ease-out'
-                    }}
-                >
-                    {/* World Map Background Layer */}
-                    {realm === 'divine' ? (
-                        <>
-                            {/* Base Heavenly Atmosphere */}
-                            <div className="absolute inset-0 bg-gradient-to-b from-sky-900/90 via-indigo-950/80 to-amber-950/70" />
-                            
-                            {/* Celestial Cloud Sea High Definition Image */}
-                            <img 
-                                src={DIVINE_MAP_URL} 
-                                alt="신계 구름 바다" 
-                                className="absolute inset-0 w-full h-full object-cover opacity-85 pointer-events-none select-none filter contrast-110 brightness-105"
-                                draggable="false"
-                                referrerPolicy="no-referrer"
-                            />
-
-                            {/* Holy Sunbeams & Celestial Glow Overlays */}
-                            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                                {/* Top Celestial Light Source */}
-                                <div className="absolute -top-1/4 left-1/2 -translate-x-1/2 w-[1200px] h-[700px] bg-gradient-to-b from-amber-200/25 via-amber-400/10 to-transparent blur-3xl rounded-full pointer-events-none" />
-                                
-                                {/* Holy Radial Rays / Sanctuaries Auras */}
-                                <div className="absolute top-[20%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-amber-300/15 blur-2xl rounded-full" />
-                                <div className="absolute top-[50%] left-[75%] -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-sky-300/15 blur-2xl rounded-full" />
-                                <div className="absolute top-[50%] left-[25%] -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-300/15 blur-2xl rounded-full" />
-                                <div className="absolute top-[80%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-300/10 blur-2xl rounded-full" />
-
-                                {/* Bottom Heavenly Cloud Mist */}
-                                <div className="absolute bottom-0 left-0 right-0 h-[350px] bg-gradient-to-t from-white/20 via-amber-100/10 to-transparent blur-xl" />
-                            </div>
-
-                            {/* Sacred Constellations & Leylines connecting Divine Sanctuaries */}
-                            <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-60">
-                                <defs>
-                                    <linearGradient id="divineLineGold" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#fde047" stopOpacity="0.8" />
-                                        <stop offset="50%" stopColor="#f59e0b" stopOpacity="0.6" />
-                                        <stop offset="100%" stopColor="#fbbf24" stopOpacity="0.8" />
-                                    </linearGradient>
-                                    <linearGradient id="divineLineCyan" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.7" />
-                                        <stop offset="100%" stopColor="#818cf8" stopOpacity="0.5" />
-                                    </linearGradient>
-                                    <filter id="divineGlow" x="-20%" y="-20%" width="140%" height="140%">
-                                        <feGaussianBlur stdDeviation="3" result="blur" />
-                                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                    </filter>
-                                </defs>
-
-                                {/* Sacred Central Rings & Mandalas (Centered at 1000px, 500px) */}
-                                <circle cx="1000" cy="500" r="380" fill="none" stroke="url(#divineLineGold)" strokeWidth="1.5" strokeDasharray="12 8" opacity="0.4" filter="url(#divineGlow)" />
-                                <circle cx="1000" cy="500" r="420" fill="none" stroke="#fbbf24" strokeWidth="0.8" opacity="0.25" />
-                                <circle cx="1000" cy="500" r="180" fill="none" stroke="url(#divineLineCyan)" strokeWidth="1" strokeDasharray="8 6" opacity="0.35" />
-                                <circle cx="1000" cy="500" r="60" fill="none" stroke="#fef08a" strokeWidth="1.5" opacity="0.5" />
-
-                                {/* Diamond Formation Connecting 4 Primary Divine Sanctuaries */}
-                                {/* Top (1000, 200) - Right (1500, 500) - Bottom (1000, 800) - Left (500, 500) */}
-                                <path 
-                                    d="M 1000 200 L 1500 500 L 1000 800 L 500 500 Z" 
-                                    fill="none" 
-                                    stroke="url(#divineLineGold)" 
-                                    strokeWidth="1.8" 
-                                    strokeDasharray="6 4"
-                                    opacity="0.65" 
-                                    filter="url(#divineGlow)" 
-                                />
-
-                                {/* Cross Leylines through Central Hub */}
-                                <line x1="1000" y1="200" x2="1000" y2="800" stroke="url(#divineLineGold)" strokeWidth="1" strokeDasharray="4 6" opacity="0.4" />
-                                <line x1="500" y1="500" x2="1500" y2="500" stroke="url(#divineLineGold)" strokeWidth="1" strokeDasharray="4 6" opacity="0.4" />
-
-                                {/* Sub Leylines within Divine Nations */}
-                                {viewLevel === 'nation' && (
-                                    <>
-                                        {/* Golden Sanctuary Nodes connection lines */}
-                                        <circle cx="1000" cy="200" r="120" fill="none" stroke="#fde047" strokeWidth="1" strokeDasharray="4 4" opacity="0.4" />
-                                        <circle cx="1500" cy="500" r="140" fill="none" stroke="#fde047" strokeWidth="1" strokeDasharray="4 4" opacity="0.4" />
-                                        <circle cx="500" cy="500" r="140" fill="none" stroke="#fde047" strokeWidth="1" strokeDasharray="4 4" opacity="0.4" />
-                                        <circle cx="1000" cy="800" r="120" fill="none" stroke="#fde047" strokeWidth="1" strokeDasharray="4 4" opacity="0.4" />
-                                    </>
-                                )}
-                            </svg>
-                        </>
-                    ) : (
-                        <img 
-                            src={MORTAL_MAP_URL} 
-                            alt="World Map" 
-                            className="absolute inset-0 w-full h-full object-fill pointer-events-none select-none opacity-40 filter sepia hue-rotate-180 invert-[.8]"
-                            draggable="false"
-                        />
-                    )}
-
-                    {/* Nodes Render Layer (Coordinates purely in 2000x1000 plane) */}
-                    <div className="absolute inset-0 w-full h-full">
-                        {nodes.map((node) => {
-                            const isCurrent = node.name === currentLocation.city || node.name === currentLocation.nation;
-                            const isSelected = selectedCity === node.name || selectedRegion === node.name || selectedNation === node.name;
-                            const hasRift = node.hasRift;
-                            const hasInstantDungeon = node.hasInstantDungeon;
-                            const hasBlackMarket = node.hasBlackMarket;
-
-                            // Dynamic sizing in pixel space so markers remain legible at various zooms
-                            let markerDiameter = 32;
-                            let textFontSize = 13;
-
-                            if (node.type === 'continent') {
-                                markerDiameter = 40;
-                                textFontSize = 14;
-                            } else if (node.type === 'nation') {
-                                markerDiameter = 28;
-                                textFontSize = 12;
-                            } else if (node.type === 'city') {
-                                markerDiameter = node.tier === 'Capital' ? 24 : 18;
-                                textFontSize = node.tier === 'Capital' ? 12 : 10;
+            isOverlandMode ? (
+                <div className="flex-1 relative overflow-hidden p-2 bg-slate-950 flex flex-col">
+                    <OverlandExploreCanvas
+                        character={character}
+                        region={originLocation.region}
+                        nation={originLocation.nation}
+                        targetDestination={overlandTarget}
+                        onStepWaypoint={(wp, _days, _mins) => {
+                            if (onUpdateCharacter) {
+                                onUpdateCharacter(
+                                    { ...character, currentLocation: wp },
+                                    `[도보 경유] ${wp.nation} (${wp.city} 방면)에 진입했습니다.`
+                                );
                             }
-
-                            // Calculate actual pixel position inside 2000x1000 canvas
-                            const pixelX = (node.x / 100) * MAP_CANVAS_WIDTH;
-                            const pixelY = (node.y / 100) * MAP_CANVAS_HEIGHT;
-
-                            return (
-                                <button
-                                    key={node.name}
-                                    onClick={(e) => { e.stopPropagation(); handleNodeClick(node.name, node.type); }}
-                                    className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group z-20 outline-none cursor-pointer"
-                                    style={{ left: `${pixelX}px`, top: `${pixelY}px` }}
-                                >
-                                    {/* Dimensional Rift Outer Ping Effect */}
-                                    {hasRift && (
-                                        <div className="absolute inset-0 -m-3 rounded-full bg-purple-600/30 border border-fuchsia-400/80 animate-ping pointer-events-none" />
-                                    )}
-                                    {!hasRift && hasBlackMarket && (
-                                        <div className="absolute inset-0 -m-2 rounded-full bg-amber-500/30 border border-yellow-400/80 animate-ping pointer-events-none" />
-                                    )}
-                                    {!hasRift && !hasBlackMarket && hasInstantDungeon && (
-                                        <div className="absolute inset-0 -m-2 rounded-full bg-cyan-500/30 border border-cyan-400/80 animate-ping pointer-events-none" />
-                                    )}
-
-                                    <div 
-                                        className={`
-                                            rounded-full flex items-center justify-center border-2 transition-transform duration-200 shadow-xl relative
-                                            ${hasRift 
-                                                ? 'bg-purple-950 border-fuchsia-400 text-fuchsia-200 ring-4 ring-purple-500/60 shadow-[0_0_25px_rgba(192,38,211,0.9)] animate-bounce z-40'
-                                                : isCurrent 
-                                                ? 'bg-emerald-600 border-emerald-300 z-30 animate-pulse ring-4 ring-emerald-400/40' 
-                                                : isSelected 
-                                                ? 'bg-amber-600 border-amber-300 z-30 ring-4 ring-amber-400/50 shadow-[0_0_20px_rgba(251,191,36,0.6)]' 
-                                                : realm === 'divine' 
-                                                ? 'bg-gradient-to-br from-amber-600 to-amber-900 border-amber-300 hover:border-yellow-200 text-amber-100 shadow-[0_0_15px_rgba(245,158,11,0.5)] ring-2 ring-amber-400/30' 
-                                                : 'bg-slate-900 border-slate-500 hover:border-cyan-400'}
-                                            group-hover:scale-125
-                                        `}
-                                        style={{ 
-                                            width: `${markerDiameter}px`, 
-                                            height: `${markerDiameter}px`,
-                                        }}
-                                    >
-                                        {/* Dimensional Rift Badge Icon */}
-                                        {hasRift && (
-                                            <div className="absolute -top-2 -right-2 bg-gradient-to-r from-fuchsia-600 to-purple-600 border border-fuchsia-300 text-white rounded-full p-0.5 shadow-lg animate-pulse z-50">
-                                                <Sparkles size={11} className="text-amber-200" />
-                                            </div>
-                                        )}
-                                        {hasBlackMarket && (
-                                            <div className="absolute -top-2 -left-2 bg-gradient-to-r from-amber-600 to-yellow-600 border border-yellow-300 text-slate-950 rounded-full p-0.5 shadow-lg z-50 text-[9px] font-black w-4 h-4 flex items-center justify-center">
-                                                💰
-                                            </div>
-                                        )}
-                                        {hasInstantDungeon && !hasRift && (
-                                            <div className="absolute -top-2 -right-2 bg-gradient-to-r from-blue-600 to-cyan-600 border border-cyan-300 text-white rounded-full p-0.5 shadow-lg z-50">
-                                                <Swords size={11} className="text-cyan-200" />
-                                            </div>
-                                        )}
-
-                                        {node.type === 'continent' && <Globe size={markerDiameter * 0.55} className={hasRift ? "text-fuchsia-200" : realm === 'divine' ? "text-amber-200" : "text-slate-200"} />}
-                                        {node.type === 'nation' && (
-                                            realm === 'divine' 
-                                                ? <Sun size={markerDiameter * 0.6} className={hasRift ? "text-fuchsia-200" : "text-amber-200 animate-[spin_10s_linear_infinite]"} />
-                                                : <Flag size={markerDiameter * 0.55} className={hasRift ? "text-fuchsia-200" : "text-slate-200"} />
-                                        )}
-                                        {node.type === 'city' && (
-                                            node.tier === 'Capital' 
-                                                ? <Crown size={markerDiameter * 0.6} className={hasRift ? "text-fuchsia-200" : "text-amber-300"} /> 
-                                                : <Building2 size={markerDiameter * 0.55} className={hasRift ? "text-fuchsia-200" : realm === 'divine' ? "text-amber-200" : "text-slate-300"} />
-                                        )}
-                                    </div>
-
-                                    <div className="mt-1 flex flex-col items-center gap-0.5 pointer-events-none">
-                                        <div 
-                                            className={`px-2 py-0.5 rounded-md font-bold whitespace-nowrap shadow-lg backdrop-blur-md border transition-all flex items-center gap-1
-                                                ${hasRift 
-                                                    ? 'bg-purple-950/95 border-fuchsia-500 text-fuchsia-100 shadow-purple-900/80 ring-1 ring-fuchsia-400/50 animate-pulse'
-                                                    : isCurrent 
-                                                    ? 'bg-emerald-950/90 border-emerald-500 text-emerald-200 shadow-emerald-900/50' 
-                                                    : isSelected
-                                                    ? 'bg-blue-950/90 border-cyan-400 text-cyan-200 shadow-cyan-900/50'
-                                                    : realm === 'divine'
-                                                    ? 'bg-amber-950/90 border-amber-500/80 text-amber-200 shadow-[0_0_12px_rgba(245,158,11,0.4)] group-hover:border-amber-300'
-                                                    : 'bg-black/75 border-slate-800 text-slate-200 group-hover:border-slate-600'}
-                                            `}
-                                            style={{ fontSize: `${textFontSize}px` }}
-                                        >
-                                            {hasRift && <Zap size={11} className="text-fuchsia-400 shrink-0" />}
-                                            <span>{node.name}</span>
-                                        </div>
-
-                                        {/* Badges for Rift, Instant Dungeon, Black Market */}
-                                        {(hasRift || hasBlackMarket || hasInstantDungeon) && (
-                                            <div className="flex flex-wrap gap-0.5 justify-center max-w-[200px]">
-                                                {hasRift && (
-                                                    <span className="text-[9px] bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white px-1.5 py-0.2 rounded border border-fuchsia-300 font-extrabold shadow-sm flex items-center gap-0.5">
-                                                        {node.bossName ? `🌀 ${node.bossName}` : `🌌 틈새(${node.riftCount})`}
-                                                    </span>
-                                                )}
-                                                {hasBlackMarket && (
-                                                    <span className="text-[9px] bg-gradient-to-r from-amber-600 to-yellow-600 text-slate-950 px-1.5 py-0.2 rounded border border-yellow-300 font-black shadow-sm flex items-center gap-0.5">
-                                                        💰 특별상점
-                                                    </span>
-                                                )}
-                                                {hasInstantDungeon && (
-                                                    <span className="text-[9px] bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-1.5 py-0.2 rounded border border-cyan-300 font-extrabold shadow-sm flex items-center gap-0.5">
-                                                        {node.instantDungeonName ? `🏰 ${node.instantDungeonName}` : `⚔️ 던전(${node.instantDungeonCount})`}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
+                        }}
+                        onArriveCity={(dest, days, totalMinutes) => {
+                            try { sessionStorage.removeItem('shinryoku_overland_resume'); } catch {}
+                            setIsOverlandMode(false);
+                            setOverlandTarget(null);
+                            onTravel(dest, 0, days, totalMinutes, { skipLoadingAndMonsterAmbush: true });
+                        }}
+                        onApplyExploreDelta={(delta) => applyCharacterDelta(delta)}
+                        onTriggerBattle={(enemies, logMsg) => {
+                            if (onUpdateCharacter) onUpdateCharacter(character, logMsg);
+                            if (onBattle) {
+                                // onClose()를 호출하지 않고 sceneType 전환으로 숨긴 뒤 전투 종료 후 도보탐험 복귀
+                                onBattle(enemies, 'normal', 'overland_explore');
+                            }
+                        }}
+                        onExitToAtlas={() => {
+                            try { sessionStorage.removeItem('shinryoku_overland_resume'); } catch {}
+                            setIsOverlandMode(false);
+                        }}
+                    />
                 </div>
-            </div>
+            ) : (
+                <div ref={mapContainerRef} className="flex-1 relative overflow-hidden p-2 bg-slate-950 flex flex-col">
+                    <div className="absolute top-4 right-4 z-40 flex flex-col gap-1.5 pointer-events-auto bg-slate-900/90 border border-slate-800 p-1 rounded-xl shadow-2xl backdrop-blur-md">
+                        <button onClick={() => setAtlasZoom(z => Math.min(3.2, Number((z + 0.25).toFixed(2))))} className="p-2 text-slate-300 rounded-lg hover:text-white hover:bg-slate-800 active:scale-95 transition-all" title="확대"><ZoomIn size={16}/></button>
+                        <button onClick={() => setAtlasZoom(z => Math.max(0.7, Number((z - 0.25).toFixed(2))))} className="p-2 text-slate-300 rounded-lg hover:text-white hover:bg-slate-800 active:scale-95 transition-all" title="축소"><ZoomOut size={16}/></button>
+                        <div className="h-px bg-slate-800 my-0.5" />
+                        <button onClick={() => { setAtlasZoom(1.08); setAtlasPan({ x: 0, y: 0 }); }} className="p-2 text-slate-300 rounded-lg hover:text-white hover:bg-slate-800 active:scale-95 transition-all" title="화면 맞춤"><Maximize size={16}/></button>
+                    </div>
+                    <div className="absolute top-4 left-4 z-30 pointer-events-none">
+                        <div className="px-3 py-1 rounded-lg bg-black/70 backdrop-blur-md border border-slate-800 text-xs font-bold text-slate-300 flex items-center gap-1.5 shadow-lg">
+                            <Compass size={14} className="text-cyan-400" />
+                            <span>{selectedRegion ? selectedRegion : '전체 대륙'}</span>
+                            {selectedNation && (
+                                <>
+                                    <ChevronRight size={12} className="text-slate-500" />
+                                    <span className="text-amber-400">{selectedNation}</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    <WorldAtlasCanvas
+                        nodes={nodes.map<AtlasNode>(n => ({
+                            ...n,
+                            isCurrent:
+                                (n.type === 'continent' && n.name === originLocation.region) ||
+                                (n.type === 'nation' && n.name === originLocation.nation) ||
+                                (n.type === 'city' && n.name === originLocation.city),
+                            isSelected:
+                                (n.type === 'continent' && n.name === selectedRegion) ||
+                                (n.type === 'nation' && n.name === selectedNation) ||
+                                (n.type === 'city' && n.name === selectedCity),
+                            isFavorite: n.type === 'city' ? isFavorite(n.name, selectedNation || undefined) : false,
+                            isIsland: ISLAND_NATIONS.includes(n.name)
+                        }))}
+                        realm={realm}
+                        viewLevel={viewLevel}
+                        zoom={atlasZoom}
+                        pan={atlasPan}
+                        onPanChange={setAtlasPan}
+                        onZoomChange={setAtlasZoom}
+                        onSelectNode={(node) => handleNodeClick(node.name, node.type)}
+                        currentNodeName={viewLevel === 'world' ? originLocation.region : viewLevel === 'continent' ? originLocation.nation : originLocation.city}
+                        selectedNodeName={viewLevel === 'world' ? (selectedRegion || undefined) : viewLevel === 'continent' ? (selectedNation || undefined) : (selectedCity || undefined)}
+                    />
+                </div>
+            )
         )}
-        
+
         {displayMode === 'list' && (
             /* =================== LIST VIEW (대륙별 리스트로 찾기) =================== */
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-slate-950">
@@ -2040,31 +1988,120 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, mode 
                     </div>
                 </div>
 
-                {/* Travel Details Table */}
-                <div className="space-y-1.5 text-xs mb-3 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 font-mono">
-                    <div className="flex justify-between text-slate-400">
-                        <span>교통 수단</span> 
-                        <span className="text-slate-200 font-bold">{travelInfo.method}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-400">
-                        <span>소요 시간</span> 
-                        <span className="text-slate-200 font-bold">{travelInfo.durationText || `${travelInfo.days}일`}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-400">
-                        <span>필요 비용</span> 
-                        <span className={character.money >= travelInfo.cost ? 'text-amber-400 font-bold' : 'text-red-400 font-bold'}>
-                            {travelInfo.cost.toLocaleString()} 골드
-                        </span>
-                    </div>
-                    {travelInfo.days > 0 && (
-                        <div className="flex justify-between text-[11px] text-amber-400/90 pt-1 border-t border-slate-800/80 font-sans">
-                            <span className="flex items-center gap-1 font-semibold">
-                                <Swords size={12} className="text-amber-400 animate-pulse" /> 몬스터 습격 위험
-                            </span>
-                            <span className="font-bold text-amber-300">야생 몬스터 출몰 가능</span>
+                {/* Transport Selection Cards (travel mode) */}
+                {mode === 'travel' && travelOptions.length > 0 && (
+                    <div className="space-y-1.5 mb-3">
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">이동수단 선택</div>
+                        <div className="grid grid-cols-1 gap-1.5">
+                            {travelOptions.map(opt => {
+                                const isChosen = activeTransportOption?.type === opt.type;
+                                const riskColor = opt.ambushRisk === 'high' ? 'text-rose-400' : opt.ambushRisk === 'medium' ? 'text-amber-300' : 'text-emerald-400';
+                                const isContractable = opt.type === 'carriage' || opt.type === 'ship' || opt.type === 'airship';
+                                const contractPrice = isContractable ? TRANSPORT_CONTRACT_PRICES[opt.type as 'carriage' | 'ship' | 'airship'] : null;
+
+                                const handleBuyLicense = (e: React.MouseEvent, modeBuy: 'monthly' | 'purchase') => {
+                                    e.stopPropagation();
+                                    if (!contractPrice || !onUpdateCharacter) return;
+                                    const price = modeBuy === 'monthly' ? contractPrice.monthly : contractPrice.purchase;
+                                    if (character.money < price) {
+                                        alert(`골드가 부족합니다. (필요: ${price.toLocaleString()}G)`);
+                                        return;
+                                    }
+                                    const nextLic = { ...(character.transportLicenses || {}) };
+                                    if (modeBuy === 'purchase') {
+                                        if (opt.type === 'carriage') nextLic.carriageOwned = true;
+                                        if (opt.type === 'ship') nextLic.shipOwned = true;
+                                        if (opt.type === 'airship') nextLic.airshipOwned = true;
+                                    } else {
+                                        const baseDate = new Date(character.currentDate || '2026-01-01');
+                                        baseDate.setDate(baseDate.getDate() + 30);
+                                        const untilStr = baseDate.toISOString().slice(0, 10);
+                                        if (opt.type === 'carriage') nextLic.carriageMonthlyUntil = untilStr;
+                                        if (opt.type === 'ship') nextLic.shipMonthlyUntil = untilStr;
+                                        if (opt.type === 'airship') nextLic.airshipMonthlyUntil = untilStr;
+                                    }
+                                    onUpdateCharacter(
+                                        {
+                                            ...character,
+                                            money: character.money - price,
+                                            transportLicenses: nextLic
+                                        },
+                                        `[교통 계약] ${contractPrice.label} ${modeBuy === 'monthly' ? '1달 정기계약' : '영구 구매'} 완료 (-${price.toLocaleString()}G)`
+                                    );
+                                };
+
+                                return (
+                                    <div
+                                        key={opt.type}
+                                        onClick={() => setSelectedTransport(opt.type)}
+                                        className={`w-full text-left px-2.5 py-2 rounded-xl border transition-all cursor-pointer ${
+                                            isChosen
+                                                ? 'bg-cyan-950/60 border-cyan-400 text-white shadow-md'
+                                                : 'bg-slate-950/60 border-slate-800 hover:border-slate-600 text-slate-300'
+                                        }`}
+                                    >
+                                        <div className="flex items-center justify-between text-xs font-black">
+                                            <span className="flex items-center gap-1.5">
+                                                <span>{opt.label}</span>
+                                                {opt.passActive && (
+                                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/80 text-emerald-300 border border-emerald-500/40">
+                                                        {opt.passStatusText}
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span className="text-amber-300 font-mono">
+                                                {opt.cost === 0 ? '무료' : `${opt.cost.toLocaleString()}G`} · {opt.durationText}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-[10px] text-slate-400 mt-0.5">
+                                            <span className="truncate pr-2">{opt.description}</span>
+                                            <span className={`shrink-0 font-bold ${riskColor}`}>습격 {opt.ambushChancePct}%</span>
+                                        </div>
+                                        {opt.note && (
+                                            <div className="text-[9px] text-fuchsia-300/90 mt-1">{opt.note}</div>
+                                        )}
+                                        {isChosen && contractPrice && !opt.passActive && onUpdateCharacter && (
+                                            <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-slate-800/80">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleBuyLicense(e, 'monthly')}
+                                                    className="flex-1 py-1 px-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-cyan-300 border border-cyan-500/30 cursor-pointer"
+                                                >
+                                                    1달 정기계약 ({contractPrice.monthly.toLocaleString()}G)
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => handleBuyLicense(e, 'purchase')}
+                                                    className="flex-1 py-1 px-2 rounded-lg bg-amber-950/60 hover:bg-amber-900/60 text-[10px] font-bold text-amber-300 border border-amber-500/40 cursor-pointer"
+                                                >
+                                                    영구 구매 ({contractPrice.purchase.toLocaleString()}G)
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
+
+                {/* Travel Details Table (relocate mode or fallback) */}
+                {mode === 'relocate' && (
+                    <div className="space-y-1.5 text-xs mb-3 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 font-mono">
+                        <div className="flex justify-between text-slate-400">
+                            <span>교통 수단</span> 
+                            <span className="text-slate-200 font-bold">{travelInfo.method}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-400">
+                            <span>소요 시간</span> 
+                            <span className="text-slate-200 font-bold">{travelInfo.durationText || `${travelInfo.days}일`}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-400">
+                            <span>필요 비용</span> 
+                            <span className="text-emerald-400 font-bold">0 골드</span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Divine Realm Level 500 Lock Notice */}
                 {selectedRegion === '신계' && character.level < 500 && (
@@ -2140,31 +2177,72 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, mode 
 
                 {(() => {
                     const isDivineLocked = selectedRegion === '신계' && character.level < 500;
-                    const isNotEnoughMoney = mode === 'travel' && character.money < travelInfo.cost;
+                    const needsContract = mode === 'travel' && Boolean(activeTransportOption?.requiresContract);
+                    const effectiveCost = mode === 'travel' && activeTransportOption ? activeTransportOption.cost : travelInfo.cost;
+                    const isNotEnoughMoney = mode === 'travel' && !needsContract && character.money < effectiveCost;
                     return (
                         <button 
                             onClick={handleTravelClick}
-                            disabled={isDivineLocked || isNotEnoughMoney}
+                            disabled={isDivineLocked || needsContract || isNotEnoughMoney}
                             className={`w-full py-2.5 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 active:scale-98 ${
-                                isDivineLocked
-                                    ? 'bg-slate-800 text-red-400 cursor-not-allowed border border-red-900/60'
+                                isDivineLocked || needsContract
+                                    ? 'bg-slate-800 text-amber-400 cursor-not-allowed border border-amber-800/60'
                                     : isNotEnoughMoney
                                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
                                     : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-cyan-900/30'
                             }`}
                         >
-                            {isDivineLocked ? <Lock size={15} /> : <Footprints size={15} />}
+                            {isDivineLocked || needsContract ? <Lock size={15} /> : <Footprints size={15} />}
                             <span>
                                 {isDivineLocked 
                                     ? '신계 진입 불가 (500레벨 필요)' 
+                                    : needsContract
+                                    ? '1달 정기계약 또는 영구 구매 필요'
                                     : isNotEnoughMoney 
                                     ? '골드 부족' 
-                                    : (mode === 'relocate' ? '기지 이사 시작' : '이동 시작')}
+                                    : mode === 'relocate'
+                                        ? '기지 이사 시작'
+                                        : activeTransportOption?.type === 'walk'
+                                            ? '도보 탐험 시작'
+                                            : `${activeTransportOption?.label || '이동'} 출발`}
                             </span>
                         </button>
                     );
                 })()}
             </div>
+        )}
+
+        {/* TRAVEL JOURNEY CANVAS OVERLAY */}
+        {activeJourney && (
+            <TravelJourneyOverlay
+                origin={originLocation}
+                destination={activeJourney.destination}
+                option={activeJourney.option}
+                character={character}
+                onApplyDelta={(delta) => applyCharacterDelta(delta)}
+                onTriggerAmbushBattle={(enemies, _logMsg) => {
+                    const dest = activeJourney.destination;
+                    const opt = activeJourney.option;
+                    setActiveJourney(null);
+                    onTravel(dest, opt.cost, opt.days, opt.totalMinutes, {
+                        skipLoadingAndMonsterAmbush: true,
+                        alreadyInAmbushBattle: true
+                    });
+                    if (onBattle) {
+                        onClose();
+                        onBattle(enemies, 'normal', 'travel_journey_ambush');
+                    }
+                }}
+                onComplete={(finalMinutes) => {
+                    const dest = activeJourney.destination;
+                    const opt = activeJourney.option;
+                    setActiveJourney(null);
+                    onTravel(dest, opt.cost, Math.floor(finalMinutes / 1440), finalMinutes, {
+                        skipLoadingAndMonsterAmbush: true
+                    });
+                }}
+                onCancel={() => setActiveJourney(null)}
+            />
         )}
       </div>
     </div>,

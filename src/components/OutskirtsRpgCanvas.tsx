@@ -88,7 +88,7 @@ const DIFFICULTY_COLORS = [
     '#f43f5e'
 ];
 
-function getRegionalHuntStyle(region: string, nation: string, zoneId?: string) {
+export function getRegionalHuntStyle(region: string, nation: string, zoneId?: string) {
     if (zoneId === 'abyss' || zoneId === 'mythic') {
         return {
             tileKey: 'hunt_tile_abyss',

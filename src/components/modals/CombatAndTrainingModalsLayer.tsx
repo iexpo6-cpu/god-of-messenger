@@ -126,8 +126,8 @@ export const CombatAndTrainingModalsLayer: React.FC<Props> = ({
             const isInstantDungeon = cType === 'instant_dungeon' || !!character.dungeonProgress?.dungeonId;
             const instDungeonId = combatResultData?.dungeonId || character.dungeonProgress?.dungeonId || character.instantDungeons?.[0]?.id;
             setCombatResultData?.(null);
-            if (cType === 'Hunt') {
-              // 야외 사냥터 캔버스(OutskirtsRpgCanvas) 전투 시 HuntMapModal을 열지 않고 현재 사냥터 영역 캔버스 유지
+            if (cType === 'Hunt' || combatResultData?.defenseSource === 'overland_explore') {
+              // 야외 사냥터 또는 도보 탐험 캔버스 전투 시 HuntMapModal을 열지 않고 기존 캔버스 유지
               return;
             }
             if (isInstantDungeon && instDungeonId) {

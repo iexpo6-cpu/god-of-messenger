@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, ClassTier, Companion, Enemy, JobType, Skill, SkillType } from '../../types';
+import { SHINRYOKU_AFFINITY } from '../../constants';
 import {
     absorbBg3ShieldAndMana,
     ARENA_H,
@@ -1538,6 +1539,17 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
 
                 // 신력 브레이크 게이지 차감 (약점 신력 타격 시 -1, QTE JUST 시 추가 -1!)
                 const atkElem = targeting.shinryokuType || curCasterObj.element;
+                const defElem = curTargetObj.element || '무속성';
+                const aff = SHINRYOKU_AFFINITY[atkElem];
+                if (aff && defElem !== '무속성' && !res.isMiss) {
+                    if (aff.strong?.includes(defElem)) {
+                        addFloatText(curTargetObj.x, curTargetObj.y - 74, `⚡ 신력상성 우위 (${atkElem} ▶ ${defElem})`, '#38bdf8', 0.92);
+                        pushCombatLog(`[신력상성] ${atkElem} ▶ ${defElem} (상성 우위)`, 'info', roundNum);
+                    } else if (aff.weak?.includes(defElem)) {
+                        addFloatText(curTargetObj.x, curTargetObj.y - 74, `⚠️ 신력상성 열세 (${atkElem} ◀ ${defElem})`, '#f87171', 0.92);
+                        pushCombatLog(`[신력상성] ${atkElem} ◀ ${defElem} (상성 열세)`, 'warn', roundNum);
+                    }
+                }
                 const isWeakHit = isShinryokuWeaknessHit(atkElem, curTargetObj.element);
                 const breakDmg = (isWeakHit ? 1 : 0) + (isWeakHit ? qteRes.extraBreak : 0);
                 if (breakDmg > 0 && curTargetObj.sourceEntity && !res.isMiss) {
@@ -3481,17 +3493,29 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     }
                 }
 
+                const displayUnitName = `Lv.${u.level} ${u.name}`;
                 ctx.font = u.isBoss ? 'bold 13px sans-serif' : 'bold 11px sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#020617';
-                ctx.fillText(u.name, ux + 1, barY - 5);
+                ctx.fillText(displayUnitName, ux + 1, barY - 5);
                 ctx.fillStyle = u.team === 'ally' ? '#e0f2fe' : u.isBoss ? '#fde047' : '#fecdd3';
-                ctx.fillText(u.name, ux, barY - 6);
+                ctx.fillText(displayUnitName, ux, barY - 6);
 
-                // Hover Damage & Hit Chance Preview over Enemy! (만/억/조 단위)
+                // Hover Damage & Hit Chance Preview over Enemy! (만/억/조 단위 + 신력상성)
                 if (hover && curActive && curActive.team === 'ally' && u.team === 'enemy' && distPx(hover.x, hover.y, u.x, u.y) <= u.radius + 30) {
                     const prev = calculateBg3Damage(curActive, u, actionMode === 'skill' ? selectedSkill : null, arena.obstacles, surfacesRef.current, character);
-                    const tip = `🎯 ${prev.hitChance}% · 예상 ${formatCompactKorean(prev.damage)}${prev.comboName ? ' ⚡콤보!' : ''}`;
+                    const atkEl = (actionMode === 'skill' ? (selectedSkill as any)?.shinryokuType : null) || curActive.element || '무속성';
+                    const defEl = u.element || '무속성';
+                    const affInfo = SHINRYOKU_AFFINITY[atkEl];
+                    const matchupTag =
+                        affInfo && defEl !== '무속성'
+                            ? affInfo.strong?.includes(defEl)
+                                ? ` · ▲우위(${atkEl}▶${defEl})`
+                                : affInfo.weak?.includes(defEl)
+                                    ? ` · ▼열세(${atkEl}◀${defEl})`
+                                    : ''
+                            : '';
+                    const tip = `🎯 ${prev.hitChance}% · 예상 ${formatCompactKorean(prev.damage)}${prev.comboName ? ' ⚡콤보!' : ''}${matchupTag}`;
                     ctx.font = 'bold 12px sans-serif';
                     const tw = ctx.measureText(tip).width + 16;
                     ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
@@ -4412,6 +4436,47 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                 <div className="min-w-0">
                                     <div className="text-xs font-black text-white truncate">{activeUnit.name}</div>
                                     <div className="text-[10px] text-slate-400 truncate">Lv.{activeUnit.level} · {activeUnit.jobLabel}</div>
+                                    {(() => {
+                                        const src = activeUnit.sourceEntity as any;
+                                        const tierOrder = [
+                                            ClassTier.NONE,
+                                            ClassTier.F,
+                                            ClassTier.FIRST,
+                                            ClassTier.SECOND,
+                                            ClassTier.LAST,
+                                            ClassTier.FINAL
+                                        ];
+                                        const currentTier: string = src?.classTier || ClassTier.NONE;
+                                        const potentialTier: string | undefined = src?.liberationPotential;
+                                        const unitSkills: Skill[] = Array.isArray(src?.skills) ? src.skills : [];
+                                        let highestTierIdx = Math.max(0, tierOrder.indexOf(currentTier as ClassTier));
+                                        unitSkills.forEach(sk => {
+                                            const idx = tierOrder.indexOf(sk.tier);
+                                            if (idx > highestTierIdx) {
+                                                highestTierIdx = idx;
+                                            }
+                                        });
+                                        const actualClassName =
+                                            src?.finalClassName ||
+                                            src?.lastClassName ||
+                                            src?.secondClassName ||
+                                            src?.firstClassName ||
+                                            null;
+                                        const elementLabel = activeUnit.element || src?.shinryokuType || '무속성';
+                                        return (
+                                            <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-950/90 border border-indigo-400/50 text-indigo-200">
+                                                    🔓 해방: {currentTier}{potentialTier && potentialTier !== currentTier ? ` (한계 ${potentialTier})` : ''}
+                                                </span>
+                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-400/40 text-amber-200">
+                                                    👑 클래스명: {actualClassName || '미해방'}
+                                                </span>
+                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-400/50 text-cyan-200">
+                                                    ✨ 신력: {elementLabel}
+                                                </span>
+                                            </div>
+                                        );
+                                    })()}
                                     {activeUnit.mountName && (
                                         <div className="flex items-center gap-1 mt-0.5">
                                             {activeUnit.mountVisualUrl && (

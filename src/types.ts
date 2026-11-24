@@ -1831,6 +1831,15 @@ export interface Character {
   }; // [NEW] 신성 관계 데이터
   currentDate?: string;
   currentTime?: string; // [NEW] 현재 시각 (HH:mm 형식, 기본 08:00)
+  lastTravelRescueDate?: string;
+  transportLicenses?: {
+    carriageMonthlyUntil?: string;
+    carriageOwned?: boolean;
+    shipMonthlyUntil?: string;
+    shipOwned?: boolean;
+    airshipMonthlyUntil?: string;
+    airshipOwned?: boolean;
+  };
   fatigue?: number; // [NEW] 피로도 (0-100, 100 도달 시 과로로 모든 능력치 50% 감소)
   messages?: any[]; // [NEW] 가문 서신 및 시스템 기록 메시지 보관함
   bufferedTimeSkipReports?: any[]; // [NEW] 던전/전투 중 발생한 일일 결산 완충 보관용
