@@ -378,7 +378,8 @@ export const getRegionalBuildingUrl = (cultureKey: CityCultureKey, part: Regiona
 };
 
 export const getHousingBuildingUrl = (cultureKey: CityCultureKey, part: HousingBuildingPart): string => {
-    const pack = resolveBuildingPackKey(cultureKey);
+    let pack = resolveBuildingPackKey(cultureKey);
+    if (pack.startsWith('shingye_')) pack = 'shingye';
     return `${getBaseUrl()}assets/visuals/city_tiles/housing/${pack}/${part}.png`;
 };
 

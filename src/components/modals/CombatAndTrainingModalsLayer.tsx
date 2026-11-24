@@ -122,9 +122,14 @@ export const CombatAndTrainingModalsLayer: React.FC<Props> = ({
             setActiveSuddenEvent(suddenEvt);
           }}
           onContinueBattle={() => {
-            const isInstantDungeon = combatResultData?.combatType === 'instant_dungeon' || !!character.dungeonProgress?.dungeonId;
+            const cType = combatResultData?.combatType;
+            const isInstantDungeon = cType === 'instant_dungeon' || !!character.dungeonProgress?.dungeonId;
             const instDungeonId = combatResultData?.dungeonId || character.dungeonProgress?.dungeonId || character.instantDungeons?.[0]?.id;
             setCombatResultData?.(null);
+            if (cType === 'Hunt') {
+              // 야외 사냥터 캔버스(OutskirtsRpgCanvas) 전투 시 HuntMapModal을 열지 않고 현재 사냥터 영역 캔버스 유지
+              return;
+            }
             if (isInstantDungeon && instDungeonId) {
               setCityInitialConfig({
                 openInstantDungeonId: instDungeonId
@@ -140,7 +145,7 @@ export const CombatAndTrainingModalsLayer: React.FC<Props> = ({
           }}
           onRematch={() => {
             const cType = combatResultData?.combatType || 'normal';
-            if (cType !== 'normal' || combatResultData?.suddenEvent || combatResultData?.suddenEventType || combatResultData?.isSuddenEvent) {
+            if ((cType !== 'normal' && cType !== 'Hunt') || combatResultData?.suddenEvent || combatResultData?.suddenEventType || combatResultData?.isSuddenEvent) {
               return;
             }
             if (character.stats && character.stats.hp <= 0) {
@@ -158,9 +163,10 @@ export const CombatAndTrainingModalsLayer: React.FC<Props> = ({
             const region = character.currentLocation?.region;
             const nation = character.currentLocation?.nation || character.nation;
             const city = character.currentLocation?.city || "";
-            const bandId = combatResultData?.huntingBandId || character.lastHuntingBandId;
+            const bandId = combatResultData?.huntingBandId || combatResultData?.defenseSource || character.lastHuntingBandId;
             const bands = getHuntBandsForLocation(nation, region, city);
             const matchedBand = bandId ? bands.find(b => b.id === bandId) : undefined;
+            const nextBattleType = cType === 'Hunt' ? 'Hunt' : 'normal';
 
             if (matchedBand) {
               const [minLvl, maxLvl] = matchedBand.levelRange;
@@ -191,7 +197,7 @@ export const CombatAndTrainingModalsLayer: React.FC<Props> = ({
                 }
                 return e;
               });
-              handleBattleTrigger(freshEnemies, 'normal');
+              handleBattleTrigger(freshEnemies, nextBattleType as any, bandId);
             } else {
               const fallbackLevel = combatResultData?.lastEnemies?.[0]?.level || character.level;
               const enemyCount = Math.floor(Math.random() * 3) + 1;
@@ -208,7 +214,7 @@ export const CombatAndTrainingModalsLayer: React.FC<Props> = ({
                 }
                 return e;
               });
-              handleBattleTrigger(freshEnemies, 'normal');
+              handleBattleTrigger(freshEnemies, nextBattleType as any, bandId);
             }
           }}
         />

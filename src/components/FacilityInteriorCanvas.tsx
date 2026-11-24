@@ -38,6 +38,14 @@ import {
     X,
     Zap
 } from 'lucide-react';
+import FarmInteriorPanel from './base/FarmInteriorPanel';
+import MineInteriorPanel from './base/MineInteriorPanel';
+import HousingInteriorPanel from './base/HousingInteriorPanel';
+import ResidentQuickCard from './base/ResidentQuickCard';
+import BlacksmithModal from './BlacksmithModal';
+import { AlchemyCraftModal } from './AlchemyCraftModal';
+import WorkshopModal from './WorkshopModal';
+import DispatchModal from './DispatchModal';
 
 interface FacilityInteriorCanvasProps {
     character: Character;
@@ -45,6 +53,8 @@ interface FacilityInteriorCanvasProps {
     onExitToBase: () => void;
     onOpenBaseModal: (initialSubModal?: string) => void;
     onInspectCompanion?: (companionId: string) => void;
+    onUpdateCharacter?: (updatedChar: Character, logMessage: string, dailyReport?: any) => void;
+    onSwitchFacilityInstance?: (newInstanceId: string) => void;
 }
 
 const DIR_ROW_MAP: Record<SpriteDirection, number> = {
@@ -73,13 +83,27 @@ function drawProceduralInteriorProp(ctx: CanvasRenderingContext2D, prop: Interio
     const cx = px + pw / 2;
     const cy = py + ph / 2;
 
-    // Optional custom PNG override if user placed interior_props/<kind>.png
-    const pngUrl = getInteriorPropSpriteUrl(prop.kind);
+    // Optional custom PNG override (customSpriteUrl for houses, spriteKey for crop/ore stages, or kind fallback)
+    const pngUrl = prop.customSpriteUrl || getInteriorPropSpriteUrl(prop.spriteKey || prop.kind);
     const cachedPng = getCachedCityAssetImage(pngUrl);
     if (cachedPng && cachedPng.complete && cachedPng.naturalWidth > 0) {
         ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
+        ctx.imageSmoothingQuality = 'low';
         ctx.drawImage(cachedPng, px - 4, py - 8, pw + 8, ph + 10);
+        if (prop.kind === 'crop_plot') {
+            if (prop.isWatered) {
+                ctx.fillStyle = 'rgba(14, 165, 233, 0.9)';
+                ctx.beginPath();
+                ctx.arc(px + pw - 8, py + 8, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            if (prop.accentColor === '#fbbf24') {
+                const pulse = 0.65 + 0.35 * Math.sin(nowMs / 240);
+                ctx.strokeStyle = `rgba(251, 191, 36, ${pulse})`;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px + 2, py + 2, pw - 4, ph - 4);
+            }
+        }
         return;
     }
 
@@ -93,28 +117,55 @@ function drawProceduralInteriorProp(ctx: CanvasRenderingContext2D, prop: Interio
 
     switch (prop.kind) {
         case 'crop_plot': {
-            ctx.fillStyle = '#5c3a21';
+            const isPlowedOrPlanted = prop.cropStage !== 'empty';
+            ctx.fillStyle = isPlowedOrPlanted ? '#452710' : '#785c3a';
             ctx.fillRect(px + 4, py + 5, pw - 8, ph - 10);
-            ctx.strokeStyle = '#78350f';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = prop.cropStage === 'ready' ? '#facc15' : isPlowedOrPlanted ? '#78350f' : '#57432a';
+            ctx.lineWidth = prop.cropStage === 'ready' ? 2.5 : 2;
             ctx.strokeRect(px + 4, py + 5, pw - 8, ph - 10);
+
+            if (isPlowedOrPlanted) {
+                // 이랑(밭고랑) 줄 표현
+                ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+                ctx.lineWidth = 1.5;
+                for (let ry = py + 12; ry < py + ph - 10; ry += 10) {
+                    ctx.beginPath();
+                    ctx.moveTo(px + 8, ry);
+                    ctx.lineTo(px + pw - 8, ry);
+                    ctx.stroke();
+                }
+            }
+
             if (prop.cropStage === 'growing') {
                 ctx.fillStyle = '#4ade80';
                 for (let i = 0; i < 4; i++) {
                     ctx.beginPath();
-                    ctx.arc(px + 16 + i * 18, cy, 6, 0, Math.PI * 2);
+                    ctx.arc(px + 16 + i * ((pw - 32) / 3), cy - 2, 6, 0, Math.PI * 2);
                     ctx.fill();
                 }
+                // 성장률 프로그레스 바
+                const pct = Math.max(0, Math.min(100, prop.growthProgress || 0));
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+                ctx.fillRect(px + 8, py + ph - 12, pw - 16, 4);
+                ctx.fillStyle = '#22c55e';
+                ctx.fillRect(px + 8, py + ph - 12, ((pw - 16) * pct) / 100, 4);
             } else if (prop.cropStage === 'ready') {
-                ctx.fillStyle = '#84cc16';
+                ctx.fillStyle = '#a3e635';
                 for (let i = 0; i < 4; i++) {
                     ctx.beginPath();
-                    ctx.arc(px + 16 + i * 18, cy, 8, 0, Math.PI * 2);
+                    ctx.arc(px + 16 + i * ((pw - 32) / 3), cy - 2, 8, 0, Math.PI * 2);
                     ctx.fill();
                 }
                 ctx.fillStyle = `rgba(250, 204, 21, ${pulse})`;
                 ctx.beginPath();
-                ctx.arc(cx, py + 10, 5, 0, Math.PI * 2);
+                ctx.arc(cx, py + 12, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            if (prop.isWatered && prop.cropStage !== 'empty') {
+                ctx.fillStyle = '#38bdf8';
+                ctx.beginPath();
+                ctx.arc(px + pw - 12, py + 12, 4, 0, Math.PI * 2);
                 ctx.fill();
             }
             break;
@@ -380,7 +431,9 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
     facility,
     onExitToBase,
     onOpenBaseModal,
-    onInspectCompanion
+    onInspectCompanion,
+    onUpdateCharacter,
+    onSwitchFacilityInstance
 }) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -389,9 +442,18 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
 
     const [selectedResident, setSelectedResident] = useState<BaseResidentEntity | null>(null);
     const [selectedMonster, setSelectedMonster] = useState<BaseFarmMonsterEntity | null>(null);
+    const [selectedFarmPlot, setSelectedFarmPlot] = useState<number | null>(null);
+    const [selectedMineZoneId, setSelectedMineZoneId] = useState<string | null>(null);
+    const [commissionBlacksmithId, setCommissionBlacksmithId] = useState<string | null>(null);
+    const [commissionAlchemistId, setCommissionAlchemistId] = useState<string | null>(null);
+    const [openDirectSubModal, setOpenDirectSubModal] = useState<'workshop' | 'dispatch' | null>(null);
+    const [activeHouseId, setActiveHouseId] = useState<string>('');
     const [nearbyLabel, setNearbyLabel] = useState<string | null>(null);
 
-    const mapData = useMemo(() => generateFacilityInteriorMap(character, facility), [character, facility]);
+    const mapData = useMemo(
+        () => generateFacilityInteriorMap(character, facility, activeHouseId),
+        [character, facility, activeHouseId]
+    );
     const loc = character.base?.location || character.currentLocation || { region: '아시아', nation: '대한민국', city: '서울' };
     const playerSpriteUrl = useMemo(
         () => resolveEntityRpgSprite(character as any, loc.region, loc.nation).url,
@@ -406,6 +468,16 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
         monstersRef.current = mapData.monsters.map(m => ({ ...m }));
     }, [mapData]);
 
+    useEffect(() => {
+        playerRef.current.x = mapData.spawnPos.x * BASE_TILE_SIZE + BASE_TILE_SIZE / 2;
+        playerRef.current.y = mapData.spawnPos.y * BASE_TILE_SIZE + BASE_TILE_SIZE / 2;
+        playerRef.current.targetX = null;
+        playerRef.current.targetY = null;
+        playerRef.current.moving = false;
+        exitCooldownRef.current = Date.now() + 700;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeHouseId, facility.instanceId]);
+
     // Preload character, resident, monster, terrain, and optional interior prop PNGs
     useEffect(() => {
         const spriteUrls = new Set<string>([playerSpriteUrl, ...mapData.residents.map(r => r.spriteUrl)]);
@@ -415,9 +487,12 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
         (['ground', 'road', 'plaza', 'royal_road'] as TerrainTilePart[]).forEach(p => {
             loadCityAssetImage(getTerrainTileUrl(mapData.cultureKey, p));
         });
-        const uniqueKinds = new Set<InteriorPropKind>(mapData.props.map(p => p.kind));
-        uniqueKinds.forEach(k => {
-            loadCityAssetImage(getInteriorPropSpriteUrl(k));
+        const propUrls = new Set<string>();
+        mapData.props.forEach(p => {
+            propUrls.add(p.customSpriteUrl || getInteriorPropSpriteUrl(p.spriteKey || p.kind));
+        });
+        propUrls.forEach(url => {
+            loadCityAssetImage(url);
         });
         mapData.monsters.forEach(m => {
             if (m.visualUrl) {
@@ -496,6 +571,21 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
         return null;
     }, [mapData.props]);
 
+    const openStationModal = useCallback(
+        (subModal?: string) => {
+            if ((subModal === 'workshop' || subModal === 'blacksmith') && onUpdateCharacter) {
+                setOpenDirectSubModal('workshop');
+                return;
+            }
+            if (subModal === 'dispatch' && onUpdateCharacter) {
+                setOpenDirectSubModal('dispatch');
+                return;
+            }
+            onOpenBaseModal(subModal);
+        },
+        [onOpenBaseModal, onUpdateCharacter]
+    );
+
     const handleInteract = useCallback(() => {
         const target = findNearestInteractable();
         if (!target) return;
@@ -505,34 +595,67 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
         } else if (target.kind === 'monster') {
             setSelectedMonster(target.monster);
             setSelectedResident(null);
+        } else if (typeof target.prop.plotIndex === 'number') {
+            setSelectedFarmPlot(target.prop.plotIndex);
+            setSelectedMineZoneId(null);
+            setSelectedResident(null);
+            setSelectedMonster(null);
+        } else if (target.prop.mineZoneId) {
+            setSelectedMineZoneId(target.prop.mineZoneId);
+            setSelectedFarmPlot(null);
+            setSelectedResident(null);
+            setSelectedMonster(null);
+        } else if (target.prop.houseId) {
+            exitCooldownRef.current = Date.now() + 700;
+            setSelectedResident(null);
+            setSelectedMonster(null);
+            setActiveHouseId(target.prop.houseId);
         } else {
-            onOpenBaseModal(target.prop.actionSubModal);
+            openStationModal(target.prop.actionSubModal);
         }
-    }, [findNearestInteractable, onOpenBaseModal]);
+    }, [findNearestInteractable, openStationModal]);
 
     useEffect(() => {
+        const mapMoveKey = (e: KeyboardEvent): string | null => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') return 'w';
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') return 's';
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') return 'a';
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') return 'd';
+            const k = e.key.toLowerCase();
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) return k;
+            return null;
+        };
         const onKeyDown = (e: KeyboardEvent) => {
             const tag = (e.target as HTMLElement)?.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-            const k = e.key.toLowerCase();
-            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) {
+            const mv = mapMoveKey(e);
+            if (mv) {
                 e.preventDefault();
-                keysRef.current.add(k);
+                if (e.repeat) return;
+                keysRef.current.add(mv);
                 playerRef.current.targetX = null;
                 playerRef.current.targetY = null;
-            } else if (k === ' ' || k === 'enter' || k === 'e') {
+                return;
+            }
+            const k = e.key.toLowerCase();
+            if (k === ' ' || k === 'enter' || k === 'e' || e.code === 'KeyE' || e.code === 'Space') {
                 e.preventDefault();
-                handleInteract();
+                if (!e.repeat) handleInteract();
             } else if (k === 'escape') {
-                if (selectedResident || selectedMonster) {
+                if (selectedResident || selectedMonster || selectedFarmPlot !== null) {
                     setSelectedResident(null);
                     setSelectedMonster(null);
+                    setSelectedFarmPlot(null);
                 } else {
                     onExitToBase();
                 }
             }
         };
-        const onKeyUp = (e: KeyboardEvent) => keysRef.current.delete(e.key.toLowerCase());
+        const onKeyUp = (e: KeyboardEvent) => {
+            const mv = mapMoveKey(e);
+            if (mv) keysRef.current.delete(mv);
+            keysRef.current.delete(e.key.toLowerCase());
+        };
         const onBlur = () => {
             keysRef.current.clear();
             dpadRef.current = null;
@@ -575,7 +698,24 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
             const fw = pr.tileW * BASE_TILE_SIZE;
             const fh = pr.tileH * BASE_TILE_SIZE;
             if (wx >= fx && wx <= fx + fw && wy >= fy - 14 && wy <= fy + fh) {
-                onOpenBaseModal(pr.actionSubModal);
+                if (typeof pr.plotIndex === 'number') {
+                    setSelectedFarmPlot(pr.plotIndex);
+                    setSelectedMineZoneId(null);
+                    setSelectedResident(null);
+                    setSelectedMonster(null);
+                } else if (pr.mineZoneId) {
+                    setSelectedMineZoneId(pr.mineZoneId);
+                    setSelectedFarmPlot(null);
+                    setSelectedResident(null);
+                    setSelectedMonster(null);
+                } else if (pr.houseId) {
+                    exitCooldownRef.current = Date.now() + 700;
+                    setSelectedResident(null);
+                    setSelectedMonster(null);
+                    setActiveHouseId(pr.houseId);
+                } else {
+                    openStationModal(pr.actionSubModal);
+                }
                 return;
             }
         }
@@ -588,6 +728,10 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
 
         setSelectedResident(null);
         setSelectedMonster(null);
+        // 모바일(768px 미만)에서는 터치 이동을 제한하고 D-패드로만 이동
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+            return;
+        }
         playerRef.current.targetX = wx;
         playerRef.current.targetY = wy;
     };
@@ -617,26 +761,43 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
             if (keys.has('arrowup') || keys.has('w') || dpadRef.current === 'up') vy -= 1;
             if (keys.has('arrowdown') || keys.has('s') || dpadRef.current === 'down') vy += 1;
 
+            const speed = 200;
+            const maxStep = speed * dt;
+            let isClickMoving = false;
+            let clickStepDist = maxStep;
+
             if (vx === 0 && vy === 0 && p.targetX !== null && p.targetY !== null) {
                 const dx = p.targetX - p.x;
                 const dy = p.targetY - p.y;
                 const dist = Math.hypot(dx, dy);
-                if (dist > 6) {
-                    vx = dx / dist;
-                    vy = dy / dist;
-                } else {
+                if (dist <= Math.max(4, maxStep)) {
+                    if (!isBlocked(p.targetX, p.targetY)) {
+                        p.x = p.targetX;
+                        p.y = p.targetY;
+                    }
                     p.targetX = null;
                     p.targetY = null;
+                } else {
+                    vx = dx / dist;
+                    vy = dy / dist;
+                    isClickMoving = true;
+                    clickStepDist = Math.min(maxStep, dist);
                 }
             }
 
             if (vx !== 0 || vy !== 0) {
                 const len = Math.hypot(vx, vy) || 1;
-                const speed = 200;
-                const nx = p.x + (vx / len) * speed * dt;
-                const ny = p.y + (vy / len) * speed * dt;
+                const step = isClickMoving ? clickStepDist : maxStep;
+                const prevX = p.x;
+                const prevY = p.y;
+                const nx = p.x + (vx / len) * step;
+                const ny = p.y + (vy / len) * step;
                 if (!isBlocked(nx, p.y)) p.x = Math.max(BASE_TILE_SIZE, Math.min((mapData.cols - 1) * BASE_TILE_SIZE, nx));
                 if (!isBlocked(p.x, ny)) p.y = Math.max(BASE_TILE_SIZE, Math.min((mapData.rows - 1) * BASE_TILE_SIZE, ny));
+                if (isClickMoving && Math.hypot(p.x - prevX, p.y - prevY) < 0.25) {
+                    p.targetX = null;
+                    p.targetY = null;
+                }
                 p.dir = Math.abs(vx) > Math.abs(vy) ? (vx > 0 ? 'right' : 'left') : vy > 0 ? 'down' : 'up';
                 p.moving = true;
                 p.animTimer += dt;
@@ -651,17 +812,29 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
 
             const ptx = Math.floor(p.x / BASE_TILE_SIZE);
             const pty = Math.floor(p.y / BASE_TILE_SIZE);
+            const isInsideHouseRoom =
+                (facility.facilityType === 'housing' || facility.facilityType === 'home' || facility.facilityType === 'my_home') &&
+                Boolean(activeHouseId);
             if (
                 Date.now() > exitCooldownRef.current &&
                 pty >= mapData.exitGate.y &&
                 ptx >= mapData.exitGate.x &&
                 ptx < mapData.exitGate.x + mapData.exitGate.w
             ) {
-                onExitToBase();
+                if (isInsideHouseRoom) {
+                    exitCooldownRef.current = Date.now() + 700;
+                    setActiveHouseId('');
+                } else {
+                    onExitToBase();
+                }
                 return;
             }
 
             residentsRef.current.forEach(r => {
+                if (r.isSleeping) {
+                    r.walkFrame = 1;
+                    return;
+                }
                 r.wanderTimer -= dt;
                 if (r.targetPx !== null && r.targetPy !== null) {
                     const dx = r.targetPx - r.px;
@@ -690,9 +863,9 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
                         }
                     }
                 } else if (r.wanderTimer <= 0) {
-                    r.wanderTimer = 2.2 + Math.random() * 3.0;
+                    r.wanderTimer = 2.6 + Math.random() * 3.8;
                     const angle = Math.random() * Math.PI * 2;
-                    const radius = 20 + Math.random() * 48;
+                    const radius = 36 + Math.random() * 88;
                     r.targetPx = r.homePx + Math.cos(angle) * radius;
                     r.targetPy = r.homePy + Math.sin(angle) * radius;
                 }
@@ -797,6 +970,23 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
                             ctx.drawImage(plazaImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
                         } else if (activeTile === 'royal_marble' && royalImg?.complete && royalImg.naturalWidth > 0) {
                             ctx.drawImage(royalImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                        } else if (activeTile === 'garden') {
+                            ctx.fillStyle = (r * 7 + c * 13) % 5 === 0 ? '#497a2f' : '#3f6e28';
+                            ctx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                            if ((r * 3 + c * 5) % 4 === 0) {
+                                ctx.fillStyle = '#65a30d';
+                                ctx.fillRect(x + 10, y + 14, 2, 5);
+                                ctx.fillRect(x + 14, y + 12, 2, 6);
+                                ctx.fillRect(x + 28, y + 30, 2, 5);
+                            }
+                        } else if (activeTile === 'dirt_road') {
+                            ctx.fillStyle = (r * 5 + c * 11) % 3 === 0 ? '#6e4422' : '#7b4f2a';
+                            ctx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                            if ((r + c) % 2 === 0) {
+                                ctx.fillStyle = '#926239';
+                                ctx.fillRect(x + 8, y + 10, 4, 3);
+                                ctx.fillRect(x + 30, y + 28, 5, 3);
+                            }
                         } else {
                             const f = (isCenterAisle && accentDef) || floorDef;
                             ctx.fillStyle = (r + c) % 2 === 0 ? f.color : f.accentColor;
@@ -914,14 +1104,40 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
                     ctx.fillText(nameStr, ax, ay + 24);
 
                     if (!isPlayer && act.r.activityBubble) {
-                        ctx.font = '10px sans-serif';
-                        const bw = Math.max(54, ctx.measureText(act.r.activityBubble).width + 12);
-                        ctx.fillStyle = 'rgba(15, 23, 42, 0.86)';
-                        ctx.fillRect(ax - bw / 2, ay - 46, bw, 15);
-                        ctx.fillStyle = '#bae6fd';
-                        ctx.fillText(act.r.activityBubble, ax, ay - 35);
+                        const distToPlayer = Math.hypot(act.r.px - p.x, act.r.py - p.y);
+                        const idxHash = act.r.name.charCodeAt(0) || 0;
+                        const showTurn = (Math.floor(now / 3600) + idxHash) % 3 === 0;
+                        if (distToPlayer <= 150 || act.r.isSleeping || showTurn) {
+                            ctx.font = '10px sans-serif';
+                            const bw = Math.max(54, ctx.measureText(act.r.activityBubble).width + 12);
+                            ctx.fillStyle = 'rgba(15, 23, 42, 0.86)';
+                            ctx.fillRect(ax - bw / 2, ay - 46, bw, 15);
+                            ctx.fillStyle = '#bae6fd';
+                            ctx.fillText(act.r.activityBubble, ax, ay - 35);
+                        }
                     }
                 });
+
+                // 야간/석양 조명 오버레이
+                const [chStr] = (character.currentTime || '08:00').split(':');
+                const chHour = parseInt(chStr, 10) || 8;
+                if (chHour >= 20 || chHour < 5) {
+                    ctx.fillStyle = 'rgba(10, 14, 38, 0.34)';
+                    ctx.fillRect(0, 0, interiorMap.cols * BASE_TILE_SIZE, interiorMap.rows * BASE_TILE_SIZE);
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    const g = ctx.createRadialGradient(p.x, p.y - 6, 4, p.x, p.y - 6, 95);
+                    g.addColorStop(0, 'rgba(254, 243, 199, 0.24)');
+                    g.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = g;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y - 6, 95, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                } else if (chHour >= 17 && chHour < 20) {
+                    ctx.fillStyle = 'rgba(190, 60, 40, 0.12)';
+                    ctx.fillRect(0, 0, interiorMap.cols * BASE_TILE_SIZE, interiorMap.rows * BASE_TILE_SIZE);
+                }
 
                 ctx.restore();
             }
@@ -945,7 +1161,7 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
 
             {/* Top HUD */}
             <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
-                <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/90 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl backdrop-blur-md">
+                <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl">
                     <Sparkles size={16} className="text-amber-400 shrink-0" />
                     <div className="leading-tight">
                         <div className="text-xs sm:text-sm font-black text-amber-200 flex items-center gap-1.5">
@@ -966,22 +1182,81 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
                 <div className="pointer-events-auto flex items-center gap-1.5">
                     <button
                         type="button"
-                        onClick={() => onOpenBaseModal(mapData.blueprint.defaultSubModal)}
+                        onClick={() => openStationModal(mapData.blueprint.defaultSubModal)}
                         className="px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/50 text-white flex items-center gap-1.5 shadow-lg"
                     >
                         <Zap size={13} /> 빠른 기능 열기
                     </button>
                     <button
                         type="button"
-                        onClick={onExitToBase}
+                        onClick={() => {
+                            if (
+                                (facility.facilityType === 'housing' ||
+                                    facility.facilityType === 'home' ||
+                                    facility.facilityType === 'my_home') &&
+                                activeHouseId
+                            ) {
+                                exitCooldownRef.current = Date.now() + 700;
+                                setActiveHouseId('');
+                            } else {
+                                onExitToBase();
+                            }
+                        }}
                         className="px-3 py-1.5 rounded-xl text-xs font-black bg-amber-700/90 hover:bg-amber-600 border border-amber-400/50 text-white flex items-center gap-1.5 shadow-lg"
                     >
-                        <DoorOpen size={13} /> 기지 마당으로
+                        <DoorOpen size={13} />{' '}
+                        {(facility.facilityType === 'housing' ||
+                            facility.facilityType === 'home' ||
+                            facility.facilityType === 'my_home') &&
+                        activeHouseId
+                            ? '숙소 단지로'
+                            : '기지 마당으로'}
                     </button>
                 </div>
             </div>
 
-            {nearbyLabel && !selectedResident && !selectedMonster && (
+            {facility.facilityType === 'farm' && facility.instanceId && onUpdateCharacter && (
+                <FarmInteriorPanel
+                    character={character}
+                    instanceId={facility.instanceId}
+                    selectedPlot={selectedFarmPlot}
+                    onSelectPlot={setSelectedFarmPlot}
+                    onSwitchFarmInstance={newId => {
+                        setSelectedFarmPlot(null);
+                        onSwitchFacilityInstance?.(newId);
+                    }}
+                    onUpdateCharacter={onUpdateCharacter}
+                />
+            )}
+
+            {facility.facilityType === 'mine' && facility.instanceId && onUpdateCharacter && (
+                <MineInteriorPanel
+                    character={character}
+                    instanceId={facility.instanceId}
+                    selectedZoneId={selectedMineZoneId}
+                    onSelectZoneId={setSelectedMineZoneId}
+                    onSwitchMineInstance={newId => {
+                        setSelectedMineZoneId(null);
+                        onSwitchFacilityInstance?.(newId);
+                    }}
+                    onUpdateCharacter={onUpdateCharacter}
+                />
+            )}
+
+            {(facility.facilityType === 'housing' || facility.facilityType === 'home' || facility.facilityType === 'my_home') &&
+                onUpdateCharacter && (
+                    <HousingInteriorPanel
+                        character={character}
+                        cultureKey={mapData.cultureKey}
+                        activeHouseId={activeHouseId}
+                        onSelectHouseId={setActiveHouseId}
+                        onOpenHousingModal={() => onOpenBaseModal('housing')}
+                        onOpenMyHomeModal={() => onOpenBaseModal('my_home')}
+                        onUpdateCharacter={onUpdateCharacter}
+                    />
+                )}
+
+            {nearbyLabel && !selectedResident && !selectedMonster && selectedFarmPlot === null && !selectedMineZoneId && (
                 <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20">
                     <button
                         type="button"
@@ -1035,48 +1310,52 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
             </div>
 
             {selectedResident && (
-                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 w-[92%] max-w-md bg-slate-950/95 border border-indigo-500/60 rounded-2xl p-4 shadow-2xl">
-                    <div className="flex items-start justify-between gap-3">
-                        <div>
-                            <div className="text-sm font-black text-white flex items-center gap-2">
-                                <Users size={15} className="text-indigo-400" />
-                                {selectedResident.name}
-                                <span className="text-[11px] font-bold text-indigo-300 bg-indigo-950 px-2 py-0.5 rounded">
-                                    Lv.{selectedResident.companionRef.level || 1}
-                                </span>
-                            </div>
-                            <div className="text-xs text-slate-400 mt-0.5">{selectedResident.role}</div>
-                            <div className="text-xs text-indigo-200 mt-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
-                                {selectedResident.activityBubble}
-                            </div>
-                        </div>
-                        <button type="button" onClick={() => setSelectedResident(null)} className="text-slate-400 hover:text-white p-1">
-                            <X size={16} />
-                        </button>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                        {onInspectCompanion && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const cid = selectedResident.id;
-                                    setSelectedResident(null);
-                                    onInspectCompanion(cid);
-                                }}
-                                className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black"
-                            >
-                                동료 정보 · 대화 열기
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => setSelectedResident(null)}
-                            className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold"
-                        >
-                            닫기
-                        </button>
-                    </div>
-                </div>
+                <ResidentQuickCard
+                    resident={selectedResident}
+                    character={character}
+                    facilityType={facility.facilityType}
+                    onCommissionBlacksmith={id => setCommissionBlacksmithId(id)}
+                    onCommissionAlchemist={id => setCommissionAlchemistId(id)}
+                    onUpdateCharacter={onUpdateCharacter}
+                    onInspectCompanion={onInspectCompanion}
+                    onClose={() => setSelectedResident(null)}
+                />
+            )}
+
+            {commissionBlacksmithId && onUpdateCharacter && (
+                <BlacksmithModal
+                    character={character}
+                    initialBlacksmithId={commissionBlacksmithId}
+                    onClose={() => setCommissionBlacksmithId(null)}
+                    onUpdateCharacter={onUpdateCharacter}
+                />
+            )}
+
+            {commissionAlchemistId && onUpdateCharacter && (
+                <AlchemyCraftModal
+                    character={character}
+                    initialAlchemistId={commissionAlchemistId}
+                    onClose={() => setCommissionAlchemistId(null)}
+                    onUpdateCharacter={onUpdateCharacter}
+                />
+            )}
+
+            {openDirectSubModal === 'workshop' && onUpdateCharacter && (
+                <WorkshopModal
+                    character={character}
+                    instanceId={facility.instanceId}
+                    onClose={() => setOpenDirectSubModal(null)}
+                    onUpdateCharacter={onUpdateCharacter}
+                />
+            )}
+
+            {openDirectSubModal === 'dispatch' && onUpdateCharacter && (
+                <DispatchModal
+                    character={character}
+                    instanceId={facility.instanceId}
+                    onClose={() => setOpenDirectSubModal(null)}
+                    onUpdateCharacter={onUpdateCharacter}
+                />
             )}
 
             {selectedMonster && (

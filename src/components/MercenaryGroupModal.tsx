@@ -159,6 +159,10 @@ const MercenaryGroupModal: React.FC<Props> = ({ character, onClose, onUpdateChar
     };
 
     const handleCreateGroup = () => {
+        if (mData?.joinedGroupId) {
+            alert("이미 다른 용병단 세력에 가입되어 있어 독자적인 용병단을 창설할 수 없습니다. 먼저 소속 용병단에서 탈퇴해 주세요.");
+            return;
+        }
         if (selectedMemberIds.length < 5) {
             alert("용병단 창설에는 최소 5명의 '용병' 직업 단원이 필요합니다.");
             return;

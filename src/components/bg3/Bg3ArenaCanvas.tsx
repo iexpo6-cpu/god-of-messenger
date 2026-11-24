@@ -1072,7 +1072,9 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         (nextUnits: Bg3Unit[], curRound: number): boolean => {
             const aliveEnemies = nextUnits.filter(u => u.team === 'enemy' && u.hp > 0);
             const aliveAllies = nextUnits.filter(u => u.team === 'ally' && u.hp > 0);
-            if (aliveEnemies.length === 0) {
+            const playerUnitCheck = nextUnits.find(u => u.isPlayer);
+            const isPlayerKo = Boolean(playerUnitCheck && playerUnitCheck.hp <= 0);
+            if (aliveEnemies.length === 0 && !isPlayerKo) {
                 setBattleEnded('victory');
                 setBannerMsg('🏆 모든 적을 격파하고 전장을 완전히 제압했습니다!');
                 const playerUnit = nextUnits.find(u => u.isPlayer);
@@ -1108,9 +1110,9 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 }, 900);
                 return true;
             }
-            if (aliveAllies.length === 0) {
+            if (aliveAllies.length === 0 || isPlayerKo) {
                 setBattleEnded('defeat');
-                setBannerMsg('💀 아군 부대가 전멸했습니다...');
+                setBannerMsg(isPlayerKo ? '💀 플레이어가 전투불능이 되어 패배했습니다...' : '💀 아군 부대가 전멸했습니다...');
                 const playerUnit = nextUnits.find(u => u.isPlayer);
                 const compHps: Record<string, number> = {};
                 const compMps: Record<string, number> = {};

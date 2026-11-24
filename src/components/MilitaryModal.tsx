@@ -26,12 +26,14 @@ interface Props {
     onClose: () => void;
     onUpdateCharacter: (newChar: Character, logMsg: string) => void;
     onAction: (action: string) => void;
+    initialTab?: Tab;
+    singleTabMode?: boolean;
 }
 
 type Tab = 'enlist' | 'duty' | 'war' | 'promotion' | 'recruit' | 'command';
 
-const MilitaryModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onAction }) => {
-    const [activeTab, setActiveTab] = useState<Tab>('duty');
+const MilitaryModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onAction, initialTab, singleTabMode = false }) => {
+    const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'duty');
     const [resultData, setResultData] = useState<ResultData | null>(null);
     const [isGeneratingMissions, setIsGeneratingMissions] = useState(false);
     const [selectedMission, setSelectedMission] = useState<Quest | null>(null);
@@ -108,7 +110,7 @@ const MilitaryModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter,
     const pendingInvasions = character.militaryData?.pendingInvasions || [];
 
     useEffect(() => {
-        if (!isEnlistedInParty) {
+        if (!isEnlistedInParty && !singleTabMode) {
             setActiveTab('enlist');
         } else {
             if (character.job === JobType.SOLDIER && !character.militaryData?.diplomacy) {
@@ -913,6 +915,7 @@ const MilitaryModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter,
                 </div>
 
                 {/* 탭 내비게이션 */}
+                {!singleTabMode && (
                 <div className="flex border-b border-slate-800 bg-slate-950 shrink-0 overflow-x-auto no-scrollbar">
                     {!isPlayerSoldier && (
                         <button 
@@ -960,6 +963,7 @@ const MilitaryModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter,
                         </>
                     )}
                 </div>
+                )}
 
                 {/* 탭 본문 영역 */}
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-900 custom-scrollbar">

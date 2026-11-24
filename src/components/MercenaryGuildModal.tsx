@@ -28,6 +28,8 @@ interface Props {
     onClose: () => void;
     onUpdateCharacter: (newChar: Character, logMsg: string) => void;
     onAction: (action: string) => void;
+    initialTab?: Tab;
+    singleTabMode?: boolean;
 }
 
 type Tab = 'register' | 'board' | 'blacklist' | 'recruit' | 'promotion' | 'group' | 'join';
@@ -49,8 +51,8 @@ const RANK_COLORS: Record<MercenaryRank, { badge: string; text: string; bg: stri
     [MercenaryRank.SSS]: { badge: 'bg-red-950/90 text-red-200 border-red-600/80 shadow-[0_0_10px_rgba(239,68,68,0.3)]', text: 'text-red-400', bg: 'from-red-950/50 to-slate-950', border: 'border-red-600/60' },
 };
 
-const MercenaryGuildModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onAction }) => {
-    const [activeTab, setActiveTab] = useState<Tab>('board');
+const MercenaryGuildModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onAction, initialTab, singleTabMode = false }) => {
+    const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'board');
     const [recruits, setRecruits] = useState<Companion[]>(() => character.mercenaryData?.availableRecruits || []);
     const [isRecruitLoading, setIsRecruitLoading] = useState(false);
     const [resultData, setResultData] = useState<ResultData | null>(null);
@@ -1392,6 +1394,8 @@ const MercenaryGuildModal: React.FC<Props> = ({ character, onClose, onUpdateChar
                 </div>
 
                 {/* 세그먼트 탭 내비게이션 (가로 스크롤 대응) */}
+                {/* 탭 내비게이션 */}
+                {!singleTabMode && (
                 <div className="flex border-b border-slate-800/80 bg-slate-950/90 shrink-0 overflow-x-auto no-scrollbar px-2 sm:px-4 gap-1 sm:gap-2">
                     {!mData && (
                         <button 
@@ -1466,6 +1470,7 @@ const MercenaryGuildModal: React.FC<Props> = ({ character, onClose, onUpdateChar
                         <Globe size={15} className="mr-1.5 text-rose-500"/> 세력 가입
                     </button>
                 </div>
+                )}
 
                 {/* 탭 콘텐츠 영역 */}
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-900 custom-scrollbar relative">
@@ -2110,13 +2115,19 @@ const MercenaryGuildModal: React.FC<Props> = ({ character, onClose, onUpdateChar
                                 </p>
                             </div>
 
-                            <button 
-                                onClick={() => setIsGroupModalOpen(true)} 
-                                className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-950/50 flex items-center justify-center gap-2.5 transition-all text-sm sm:text-base"
-                            >
-                                <LayoutGrid size={18}/> 
-                                {character.mercenaryData?.isGroupLeader ? "용병단 관리 본부 열기" : "용병단 창설 심사 받기"}
-                            </button>
+                            {character.mercenaryData?.joinedGroupId && !character.mercenaryData?.isGroupLeader ? (
+                                <div className="w-full p-4 rounded-xl bg-rose-950/60 border border-rose-500/50 text-rose-200 text-xs sm:text-sm font-bold">
+                                    이미 다른 용병단 세력에 가입되어 있어 새 용병단을 창설할 수 없습니다. (먼저 세력에서 탈퇴해 주세요)
+                                </div>
+                            ) : (
+                                <button 
+                                    onClick={() => setIsGroupModalOpen(true)} 
+                                    className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg shadow-amber-950/50 flex items-center justify-center gap-2.5 transition-all text-sm sm:text-base"
+                                >
+                                    <LayoutGrid size={18}/> 
+                                    {character.mercenaryData?.isGroupLeader ? "용병단 관리 본부 열기" : "용병단 창설 심사 받기"}
+                                </button>
+                            )}
                         </div>
                     )}
 

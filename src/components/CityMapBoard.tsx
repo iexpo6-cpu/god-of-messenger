@@ -13,6 +13,11 @@ import MilitaryCityActionPanel from './MilitaryCityActionPanel';
 import MilitaryInfiltrationModal from './MilitaryInfiltrationModal';
 import CityRpgCanvas from './CityRpgCanvas';
 import BaseRpgCanvas from './BaseRpgCanvas';
+import DistrictRpgCanvas, { VisualDistrictKind } from './DistrictRpgCanvas';
+import FactionCompoundCanvas, { FactionCompoundKind } from './FactionCompoundCanvas';
+import OutskirtsRpgCanvas from './OutskirtsRpgCanvas';
+import FacilityClosedModal from './FacilityClosedModal';
+import { getFacilityOperatingState } from '../services/facilityOperatingService';
 import { 
     Building2, Store, Users2, Clock, Shield, Tent, Crown, Home, Sword, 
     MapPin, BookOpen, Map, ShieldAlert, Compass, ChevronRight, HelpCircle, Calendar,
@@ -37,6 +42,7 @@ interface Props {
     onTravel?: (destination: any, cost: number, days: number) => void;
     onUpdateCharacter?: (updatedChar: Character, logMessage: string) => void;
     onStartBattle?: (enemies: any[], battleType: string, sourceId?: string) => void;
+    onAction?: (action: string) => void;
     onOpenCharacterSheet?: () => void;
 }
 
@@ -57,6 +63,7 @@ const CityMapBoard: React.FC<Props> = ({
     onTravel,
     onUpdateCharacter,
     onStartBattle,
+    onAction,
     onOpenCharacterSheet
 }) => {
     const [isQuickTravelOpen, setIsQuickTravelOpen] = useState(false);
@@ -69,6 +76,21 @@ const CityMapBoard: React.FC<Props> = ({
         onChangeMapZone?.(next);
     };
     const [isZoneFading, setIsZoneFading] = useState(false);
+    const [activeDistrictCanvas, setActiveDistrictCanvas] = useState<VisualDistrictKind | null>(null);
+    const [activeCompoundCanvas, setActiveCompoundCanvas] = useState<FactionCompoundKind | null>(null);
+    const loc = character.currentLocation || { region: "아시아", nation: "대한민국", city: "서울" };
+    const [isOutskirtsCanvasOpen, setIsOutskirtsCanvasOpen] = useState<boolean>(() => {
+        try {
+            const raw = sessionStorage.getItem('shinryoku_outskirts_resume');
+            if (!raw) return false;
+            const parsed = JSON.parse(raw);
+            return parsed?.charId === character.id && parsed?.city === loc.city;
+        } catch {
+            return false;
+        }
+    });
+    const [closedFacilityType, setClosedFacilityType] = useState<'Mercenary' | 'Military' | null>(null);
+    const [royalCourtDenied, setRoyalCourtDenied] = useState<{ rep: number; merit: number } | null>(null);
     const [mapViewMode, setMapViewMode] = useState<'rpg' | 'classic'>(() => {
         try {
             const saved = localStorage.getItem('shinryoku_city_map_view_mode');
@@ -83,16 +105,77 @@ const CityMapBoard: React.FC<Props> = ({
             localStorage.setItem('shinryoku_city_map_view_mode', mode);
         } catch {}
     };
-    const loc = character.currentLocation || { region: "아시아", nation: "대한민국", city: "서울" };
 
+    const prevLocKeyRef = useRef<string>(`${loc.city}|${Boolean(character.base)}`);
     useEffect(() => {
+        const nextKey = `${loc.city}|${Boolean(character.base)}`;
+        if (prevLocKeyRef.current === nextKey) return;
+        prevLocKeyRef.current = nextKey;
         setActiveMapZone('city');
+        setActiveDistrictCanvas(null);
+        setActiveCompoundCanvas(null);
+        setIsOutskirtsCanvasOpen(false);
+        try {
+            sessionStorage.removeItem('shinryoku_outskirts_resume');
+        } catch {}
     }, [loc.city, Boolean(character.base)]);
+
+    const handleEnterCityDistrict = (district?: DistrictType | 'Gate', openHuntMap?: boolean) => {
+        if (openHuntMap || district === 'Outskirts') {
+            try {
+                const raw = sessionStorage.getItem('shinryoku_outskirts_resume');
+                const parsed = raw ? JSON.parse(raw) : null;
+                if (!parsed || parsed.charId !== character.id || parsed.city !== loc.city) {
+                    sessionStorage.setItem('shinryoku_outskirts_resume', JSON.stringify({ charId: character.id, city: loc.city, zoneId: null }));
+                }
+            } catch {}
+            setIsOutskirtsCanvasOpen(true);
+            return;
+        }
+        if (!openHuntMap && (district === 'Commercial' || district === 'Residential')) {
+            setActiveDistrictCanvas(district);
+            return;
+        }
+        if (!openHuntMap && district === 'Mercenary') {
+            const op = getFacilityOperatingState('Mercenary', character.currentTime);
+            if (!op.isOpen) {
+                setClosedFacilityType('Mercenary');
+                return;
+            }
+            setActiveCompoundCanvas('Mercenary');
+            return;
+        }
+        if (!openHuntMap && district === 'Military' && !isMagye && !isShingye && !isBeastNation) {
+            const op = getFacilityOperatingState('Military', character.currentTime);
+            if (!op.isOpen) {
+                setClosedFacilityType('Military');
+                return;
+            }
+            setActiveCompoundCanvas('Military');
+            return;
+        }
+        if (!openHuntMap && district === 'RoyalCourt' && !isMagye && !isShingye && isCapital) {
+            const rep = character.mercenaryData?.reputation || 0;
+            const merit = character.militaryData?.merit || 0;
+            if (rep < 10000 && merit < 10000) {
+                setRoyalCourtDenied({ rep, merit });
+                return;
+            }
+            setActiveDistrictCanvas('RoyalCourt');
+            return;
+        }
+        onEnterCity(district, openHuntMap);
+    };
 
     const switchMapZone = (nextZone: 'city' | 'base') => {
         setIsZoneFading(true);
         window.setTimeout(() => {
             setActiveMapZone(nextZone);
+            if (nextZone === 'base') {
+                setActiveDistrictCanvas(null);
+                setActiveCompoundCanvas(null);
+                setIsOutskirtsCanvasOpen(false);
+            }
             window.setTimeout(() => setIsZoneFading(false), 140);
         }, 160);
     };
@@ -759,9 +842,57 @@ const CityMapBoard: React.FC<Props> = ({
                         </div>
                     )}
                 </div>
-            ) : mapViewMode === 'rpg' ? (
+            ) : mapViewMode === 'rpg' || activeDistrictCanvas || activeCompoundCanvas || isOutskirtsCanvasOpen ? (
                 <div className="z-10 flex-1 mt-1 mb-[62px] sm:mb-[54px] flex flex-col w-full min-h-[320px] sm:min-h-[calc(100vh-165px)] relative">
-                    <CityRpgCanvas
+                    {isOutskirtsCanvasOpen ? (
+                        <OutskirtsRpgCanvas
+                            character={character}
+                            region={loc.region}
+                            nation={loc.nation}
+                            city={loc.city}
+                            onExitToCity={() => {
+                                try {
+                                    sessionStorage.removeItem('shinryoku_outskirts_resume');
+                                } catch {}
+                                setIsOutskirtsCanvasOpen(false);
+                            }}
+                            onStartBattle={onStartBattle}
+                            onEnterField={(bandId, minLvl, maxLvl) => {
+                                setIsOutskirtsCanvasOpen(false);
+                                const targetLevel = Math.floor(Math.random() * (maxLvl - minLvl + 1)) + minLvl;
+                                if (onAction) {
+                                    onAction(`[전투 돌입] 사냥터 탐색 (지역: ${bandId}, 권장레벨: ${targetLevel})`);
+                                } else {
+                                    onEnterCity('Outskirts', true);
+                                }
+                            }}
+                        />
+                    ) : activeCompoundCanvas ? (
+                        <FactionCompoundCanvas
+                            character={character}
+                            kind={activeCompoundCanvas}
+                            region={loc.region}
+                            nation={loc.nation}
+                            city={loc.city}
+                            onExitToCity={() => setActiveCompoundCanvas(null)}
+                            onUpdateCharacter={onUpdateCharacter || (() => {})}
+                            onAction={onAction}
+                        />
+                    ) : activeDistrictCanvas ? (
+                        <DistrictRpgCanvas
+                            character={character}
+                            district={activeDistrictCanvas}
+                            region={loc.region}
+                            nation={loc.nation}
+                            city={loc.city}
+                            tier={tier}
+                            onExitToCity={() => setActiveDistrictCanvas(null)}
+                            onUpdateCharacter={onUpdateCharacter || (() => {})}
+                            onBattle={onStartBattle}
+                            onAction={onAction}
+                        />
+                    ) : (
+                        <CityRpgCanvas
                             character={character}
                             region={loc.region}
                             nation={loc.nation}
@@ -783,7 +914,7 @@ const CityMapBoard: React.FC<Props> = ({
                             backgroundFilterClass={isShingye ? (isMidnightLabor ? 'brightness-90 contrast-110 saturate-120' : 'brightness-105 contrast-105 saturate-110') : timeFilter.filterClass}
                             isMythicBoss={isMythicBoss}
                             bossName={currentBoss?.name}
-                            onEnterCity={onEnterCity}
+                            onEnterCity={handleEnterCityDistrict}
                             onOpenDungeon={onOpenDungeon}
                             onOpenMap={onOpenMap}
                             onOpenBase={handleEnterBaseFromMap}
@@ -794,6 +925,7 @@ const CityMapBoard: React.FC<Props> = ({
                             onOpenAbyssTower={onOpenAbyssTower}
                             onInspectCompanion={onInspectCompanion}
                         />
+                    )}
                     {isZoneFading && (
                         <div className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center transition-opacity duration-150 pointer-events-none">
                             <span className="text-amber-200 font-black text-sm tracking-widest animate-pulse">
@@ -860,7 +992,7 @@ const CityMapBoard: React.FC<Props> = ({
                                 available={isDistrictAvailable('Commercial')}
                                 theme={theme}
                                 isClosedAtNight={!isDayFacilityOpen}
-                                onClick={() => onEnterCity('Commercial')}
+                                onClick={() => handleEnterCityDistrict('Commercial')}
                             />
                         </div>
          
@@ -870,7 +1002,7 @@ const CityMapBoard: React.FC<Props> = ({
                                 type="Residential" 
                                 available={isDistrictAvailable('Residential')}
                                 theme={theme}
-                                onClick={() => onEnterCity('Residential')}
+                                onClick={() => handleEnterCityDistrict('Residential')}
                             />
                         </div>
          
@@ -881,7 +1013,7 @@ const CityMapBoard: React.FC<Props> = ({
                                 available={isDistrictAvailable('Mercenary')}
                                 theme={theme}
                                 isClosedAtNight={!isDayFacilityOpen}
-                                onClick={() => onEnterCity('Mercenary')}
+                                onClick={() => handleEnterCityDistrict('Mercenary')}
                             />
                         </div>
          
@@ -903,14 +1035,14 @@ const CityMapBoard: React.FC<Props> = ({
                                 available={isDistrictAvailable('Military')}
                                 theme={theme}
                                 isClosedAtNight={!isDayFacilityOpen}
-                                onClick={() => onEnterCity('Military')}
+                                onClick={() => handleEnterCityDistrict('Military')}
                             />
                         </div>
 
                         {/* 5.5 Night Market Node - [모바일 컴팩트 클러스터 배치] */}
                         <div className="absolute left-[5%] xs:left-[8%] sm:left-[13%] bottom-[7%] sm:bottom-[7%] z-10">
                             <button 
-                                onClick={() => onEnterCity('Residential')}
+                                onClick={() => handleEnterCityDistrict('Residential')}
                                 className="w-[56px] xs:w-[68px] sm:w-[78px] flex flex-col items-center group cursor-pointer relative"
                             >
                                 {isNightPrime ? (
@@ -961,7 +1093,7 @@ const CityMapBoard: React.FC<Props> = ({
                                     type="RoyalCourt" 
                                     available={isDistrictAvailable('RoyalCourt')}
                                     theme={theme}
-                                    onClick={() => onEnterCity('RoyalCourt')}
+                                    onClick={() => handleEnterCityDistrict('RoyalCourt')}
                                 />
                             </div>
                         )}
@@ -1286,7 +1418,7 @@ const CityMapBoard: React.FC<Props> = ({
                                         <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 border border-slate-950 rounded-full"></span>
                                     </div>
                                     <span className="text-[8px] xs:text-[9px] sm:text-[10px] font-black text-red-300 mt-0.5 text-center truncate w-full group-hover:text-red-200 transition-colors leading-none">
-                                        시험 던전
+                                        던전
                                     </span>
                                     <span className="text-[7px] text-slate-400 font-bold hidden xs:inline">
                                         던전
@@ -1374,6 +1506,46 @@ const CityMapBoard: React.FC<Props> = ({
                     onUpdateCharacter={onUpdateCharacter || (() => {})}
                     onStartBattle={onStartBattle}
                 />
+            )}
+            {closedFacilityType && (
+                <FacilityClosedModal
+                    isOpen={true}
+                    facilityType={closedFacilityType}
+                    currentTime={character.currentTime}
+                    onClose={() => setClosedFacilityType(null)}
+                />
+            )}
+            {royalCourtDenied && (
+                <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="max-w-md w-full bg-slate-950 border-2 border-amber-500/60 rounded-2xl p-5 shadow-2xl space-y-4 text-center">
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-950/80 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                            <Crown size={24} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <h3 className="text-base font-black text-amber-300">왕궁 알현실 출입 제한</h3>
+                            <p className="text-xs text-slate-300 leading-relaxed">
+                                왕궁 근위병이 앞을 가로막습니다. 국왕 알현실은 <strong className="text-amber-200">용병 명성 10,000</strong> 또는 <strong className="text-sky-300">군사 공적치 10,000</strong> 이상을 달성한 영웅만 출입할 수 있습니다.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs bg-slate-900 p-3 rounded-xl border border-slate-800">
+                            <div>
+                                <div className="text-slate-400 text-[10px]">현재 용병 명성</div>
+                                <div className="font-black text-amber-300">{royalCourtDenied.rep.toLocaleString()} / 10,000</div>
+                            </div>
+                            <div>
+                                <div className="text-slate-400 text-[10px]">현재 군사 공적</div>
+                                <div className="font-black text-sky-300">{royalCourtDenied.merit.toLocaleString()} / 10,000</div>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setRoyalCourtDenied(null)}
+                            className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black"
+                        >
+                            확인
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Character, Companion, Item, Skill, SkillType, ItemRarity, WeaponType, Stats, BaseResources, ClassTier, MonsterStage, JobType, CombatStyle, TrainerRank, TRAINER_RANK_CONFIG, BaseDefenseReportData, FacilityInstance } from '../types';
 import { BASE_LEVEL_CONFIG, FACILITIES_INFO, ENHANCEMENT_CAPS, MAX_STORAGE_SIZE, FACILITY_UPGRADE_CONFIG, BASE_UPGRADE_COSTS, SHINRYOKU_TYPES_LIST, FACILITY_CONSTRUCTION_COSTS, BASE_GRID_EXPANSION_COSTS, COMBAT_STYLE_CONFIG, COMBAT_STYLE_CHANGE_COST, WEAPON_TYPE_KOREAN, TRANSCENDENCE_SANCTUARY_UNLOCK_STEP } from '../constants';
 import { calculateInventorySize, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalLabLevel, getFacilityTrainingLimit, getCharacterMaxLevel, getMonsterMaxLevel, getTranscendenceUnlockCost, getTranscendenceSanctuaryLevel, getTranscendenceUnlockStep } from '../utils';
@@ -549,77 +549,27 @@ const BaseModal: React.FC<Props> = ({
     };
 
     const handleNavigateToFacility = (facilityId: string) => {
-        let instance = character.base?.layout?.find(inst => inst.type === facilityId);
-        if (!instance) {
-            if (facilityId.startsWith('training_')) {
-                instance = character.base?.layout?.find(inst => inst.type === 'training' || inst.type.startsWith('training_'));
-            } else if (facilityId === 'monster_farm' || facilityId === 'monster_ranch') {
-                instance = character.base?.layout?.find(inst => inst.type === 'monster_farm' || inst.type === 'monster_ranch');
-            } else if (facilityId === 'sparring_arena') {
-                instance = character.base?.layout?.find(inst => inst.type === 'sparring_arena');
-            } else if (facilityId === 'farm') {
-                instance = character.base?.layout?.find(inst => inst.type === 'farm');
-            } else if (facilityId === 'mine') {
-                instance = character.base?.layout?.find(inst => inst.type === 'mine');
-            }
-        }
-        if (instance) {
-            if (instance.type.startsWith('training_') || facilityId.startsWith('training_')) {
-                onFacilitySpecificAction(facilityId, 'open_modal');
-            } else if (instance.type === 'farm') {
-                setIsFarmOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'mine') {
-                setIsMineOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'cooking') {
-                setIsCookingOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'custom_lab') {
-                setIsCustomLabOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'skill_vfx_lab') {
-                setIsSkillVfxLabOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'monster_farm' || instance.type === 'monster_ranch') {
-                setIsMonsterFarmOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'sparring_arena') {
-                setIsSparringArenaOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'child_academy') {
-                setIsChildAcademyOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'monster_arena') {
-                setIsMonsterArenaOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'workshop') {
-                setIsWorkshopOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'alchemy') {
-                setIsAlchemyOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'dispatch') {
-                setIsDispatchOpen(true);
-                setActiveInstanceId(instance.id);
-            } else if (instance.type === 'lab') {
-                setIsLabOpen(true);
-                setActiveInstanceId(instance.id);
-            } else {
-                setSelectedFacility(instance.type);
-                setSelectedInstanceId(instance.id);
-            }
-        }
+        window.dispatchEvent(new CustomEvent('enter-base-facility', { detail: { facilityType: facilityId } }));
+        onClose();
     };
+
+    const isStandaloneSubModal = Boolean(initialSubModal?.type && initialSubModal.type !== 'hq');
+    const standaloneArmedRef = useRef(false);
 
     // Initial sub-modal routing from quick shortcuts
     useEffect(() => {
         if (initialSubModal && initialSubModal.type) {
-            const { type } = initialSubModal;
-            const layoutItem = character.base?.layout?.find(f => f.type === type);
+            const { type, instanceId } = initialSubModal;
+            if (type === 'housing') {
+                setIsHousingModalOpen(true);
+                setSelectedFacility(null);
+                return;
+            }
+            const layoutItem = character.base?.layout?.find(f => (instanceId ? f.id === instanceId : f.type === type));
             setSelectedFacility(type);
-            if (layoutItem?.id) {
-                setSelectedInstanceId(layoutItem.id);
+            const targetId = instanceId || layoutItem?.id;
+            if (targetId) {
+                setSelectedInstanceId(targetId);
             }
         }
     }, [initialSubModal, character.base?.layout]);
@@ -725,6 +675,24 @@ const BaseModal: React.FC<Props> = ({
             }
             setSelectedFacility(null);
         }
+        if (selectedFacility === 'mine') {
+            if (selectedInstanceId) {
+                setActiveInstanceId(selectedInstanceId);
+                setIsMineOpen(true);
+            }
+            setSelectedFacility(null);
+        }
+        if (selectedFacility === 'cooking') {
+            if (selectedInstanceId) {
+                setActiveInstanceId(selectedInstanceId);
+                setIsCookingOpen(true);
+            }
+            setSelectedFacility(null);
+        }
+        if (selectedFacility === 'housing') {
+            setIsHousingModalOpen(true);
+            setSelectedFacility(null);
+        }
         if (selectedFacility === 'my_home') {
             setIsMyHomeOpen(true);
             setActiveInstanceId(selectedInstanceId);
@@ -761,6 +729,69 @@ const BaseModal: React.FC<Props> = ({
             setSelectedFacility(null);
         }
     }, [selectedFacility, selectedInstanceId]);
+
+    // 단독 서브모달 모드일 때, 열린 서브모달이 닫히면 BaseModal도 즉시 종료하여 기지/시설 맵으로 복귀
+    useEffect(() => {
+        if (!isStandaloneSubModal) return;
+        const anySubModalOpen = Boolean(
+            selectedFacility ||
+                isWorkshopOpen ||
+                isAlchemyOpen ||
+                isCustomLabOpen ||
+                isSkillVfxLabOpen ||
+                isMonsterFarmOpen ||
+                isDispatchOpen ||
+                isCookingOpen ||
+                isFarmOpen ||
+                isMineOpen ||
+                isMyHomeOpen ||
+                isHousingModalOpen ||
+                isLabOpen ||
+                isSparringArenaOpen ||
+                isChildAcademyOpen ||
+                isMonsterArenaOpen ||
+                isPotentialBreakthroughOpen ||
+                isTradeExchangeOpen ||
+                isCombatTrainingReportOpen ||
+                isMilitaryOpen ||
+                isRegionalOpen ||
+                isWarOpen ||
+                isTempleOpen ||
+                isMercenaryOpen
+        );
+        if (anySubModalOpen) {
+            standaloneArmedRef.current = true;
+        } else if (standaloneArmedRef.current) {
+            onClose();
+        }
+    }, [
+        isStandaloneSubModal,
+        selectedFacility,
+        isWorkshopOpen,
+        isAlchemyOpen,
+        isCustomLabOpen,
+        isSkillVfxLabOpen,
+        isMonsterFarmOpen,
+        isDispatchOpen,
+        isCookingOpen,
+        isFarmOpen,
+        isMineOpen,
+        isMyHomeOpen,
+        isHousingModalOpen,
+        isLabOpen,
+        isSparringArenaOpen,
+        isChildAcademyOpen,
+        isMonsterArenaOpen,
+        isPotentialBreakthroughOpen,
+        isTradeExchangeOpen,
+        isCombatTrainingReportOpen,
+        isMilitaryOpen,
+        isRegionalOpen,
+        isWarOpen,
+        isTempleOpen,
+        isMercenaryOpen,
+        onClose
+    ]);
 
     const isCompanionDispatched = (compId: string) => {
         const isBaseDispatched = character.base?.dispatched?.some(m => m.companionId === compId);
@@ -5466,10 +5497,11 @@ const BaseModal: React.FC<Props> = ({
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-2 sm:p-4 font-sans">
-            {resultOverlay.show && <ActionResultModal data={resultOverlay.data} onClose={() => setResultOverlay({ show: false, data: null, onContinue: undefined })} onContinue={resultOverlay.onContinue} />}
+        <div className={isStandaloneSubModal ? "fixed inset-0 z-50 pointer-events-none" : "fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-2 sm:p-4 font-sans"}>
+            {resultOverlay.show && <div className="pointer-events-auto"><ActionResultModal data={resultOverlay.data} onClose={() => setResultOverlay({ show: false, data: null, onContinue: undefined })} onContinue={resultOverlay.onContinue} /></div>}
             
             {sellingResource && (
+                <div className="pointer-events-auto">
                 <QuantityModal 
                     isOpen={!!sellingResource} 
                     title={`${sellingResource.label} 판매`}
@@ -5480,8 +5512,11 @@ const BaseModal: React.FC<Props> = ({
                     onClose={() => setSellingResource(null)}
                     actionType="sell"
                 />
+                </div>
             )}
-            <div className={`bg-slate-950 w-full max-w-4xl h-[94vh] sm:h-[86vh] rounded-xl sm:rounded-2xl border ${baseBorder} shadow-[0_0_50px_rgba(15,23,42,0.9)] flex flex-col overflow-hidden relative`}>
+            <div className={isStandaloneSubModal ? "w-full h-full pointer-events-auto" : `bg-slate-950 w-full max-w-4xl h-[94vh] sm:h-[86vh] rounded-xl sm:rounded-2xl border ${baseBorder} shadow-[0_0_50px_rgba(15,23,42,0.9)] flex flex-col overflow-hidden relative`}>
+                {!isStandaloneSubModal && (
+                <>
                 <div className={`p-3 sm:p-4 border-b ${bgGradientBorder} ${bgGradientHeader} backdrop-blur-md flex justify-between items-center shrink-0`}>
                     <div className="flex items-center">
                         <div className="p-2 sm:p-2.5 bg-indigo-900/40 rounded-xl border border-indigo-500/30 mr-2.5 sm:mr-3 text-indigo-400 shadow-md">
@@ -5947,115 +5982,9 @@ const BaseModal: React.FC<Props> = ({
                                         </div>
                                     ) : null}
 
-                                    {base.level >= 5 && (base.gridSize || 3) < 10 && (
-                                        <div className="bg-slate-950 p-6 rounded-xl border border-indigo-500/30">
-                                            {base.gridExpansionUnderConstruction ? (
-                                                <>
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <h3 className="text-lg font-bold text-amber-300 flex items-center gap-2">
-                                                            <Hammer className="text-amber-400 animate-bounce" size={20} />
-                                                            기지 부지 확장 공사 진행 중 ({base.gridSize || 7}x{base.gridSize || 7} → {base.targetGridSize || 8}x{base.targetGridSize || 8})
-                                                        </h3>
-                                                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-950 border border-amber-600 text-amber-300 animate-pulse">
-                                                            공사 진행 중
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-xs text-slate-300 mb-4 leading-relaxed">
-                                                        현재 기지 외곽의 암석을 발파하고 지반을 평탄화하는 대규모 부지 확장 공사가 진행 중입니다.<br />
-                                                        공사가 완료되면 기지 배치 구역이 <strong className="text-amber-300 font-mono">{base.targetGridSize}x{base.targetGridSize}</strong> 크기로 확장됩니다.
-                                                    </p>
-                                                    {(() => {
-                                                        const rem = getConstructionRemainingTime(character.currentDate, character.currentTime, base.gridExpansionCompletionDate, base.gridExpansionCompletionTime);
-                                                        const progress = getConstructionProgress(base.gridExpansionTotalMinutes, rem.remainingMinutes);
-                                                        return (
-                                                            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3">
-                                                                <div className="flex justify-between items-center text-xs">
-                                                                    <span className="text-slate-400">공사 진행률</span>
-                                                                    <span className="font-bold font-mono text-amber-400">{progress}%</span>
-                                                                </div>
-                                                                <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
-                                                                    <div className="bg-gradient-to-r from-amber-600 to-amber-400 h-full rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
-                                                                </div>
-                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-xs">
-                                                                    <div className="flex justify-between text-slate-400">
-                                                                        <span>완공 예정 일시</span>
-                                                                        <span className="text-slate-200 font-bold font-mono">{base.gridExpansionCompletionDate} {base.gridExpansionCompletionTime}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-slate-400">
-                                                                        <span>남은 시간</span>
-                                                                        <span className="text-emerald-400 font-bold font-mono">{rem.text}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <h3 className="text-lg font-bold text-indigo-400 mb-4 flex items-center">
-                                                        <TrendingUp size={20} className="mr-2" /> 기지 부지 확장 ({(base.gridSize || 3)}x{(base.gridSize || 3)} → {(base.gridSize || 3) < 7 ? 7 : (base.gridSize || 3) + 1}x{(base.gridSize || 3) < 7 ? 7 : (base.gridSize || 3) + 1})
-                                                    </h3>
-                                                    {(() => {
-                                                        const currentSize = base.gridSize || 3;
-                                                        const nextSize = currentSize < 7 ? 7 : currentSize + 1;
-                                                        const cost = currentSize < 7 ? { gold: 0, food: 0, wood: 0, stone: 0, iron: 0, manaCrystal: 0 } : BASE_GRID_EXPANSION_COSTS[nextSize];
-                                                        const durationMin = getBaseGridExpansionDuration(nextSize);
-                                                        const durationDays = Math.floor(durationMin / 1440);
-                                                        const res = character.base!.resources;
-                                                        if (!cost) return null;
-                                                        return (
-                                                            <>
-                                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                                                                    <div className="bg-slate-900 p-3 rounded border border-slate-800">
-                                                                        <span className="text-xs text-slate-500 block mb-1">골드</span>
-                                                                        <span className={`font-bold ${character.money >= cost.gold ? 'text-green-400' : 'text-red-400'}`}>{cost.gold.toLocaleString()} G</span>
-                                                                    </div>
-                                                                    <div className="bg-slate-900 p-3 rounded border border-slate-800">
-                                                                        <span className="text-xs text-slate-500 block mb-1">식량</span>
-                                                                        <span className={`font-bold ${res.food >= cost.food ? 'text-green-400' : 'text-red-400'}`}>{cost.food} / {res.food}</span>
-                                                                    </div>
-                                                                    <div className="bg-slate-900 p-3 rounded border border-slate-800">
-                                                                        <span className="text-xs text-slate-500 block mb-1">목재</span>
-                                                                        <span className={`font-bold ${res.wood >= cost.wood ? 'text-green-400' : 'text-red-400'}`}>{cost.wood} / {res.wood}</span>
-                                                                    </div>
-                                                                    <div className="bg-slate-900 p-3 rounded border border-slate-800">
-                                                                        <span className="text-xs text-slate-500 block mb-1">석재</span>
-                                                                        <span className={`font-bold ${res.stone >= cost.stone ? 'text-green-400' : 'text-red-400'}`}>{cost.stone} / {res.stone}</span>
-                                                                    </div>
-                                                                    <div className="bg-slate-900 p-3 rounded border border-slate-800">
-                                                                        <span className="text-xs text-slate-500 block mb-1">철광석</span>
-                                                                        <span className={`font-bold ${res.iron >= cost.iron ? 'text-green-400' : 'text-red-400'}`}>{cost.iron} / {res.iron}</span>
-                                                                    </div>
-                                                                    <div className="bg-slate-900 p-3 rounded border border-slate-800">
-                                                                        <span className="text-xs text-slate-500 block mb-1">마정석</span>
-                                                                        <span className={`font-bold ${res.manaCrystal >= cost.manaCrystal ? 'text-green-400' : 'text-red-400'}`}>{cost.manaCrystal} / {res.manaCrystal}</span>
-                                                                    </div>
-                                                                    {currentSize >= 7 && (
-                                                                        <div className="bg-slate-900 p-3 rounded border border-slate-800 col-span-2 md:col-span-3">
-                                                                            <span className="text-xs text-slate-500 block mb-1">공사 소요 시간</span>
-                                                                            <span className="font-bold text-amber-300">{durationDays}일 ({durationMin / 60}시간)</span>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                                <button 
-                                                                    onClick={onExpandGrid}
-                                                                    disabled={
-                                                                        character.money < cost.gold ||
-                                                                        res.food < cost.food ||
-                                                                        res.wood < cost.wood ||
-                                                                        res.stone < cost.stone ||
-                                                                        res.iron < cost.iron ||
-                                                                        res.manaCrystal < cost.manaCrystal
-                                                                    }
-                                                                    className="w-full py-4 bg-indigo-700 hover:bg-indigo-600 disabled:bg-slate-800 disabled:text-slate-500 text-white font-bold rounded-lg transition-all shadow-lg flex items-center justify-center"
-                                                                >
-                                                                    {(base.gridSize || 3) < 7 ? '7x7 크기로 무료 복구하기' : '부지 확장 공사 시작'}
-                                                                </button>
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </>
-                                            )}
+                                    {(!base || (base.level || 0) === 0) && (
+                                        <div className="bg-slate-950 p-6 rounded-xl border border-indigo-500/30 text-xs text-slate-400">
+                                            기지를 건설한 뒤 기지 마당의 [부지 확장] 버튼을 통해 부지를 확장할 수 있습니다.
                                         </div>
                                     )}
 
@@ -6082,54 +6011,15 @@ const BaseModal: React.FC<Props> = ({
                     )}
                     {activeTab === 'facilities' && (
                         <div className="space-y-4 sm:space-y-6">
-                            {/* 모바일 전용 서브 탭 전환 바 */}
-                            <div className="flex sm:hidden p-1 bg-slate-950/90 rounded-xl border border-indigo-500/30 gap-1 shadow-inner">
-                                <button
-                                    onClick={() => setFacilityMobileSubTab('list')}
-                                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                                        facilityMobileSubTab === 'list'
-                                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-950/50'
-                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
-                                    }`}
-                                >
-                                    <List size={14} /> 시설 목록 ({(character.base?.layout || []).length})
-                                </button>
-                                <button
-                                    onClick={() => setFacilityMobileSubTab('grid')}
-                                    className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                                        facilityMobileSubTab === 'grid'
-                                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-md shadow-indigo-950/50'
-                                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
-                                    }`}
-                                >
-                                    <LayoutGrid size={14} /> 기지 배치도/건설
-                                </button>
-                            </div>
-
-                            {/* 기지 전술 배치도 격자 (데스크톱에서는 상시 표시, 모바일에서는 'grid' 서브탭일 때 표시) */}
-                            <div className={`${facilityMobileSubTab === 'grid' ? 'block' : 'hidden'} sm:block`}>
-                                {renderBaseGrid()}
-                            </div>
-                            
-                            {/* 시설 관리 목록 (데스크톱에서는 상시 표시, 모바일에서는 'list' 서브탭일 때 표시) */}
-                            <div className={`border-t border-slate-800/80 pt-4 sm:pt-6 ${facilityMobileSubTab === 'list' ? 'block' : 'hidden'} sm:block`}>
+                            {/* 시설 담당자 설정 및 시설 관리 목록 */}
+                            <div className="pt-1">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-sm font-bold text-slate-300 uppercase flex items-center">
-                                        <Info size={16} className="mr-2 text-indigo-400"/> 시설 관리 목록
+                                        <Info size={16} className="mr-2 text-indigo-400"/> 시설 담당자 설정 및 관리 목록
                                         <span className="text-xs text-slate-500 font-normal ml-2 font-mono">
                                             ({(character.base?.layout || []).length}개 가동 중)
                                         </span>
                                     </h3>
-                                    {/* 모바일 시설 목록 뷰에서 바로 배치/건설 모드로 전환하는 버튼 */}
-                                    <button
-                                        onClick={() => {
-                                            setFacilityMobileSubTab('grid');
-                                            setIsBuildMode(true);
-                                        }}
-                                        className="sm:hidden text-xs text-emerald-400 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-600/40 px-2.5 py-1.5 rounded-lg flex items-center gap-1 active:scale-95 transition-all"
-                                    >
-                                        <Hammer size={12} /> 배치도/건설
-                                    </button>
                                 </div>
                                 {assigningInstanceId && (
                                     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -6875,6 +6765,8 @@ const BaseModal: React.FC<Props> = ({
                         </div>
                     )}
                 </div>
+                </>
+                )}
                 {selectedFacility && <div className="absolute inset-0 z-50 bg-black/95 flex flex-col p-6 animate-in fade-in slide-in-from-bottom-5"><div className="flex-1 overflow-hidden relative">{renderFacilityOverlay()}</div></div>}
                 {isWorkshopOpen && (
                     <WorkshopModal 

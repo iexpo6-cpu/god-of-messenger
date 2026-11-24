@@ -1411,13 +1411,25 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 };
 
                 if (timePeriod === 'shingye') {
-                    // 신계: 성전 고유의 신성한 황금/천상 광휘
+                    // 신계: 성전 고유의 신성한 황금/천상 광휘 (야간에는 어둡게)
                     const holyGrad = ctx.createLinearGradient(0, 0, 0, worldH);
                     holyGrad.addColorStop(0, 'rgba(254, 240, 138, 0.14)');
                     holyGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.04)');
                     holyGrad.addColorStop(1, 'rgba(251, 191, 36, 0.08)');
                     ctx.fillStyle = holyGrad;
                     ctx.fillRect(0, 0, worldW, worldH);
+
+                    if (hourFloat >= 20 || hourFloat < 5) {
+                        ctx.fillStyle = 'rgba(12, 16, 46, 0.38)';
+                        ctx.fillRect(0, 0, worldW, worldH);
+                        ctx.save();
+                        ctx.globalCompositeOperation = 'lighter';
+                        mapData.lamps.forEach(l => {
+                            drawGlow(l.x * ts + ts / 2, l.y * ts + 8, 92, pal.lampGlow);
+                        });
+                        drawGlow(p.x, p.y - 6, 88, 'rgba(254, 243, 199, 0.24)');
+                        ctx.restore();
+                    }
                 } else if (hourFloat >= 5 && hourFloat < 8) {
                     // 여명/일출 (05:00~07:59): 동쪽에서 퍼지는 복숭아·인디고 여명
                     const sunriseGrad = ctx.createLinearGradient(worldW, 0, 0, worldH);

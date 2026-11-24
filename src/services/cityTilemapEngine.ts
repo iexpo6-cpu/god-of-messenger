@@ -651,7 +651,7 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
         const dunX = cols - 2 - botW;
         placeBuilding({
             id: 'dungeon',
-            label: params.isMythicBoss ? `차원의 틈새 (${params.bossName || '시즌 보스'})` : '차원의 틈새 · 시험 던전',
+            label: params.isMythicBoss ? `차원의 틈새 (${params.bossName || '시즌 보스'})` : '던전',
             subLabel: '2D 미궁 탐험 진입',
             actionType: 'dungeon',
             spriteKind: 'dimensional_rift',

@@ -1,5 +1,5 @@
 import { BaseDecorationItem, Character, Companion, CapturedMonster, FacilityInstance } from '../types';
-import { FACILITIES_INFO } from '../constants';
+import { BASE_GRID_EXPANSION_COSTS, BASE_UPGRADE_COSTS, FACILITIES_INFO } from '../constants';
 import {
     CityCultureKey,
     CultureAssetPart,
@@ -35,8 +35,11 @@ export interface BaseMapExpansionOption {
     nextSize: number;
     maxForLevel: number;
     goldCost: number;
+    foodCost: number;
     woodCost: number;
     stoneCost: number;
+    ironCost: number;
+    manaCrystalCost: number;
     needsHigherBaseLevel: boolean;
 }
 
@@ -54,21 +57,29 @@ export const getBaseMapExpansionOption = (
             nextSize: cur,
             maxForLevel,
             goldCost: 0,
+            foodCost: 0,
             woodCost: 0,
             stoneCost: 0,
+            ironCost: 0,
+            manaCrystalCost: 0,
             needsHigherBaseLevel: lv < 5
         };
     }
     const step = lv === 1 ? 10 : lv === 2 ? 15 : lv <= 4 ? 20 : 25;
     const nextSize = Math.min(maxForLevel, cur + step);
-    const tierFactor = Math.max(1, Math.floor((nextSize - 20) / 10));
+    // BaseModal.tsx와 동일한 BASE_GRID_EXPANSION_COSTS 기준 대폭 상향 통일
+    const gridTierMap: Record<number, number> = { 1: 7, 2: 8, 3: 8, 4: 9, 5: 10 };
+    const gridCost = BASE_GRID_EXPANSION_COSTS[gridTierMap[lv] || 8] || BASE_GRID_EXPANSION_COSTS[8];
     return {
         canExpand: true,
         nextSize,
         maxForLevel,
-        goldCost: tierFactor * 45000,
-        woodCost: tierFactor * 20,
-        stoneCost: tierFactor * 25,
+        goldCost: gridCost?.gold || lv * 50000000,
+        foodCost: gridCost?.food || lv * 5000,
+        woodCost: gridCost?.wood || lv * 10000,
+        stoneCost: gridCost?.stone || lv * 10000,
+        ironCost: gridCost?.iron || lv * 1500,
+        manaCrystalCost: gridCost?.manaCrystal || lv * 1500,
         needsHigherBaseLevel: false
     };
 };
@@ -255,6 +266,7 @@ export interface BaseResidentEntity {
     targetPy: number | null;
     companionRef: Companion;
     assignedFacilityLabel?: string;
+    isSleeping?: boolean;
 }
 
 export interface BaseFarmMonsterEntity {
@@ -676,6 +688,9 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
     });
 
     const timeOfDay = getTimeOfDay(character.currentTime || '12:00');
+    const curHour = parseInt((character.currentTime || '12:00').split(':')[0], 10) || 12;
+    const isRestHours = curHour >= 18 || curHour < 9;
+    const houseAssigns = character.base?.houseAssignments || {};
     const housingNodes = facilities.filter(f => f.facilityType === 'housing' || f.facilityType === 'home' || f.facilityType === 'my_home');
     const roamAnchors: { x: number; y: number }[] = [
         ...housingNodes.map(h => ({ x: h.doorX + 0.5, y: h.doorY + 0.5 })),
@@ -687,6 +702,20 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
 
     humanResidents.forEach((comp, idx) => {
         const assignedLoc = assignedCompLocation.get(comp.id);
+        const isGuardOrMilitary =
+            assignedLoc &&
+            (assignedLoc.facLabel.includes('경비') ||
+                assignedLoc.facLabel.includes('병영') ||
+                assignedLoc.facLabel.includes('감시') ||
+                assignedLoc.facLabel.includes('방어'));
+        // 휴식/수면 시간대(18:00~08:59)에는 숙소에 귀가한 거주민은 기지 밖 마당에 보이지 않음 (경비·초소 근무 등 일부만 외부에 남음)
+        if (isRestHours && housingNodes.length > 0 && !isGuardOrMilitary) {
+            const hasAssignedHouse = Boolean(houseAssigns[comp.id]);
+            const unmappedResidentInHouse = Object.keys(houseAssigns).length === 0 && idx % 3 !== 0;
+            if (hasAssignedHouse || unmappedResidentInHouse) {
+                return;
+            }
+        }
         const anchor = roamAnchors[idx % roamAnchors.length];
         const ringOffset = Math.floor(idx / roamAnchors.length);
         const jitterAngle = (idx * 137.5 * Math.PI) / 180;
@@ -744,62 +773,8 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         });
     });
 
-    // 6. 몬스터 사육소 보유 몬스터 + 대기 몬스터 동료 전원 스폰
+    // 6. 기지 밖(마당)에는 사육 몬스터를 표시하지 않고, 몬스터 사육소 내부 맵에서만 스폰
     const farmMonsters: BaseFarmMonsterEntity[] = [];
-    const captured = (base?.capturedMonsters || []).filter(Boolean);
-    const defaultPen = monsterPenBounds || {
-        minPx: Math.min(cols - 6, cx + 3) * BASE_TILE_SIZE,
-        maxPx: Math.min(cols - 2, cx + 7) * BASE_TILE_SIZE,
-        minPy: Math.max(3, hqY) * BASE_TILE_SIZE,
-        maxPy: Math.min(rows - 5, hqY + 4) * BASE_TILE_SIZE
-    };
-
-    const allFarmMonsters: CapturedMonster[] = [
-        ...captured,
-        ...monsterResidents.map(
-            mc =>
-                ({
-                    id: mc.id,
-                    name: mc.name,
-                    level: mc.level || 1,
-                    hp: mc.stats?.hp || 100,
-                    maxHp: mc.stats?.maxHp || 100,
-                    stats: mc.stats,
-                    visualUrl: mc.monsterData?.visualUrl || (mc as any).visualUrl || mc.appearance,
-                    hunger: 100,
-                    affection: mc.affection ?? 50,
-                    rank: (mc.monsterData as any)?.rank
-                } as any)
-        )
-    ];
-
-    allFarmMonsters.forEach((mon, idx) => {
-        const spanX = Math.max(BASE_TILE_SIZE, defaultPen.maxPx - defaultPen.minPx);
-        const spanY = Math.max(BASE_TILE_SIZE, defaultPen.maxPy - defaultPen.minPy);
-        const px = defaultPen.minPx + ((idx * 37) % 100) / 100 * spanX;
-        const py = defaultPen.minPy + ((idx * 53) % 100) / 100 * spanY;
-        farmMonsters.push({
-            id: mon.id || `farm_mon_${idx}`,
-            name: mon.name || '사육 몬스터',
-            level: mon.level || 1,
-            rank: (mon as any).rank,
-            hunger: mon.hunger ?? 100,
-            affection: mon.affection ?? 50,
-            visualUrl: mon.visualUrl,
-            px,
-            py,
-            minPx: defaultPen.minPx,
-            maxPx: defaultPen.maxPx,
-            minPy: defaultPen.minPy,
-            maxPy: defaultPen.maxPy,
-            dir: idx % 2 === 0 ? 'right' : 'left',
-            bobPhase: idx * 0.9,
-            wanderTimer: 1.2 + (idx % 5) * 0.7,
-            targetPx: null,
-            targetPy: null,
-            monsterRef: mon
-        });
-    });
 
     return {
         cols,

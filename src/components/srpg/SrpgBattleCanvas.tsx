@@ -402,16 +402,24 @@ const SrpgBattleCanvas: React.FC<SrpgBattleCanvasProps> = ({
         (nextUnits: SrpgUnit[], curRound: number) => {
             const aliveEnemies = nextUnits.filter(u => u.team === 'enemy' && u.hp > 0);
             const aliveAllies = nextUnits.filter(u => u.team === 'ally' && u.hp > 0);
-            if (aliveEnemies.length === 0 || aliveAllies.length === 0) {
+            const playerUnitCheck = nextUnits.find(u => u.isPlayer);
+            const isPlayerKo = Boolean(playerUnitCheck && playerUnitCheck.hp <= 0);
+            if (aliveEnemies.length === 0 || aliveAllies.length === 0 || isPlayerKo) {
                 setIsEnded(true);
                 setAutoBattle(false);
-                const isVictory = aliveEnemies.length === 0;
-                const playerUnit = nextUnits.find(u => u.isPlayer);
+                const isVictory = aliveEnemies.length === 0 && !isPlayerKo && aliveAllies.length > 0;
+                const playerUnit = playerUnitCheck;
                 const compHps: Record<string, number> = {};
                 nextUnits.forEach(u => {
                     if (u.sourceCompanionId) compHps[u.sourceCompanionId] = Math.max(1, u.hp);
                 });
-                setBannerText(isVictory ? '🏆 전술 대첩! 모든 적군을 격파했습니다!' : '💀 아군 전선 붕괴... 퇴각합니다.');
+                setBannerText(
+                    isVictory
+                        ? '🏆 전술 대첩! 모든 적군을 격파했습니다!'
+                        : isPlayerKo
+                            ? '💀 플레이어가 전투불능이 되어 패배했습니다...'
+                            : '💀 아군 전선 붕괴... 퇴각합니다.'
+                );
                 setTimeout(() => {
                     onComplete({
                         isVictory,

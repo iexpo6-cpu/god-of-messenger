@@ -783,6 +783,29 @@ export const calculateMaxHousingCount = (base: any, inactiveCompanions: Companio
 };
 
 /**
+ * [NEW] 개별 주택의 하우스키퍼 보너스 포함 실질 수용 정원 계산기
+ * HousingModal / HousingInteriorPanel / facilityInteriorEngine 공통 사용
+ */
+export const getHouseEffectiveCapacity = (house: any, companions: Companion[] = []): number => {
+    if (!house) return 0;
+    if (house.underConstruction && (!house.level || house.level === 0)) {
+        return 0;
+    }
+    let houseCap = house.capacity || 2;
+    if (house.assignedHousekeeperId) {
+        const hk = companions.find(c => c.id === house.assignedHousekeeperId);
+        if (hk && (hk.job === JobType.HOUSEKEEPER || (hk.job as string) === '하우스 키퍼' || (hk.job as string) === '하우스키퍼' || hk.job === JobType.SLAVE || (hk.job as string) === '노예')) {
+            const rank = hk.housekeeperRank || HousekeeperRank.BEGINNER;
+            const cfg = HOUSEKEEPER_RANK_CONFIG[rank];
+            if (cfg) {
+                houseCap += cfg.coef;
+            }
+        }
+    }
+    return houseCap;
+};
+
+/**
  * [NEW] 기지 숙소 총 용량(수용 인원) 계산기
  * 모든 주택 건물들(base.houses)의 수용 인원 합산
  */
@@ -791,21 +814,7 @@ export const calculateTotalHousingCapacity = (base: any, companions: Companion[]
 
     if (base.houses && Array.isArray(base.houses) && base.houses.length > 0) {
         return base.houses.reduce((sum: number, house: any) => {
-            if (house.underConstruction && (!house.level || house.level === 0)) {
-                return sum;
-            }
-            let houseCap = house.capacity || 2;
-            if (house.assignedHousekeeperId) {
-                const hk = companions.find(c => c.id === house.assignedHousekeeperId);
-                if (hk && (hk.job === JobType.HOUSEKEEPER || (hk.job as string) === '하우스 키퍼' || (hk.job as string) === '하우스키퍼' || hk.job === JobType.SLAVE || (hk.job as string) === '노예')) {
-                    const rank = hk.housekeeperRank || HousekeeperRank.BEGINNER;
-                    const cfg = HOUSEKEEPER_RANK_CONFIG[rank];
-                    if (cfg) {
-                        houseCap += cfg.coef;
-                    }
-                }
-            }
-            return sum + houseCap;
+            return sum + getHouseEffectiveCapacity(house, companions);
         }, 0);
     }
 

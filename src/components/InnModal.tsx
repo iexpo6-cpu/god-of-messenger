@@ -21,6 +21,7 @@ interface InnModalProps {
   character: Character;
   onClose: () => void;
   onUpdateCharacter: (newChar: Character, logMsg?: string | string[], dailyReport?: any) => void;
+  visibleSection?: 'lodging' | 'boss_rumors' | 'wanderer' | 'drink';
 }
 
 // 대륙별 보스 정보 매핑
@@ -37,8 +38,11 @@ export const InnModal: React.FC<InnModalProps> = ({
   character,
   onClose,
   onUpdateCharacter,
+  visibleSection = 'lodging',
 }) => {
-  const [activeTab, setActiveTab] = useState<'lodging' | 'boss_rumors' | 'tavern'>('lodging');
+  const [activeTab, setActiveTab] = useState<'lodging' | 'boss_rumors' | 'tavern'>(
+    visibleSection === 'boss_rumors' ? 'boss_rumors' : visibleSection === 'wanderer' || visibleSection === 'drink' ? 'tavern' : 'lodging'
+  );
   
   // 객실 투숙 옵션
   const [includeCompanions, setIncludeCompanions] = useState<boolean>(true);
@@ -79,8 +83,9 @@ export const InnModal: React.FC<InnModalProps> = ({
     
     // 방랑인 레벨은 1~100 사이
     const level = Math.floor(Math.random() * 100) + 1;
-    const gender = Math.random() < 0.5 ? '남성' : '여성';
     const nation = character.currentLocation?.nation || '대한민국';
+    const genderSeed = (currentYearMonth + nation).split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+    const gender = genderSeed % 2 === 0 ? '남성' : '여성';
     const name = generateName(nation, gender === '남성' ? 'male' : 'female');
     const stats = generateCompanionStats(level);
     
@@ -469,42 +474,18 @@ export const InnModal: React.FC<InnModalProps> = ({
           </button>
         </div>
 
-        {/* 탭 버튼 */}
-        <div className="flex border-b border-slate-800 bg-slate-950/60 p-1.5 gap-1.5 shrink-0 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('lodging')}
-            className={`flex-1 min-w-[90px] py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              activeTab === 'lodging'
-                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-          >
-            <BedDouble size={16} />
-            <span>객실 투숙</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('boss_rumors')}
-            className={`flex-1 min-w-[90px] py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              activeTab === 'boss_rumors'
-                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-          >
-            <Info size={16} />
-            <span>보스 소문</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('tavern')}
-            className={`flex-1 min-w-[90px] py-2.5 text-xs sm:text-sm font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              activeTab === 'tavern'
-                ? 'bg-amber-500 text-slate-950 shadow-md font-black'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-          >
-            <Beer size={16} />
-            <span>여관 술집</span>
-          </button>
-        </div>
+        {/* 탭 버튼 (객실 투숙 전용) */}
+        {visibleSection === 'lodging' && (
+          <div className="flex border-b border-slate-800 bg-slate-950/60 p-1.5 gap-1.5 shrink-0 overflow-x-auto">
+            <button
+              onClick={() => setActiveTab('lodging')}
+              className="flex-1 min-w-[90px] py-2.5 text-xs sm:text-sm font-black rounded-xl flex items-center justify-center gap-1.5 bg-amber-500 text-slate-950 shadow-md cursor-pointer"
+            >
+              <BedDouble size={16} />
+              <span>객실 투숙</span>
+            </button>
+          </div>
+        )}
 
         {/* 컨텐츠 본문 */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-5 custom-scrollbar bg-slate-950/40 space-y-5">
@@ -772,6 +753,7 @@ export const InnModal: React.FC<InnModalProps> = ({
           {activeTab === 'tavern' && (
             <div className="space-y-5">
               {/* 1. 방랑 인물 만남 (레벨 1~100) */}
+              {visibleSection !== 'drink' && (
               <div className="bg-slate-900 border border-amber-500/40 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xl">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
@@ -845,8 +827,10 @@ export const InnModal: React.FC<InnModalProps> = ({
                   </div>
                 ) : null}
               </div>
+              )}
 
               {/* 2. 동료와 한잔 기울이기 (하루 경과) */}
+              {visibleSection !== 'wanderer' && (
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xl">
                 <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
                   <Beer size={18} className="text-amber-400" />
@@ -891,6 +875,7 @@ export const InnModal: React.FC<InnModalProps> = ({
                   </button>
                 </div>
               </div>
+              )}
             </div>
           )}
         </div>

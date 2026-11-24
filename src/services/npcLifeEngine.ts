@@ -707,23 +707,29 @@ export const processNpcLifeEvents = (character: Character, days: number): { upda
             }
 
             const prevLv = npc.level;
-            let levelGain = Math.floor(Math.random() * 2) + 1; // 1~2 levels monthly
-            
-            // If lower level than the player, they catch up instantly + gain 1~2 levels!
-            if (npc.level < newChar.level) {
-                npc.level = newChar.level + Math.floor(Math.random() * 2) + 1;
-                levelGain = npc.level - prevLv;
+            let levelGain = 1; // 기본 월 1레벨 완만 성장
+
+            // 플레이어보다 레벨이 낮더라도 즉시 추월하지 않고 천천히 추격 (최대 플레이어 레벨의 90% 상한)
+            const targetCap = Math.max(1, Math.floor(newChar.level * 0.9));
+            if (npc.level < targetCap) {
+                levelGain = Math.min(2, targetCap - npc.level);
+                npc.level += levelGain;
+            } else if (npc.level < newChar.level) {
+                npc.level += 1;
+                levelGain = 1;
             } else {
+                // 이미 플레이어 이상이면 아주 천천히만 성장 (35% 확률로 +1)
+                levelGain = Math.random() < 0.35 ? 1 : 0;
                 npc.level += levelGain;
             }
 
-            const boost = levelGain * 25; // Massive stat gains (25 points per level)
+            const boost = levelGain * 12; // 밸런스 조정: 레벨당 12 스탯 상승
             if (!npc.stats) npc.stats = {};
             npc.stats.str = (npc.stats.str || 10) + boost;
             npc.stats.int = (npc.stats.int || 10) + boost;
             npc.stats.def = (npc.stats.def || 10) + boost;
             npc.stats.agi = (npc.stats.agi || 10) + boost;
-            npc.stats.hp = (npc.stats.hp || 100) + (levelGain * 250);
+            npc.stats.hp = (npc.stats.hp || 100) + (levelGain * 120);
             npc.stats.maxHp = (npc.stats.maxHp || npc.stats.hp);
             upgradeNpcSkillsOnGrowth(npc, prevLv);
 

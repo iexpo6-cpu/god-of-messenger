@@ -8,6 +8,7 @@ interface Props {
   character: Character;
   onClose: () => void;
   onUpdateCharacter: (newChar: Character, logMsg: string) => void;
+  initialAlchemistId?: string | null;
 }
 
 // [EXPORTED] 연금술사 등급 계수 및 설정 (AlchemyModal 기준 동일 적용)
@@ -224,9 +225,9 @@ const BASE_CRAFT_TIME: Record<ItemRarity, number> = {
     [ItemRarity.MYTHTIC]: 21
 };
 
-export const AlchemyCraftModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter }) => {
+export const AlchemyCraftModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, initialAlchemistId }) => {
     const [activeTab, setActiveTab] = useState<'new' | 'status'>('new');
-    const [selectedAlchemistId, setSelectedAlchemistId] = useState<string | null>(null);
+    const [selectedAlchemistId, setSelectedAlchemistId] = useState<string | null>(initialAlchemistId || null);
     const [potionCategory, setPotionCategory] = useState<'HP' | 'MP' | 'FATIGUE' | 'BUFF' | 'CURE' | 'MIX' | 'SCROLL' | 'NET'>('HP');
     const [selectedRarity, setSelectedRarity] = useState<ItemRarity>(ItemRarity.NORMAL);
     const [mixType, setMixType] = useState<'ELIXIR' | 'POWER_ELIXIR' | 'STONE'>('ELIXIR');

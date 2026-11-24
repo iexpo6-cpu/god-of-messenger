@@ -57,6 +57,13 @@ if (fs.existsSync(path.join(srcDist, 'assets'))) {
   copyRecursiveSync(path.join(srcDist, 'assets'), path.join(rootDir, 'assets'));
 }
 
+const publicAssetsDir = path.join(rootDir, 'public', 'assets');
+if (fs.existsSync(publicAssetsDir)) {
+  console.log('[3.5/4] Syncing public/assets -> dist/assets and root assets...');
+  copyRecursiveSync(publicAssetsDir, path.join(distDir, 'assets'));
+  copyRecursiveSync(publicAssetsDir, path.join(rootDir, 'assets'));
+}
+
 console.log('[4/4] Ensuring .nojekyll in root and dist...');
 fs.writeFileSync(path.join(rootDir, '.nojekyll'), '');
 fs.writeFileSync(path.join(distDir, '.nojekyll'), '');

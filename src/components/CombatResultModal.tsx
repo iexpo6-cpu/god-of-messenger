@@ -891,7 +891,7 @@ export const CombatResultModal: React.FC<CombatResultModalProps> = ({ data, onCl
                             </button>
                         ) : (
                             <>
-                                {isVictory && onRematch && (!data.combatType || data.combatType === 'normal') && !data.suddenEvent && !data.suddenEventType && !data.isSuddenEvent && (
+                                {isVictory && onRematch && (!data.combatType || data.combatType === 'normal' || data.combatType === 'Hunt') && !data.suddenEvent && !data.suddenEventType && !data.isSuddenEvent && (
                                     <button
                                         type="button"
                                         onClick={onRematch}

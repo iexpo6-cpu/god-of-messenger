@@ -230,7 +230,11 @@ const DispatchModal: React.FC<Props> = ({ character, instanceId, onClose, onUpda
     const initialScoutNation = (character.currentLocation?.nation && initialRegionNations.includes(character.currentLocation.nation))
         ? character.currentLocation.nation
         : (initialRegionNations[0] || '대한민국');
-    const initialNationCities: string[] = ((WORLD_GEOGRAPHY as any)[initialScoutRegion]?.[initialScoutNation] || []);
+    const initialNationCities: string[] = Array.isArray((WORLD_GEOGRAPHY as any)[initialScoutRegion]?.[initialScoutNation]?.cities)
+        ? (WORLD_GEOGRAPHY as any)[initialScoutRegion][initialScoutNation].cities
+        : Array.isArray((WORLD_GEOGRAPHY as any)[initialScoutRegion]?.[initialScoutNation])
+            ? (WORLD_GEOGRAPHY as any)[initialScoutRegion][initialScoutNation]
+            : [];
     const initialScoutCity = (character.currentLocation?.city && initialNationCities.includes(character.currentLocation.city))
         ? character.currentLocation.city
         : (initialNationCities[0] || '서울');
@@ -417,7 +421,7 @@ const DispatchModal: React.FC<Props> = ({ character, instanceId, onClose, onUpda
             if (busyIds.has(c.id) || c.isDead) return false;
             
             // Check if child under 11
-            const isChild = c.classType?.includes('자녀') || c.classType?.includes('Child');
+            const isChild = typeof c.classType === 'string' && (c.classType.includes('자녀') || c.classType.includes('Child'));
             if (isChild) {
                 const displayAge = c.birthYear !== undefined ? (currentYear - c.birthYear) + "세" : c.age;
                 const age = parseInt(displayAge.replace(/[^0-9]/g, '')) || 0;
@@ -966,7 +970,7 @@ const DispatchModal: React.FC<Props> = ({ character, instanceId, onClose, onUpda
     const handleDungeonReconDispatch = () => {
         if (!reconCompanionId) return alert("던전 정찰에 파견할 대원을 선택해 주십시오.");
         if (currentDispatchCount >= maxDispatch) return alert("파견 가능 슬롯이 꽉 찼습니다.");
-        if (character.scoutedDungeons?.includes(reconCity)) {
+        if (Array.isArray(character.scoutedDungeons) && character.scoutedDungeons.includes(reconCity)) {
             return alert(`${reconCity} 던전은 이미 지리 정찰이 완료되어 있습니다.`);
         }
         const isAlreadyInProgress = (character.base?.dispatched || []).some(
@@ -2861,7 +2865,7 @@ const DispatchModal: React.FC<Props> = ({ character, instanceId, onClose, onUpda
                     {activeTab === 'dungeon_recon' && (() => {
                         const reconNations = Object.keys(WORLD_GEOGRAPHY[reconRegion] || {});
                         const reconCities = (WORLD_GEOGRAPHY[reconRegion]?.[reconNation] || []) as string[];
-                        const isAlreadyScouted = Boolean(character.scoutedDungeons?.includes(reconCity));
+                        const isAlreadyScouted = Boolean(Array.isArray(character.scoutedDungeons) && character.scoutedDungeons.includes(reconCity));
                         const availableComps = getAvailableCompanions();
                         const reconRate = getDungeonReconSuccessRate();
 

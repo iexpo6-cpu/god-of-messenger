@@ -192,8 +192,8 @@ const MyHomeModal: React.FC<Props> = ({ character, instanceId, onClose, onUpdate
     const singles = allCompanions.filter(c => 
         !c.isLover && 
         !c.isSpouse && 
-        !c.classType.includes('자녀') && 
-        !c.classType.includes('Child') &&
+        !c.classType?.includes('자녀') && 
+        !c.classType?.includes('Child') &&
         !c.isMonster &&
         !c.isDead
     );
@@ -212,7 +212,7 @@ const MyHomeModal: React.FC<Props> = ({ character, instanceId, onClose, onUpdate
 
     useEffect(() => {
         checkBirthDue();
-    }, [character.currentDate, spouses]);
+    }, [character.currentDate, spouses.length]);
 
     const checkBirthDue = () => {
         if (birthEvent) return;

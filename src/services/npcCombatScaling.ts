@@ -598,7 +598,7 @@ export const generateNpcEscortParty = (
             const subTier = getTierByLevel(compLevel);
             const { hpMultiplier, statMultiplier, critDmgResist, critResist } = getNpcDifficultyMultiplier(compLevel, subTier);
             const subStats = generateEnemyStats(compLevel, 'elite');
-            const subHp = Math.floor(subStats.maxHp * Math.max(hpMultiplier, 2.5) * 1.5);
+            const subHp = Math.floor(subStats.maxHp * Math.max(hpMultiplier, 1.4) * 1.1);
 
             // 동료의 실제 스킬 보장
             let escortSkills: Skill[] = (comp as any).skills ? [...(comp as any).skills] : [];
@@ -619,10 +619,10 @@ export const generateNpcEscortParty = (
                     ...subStats,
                     hp: subHp,
                     maxHp: subHp,
-                    str: Math.floor(subStats.str * Math.max(statMultiplier, 2.0) * 1.2),
-                    int: Math.floor(subStats.int * Math.max(statMultiplier, 2.0) * 1.2),
-                    def: Math.floor(subStats.def * Math.max(statMultiplier, 2.0) * 1.2),
-                    agi: Math.floor(subStats.agi * Math.max(statMultiplier, 2.0) * 1.2),
+                    str: Math.floor(subStats.str * Math.max(statMultiplier, 1.2)),
+                    int: Math.floor(subStats.int * Math.max(statMultiplier, 1.2)),
+                    def: Math.floor(subStats.def * Math.max(statMultiplier, 1.2)),
+                    agi: Math.floor(subStats.agi * Math.max(statMultiplier, 1.2)),
                     wis: Math.floor(subStats.wis * Math.max(statMultiplier, 2.0) * 1.2),
                     ctrl: Math.floor(subStats.ctrl * Math.max(statMultiplier, 2.0) * 1.2)
                 },

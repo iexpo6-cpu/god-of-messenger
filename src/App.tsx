@@ -154,6 +154,7 @@ const App: React.FC = () => {
   const [quantityModal, setQuantityModal] = useState<{ isOpen: boolean, item?: Item, indices: number[], actionType: 'sell' | 'discard' | 'use' | 'deposit' | 'withdraw' }>({ isOpen: false, indices: [], actionType: 'sell' });
   const [isWeaponMasteryOpen, setIsWeaponMasteryOpen] = useState(false);
   const [isEternalRivalOpen, setIsEternalRivalOpen] = useState(false);
+  const [isMobileHeaderCollapsed, setIsMobileHeaderCollapsed] = useState(false);
   const [activeSuddenEvent, setActiveSuddenEvent] = useState<SuddenEventData | null>(null);
   const [isCondolenceModalOpen, setIsCondolenceModalOpen] = useState(false);
   const [isTutorialGuideOpen, setIsTutorialGuideOpen] = useState(false);
@@ -6960,9 +6961,21 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                     {sceneType !== 'combat' && (
                         <>
                             {/* Unified Top-Right Buttons (기능 & 메뉴 & HeaderShortcuts) */}
-                            <div className="absolute top-3.5 right-2 sm:top-5 sm:right-4 z-40 flex flex-col items-end gap-1.5 sm:gap-2">
+                            <div className="absolute top-3.5 right-2 sm:top-5 sm:right-4 z-[120] flex flex-col items-end gap-1.5 sm:gap-2">
+                                {/* Mobile Collapse Toggle for 기능/메뉴/즐찾 */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsMobileHeaderCollapsed(v => !v);
+                                        setIsMobileFunctionsOpen(false);
+                                        setIsMobileMenuOpen(false);
+                                    }}
+                                    className="sm:hidden px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-700 text-[11px] font-black text-amber-300 shadow-md active:scale-95"
+                                >
+                                    {isMobileHeaderCollapsed ? '▼ 메뉴·즐찾 펼치기' : '▲ 상단 메뉴 접기'}
+                                </button>
                                 {/* Top Row: 기능 & 메뉴 버튼 */}
-                                <div className="flex items-center gap-1.5 sm:gap-2">
+                                <div className={`${isMobileHeaderCollapsed ? 'hidden sm:flex' : 'flex'} items-center gap-1.5 sm:gap-2`}>
                                     {/* 1. 기능 드롭다운 버튼 */}
                                     <div className="relative">
                                     <button 
@@ -6982,10 +6995,10 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                     {isMobileFunctionsOpen && (
                                         <>
                                             {/* Transparent Backdrop Overlay */}
-                                            <div className="fixed inset-0 z-40" onClick={() => setIsMobileFunctionsOpen(false)} />
+                                            <div className="fixed inset-0 z-[125]" onClick={() => setIsMobileFunctionsOpen(false)} />
                                             
                                             {/* Functions Dropdown Menu Items */}
-                                            <div className="absolute right-0 mt-2 w-72 bg-slate-950/95 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 p-3 animate-in fade-in slide-in-from-top-2 duration-150 backdrop-blur-md">
+                                            <div className="absolute right-0 mt-2 w-72 bg-slate-950/95 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-[130] p-3 animate-in fade-in slide-in-from-top-2 duration-150 backdrop-blur-md">
                                                 <div className="text-[10px] text-slate-500 font-bold px-1.5 pb-2 border-b border-slate-900 mb-2 flex items-center justify-between">
                                                     <span>신의 사자 기능</span>
                                                     <span className="text-[9px] bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded-full text-slate-400">선택</span>
@@ -7152,10 +7165,10 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                     {isTopMenuOpen && (
                                         <>
                                             {/* Transparent Backdrop Overlay */}
-                                            <div className="fixed inset-0 z-40" onClick={() => setIsTopMenuOpen(false)} />
+                                            <div className="fixed inset-0 z-[125]" onClick={() => setIsTopMenuOpen(false)} />
                                             
                                             {/* Dropdown Menu Items */}
-                                            <div className="absolute right-0 mt-2 w-48 bg-slate-950/95 border border-slate-800 rounded-xl shadow-2xl overflow-hidden z-50 py-1 animate-in fade-in slide-in-from-top-2 duration-150">
+                                            <div className="absolute right-0 mt-2 w-48 bg-slate-950/95 border border-slate-800 rounded-xl shadow-2xl overflow-hidden z-[130] py-1 animate-in fade-in slide-in-from-top-2 duration-150">
                                                 {/* 1. 운영자 (Operator) */}
                                                 <button 
                                                     onClick={() => { setIsTopMenuOpen(false); handleOpenDevMode(); }} 
@@ -7201,11 +7214,13 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                             </div>
 
                             {/* Bottom Row (메뉴 버튼 하단): 바로가기 바 (Header Shortcuts) */}
-                            <HeaderShortcuts 
-                                unreadMailCount={unreadMailCount} 
-                                unclaimedSettlementCount={unclaimedSettlementCount}
-                                onAction={handleShortcutAction} 
-                            />
+                            <div className={isMobileHeaderCollapsed ? 'hidden sm:block' : 'block'}>
+                                <HeaderShortcuts 
+                                    unreadMailCount={unreadMailCount} 
+                                    unclaimedSettlementCount={unclaimedSettlementCount}
+                                    onAction={handleShortcutAction} 
+                                />
+                            </div>
                         </div>
                     </>
                     )}
@@ -7623,6 +7638,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                             {/* City Map Board as the main visual viewport */}
                             <CityMapBoard 
                                 character={character}
+                                onAction={handleActionWithTime}
                                 onOpenCharacterSheet={() => setIsMobileMenuOpen(true)}
                                 onEnterCity={(district, openHuntMap) => {
                                     setCityInitialConfig({ district, openHuntMap });
@@ -7636,6 +7652,29 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                 activeMapZone={activeMapZone}
                                 onChangeMapZone={setActiveMapZone}
                                 onOpenBase={(initialSubModal?: string) => {
+                                    if (initialSubModal === 'training_exp') {
+                                        setTrainingInitialTab('exp');
+                                        setIsTrainingModalOpen(true);
+                                        return;
+                                    }
+                                    if (initialSubModal === 'training_stat') {
+                                        setTrainingInitialTab('stat');
+                                        setIsTrainingModalOpen(true);
+                                        return;
+                                    }
+                                    if (initialSubModal === 'training_mastery') {
+                                        setTrainingInitialTab('mastery');
+                                        setIsTrainingModalOpen(true);
+                                        return;
+                                    }
+                                    if (initialSubModal === 'training_style') {
+                                        setIsTrainingStyleOpen(true);
+                                        return;
+                                    }
+                                    if (initialSubModal === 'tactical_training') {
+                                        setIsTacticalTrainingOpen(true);
+                                        return;
+                                    }
                                     setBaseInitialSubModal(initialSubModal ? { type: initialSubModal } : undefined);
                                     setIsBaseModalOpen(true);
                                 }}

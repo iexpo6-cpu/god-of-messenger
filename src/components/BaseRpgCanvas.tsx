@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { BaseDecorationItem, Character, FacilityInstance } from '../types';
+import { BaseDecorationItem, Character, FacilityInstance, JobType } from '../types';
 import { FACILITIES_INFO, FACILITY_CONSTRUCTION_COSTS, FACILITY_UPGRADE_CONFIG } from '../constants';
 import {
     BASE_DECORATION_CATALOG,
@@ -37,6 +37,7 @@ import {
 } from '../services/baseConstructionService';
 import { getTimeOfDay } from '../services/gameTimeService';
 import FacilityInteriorCanvas from './FacilityInteriorCanvas';
+import ResidentQuickCard from './base/ResidentQuickCard';
 import {
     ArrowDown,
     ArrowLeft,
@@ -108,6 +109,7 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
     const [selectedResident, setSelectedResident] = useState<BaseResidentEntity | null>(null);
     const [selectedMonster, setSelectedMonster] = useState<BaseFarmMonsterEntity | null>(null);
     const [selectedFacility, setSelectedFacility] = useState<BaseFacilityNode | null>(null);
+    const [showFacilityAssignDrawer, setShowFacilityAssignDrawer] = useState(false);
     const [activeInteriorFacility, setActiveInteriorFacility] = useState<BaseFacilityNode | null>(null);
     const [isInteriorFading, setIsInteriorFading] = useState(false);
     const [facilityNotice, setFacilityNotice] = useState<string | null>(null);
@@ -137,8 +139,47 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
     const hoverTileRef = useRef<{ x: number; y: number } | null>(null);
     const prevNearbyLabelRef = useRef<string | null>(null);
     const textWidthCacheRef = useRef<Map<string, number>>(new Map());
-    const terrainCacheRef = useRef<{ canvas: HTMLCanvasElement; loadedCount: number } | null>(null);
+    const scaledImgCacheRef = useRef<Map<string, HTMLCanvasElement>>(new Map());
+    const terrainCacheRef = useRef<{
+        canvas: HTMLCanvasElement;
+        startC: number;
+        startR: number;
+        endC: number;
+        endR: number;
+        loadedCount: number;
+    } | null>(null);
     const minimapBgCacheRef = useRef<HTMLCanvasElement | null>(null);
+
+    const drawScaledImg = (
+        ctx: CanvasRenderingContext2D,
+        img: HTMLImageElement,
+        cacheKey: string,
+        dx: number,
+        dy: number,
+        dw: number,
+        dh: number
+    ) => {
+        const w = Math.max(1, Math.round(dw));
+        const h = Math.max(1, Math.round(dh));
+        const key = `${cacheKey}|${w}x${h}`;
+        let cached = scaledImgCacheRef.current.get(key);
+        if (!cached) {
+            cached = document.createElement('canvas');
+            cached.width = w;
+            cached.height = h;
+            const cctx = cached.getContext('2d');
+            if (cctx) {
+                cctx.imageSmoothingEnabled = true;
+                cctx.imageSmoothingQuality = 'medium';
+                cctx.drawImage(img, 0, 0, w, h);
+            }
+            if (scaledImgCacheRef.current.size > 180) {
+                scaledImgCacheRef.current.clear();
+            }
+            scaledImgCacheRef.current.set(key, cached);
+        }
+        ctx.drawImage(cached, Math.round(dx), Math.round(dy));
+    };
 
     const selectedFacilitySpaceOk = useMemo(() => {
         if (!selectedFacility) return true;
@@ -149,7 +190,13 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
     }, [character, selectedFacility]);
 
     useEffect(() => {
-        residentsRef.current = mapData.residents.map(r => ({ ...r }));
+        const prevById = new Map(residentsRef.current.map(r => [r.id, r]));
+        residentsRef.current = mapData.residents.map(r => {
+            const prev = prevById.get(r.id);
+            return prev
+                ? { ...r, px: prev.px, py: prev.py, dir: prev.dir, walkFrame: prev.walkFrame, targetPx: prev.targetPx, targetPy: prev.targetPy }
+                : { ...r };
+        });
         monstersRef.current = mapData.farmMonsters.map(m => ({ ...m }));
         terrainCacheRef.current = null;
         minimapBgCacheRef.current = null;
@@ -211,7 +258,10 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
     });
     const keysRef = useRef<Set<string>>(new Set());
     const dpadRef = useRef<SpriteDirection | null>(null);
-    const cameraRef = useRef({ x: 0, y: 0 });
+    const cameraRef = useRef({
+        x: Math.max(0, mapData.spawnPos.x * BASE_TILE_SIZE - 480),
+        y: Math.max(0, mapData.spawnPos.y * BASE_TILE_SIZE - 300)
+    });
     const exitCooldownRef = useRef<number>(Date.now() + 900);
 
     // Clamp player inside bounds if map size changes
@@ -290,20 +340,33 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
         }
     }, [mode, findNearestInteractable]);
 
-    // Keyboard controls
+    // Keyboard controls (supports Korean IME via e.code and ignores key repeat)
     useEffect(() => {
+        const mapMoveKey = (e: KeyboardEvent): string | null => {
+            if (e.code === 'KeyW' || e.code === 'ArrowUp') return 'w';
+            if (e.code === 'KeyS' || e.code === 'ArrowDown') return 's';
+            if (e.code === 'KeyA' || e.code === 'ArrowLeft') return 'a';
+            if (e.code === 'KeyD' || e.code === 'ArrowRight') return 'd';
+            const k = e.key.toLowerCase();
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) return k;
+            return null;
+        };
         const onKeyDown = (e: KeyboardEvent) => {
             const tag = (e.target as HTMLElement)?.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-            const k = e.key.toLowerCase();
-            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) {
+            const mv = mapMoveKey(e);
+            if (mv) {
                 e.preventDefault();
-                keysRef.current.add(k);
+                if (e.repeat) return;
+                keysRef.current.add(mv);
                 playerRef.current.targetX = null;
                 playerRef.current.targetY = null;
-            } else if (k === ' ' || k === 'enter' || k === 'e') {
+                return;
+            }
+            const k = e.key.toLowerCase();
+            if (k === ' ' || k === 'enter' || k === 'e' || e.code === 'KeyE' || e.code === 'Space') {
                 e.preventDefault();
-                handleInteract();
+                if (!e.repeat) handleInteract();
             } else if (k === 'escape') {
                 setMovingFacility(null);
                 setPlacingNewFacilityId(null);
@@ -315,6 +378,8 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             }
         };
         const onKeyUp = (e: KeyboardEvent) => {
+            const mv = mapMoveKey(e);
+            if (mv) keysRef.current.delete(mv);
             keysRef.current.delete(e.key.toLowerCase());
         };
         const onBlur = () => {
@@ -351,9 +416,19 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
         if (!character.base || !onUpdateCharacter || !expansionOpt.canExpand || isMapExpanding) return;
         const base = character.base;
         const curGold = character.money || 0;
+        const curFood = base.resources?.food || 0;
         const curWood = base.resources?.wood || 0;
         const curStone = base.resources?.stone || 0;
-        if (curGold < expansionOpt.goldCost || curWood < expansionOpt.woodCost || curStone < expansionOpt.stoneCost) {
+        const curIron = base.resources?.iron || 0;
+        const curMana = base.resources?.manaCrystal || 0;
+        if (
+            curGold < expansionOpt.goldCost ||
+            curFood < expansionOpt.foodCost ||
+            curWood < expansionOpt.woodCost ||
+            curStone < expansionOpt.stoneCost ||
+            curIron < expansionOpt.ironCost ||
+            curMana < expansionOpt.manaCrystalCost
+        ) {
             return;
         }
         const startDate = character.currentDate || '2000-03-02';
@@ -376,8 +451,11 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                 mapExpansionTotalMinutes: durationMin,
                 resources: {
                     ...base.resources,
+                    food: curFood - expansionOpt.foodCost,
                     wood: curWood - expansionOpt.woodCost,
-                    stone: curStone - expansionOpt.stoneCost
+                    stone: curStone - expansionOpt.stoneCost,
+                    iron: curIron - expansionOpt.ironCost,
+                    manaCrystal: curMana - expansionOpt.manaCrystalCost
                 }
             }
         };
@@ -589,12 +667,27 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             const facInfo = FACILITIES_INFO.find(f => f.id === placingNewFacilityId);
             const costCfg = (FACILITY_CONSTRUCTION_COSTS as any)[placingNewFacilityId] || { gold: 20000, wood: 15, stone: 15 };
             const goldCost = costCfg.gold || 0;
+            const foodCost = costCfg.food || 0;
             const woodCost = costCfg.wood || 0;
             const stoneCost = costCfg.stone || 0;
+            const ironCost = costCfg.iron || 0;
+            const manaCost = costCfg.manaCrystal || 0;
             const curGold = character.money || 0;
+            const curFood = base.resources?.food || 0;
             const curWood = base.resources?.wood || 0;
             const curStone = base.resources?.stone || 0;
-            if (curGold < goldCost || curWood < woodCost || curStone < stoneCost) return;
+            const curIron = base.resources?.iron || 0;
+            const curMana = base.resources?.manaCrystal || 0;
+            if (
+                curGold < goldCost ||
+                curFood < foodCost ||
+                curWood < woodCost ||
+                curStone < stoneCost ||
+                curIron < ironCost ||
+                curMana < manaCost
+            ) {
+                return;
+            }
 
             const startDate = character.currentDate || '2000-03-02';
             const startTime = character.currentTime || '08:00';
@@ -605,6 +698,7 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                 id: `${placingNewFacilityId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
                 type: placingNewFacilityId,
                 level: 0,
+                targetLevel: 1,
                 x: 0,
                 y: 0,
                 width: foot.w,
@@ -627,8 +721,11 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                         ...base,
                         resources: {
                             ...base.resources,
+                            food: curFood - foodCost,
                             wood: curWood - woodCost,
-                            stone: curStone - stoneCost
+                            stone: curStone - stoneCost,
+                            iron: curIron - ironCost,
+                            manaCrystal: curMana - manaCost
                         },
                         layout: [...(base.layout || []), newInst]
                     }
@@ -738,6 +835,10 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
         setSelectedMonster(null);
         setSelectedFacility(null);
         setFacilityNotice(null);
+        // 모바일(768px 미만)에서는 터치 이동을 제한하고 D-패드로만 이동
+        if (typeof window !== 'undefined' && window.innerWidth < 768) {
+            return;
+        }
         playerRef.current.targetX = wx;
         playerRef.current.targetY = wy;
     };
@@ -761,6 +862,33 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
         warpPlayerToTile(Math.floor(rx * mapData.cols), Math.floor(ry * mapData.rows));
     };
 
+    const rafStateRef = useRef({
+        mode,
+        movingFacility,
+        placingNewFacilityId,
+        brushSize,
+        decoEraseMode,
+        selectedFacility,
+        selectedFacilitySpaceOk,
+        characterName: character.name,
+        currentTime: character.currentTime || '12:00',
+        findNearestInteractable,
+        onExitToCity
+    });
+    rafStateRef.current = {
+        mode,
+        movingFacility,
+        placingNewFacilityId,
+        brushSize,
+        decoEraseMode,
+        selectedFacility,
+        selectedFacilitySpaceOk,
+        characterName: character.name,
+        currentTime: character.currentTime || '12:00',
+        findNearestInteractable,
+        onExitToCity
+    };
+
     // 60fps Main Render + Minimap Loop
     useEffect(() => {
         if (activeInteriorFacility) return;
@@ -768,7 +896,6 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
         let lastTs = performance.now();
         let labelTick = 0;
         let minimapTick = 0;
-        const timeOfDay = getTimeOfDay(character.currentTime || '12:00');
 
         const isBlocked = (px: number, py: number) => {
             const tx = Math.floor(px / BASE_TILE_SIZE);
@@ -778,8 +905,22 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
         };
 
         const loop = (now: number) => {
-            const dt = Math.min(0.05, (now - lastTs) / 1000);
+            const dt = Math.min(0.033, Math.max(0.001, (now - lastTs) / 1000));
             lastTs = now;
+            const {
+                mode,
+                movingFacility,
+                placingNewFacilityId,
+                brushSize,
+                decoEraseMode,
+                selectedFacility,
+                selectedFacilitySpaceOk,
+                characterName,
+                currentTime,
+                findNearestInteractable,
+                onExitToCity
+            } = rafStateRef.current;
+            const timeOfDay = getTimeOfDay(currentTime);
 
             // 1. Update player
             const p = playerRef.current;
@@ -791,29 +932,46 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             if (keys.has('arrowup') || keys.has('w') || dpadRef.current === 'up') vy -= 1;
             if (keys.has('arrowdown') || keys.has('s') || dpadRef.current === 'down') vy += 1;
 
+            const speed = mode === 'explore' ? 210 : 320; // 편집 모드에서는 대형 맵을 더 빠르게 탐색!
+            const maxStep = speed * dt;
+            let isClickMoving = false;
+            let clickStepDist = maxStep;
+
             if (vx === 0 && vy === 0 && p.targetX !== null && p.targetY !== null) {
                 const dx = p.targetX - p.x;
                 const dy = p.targetY - p.y;
                 const dist = Math.hypot(dx, dy);
-                if (dist > 6) {
-                    vx = dx / dist;
-                    vy = dy / dist;
-                } else {
+                if (dist <= Math.max(4, maxStep)) {
+                    if (mode !== 'explore' || !isBlocked(p.targetX, p.targetY)) {
+                        p.x = p.targetX;
+                        p.y = p.targetY;
+                    }
                     p.targetX = null;
                     p.targetY = null;
+                } else {
+                    vx = dx / dist;
+                    vy = dy / dist;
+                    isClickMoving = true;
+                    clickStepDist = Math.min(maxStep, dist);
                 }
             }
 
             if (vx !== 0 || vy !== 0) {
                 const len = Math.hypot(vx, vy) || 1;
-                const speed = mode === 'explore' ? 210 : 320; // 편집 모드에서는 대형 맵을 더 빠르게 탐색!
-                const nx = p.x + (vx / len) * speed * dt;
-                const ny = p.y + (vy / len) * speed * dt;
+                const step = isClickMoving ? clickStepDist : maxStep;
+                const prevX = p.x;
+                const prevY = p.y;
+                const nx = p.x + (vx / len) * step;
+                const ny = p.y + (vy / len) * step;
                 if (mode !== 'explore' || !isBlocked(nx, p.y)) {
                     p.x = Math.max(BASE_TILE_SIZE, Math.min((mapData.cols - 1) * BASE_TILE_SIZE, nx));
                 }
                 if (mode !== 'explore' || !isBlocked(p.x, ny)) {
                     p.y = Math.max(BASE_TILE_SIZE, Math.min((mapData.rows - 1) * BASE_TILE_SIZE, ny));
+                }
+                if (isClickMoving && Math.hypot(p.x - prevX, p.y - prevY) < 0.25) {
+                    p.targetX = null;
+                    p.targetY = null;
                 }
 
                 if (Math.abs(vx) > Math.abs(vy)) p.dir = vx > 0 ? 'right' : 'left';
@@ -924,20 +1082,23 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                 }
             }
 
-            // 4. Camera follow (unrounded float coordinates prevent 1px subpixel jitter)
+            // 4. Camera follow (smooth lerp just like CityRpgCanvas)
             const mapW = mapData.cols * BASE_TILE_SIZE;
             const mapH = mapData.rows * BASE_TILE_SIZE;
-            const camX = Math.max(0, Math.min(Math.max(0, mapW - viewportSize.w), p.x - viewportSize.w / 2));
-            const camY = Math.max(0, Math.min(Math.max(0, mapH - viewportSize.h), p.y - viewportSize.h / 2));
-            cameraRef.current = { x: camX, y: camY };
+            const desiredCamX = Math.max(0, Math.min(Math.max(0, mapW - viewportSize.w), p.x - viewportSize.w / 2));
+            const desiredCamY = Math.max(0, Math.min(Math.max(0, mapH - viewportSize.h), p.y - viewportSize.h / 2));
+            cameraRef.current.x += (desiredCamX - cameraRef.current.x) * Math.min(1, dt * 14);
+            cameraRef.current.y += (desiredCamY - cameraRef.current.y) * Math.min(1, dt * 14);
 
             // 5. Render main viewport (strictly viewport-culled for 200x200 60fps!)
             const canvas = canvasRef.current;
             const ctx = canvas?.getContext('2d');
             if (canvas && ctx) {
+                const camX = Math.round(cameraRef.current.x);
+                const camY = Math.round(cameraRef.current.y);
                 ctx.clearRect(0, 0, viewportSize.w, viewportSize.h);
                 ctx.save();
-                ctx.translate(-cameraRef.current.x, -cameraRef.current.y);
+                ctx.translate(-camX, -camY);
 
                 const groundImg = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'ground'));
                 const roadImg = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'road'));
@@ -946,183 +1107,139 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                 const wallImg = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'wall'));
                 const waterImg = getCachedCityAssetImage(getTerrainTileUrl(mapData.cultureKey, 'water'));
 
-                const startC = Math.max(0, Math.floor(cameraRef.current.x / BASE_TILE_SIZE) - 1);
-                const endC = Math.min(mapData.cols - 1, Math.ceil((cameraRef.current.x + viewportSize.w) / BASE_TILE_SIZE) + 1);
-                const startR = Math.max(0, Math.floor(cameraRef.current.y / BASE_TILE_SIZE) - 1);
-                const endR = Math.min(mapData.rows - 1, Math.ceil((cameraRef.current.y + viewportSize.h) / BASE_TILE_SIZE) + 1);
+                const startC = Math.max(0, Math.floor(camX / BASE_TILE_SIZE) - 1);
+                const endC = Math.min(mapData.cols - 1, Math.ceil((camX + viewportSize.w) / BASE_TILE_SIZE) + 1);
+                const startR = Math.max(0, Math.floor(camY / BASE_TILE_SIZE) - 1);
+                const endR = Math.min(mapData.rows - 1, Math.ceil((camY + viewportSize.h) / BASE_TILE_SIZE) + 1);
 
                 const loadedTerrainCount = [groundImg, roadImg, plazaImg, royalImg, wallImg, waterImg].filter(
                     im => im && im.complete && im.naturalWidth > 0
                 ).length;
 
-                // Offscreen terrain cache for maps up to 96x96 (reduces ~500 drawImage calls/frame to 1 blit!)
-                const canUseOffscreenTerrain = mapData.cols <= 96 && mapData.rows <= 96;
-                if (canUseOffscreenTerrain) {
-                    if (!terrainCacheRef.current || terrainCacheRef.current.loadedCount !== loadedTerrainCount) {
-                        const off = terrainCacheRef.current?.canvas || document.createElement('canvas');
-                        off.width = mapData.cols * BASE_TILE_SIZE;
-                        off.height = mapData.rows * BASE_TILE_SIZE;
-                        const octx = off.getContext('2d');
-                        if (octx) {
-                            for (let r = 0; r < mapData.rows; r++) {
-                                for (let c = 0; c < mapData.cols; c++) {
-                                    const x = c * BASE_TILE_SIZE;
-                                    const y = r * BASE_TILE_SIZE;
-                                    const isPerimeterWall =
-                                        r === 0 ||
-                                        c === 0 ||
-                                        c === mapData.cols - 1 ||
-                                        (r === mapData.rows - 1 &&
-                                            (c < mapData.exitGate.x || c >= mapData.exitGate.x + mapData.exitGate.w));
-                                    const isGate =
-                                        r === mapData.exitGate.y &&
-                                        c >= mapData.exitGate.x &&
-                                        c < mapData.exitGate.x + mapData.exitGate.w;
+                // Viewport-sliding offscreen terrain cache (works for ALL map sizes up to 200x200!)
+                const needRedrawTerrain =
+                    !terrainCacheRef.current ||
+                    terrainCacheRef.current.loadedCount !== loadedTerrainCount ||
+                    startC < terrainCacheRef.current.startC ||
+                    endC > terrainCacheRef.current.endC ||
+                    startR < terrainCacheRef.current.startR ||
+                    endR > terrainCacheRef.current.endR;
 
-                                    if (isPerimeterWall) {
-                                        if (wallImg && wallImg.complete && wallImg.naturalWidth > 0) {
-                                            octx.drawImage(wallImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                        } else {
-                                            octx.fillStyle = '#334155';
-                                            octx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                        }
-                                        continue;
-                                    }
+                if (needRedrawTerrain) {
+                    const cacheWholeMap = mapData.cols <= 105 && mapData.rows <= 105;
+                    const padTiles = 24;
+                    const c0 = cacheWholeMap ? 0 : Math.max(0, startC - padTiles);
+                    const r0 = cacheWholeMap ? 0 : Math.max(0, startR - padTiles);
+                    const c1 = cacheWholeMap ? mapData.cols - 1 : Math.min(mapData.cols - 1, endC + padTiles);
+                    const r1 = cacheWholeMap ? mapData.rows - 1 : Math.min(mapData.rows - 1, endR + padTiles);
+                    const off = terrainCacheRef.current?.canvas || document.createElement('canvas');
+                    const reqW = (c1 - c0 + 1) * BASE_TILE_SIZE;
+                    const reqH = (r1 - r0 + 1) * BASE_TILE_SIZE;
+                    if (off.width !== reqW) off.width = reqW;
+                    if (off.height !== reqH) off.height = reqH;
+                    const octx = off.getContext('2d');
+                    if (octx) {
+                        for (let r = r0; r <= r1; r++) {
+                            for (let c = c0; c <= c1; c++) {
+                                const x = (c - c0) * BASE_TILE_SIZE;
+                                const y = (r - r0) * BASE_TILE_SIZE;
+                                const isPerimeterWall =
+                                    r === 0 ||
+                                    c === 0 ||
+                                    c === mapData.cols - 1 ||
+                                    (r === mapData.rows - 1 &&
+                                        (c < mapData.exitGate.x || c >= mapData.exitGate.x + mapData.exitGate.w));
+                                const isGate =
+                                    r === mapData.exitGate.y &&
+                                    c >= mapData.exitGate.x &&
+                                    c < mapData.exitGate.x + mapData.exitGate.w;
 
-                                    if (groundImg && groundImg.complete && groundImg.naturalWidth > 0) {
-                                        octx.drawImage(groundImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                                if (isPerimeterWall) {
+                                    if (wallImg && wallImg.complete && wallImg.naturalWidth > 0) {
+                                        octx.drawImage(wallImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
                                     } else {
-                                        octx.fillStyle = (r + c) % 2 === 0 ? '#2f5e2c' : '#356831';
+                                        octx.fillStyle = '#334155';
                                         octx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
                                     }
+                                    continue;
+                                }
 
-                                    const floorId = mapData.floorOverrides[`${c},${r}`];
-                                    if (floorId && floorId !== 'default') {
-                                        const fDef = FLOOR_TILE_MAP[floorId];
-                                        if (floorId === 'stone_road' && roadImg?.complete && roadImg.naturalWidth > 0) {
-                                            octx.drawImage(roadImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                        } else if (floorId === 'plaza' && plazaImg?.complete && plazaImg.naturalWidth > 0) {
-                                            octx.drawImage(plazaImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                        } else if (floorId === 'royal_marble' && royalImg?.complete && royalImg.naturalWidth > 0) {
-                                            octx.drawImage(royalImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                        } else if (floorId === 'water' && waterImg?.complete && waterImg.naturalWidth > 0) {
-                                            octx.drawImage(waterImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                        } else if (fDef) {
-                                            octx.fillStyle = (r + c) % 2 === 0 ? fDef.color : fDef.accentColor;
-                                            octx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                            if (floorId === 'flower_field') {
-                                                octx.fillStyle = '#f472b6';
-                                                octx.fillRect(x + 10, y + 10, 5, 5);
-                                                octx.fillStyle = '#fde047';
-                                                octx.fillRect(x + 28, y + 16, 5, 5);
-                                                octx.fillStyle = '#c084fc';
-                                                octx.fillRect(x + 16, y + 30, 5, 5);
-                                            } else if (floorId === 'wood_deck') {
-                                                octx.strokeStyle = 'rgba(0,0,0,0.22)';
-                                                octx.lineWidth = 1;
-                                                octx.beginPath();
-                                                octx.moveTo(x, y + 16);
-                                                octx.lineTo(x + BASE_TILE_SIZE, y + 16);
-                                                octx.moveTo(x, y + 32);
-                                                octx.lineTo(x + BASE_TILE_SIZE, y + 32);
-                                                octx.stroke();
-                                            } else if (floorId === 'shingye_jade' || floorId === 'magye_obsidian') {
-                                                octx.strokeStyle =
-                                                    floorId === 'shingye_jade'
-                                                        ? 'rgba(245,158,11,0.45)'
-                                                        : 'rgba(168,85,247,0.45)';
-                                                octx.strokeRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4);
-                                            }
+                                if (groundImg && groundImg.complete && groundImg.naturalWidth > 0) {
+                                    octx.drawImage(groundImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                                } else {
+                                    octx.fillStyle = (r + c) % 2 === 0 ? '#2f5e2c' : '#356831';
+                                    octx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                                }
+
+                                const floorId = mapData.floorOverrides[`${c},${r}`];
+                                if (floorId && floorId !== 'default') {
+                                    const fDef = FLOOR_TILE_MAP[floorId];
+                                    if (floorId === 'stone_road' && roadImg?.complete && roadImg.naturalWidth > 0) {
+                                        octx.drawImage(roadImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                                    } else if (floorId === 'plaza' && plazaImg?.complete && plazaImg.naturalWidth > 0) {
+                                        octx.drawImage(plazaImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                                    } else if (floorId === 'royal_marble' && royalImg?.complete && royalImg.naturalWidth > 0) {
+                                        octx.drawImage(royalImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                                    } else if (floorId === 'water' && waterImg?.complete && waterImg.naturalWidth > 0) {
+                                        octx.drawImage(waterImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                                    } else if (fDef) {
+                                        octx.fillStyle = (r + c) % 2 === 0 ? fDef.color : fDef.accentColor;
+                                        octx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                                        if (floorId === 'flower_field') {
+                                            octx.fillStyle = '#f472b6';
+                                            octx.fillRect(x + 10, y + 10, 5, 5);
+                                            octx.fillStyle = '#fde047';
+                                            octx.fillRect(x + 28, y + 16, 5, 5);
+                                            octx.fillStyle = '#c084fc';
+                                            octx.fillRect(x + 16, y + 30, 5, 5);
+                                        } else if (floorId === 'wood_deck') {
+                                            octx.strokeStyle = 'rgba(0,0,0,0.22)';
+                                            octx.lineWidth = 1;
+                                            octx.beginPath();
+                                            octx.moveTo(x, y + 16);
+                                            octx.lineTo(x + BASE_TILE_SIZE, y + 16);
+                                            octx.moveTo(x, y + 32);
+                                            octx.lineTo(x + BASE_TILE_SIZE, y + 32);
+                                            octx.stroke();
+                                        } else if (floorId === 'shingye_jade' || floorId === 'magye_obsidian') {
+                                            octx.strokeStyle =
+                                                floorId === 'shingye_jade'
+                                                    ? 'rgba(245,158,11,0.45)'
+                                                    : 'rgba(168,85,247,0.45)';
+                                            octx.strokeRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4);
                                         }
                                     }
+                                }
 
-                                    if (isGate) {
-                                        octx.fillStyle = 'rgba(251, 191, 36, 0.35)';
-                                        octx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                    }
+                                if (isGate) {
+                                    octx.fillStyle = 'rgba(251, 191, 36, 0.35)';
+                                    octx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
                                 }
                             }
-                            terrainCacheRef.current = { canvas: off, loadedCount: loadedTerrainCount };
                         }
+                        terrainCacheRef.current = {
+                            canvas: off,
+                            startC: c0,
+                            startR: r0,
+                            endC: c1,
+                            endR: r1,
+                            loadedCount: loadedTerrainCount
+                        };
                     }
+                }
 
-                    if (terrainCacheRef.current) {
-                        const sx = Math.max(0, Math.floor(cameraRef.current.x));
-                        const sy = Math.max(0, Math.floor(cameraRef.current.y));
-                        const sw = Math.min(terrainCacheRef.current.canvas.width - sx, viewportSize.w + 2);
-                        const sh = Math.min(terrainCacheRef.current.canvas.height - sy, viewportSize.h + 2);
-                        if (sw > 0 && sh > 0) {
-                            ctx.drawImage(terrainCacheRef.current.canvas, sx, sy, sw, sh, sx, sy, sw, sh);
-                        }
-                        if (mode !== 'explore') {
-                            ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-                            ctx.lineWidth = 1;
-                            for (let r = startR; r <= endR; r++) {
-                                for (let c = startC; c <= endC; c++) {
-                                    ctx.strokeRect(c * BASE_TILE_SIZE, r * BASE_TILE_SIZE, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    for (let r = startR; r <= endR; r++) {
-                        for (let c = startC; c <= endC; c++) {
-                            const x = c * BASE_TILE_SIZE;
-                            const y = r * BASE_TILE_SIZE;
-                            const isPerimeterWall =
-                                r === 0 ||
-                                c === 0 ||
-                                c === mapData.cols - 1 ||
-                                (r === mapData.rows - 1 &&
-                                    (c < mapData.exitGate.x || c >= mapData.exitGate.x + mapData.exitGate.w));
-                            const isGate =
-                                r === mapData.exitGate.y &&
-                                c >= mapData.exitGate.x &&
-                                c < mapData.exitGate.x + mapData.exitGate.w;
-
-                            if (isPerimeterWall) {
-                                if (wallImg && wallImg.complete && wallImg.naturalWidth > 0) {
-                                    ctx.drawImage(wallImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                } else {
-                                    ctx.fillStyle = '#334155';
-                                    ctx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                }
-                                continue;
-                            }
-
-                            if (groundImg && groundImg.complete && groundImg.naturalWidth > 0) {
-                                ctx.drawImage(groundImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                            } else {
-                                ctx.fillStyle = (r + c) % 2 === 0 ? '#2f5e2c' : '#356831';
-                                ctx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                            }
-
-                            const floorId = mapData.floorOverrides[`${c},${r}`];
-                            if (floorId && floorId !== 'default') {
-                                const fDef = FLOOR_TILE_MAP[floorId];
-                                if (floorId === 'stone_road' && roadImg?.complete && roadImg.naturalWidth > 0) {
-                                    ctx.drawImage(roadImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                } else if (floorId === 'plaza' && plazaImg?.complete && plazaImg.naturalWidth > 0) {
-                                    ctx.drawImage(plazaImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                } else if (floorId === 'royal_marble' && royalImg?.complete && royalImg.naturalWidth > 0) {
-                                    ctx.drawImage(royalImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                } else if (floorId === 'water' && waterImg?.complete && waterImg.naturalWidth > 0) {
-                                    ctx.drawImage(waterImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                } else if (fDef) {
-                                    ctx.fillStyle = (r + c) % 2 === 0 ? fDef.color : fDef.accentColor;
-                                    ctx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                }
-                            }
-
-                            if (isGate) {
-                                ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
-                                ctx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                            }
-
-                            if (mode !== 'explore') {
-                                ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-                                ctx.lineWidth = 1;
-                                ctx.strokeRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                if (terrainCacheRef.current) {
+                    ctx.drawImage(
+                        terrainCacheRef.current.canvas,
+                        terrainCacheRef.current.startC * BASE_TILE_SIZE,
+                        terrainCacheRef.current.startR * BASE_TILE_SIZE
+                    );
+                    if (mode !== 'explore') {
+                        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                        ctx.lineWidth = 1;
+                        for (let r = startR; r <= endR; r++) {
+                            for (let c = startC; c <= endC; c++) {
+                                ctx.strokeRect(c * BASE_TILE_SIZE, r * BASE_TILE_SIZE, BASE_TILE_SIZE, BASE_TILE_SIZE);
                             }
                         }
                     }
@@ -1157,24 +1274,20 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                         loadedConstructionImg && loadedConstructionImg.complete && loadedConstructionImg.naturalWidth > 0
                     );
 
-                    if (f.underConstruction && hasConstructionPng && loadedConstructionImg) {
-                        // 전용 공사 중 스프라이트 PNG 렌더링
+                    if (f.underConstruction && hasConstructionPng && loadedConstructionImg && f.constructionSpriteUrl) {
+                        // 전용 공사 중 스프라이트 PNG 렌더링 (다운스케일 캐시)
                         const dw = Math.round(fw + 12);
                         const dh = Math.round(fh + 18);
                         const dx = Math.round(fx + fw / 2 - dw / 2);
                         const dy = Math.round(fy + fh - dh + 4);
-                        ctx.imageSmoothingEnabled = true;
-                        ctx.imageSmoothingQuality = 'low';
-                        ctx.drawImage(loadedConstructionImg, dx, dy, dw, dh);
+                        drawScaledImg(ctx, loadedConstructionImg, f.constructionSpriteUrl, dx, dy, dw, dh);
                     } else if (f.isMonsterPen) {
-                        if (hasFacilityPng && loadedFacilityImg) {
+                        if (hasFacilityPng && loadedFacilityImg && f.spriteUrl) {
                             const dw = Math.round(fw + 8);
                             const dh = Math.round(fh + 12);
                             const dx = Math.round(fx + fw / 2 - dw / 2);
                             const dy = Math.round(fy + fh - dh + 4);
-                            ctx.imageSmoothingEnabled = true;
-                            ctx.imageSmoothingQuality = 'low';
-                            ctx.drawImage(loadedFacilityImg, dx, dy, dw, dh);
+                            drawScaledImg(ctx, loadedFacilityImg, f.spriteUrl, dx, dy, dw, dh);
                         } else {
                             ctx.fillStyle = 'rgba(34, 197, 94, 0.20)';
                             ctx.fillRect(fx, fy, fw, fh);
@@ -1196,15 +1309,13 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                         ctx.strokeStyle = '#92400e';
                         ctx.lineWidth = 3;
                         ctx.strokeRect(fx + 2, fy + 2, fw - 4, fh - 4);
-                    } else if (hasFacilityPng && loadedFacilityImg) {
+                    } else if (hasFacilityPng && loadedFacilityImg && f.spriteUrl) {
                         const scale = f.isHq ? 1.12 : 1.06;
                         const dw = Math.round((fw + 12) * scale);
                         const dh = Math.round((fh + 18) * scale);
                         const dx = Math.round(fx + fw / 2 - dw / 2);
                         const dy = Math.round(fy + fh - dh + 4);
-                        ctx.imageSmoothingEnabled = true;
-                        ctx.imageSmoothingQuality = 'low';
-                        ctx.drawImage(loadedFacilityImg, dx, dy, dw, dh);
+                        drawScaledImg(ctx, loadedFacilityImg, f.spriteUrl, dx, dy, dw, dh);
                     } else {
                         // 레벨별 등급이 한눈에 구분되는 진화형 건축 폴백 (Lv.1~2 목조 / Lv.3~4 석조 / Lv.5~7 은청 / Lv.8+ 황금 신화)
                         const lv = f.level || 1;
@@ -1438,14 +1549,16 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                 // Y-sorted sprites (viewport culled residents + player)
                 const drawSprite = (
                     url: string,
-                    px: number,
-                    py: number,
+                    rawPx: number,
+                    rawPy: number,
                     dir: SpriteDirection,
                     frame: number,
                     name: string,
                     bubble?: string,
                     isPlayer?: boolean
                 ) => {
+                    const px = Math.round(rawPx);
+                    const py = Math.round(rawPy);
                     ctx.fillStyle = 'rgba(0,0,0,0.38)';
                     ctx.beginPath();
                     ctx.ellipse(px, py + 4, 13, 6, 0, 0, Math.PI * 2);
@@ -1510,7 +1623,7 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                     })),
                     {
                         y: p.y,
-                        draw: () => drawSprite(playerSpriteUrl, p.x, p.y, p.dir, p.walkFrame, character.name, undefined, true)
+                        draw: () => drawSprite(playerSpriteUrl, p.x, p.y, p.dir, p.walkFrame, characterName, undefined, true)
                     }
                 ].sort((a, b) => a.y - b.y);
                 actors.forEach(a => a.draw());
@@ -1518,14 +1631,29 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                 ctx.restore();
 
                 if (timeOfDay === 'Night') {
-                    ctx.fillStyle = 'rgba(15, 23, 42, 0.26)';
+                    ctx.fillStyle = 'rgba(10, 14, 42, 0.48)';
+                    ctx.fillRect(0, 0, viewportSize.w, viewportSize.h);
+                    const pxScreen = p.x - cameraRef.current.x;
+                    const pyScreen = p.y - cameraRef.current.y - 6;
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    const grad = ctx.createRadialGradient(pxScreen, pyScreen, 6, pxScreen, pyScreen, 105);
+                    grad.addColorStop(0, 'rgba(254, 243, 199, 0.24)');
+                    grad.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(pxScreen, pyScreen, 105, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                } else if (timeOfDay === 'Evening') {
+                    ctx.fillStyle = 'rgba(190, 60, 40, 0.14)';
                     ctx.fillRect(0, 0, viewportSize.w, viewportSize.h);
                 }
             }
 
-            // 6. Render minimap (~10fps for zero overhead)
+            // 6. Render minimap (~2.5fps for zero overhead)
             minimapTick += dt;
-            if (minimapTick >= 0.1) {
+            if (minimapTick >= 0.4) {
                 minimapTick = 0;
                 const mm = minimapRef.current;
                 const mctx = mm?.getContext('2d');
@@ -1590,23 +1718,49 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
 
         rafId = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(rafId);
-    }, [
-        mapData,
-        viewportSize,
-        playerSpriteUrl,
-        character.name,
-        character.currentTime,
-        mode,
-        movingFacility,
-        placingNewFacilityId,
-        brushSize,
-        decoEraseMode,
-        selectedFacility,
-        selectedFacilitySpaceOk,
-        activeInteriorFacility,
-        findNearestInteractable,
-        onExitToCity
-    ]);
+    }, [mapData, viewportSize, playerSpriteUrl, activeInteriorFacility]);
+
+    // 일일 탭 [이동 ->] 이벤트 수신 시 해당 시설 내부 맵으로 즉시 진입
+    useEffect(() => {
+        const onEnterFromDaily = (e: Event) => {
+            const detail = (e as CustomEvent<{ facilityType?: string }>).detail;
+            const targetType = detail?.facilityType;
+            if (!targetType) return;
+            const match =
+                mapData.facilities.find(f => f.facilityType === targetType) ||
+                mapData.facilities.find(f => targetType.startsWith('training_') && f.facilityType === 'training') ||
+                mapData.facilities.find(
+                    f => (targetType === 'monster_farm' || targetType === 'monster_ranch') && f.isMonsterPen
+                );
+            if (match) {
+                setSelectedFacility(null);
+                setSelectedResident(null);
+                setSelectedMonster(null);
+                setActiveInteriorFacility(match);
+            }
+        };
+        window.addEventListener('enter-base-facility', onEnterFromDaily);
+        return () => window.removeEventListener('enter-base-facility', onEnterFromDaily);
+    }, [mapData.facilities]);
+
+    const base = character.base;
+    const baseLevel = mapData.baseLevel;
+    const maxSizeForLevel = BASE_MAX_MAP_SIZE_BY_LEVEL[baseLevel] || 40;
+    const actualHumanResidentCount = useMemo(
+        () =>
+            (character.inactiveCompanions || []).filter(
+                c => c && !c.isDead && !c.isMonster && !(c as any).isCustomMonster && c.race !== '몬스터'
+            ).length,
+        [character.inactiveCompanions]
+    );
+    const actualMonsterCount = useMemo(
+        () =>
+            (base?.capturedMonsters?.length || 0) +
+            (character.inactiveCompanions || []).filter(
+                c => c && !c.isDead && (c.isMonster || (c as any).isCustomMonster || c.race === '몬스터')
+            ).length,
+        [base?.capturedMonsters, character.inactiveCompanions]
+    );
 
     if (activeInteriorFacility) {
         const liveFac =
@@ -1625,6 +1779,11 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                     }}
                     onOpenBaseModal={onOpenBaseModal}
                     onInspectCompanion={onInspectCompanion}
+                    onUpdateCharacter={onUpdateCharacter}
+                    onSwitchFacilityInstance={newId => {
+                        const target = mapData.facilities.find(f => f.instanceId === newId);
+                        if (target) setActiveInteriorFacility(target);
+                    }}
                 />
                 {isInteriorFading && (
                     <div className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center pointer-events-none">
@@ -1636,15 +1795,14 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             </div>
         );
     }
-
-    const base = character.base;
-    const baseLevel = mapData.baseLevel;
-    const maxSizeForLevel = BASE_MAX_MAP_SIZE_BY_LEVEL[baseLevel] || 40;
     const canAffordExpand =
         expansionOpt.canExpand &&
         (character.money || 0) >= expansionOpt.goldCost &&
+        (base?.resources?.food || 0) >= expansionOpt.foodCost &&
         (base?.resources?.wood || 0) >= expansionOpt.woodCost &&
-        (base?.resources?.stone || 0) >= expansionOpt.stoneCost;
+        (base?.resources?.stone || 0) >= expansionOpt.stoneCost &&
+        (base?.resources?.iron || 0) >= expansionOpt.ironCost &&
+        (base?.resources?.manaCrystal || 0) >= expansionOpt.manaCrystalCost;
 
     return (
         <div ref={containerRef} className="relative w-full h-full flex-1 min-h-0 bg-slate-950 overflow-hidden select-none">
@@ -1670,7 +1828,7 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             {/* Top HUD */}
             <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
                 {/* Base Info Badge */}
-                <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/90 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl backdrop-blur-md">
+                <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl">
                     <Home size={16} className="text-amber-400 shrink-0" />
                     <div className="leading-tight">
                         <div className="text-xs sm:text-sm font-black text-amber-200 flex items-center gap-1.5">
@@ -1681,8 +1839,8 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                             </span>
                         </div>
                         <div className="text-[10px] text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
-                            <span>거주민 {mapData.residents.length}명</span>
-                            <span>몬스터 {mapData.farmMonsters.length}마리</span>
+                            <span>거주민 {actualHumanResidentCount}명</span>
+                            <span>몬스터 {actualMonsterCount}마리</span>
                             <span className="text-amber-300">{(character.money || 0).toLocaleString()} G</span>
                             <span className="text-emerald-300">목재 {base?.resources?.wood || 0}</span>
                             <span className="text-sky-300">석재 {base?.resources?.stone || 0}</span>
@@ -2067,48 +2225,13 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
 
             {/* Resident Quick Card */}
             {selectedResident && (
-                <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 w-[92%] max-w-md bg-slate-950/95 border border-indigo-500/60 rounded-2xl p-4 shadow-2xl">
-                    <div className="flex items-start justify-between gap-3">
-                        <div>
-                            <div className="text-sm font-black text-white flex items-center gap-2">
-                                <Users size={15} className="text-indigo-400" />
-                                {selectedResident.name}
-                                <span className="text-[11px] font-bold text-indigo-300 bg-indigo-950 px-2 py-0.5 rounded">
-                                    Lv.{selectedResident.companionRef.level || 1}
-                                </span>
-                            </div>
-                            <div className="text-xs text-slate-400 mt-0.5">{selectedResident.role}</div>
-                            <div className="text-xs text-indigo-200 mt-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
-                                {selectedResident.activityBubble}
-                            </div>
-                        </div>
-                        <button type="button" onClick={() => setSelectedResident(null)} className="text-slate-400 hover:text-white p-1">
-                            <X size={16} />
-                        </button>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                        {onInspectCompanion && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const cid = selectedResident.id;
-                                    setSelectedResident(null);
-                                    onInspectCompanion(cid);
-                                }}
-                                className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black"
-                            >
-                                동료 정보 · 대화 열기
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => setSelectedResident(null)}
-                            className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold"
-                        >
-                            닫기
-                        </button>
-                    </div>
-                </div>
+                <ResidentQuickCard
+                    resident={selectedResident}
+                    character={character}
+                    onUpdateCharacter={onUpdateCharacter}
+                    onInspectCompanion={onInspectCompanion}
+                    onClose={() => setSelectedResident(null)}
+                />
             )}
 
             {/* Farm Monster Quick Card */}
@@ -2187,6 +2310,76 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                         const sCost = upgCfg ? upgCfg.stoneCost * curLv : 0;
                         const fCost = upgCfg ? upgCfg.foodCost * curLv : 0;
                         const mCost = upgCfg ? upgCfg.manaCost * curLv : 0;
+
+                        const assignKey = liveFac.instanceId || liveFac.facilityType;
+                        const singleAssignId = character.base?.assignments?.[assignKey] || character.base?.assignments?.[liveFac.facilityType];
+                        const multiAssignIds =
+                            character.base?.multiAssignments?.[assignKey] ||
+                            character.base?.multiAssignments?.[liveFac.facilityType] ||
+                            [];
+                        const assignedIdSet = new Set<string>([
+                            ...(singleAssignId ? [singleAssignId] : []),
+                            ...multiAssignIds
+                        ]);
+                        const allBaseHumanComps = [
+                            ...(character.inactiveCompanions || []),
+                            ...(character.companions || [])
+                        ].filter(c => c && !c.isDead && !c.isMonster && !(c as any).isCustomMonster && c.race !== '몬스터');
+                        const assignedComps = allBaseHumanComps.filter(c => assignedIdSet.has(c.id));
+
+                        const handleToggleFacilityAssign = (compId: string) => {
+                            if (!character.base || !onUpdateCharacter) return;
+                            const comp = allBaseHumanComps.find(c => c.id === compId);
+                            if (!comp) return;
+                            const fType = liveFac.facilityType;
+                            const isTrainingFac =
+                                fType === 'training_exp' ||
+                                fType === 'training_stat' ||
+                                fType === 'training_mastery' ||
+                                fType === 'training_style' ||
+                                fType === 'tactical_training' ||
+                                fType === 'combat_training' ||
+                                fType === 'training';
+                            const isHouseChef = !!character.base?.houses?.some(h => h.assignedChefId === compId);
+                            const isJobMismatch =
+                                (fType === 'farm' && comp.job !== JobType.FARMER && comp.job !== JobType.SLAVE && (comp.job as string) !== '노예') ||
+                                (fType === 'mine' && comp.job !== JobType.MINER && comp.job !== JobType.SLAVE && (comp.job as string) !== '노예') ||
+                                (fType === 'alchemy' && comp.job !== JobType.ALCHEMIST) ||
+                                (fType === 'cooking' && comp.job !== JobType.CHEF) ||
+                                ((fType === 'monster_farm' || fType === 'monster_arena') && comp.job !== JobType.BREEDER) ||
+                                (fType === 'lab' && comp.job !== JobType.RESEARCHER) ||
+                                (fType === 'workshop' && comp.job !== JobType.BLACKSMITH) ||
+                                (isTrainingFac && comp.job !== JobType.TRAINER);
+                            if (!assignedIdSet.has(compId) && (isJobMismatch || (fType === 'cooking' && isHouseChef))) {
+                                return;
+                            }
+                            const draft = JSON.parse(JSON.stringify(character)) as Character;
+                            if (!draft.base) return;
+                            draft.base.assignments = draft.base.assignments || {};
+                            draft.base.multiAssignments = draft.base.multiAssignments || {};
+                            const isMultiFac =
+                                liveFac.facilityType === 'farm' ||
+                                liveFac.facilityType === 'mine' ||
+                                liveFac.facilityType === 'alchemy' ||
+                                liveFac.facilityType === 'cooking' ||
+                                liveFac.facilityType === 'lab' ||
+                                liveFac.facilityType === 'workshop';
+                            if (isMultiFac) {
+                                const list = draft.base.multiAssignments[assignKey] || [];
+                                if (list.includes(compId)) {
+                                    draft.base.multiAssignments[assignKey] = list.filter(id => id !== compId);
+                                } else {
+                                    draft.base.multiAssignments[assignKey] = [...list, compId];
+                                }
+                            } else {
+                                if (draft.base.assignments[assignKey] === compId) {
+                                    delete draft.base.assignments[assignKey];
+                                } else {
+                                    draft.base.assignments[assignKey] = compId;
+                                }
+                            }
+                            onUpdateCharacter(draft, `[시설 담당자] '${liveFac.label}' 담당자 배정을 변경했습니다.`);
+                        };
 
                         const handleDirectFacilityLevelUp = () => {
                             if (liveFac.isHq) {
@@ -2323,6 +2516,107 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                                     </div>
                                 )}
 
+                                {!liveFac.isHq && !liveFac.underConstruction && (
+                                    <div className="text-[11px] bg-slate-900/90 border border-indigo-500/30 rounded-lg px-3 py-2 space-y-2">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-slate-300">
+                                                <strong className="text-indigo-300">담당자:</strong>{' '}
+                                                {assignedComps.length > 0
+                                                    ? assignedComps.map(c => c.name).join(', ')
+                                                    : '미배정'}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowFacilityAssignDrawer(v => !v)}
+                                                className="px-2 py-1 rounded bg-indigo-700 hover:bg-indigo-600 text-white text-[10px] font-black shrink-0"
+                                            >
+                                                {showFacilityAssignDrawer ? '담당자 닫기' : '👤 담당자 설정'}
+                                            </button>
+                                        </div>
+                                        {showFacilityAssignDrawer && (
+                                            <div className="max-h-36 overflow-y-auto custom-scrollbar space-y-1 pt-1 border-t border-slate-800">
+                                                {(character.inactiveCompanions || [])
+                                                    .filter(c => {
+                                                        if (!c || c.isDead || c.isMonster || (c as any).isCustomMonster || c.race === '몬스터') {
+                                                            return false;
+                                                        }
+                                                        if (assignedIdSet.has(c.id)) return true;
+                                                        const b = character.base;
+                                                        const busy =
+                                                            b?.dispatched?.some(m => m.companionId === c.id || (m as any).participants?.includes(c.id)) ||
+                                                            character.mercenaryData?.groupMissions?.some(m => m.memberIds.includes(c.id)) ||
+                                                            Object.values(b?.assignments || {}).includes(c.id) ||
+                                                            Object.values(b?.multiAssignments || {}).some(list => list.includes(c.id)) ||
+                                                            !!b?.houses?.some(h => h.assignedChefId === c.id) ||
+                                                            !!b?.houses?.some(h => h.assignedHousekeeperId === c.id);
+                                                        return !busy;
+                                                    })
+                                                    .map(c => {
+                                                        const isAssignedHere = assignedIdSet.has(c.id);
+                                                        const fType = liveFac.facilityType;
+                                                        const isTrainingFac =
+                                                            fType === 'training_exp' ||
+                                                            fType === 'training_stat' ||
+                                                            fType === 'training_mastery' ||
+                                                            fType === 'training_style' ||
+                                                            fType === 'tactical_training' ||
+                                                            fType === 'combat_training' ||
+                                                            fType === 'training';
+                                                        const isHouseChef = !!character.base?.houses?.some(h => h.assignedChefId === c.id);
+                                                        const isChefLockedByHousing = fType === 'cooking' && isHouseChef;
+                                                        const isJobMismatch =
+                                                            (fType === 'farm' && c.job !== JobType.FARMER && c.job !== JobType.SLAVE && (c.job as string) !== '노예') ||
+                                                            (fType === 'mine' && c.job !== JobType.MINER && c.job !== JobType.SLAVE && (c.job as string) !== '노예') ||
+                                                            (fType === 'alchemy' && c.job !== JobType.ALCHEMIST) ||
+                                                            (fType === 'cooking' && c.job !== JobType.CHEF) ||
+                                                            ((fType === 'monster_farm' || fType === 'monster_arena') && c.job !== JobType.BREEDER) ||
+                                                            (fType === 'lab' && c.job !== JobType.RESEARCHER) ||
+                                                            (fType === 'workshop' && c.job !== JobType.BLACKSMITH) ||
+                                                            (isTrainingFac && c.job !== JobType.TRAINER);
+                                                        const isLocked = !isAssignedHere && (isJobMismatch || isChefLockedByHousing);
+                                                        const reqJobLabel =
+                                                            fType === 'farm' ? '농부/노예' :
+                                                            fType === 'mine' ? '광부/노예' :
+                                                            fType === 'alchemy' ? '연금술사' :
+                                                            fType === 'cooking' ? '요리사' :
+                                                            (fType === 'monster_farm' || fType === 'monster_arena') ? '사육사' :
+                                                            fType === 'lab' ? '연구원' :
+                                                            fType === 'workshop' ? '대장장이' :
+                                                            isTrainingFac ? '트레이너' : '해당 직업';
+                                                        return (
+                                                            <button
+                                                                key={c.id}
+                                                                type="button"
+                                                                disabled={isLocked}
+                                                                onClick={() => handleToggleFacilityAssign(c.id)}
+                                                                className={`w-full px-2.5 py-1.5 rounded text-left text-[11px] font-bold flex items-center justify-between border ${
+                                                                    isLocked
+                                                                        ? 'bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed grayscale'
+                                                                        : isAssignedHere
+                                                                            ? 'bg-emerald-950/80 border-emerald-500 text-emerald-200'
+                                                                            : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-indigo-500/50'
+                                                                }`}
+                                                            >
+                                                                <span>
+                                                                    {c.name} ({c.job || c.classType || '거주민'})
+                                                                    {isChefLockedByHousing && (
+                                                                        <span className="text-[10px] text-amber-400 ml-1">(숙소 요리사 배정 중)</span>
+                                                                    )}
+                                                                    {!isChefLockedByHousing && isLocked && (
+                                                                        <span className="text-[10px] text-rose-400 ml-1">({reqJobLabel}만 가능)</span>
+                                                                    )}
+                                                                </span>
+                                                                <span className="text-[10px]">
+                                                                    {isAssignedHere ? '✓ 배정됨 (해제)' : isLocked ? '불가' : '+ 배정'}
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
                                 {facilityNotice && (
                                     <div className="text-xs text-rose-300 bg-rose-950/80 border border-rose-500/50 rounded-lg px-3 py-2 font-bold">
                                         {facilityNotice}
@@ -2393,12 +2687,18 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                                 const foot = getFacilityFootprint(fac.id);
                                 const cfg = (FACILITY_CONSTRUCTION_COSTS as any)[fac.id] || { gold: 20000, wood: 15, stone: 15 };
                                 const gCost = cfg.gold || 0;
+                                const fCost = cfg.food || 0;
                                 const wCost = cfg.wood || 0;
                                 const sCost = cfg.stone || 0;
+                                const iCost = cfg.iron || 0;
+                                const mCost = cfg.manaCrystal || 0;
                                 const affordable =
                                     (character.money || 0) >= gCost &&
+                                    (base?.resources?.food || 0) >= fCost &&
                                     (base?.resources?.wood || 0) >= wCost &&
-                                    (base?.resources?.stone || 0) >= sCost;
+                                    (base?.resources?.stone || 0) >= sCost &&
+                                    (base?.resources?.iron || 0) >= iCost &&
+                                    (base?.resources?.manaCrystal || 0) >= mCost;
                                 return (
                                     <div
                                         key={fac.id}
@@ -2413,15 +2713,36 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                                             </div>
                                             <div className="text-[11px] text-slate-400 truncate">{fac.description}</div>
                                             <div className="text-[10px] mt-1 flex flex-wrap gap-2">
-                                                <span className={(character.money || 0) >= gCost ? 'text-amber-300' : 'text-rose-400'}>
-                                                    {gCost.toLocaleString()} G
-                                                </span>
-                                                <span className={(base?.resources?.wood || 0) >= wCost ? 'text-emerald-300' : 'text-rose-400'}>
-                                                    목재 {wCost}
-                                                </span>
-                                                <span className={(base?.resources?.stone || 0) >= sCost ? 'text-sky-300' : 'text-rose-400'}>
-                                                    석재 {sCost}
-                                                </span>
+                                                {gCost > 0 && (
+                                                    <span className={(character.money || 0) >= gCost ? 'text-amber-300' : 'text-rose-400'}>
+                                                        {gCost.toLocaleString()} G
+                                                    </span>
+                                                )}
+                                                {wCost > 0 && (
+                                                    <span className={(base?.resources?.wood || 0) >= wCost ? 'text-emerald-300' : 'text-rose-400'}>
+                                                        목재 {wCost}
+                                                    </span>
+                                                )}
+                                                {sCost > 0 && (
+                                                    <span className={(base?.resources?.stone || 0) >= sCost ? 'text-sky-300' : 'text-rose-400'}>
+                                                        석재 {sCost}
+                                                    </span>
+                                                )}
+                                                {fCost > 0 && (
+                                                    <span className={(base?.resources?.food || 0) >= fCost ? 'text-lime-300' : 'text-rose-400'}>
+                                                        식량 {fCost}
+                                                    </span>
+                                                )}
+                                                {iCost > 0 && (
+                                                    <span className={(base?.resources?.iron || 0) >= iCost ? 'text-slate-300' : 'text-rose-400'}>
+                                                        철 {iCost}
+                                                    </span>
+                                                )}
+                                                {mCost > 0 && (
+                                                    <span className={(base?.resources?.manaCrystal || 0) >= mCost ? 'text-purple-300' : 'text-rose-400'}>
+                                                        마정석 {mCost}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                         <button
