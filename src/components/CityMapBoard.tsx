@@ -16,6 +16,7 @@ import BaseRpgCanvas from './BaseRpgCanvas';
 import DistrictRpgCanvas, { VisualDistrictKind } from './DistrictRpgCanvas';
 import FactionCompoundCanvas, { FactionCompoundKind } from './FactionCompoundCanvas';
 import OutskirtsRpgCanvas from './OutskirtsRpgCanvas';
+import SchoolCampusCanvas from './SchoolCampusCanvas';
 import FacilityClosedModal from './FacilityClosedModal';
 import { getFacilityOperatingState } from '../services/facilityOperatingService';
 import { 
@@ -78,6 +79,7 @@ const CityMapBoard: React.FC<Props> = ({
     const [isZoneFading, setIsZoneFading] = useState(false);
     const [activeDistrictCanvas, setActiveDistrictCanvas] = useState<VisualDistrictKind | null>(null);
     const [activeCompoundCanvas, setActiveCompoundCanvas] = useState<FactionCompoundKind | null>(null);
+    const [isSchoolCanvasOpen, setIsSchoolCanvasOpen] = useState(false);
     const loc = character.currentLocation || { region: "아시아", nation: "대한민국", city: "서울" };
     const [isOutskirtsCanvasOpen, setIsOutskirtsCanvasOpen] = useState<boolean>(() => {
         try {
@@ -114,6 +116,7 @@ const CityMapBoard: React.FC<Props> = ({
         setActiveMapZone('city');
         setActiveDistrictCanvas(null);
         setActiveCompoundCanvas(null);
+        setIsSchoolCanvasOpen(false);
         setIsOutskirtsCanvasOpen(false);
         try {
             sessionStorage.removeItem('shinryoku_outskirts_resume');
@@ -134,6 +137,10 @@ const CityMapBoard: React.FC<Props> = ({
         }
         if (!openHuntMap && (district === 'Commercial' || district === 'Residential')) {
             setActiveDistrictCanvas(district);
+            return;
+        }
+        if (!openHuntMap && district === 'Academic') {
+            setIsSchoolCanvasOpen(true);
             return;
         }
         if (!openHuntMap && district === 'Mercenary') {
@@ -842,9 +849,20 @@ const CityMapBoard: React.FC<Props> = ({
                         </div>
                     )}
                 </div>
-            ) : mapViewMode === 'rpg' || activeDistrictCanvas || activeCompoundCanvas || isOutskirtsCanvasOpen ? (
+            ) : mapViewMode === 'rpg' || activeDistrictCanvas || activeCompoundCanvas || isOutskirtsCanvasOpen || isSchoolCanvasOpen ? (
                 <div className="z-10 flex-1 mt-1 mb-[62px] sm:mb-[54px] flex flex-col w-full min-h-[320px] sm:min-h-[calc(100vh-165px)] relative">
-                    {isOutskirtsCanvasOpen ? (
+                    {isSchoolCanvasOpen ? (
+                        <SchoolCampusCanvas
+                            character={character}
+                            region={loc.region}
+                            nation={loc.nation}
+                            city={loc.city}
+                            onExitToCity={() => setIsSchoolCanvasOpen(false)}
+                            onUpdateCharacter={onUpdateCharacter || (() => {})}
+                            onAction={onAction}
+                            onStartBattle={onStartBattle}
+                        />
+                    ) : isOutskirtsCanvasOpen ? (
                         <OutskirtsRpgCanvas
                             character={character}
                             region={loc.region}

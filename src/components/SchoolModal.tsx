@@ -29,12 +29,14 @@ interface Props {
     onUpdateCharacter: (newChar: Character, logMsg: string) => void;
     onAction: (action: string, mpCost?: number, stateOverride?: Character) => void;
     onBattle?: (enemy: any, type?: string, source?: string, targetCity?: string, targetNation?: string) => void;
+    initialZone?: SchoolZone;
+    targetSchoolTier?: SchoolTier;
 }
 
-type SchoolZone = 'Office' | 'Training' | 'Classroom' | 'Library' | 'Dormitory' | 'Club';
+export type SchoolZone = 'Office' | 'Training' | 'Classroom' | 'Library' | 'Dormitory' | 'Club';
 
-const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onAction, onBattle }) => {
-    const [currentZone, setCurrentZone] = useState<SchoolZone>(character.job === JobType.STUDENT ? 'Office' : 'Classroom');
+const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onAction, onBattle, initialZone, targetSchoolTier }) => {
+    const [currentZone, setCurrentZone] = useState<SchoolZone>(initialZone || (character.job === JobType.STUDENT ? 'Office' : 'Classroom'));
     const [resultData, setResultData] = useState<ResultData | null>(null);
     const [selectedWeapon, setSelectedWeapon] = useState<WeaponType>('Sword');
     
@@ -114,9 +116,10 @@ const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, o
     // [NEW] 학교 데이터가 없을 경우(임시 교관 등)를 위한 기본값 설정
     const school = character.schoolData ? { ...character.schoolData } : {
         schoolName: instructorQuest?.schoolName || '알 수 없는 학교',
-        tier: (instructorQuest?.schoolTier === '초급' ? 'Elementary' : 
-               instructorQuest?.schoolTier === '중급' ? 'Middle' : 
-               instructorQuest?.schoolTier === '고급' ? 'High' : 'Elementary') as SchoolTier,
+        tier: (targetSchoolTier ||
+               (instructorQuest?.schoolTier === '초급' ? 'Elementary' : 
+                instructorQuest?.schoolTier === '중급' ? 'Middle' : 
+                instructorQuest?.schoolTier === '고급' ? 'High' : 'Elementary')) as SchoolTier,
         grade: 1,
         classNumber: 1,
         semester: 1,
