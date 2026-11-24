@@ -299,6 +299,37 @@ export const getBaseBuildingSpriteUrl = (packKey: string, level: number): string
     return `${getBaseUrl()}assets/visuals/city_tiles/buildings/${packKey}/base_lv${lv}.png`;
 };
 
+/** 기지 개별 시설의 레벨별(Tier 1~5) 스프라이트 URL 리졸버 */
+export const resolveBaseFacilityVisualTier = (level: number): 1 | 2 | 3 | 4 | 5 => {
+    const lv = Math.max(1, Math.floor(level || 1));
+    if (lv <= 1) return 1;
+    if (lv === 2) return 2;
+    if (lv <= 4) return 3;
+    if (lv <= 7) return 4;
+    return 5;
+};
+
+export const getBaseFacilityLevelSpriteUrl = (facilityType: string, level: number): string => {
+    const tier = resolveBaseFacilityVisualTier(level);
+    const normalized =
+        facilityType === 'monster_ranch'
+            ? 'monster_farm'
+            : facilityType === 'transcendence_sanctuary'
+            ? 'sanctuary'
+            : facilityType;
+    return `${getBaseUrl()}assets/visuals/city_tiles/base_facilities/${normalized}_lv${tier}.png`;
+};
+
+/** 공사 중(Under Construction) 전용 스프라이트 URL 리졸버 */
+export const getConstructionSpriteUrl = (sizeKind: 'small' | 'medium' | 'large' | 'hq'): string => {
+    return `${getBaseUrl()}assets/visuals/city_tiles/base_facilities/construction_${sizeKind}.png`;
+};
+
+/** 시설 내부 소품 전용 PNG 오버라이드 URL 리졸버 */
+export const getInteriorPropSpriteUrl = (propKind: string): string => {
+    return `${getBaseUrl()}assets/visuals/city_tiles/interior_props/${propKind}.png`;
+};
+
 export const resolveBuildingPackKey = (cultureKey: CityCultureKey): string => {
     // 신계 각 성전별 전용 건물 팩 13종 직접 매핑 (신의 거처는 공용 shingye)
     if (cultureKey.startsWith('shingye_')) return cultureKey;

@@ -85,7 +85,8 @@ import { generateTravelMonsterAmbush } from './services/travelAmbushService';
 import { getUnreadMailCount } from './services/mailboxService';
 import { calculateTravelCostAndDays } from './services/travelCalculationService';
 import { calculateBaseRelocationPlan, executeBaseRelocation } from './services/baseRelocationService';
-import { getBaseGridExpansionDuration, calculateCompletionDateTime, getConstructionRemainingTime } from './services/baseConstructionService';
+import { getBaseGridExpansionDuration, getBaseUpgradeDuration, getFacilityConstructionDuration, calculateCompletionDateTime, getConstructionRemainingTime } from './services/baseConstructionService';
+import { validateFacilityLevelUpSpace } from './services/baseTilemapEngine';
 import { advanceGameTime, applyRestHealing, flushBufferedReports } from './services/gameTimeService';
 import { MobileBottomNavigationBar } from './components/common/MobileBottomNavigationBar';
 import { InventoryModal } from './components/InventoryModal';
@@ -4613,12 +4614,44 @@ useEffect(() => {
       
       const cost = BASE_LEVEL_CONFIG[0].cost;
       if (character.money < cost) return alert("골드가 부족합니다.");
-      const newChar = { ...character, money: character.money - cost, base: { ...INITIAL_BASE, location: character.currentLocation } };
-      setCharacter(newChar); addToLog(`[시스템] ${character.currentLocation?.city}에 기지를 건설했습니다!`);
+      const startDate = character.currentDate || '2000-03-02';
+      const startTime = character.currentTime || '08:00';
+      const durationMinutes = 1440; // 최초 기지 신축: 24시간(1일)
+      const { completionDate, completionTime } = calculateCompletionDateTime(startDate, startTime, durationMinutes);
+      const newChar: Character = {
+          ...character,
+          money: character.money - cost,
+          base: {
+              ...INITIAL_BASE,
+              location: character.currentLocation,
+              level: 1,
+              underConstruction: true,
+              targetLevel: 1,
+              constructionStartDate: startDate,
+              constructionStartTime: startTime,
+              constructionCompletionDate: completionDate,
+              constructionCompletionTime: completionTime,
+              totalConstructionMinutes: durationMinutes
+          }
+      };
+      setCharacter(newChar);
+      addToLog(`[기지 신축 착공] ${character.currentLocation?.city}에 기지 건설 공사를 시작했습니다! (완공 예정: ${completionDate} ${completionTime})`);
+      setResultModalData({
+          type: 'success',
+          title: '기지 신축 공사 착공!',
+          message: `${character.currentLocation?.city}에 기지 본부 신축 공사를 시작했습니다.\n완공 시점(${completionDate} ${completionTime})에 기지가 정식 완공됩니다.`,
+          items: [
+              { label: '공사 기간', after: '24시간 (1일)' },
+              { label: '완공 예정', after: `${completionDate} ${completionTime}` }
+          ]
+      });
   };
 
   const handleBaseUpgrade = () => {
       if (!character.base) return;
+      if (character.base.underConstruction) {
+          return alert("이미 기지 본부 증축 공사가 진행 중입니다.");
+      }
       const nextLevel = character.base.level + 1;
       const config = BASE_LEVEL_CONFIG[nextLevel];
       if (!config) return alert("더 이상 업그레이드할 수 없습니다.");
@@ -4633,6 +4666,26 @@ useEffect(() => {
 
       if (character.money < config.cost) return alert("골드가 부족합니다.");
       if (character.level < config.requiredLevel) return alert("레벨이 부족합니다.");
+
+      // 기지 본부(HQ)도 레벨업 시 타일 크기가 +1×+1 증가하므로 주변 공간 검증
+      const hqSpaceCheck = validateFacilityLevelUpSpace(character, 'hq');
+      if (!hqSpaceCheck.ok) {
+          setResultModalData({
+              type: 'warning',
+              title: '주변 공간 부족 (증축 불가)',
+              message: hqSpaceCheck.reason || '기지 본부 주변에 여유 공간이 부족하여 증축할 수 없습니다.',
+              items: [
+                  { label: '현재 타일 크기', after: `${hqSpaceCheck.curW}×${hqSpaceCheck.curH}` },
+                  { label: '레벨업 시 크기 (+1×1)', after: `${hqSpaceCheck.nextW}×${hqSpaceCheck.nextH}` }
+              ]
+          });
+          return;
+      }
+
+      const startDate = character.currentDate || '2000-03-02';
+      const startTime = character.currentTime || '08:00';
+      const durationMinutes = getBaseUpgradeDuration(character.base.level);
+      const { completionDate, completionTime } = calculateCompletionDateTime(startDate, startTime, durationMinutes);
       
       setCharacter(prev => {
           if (!prev.base) return prev;
@@ -4650,13 +4703,28 @@ useEffect(() => {
               money: prev.money - config.cost,
               base: {
                   ...prev.base,
-                  level: nextLevel,
-                  gridSize: config.gridSize,
-                  resources: nextRes
+                  gridSize: Math.max(prev.base.gridSize || 3, config.gridSize),
+                  resources: nextRes,
+                  underConstruction: true,
+                  targetLevel: nextLevel,
+                  constructionStartDate: startDate,
+                  constructionStartTime: startTime,
+                  constructionCompletionDate: completionDate,
+                  constructionCompletionTime: completionTime,
+                  totalConstructionMinutes: durationMinutes
               }
           };
       });
-      addToLog(`[시스템] 기지가 Lv.${nextLevel} (${config.description})로 업그레이드되었습니다. (부지 면적 확장)`);
+      addToLog(`[기지 증축 착공] 기지 Lv.${nextLevel} (${config.description}) 증축 공사를 시작했습니다! (완공 예정: ${completionDate} ${completionTime})`);
+      setResultModalData({
+          type: 'success',
+          title: `기지 Lv.${nextLevel} 증축 착공!`,
+          message: `기지 본부 증축 공사가 시작되었습니다.\n완공 예정 일시(${completionDate} ${completionTime})가 지나면 자동으로 완공됩니다.`,
+          items: [
+              { label: '목표 레벨', before: `Lv.${character.base.level}`, after: `Lv.${nextLevel}` },
+              { label: '완공 예정', after: `${completionDate} ${completionTime}` }
+          ]
+      });
   };
 
   const handleExpandGrid = () => {
@@ -4837,6 +4905,32 @@ const handleEquipTitle = (targetId: string, titleId: string | undefined) => {
           return; 
       }
       
+      // 이미 공사 중인 시설인지 확인
+      if (instance?.underConstruction) {
+          return alert("이미 해당 시설의 증축 공사가 진행 중입니다.");
+      }
+
+      // 시설 레벨업 시 타일 크기가 +1×+1 증가하므로 현재 위치 주변에 여유 공간이 있는지 검증!
+      const spaceCheck = validateFacilityLevelUpSpace(character, facilityOrInstanceId);
+      if (!spaceCheck.ok) {
+          setResultModalData({
+              type: 'warning',
+              title: '주변 공간 부족 (증축 불가)',
+              message: spaceCheck.reason || '시설 레벨업 시 타일 크기가 1×1 증가하므로 주변에 빈 공간이 필요합니다.',
+              items: [
+                  { label: '대상 시설', after: `${spaceCheck.facilityName} (Lv.${currentLevel} → Lv.${nextLevel})` },
+                  { label: '현재 타일 크기', after: `${spaceCheck.curW}×${spaceCheck.curH}` },
+                  { label: '레벨업 시 크기 (+1×1)', after: `${spaceCheck.nextW}×${spaceCheck.nextH}` }
+              ]
+          });
+          return;
+      }
+
+      const startDate = character.currentDate || '2000-03-02';
+      const startTime = character.currentTime || '08:00';
+      const durationMinutes = getFacilityConstructionDuration(facilityId, true, currentLevel);
+      const { completionDate, completionTime } = calculateCompletionDateTime(startDate, startTime, durationMinutes);
+
       const newChar = { ...character }; 
       const newBase = { ...newChar.base! }; 
       newBase.resources = { 
@@ -4848,19 +4942,21 @@ const handleEquipTitle = (targetId: string, titleId: string | undefined) => {
       }; 
       newChar.money -= goldCost;
       
-      if (!newBase.facilityLevels) newBase.facilityLevels = {}; 
-      newBase.facilityLevels[facilityId] = nextLevel;
-      
-      // Sync with layout instances
+      // Sync with layout instances -> 즉시 레벨업하지 않고 증축 공사 착공!
       if (newBase.layout) {
           newBase.layout = newBase.layout.map(inst => {
-              if (instance) {
-                  // If we upgraded a specific instance
-                  return inst.id === facilityOrInstanceId ? { ...inst, level: nextLevel } : inst;
-              } else {
-                  // If we upgraded a facility type globally
-                  return inst.type === facilityId ? { ...inst, level: nextLevel } : inst;
-              }
+              const matched = instance ? inst.id === facilityOrInstanceId : inst.type === facilityId;
+              if (!matched || inst.underConstruction) return inst;
+              return {
+                  ...inst,
+                  underConstruction: true,
+                  targetLevel: nextLevel,
+                  constructionStartDate: startDate,
+                  constructionStartTime: startTime,
+                  constructionCompletionDate: completionDate,
+                  constructionCompletionTime: completionTime,
+                  totalConstructionMinutes: durationMinutes
+              };
           });
       }
 
@@ -4868,12 +4964,16 @@ const handleEquipTitle = (targetId: string, titleId: string | undefined) => {
       setCharacter(newChar);
       
       const facilityName = FACILITIES_INFO.find(f => f.id === facilityId)?.name || facilityId;
-      addToLog(`[시스템] ${facilityName} 시설이 Lv.${nextLevel}로 업그레이드되었습니다.`);
+      addToLog(`[시설 증축 착공] ${facilityName} Lv.${nextLevel} 증축 공사를 시작했습니다! (완공 예정: ${completionDate} ${completionTime})`);
       setResultModalData({ 
           type: 'success', 
-          title: '시설 업그레이드 완료!', 
-          message: `${facilityName}의 기능이 향상되었습니다.`, 
-          items: [ { label: '레벨', before: `Lv.${currentLevel}`, after: `Lv.${nextLevel}` } ] 
+          title: '시설 증축 공사 착공!', 
+          message: `${facilityName} Lv.${nextLevel} 증축 공사를 시작했습니다.\n완공 예정 일시(${completionDate} ${completionTime})에 자동으로 완공됩니다.`, 
+          items: [
+              { label: '목표 레벨', before: `Lv.${currentLevel}`, after: `Lv.${nextLevel}` },
+              { label: '소요 시간', after: `${Math.round(durationMinutes / 60)}시간` },
+              { label: '완공 예정', after: `${completionDate} ${completionTime}` }
+          ] 
       });
   };
 

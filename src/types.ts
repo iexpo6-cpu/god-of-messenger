@@ -2385,6 +2385,13 @@ export interface Base {
   exteriorRemodelTotalMinutes?: number;
   mapWidth?: number; // [NEW] 자유 배치 2D 기지 맵 가로 타일 수 (기본 30, Lv.5 최대 200)
   mapHeight?: number; // [NEW] 자유 배치 2D 기지 맵 세로 타일 수 (기본 30, Lv.5 최대 200)
+  mapExpansionUnderConstruction?: boolean; // [NEW] 자유 2D 기지 맵 부지 확장 공사 진행 여부
+  targetMapSize?: number; // [NEW] 완공 시 목표 자유 2D 기지 맵 크기
+  mapExpansionStartDate?: string;
+  mapExpansionStartTime?: string;
+  mapExpansionCompletionDate?: string;
+  mapExpansionCompletionTime?: string;
+  mapExpansionTotalMinutes?: number;
   hqPos?: { x: number; y: number }; // [NEW] 기지 본부 자유 배치 좌표
   customTiles?: Record<string, string>; // [NEW] 희소 커스텀 바닥 타일 ("x,y" -> floorTileId)
   decorations?: BaseDecorationItem[]; // [NEW] 자유 배치 조경 소품 목록

@@ -255,6 +255,27 @@ export function checkAndCompleteBaseConstructions(character: Character): {
         }
     }
 
+    // 1-3. 자유 2D 기지 맵 부지 확장 공사 완공 검사
+    if (newBase.mapExpansionUnderConstruction && newBase.mapExpansionCompletionDate && newBase.mapExpansionCompletionTime) {
+        const check = getConstructionRemainingTime(curDate, curTime, newBase.mapExpansionCompletionDate, newBase.mapExpansionCompletionTime);
+        if (check.isCompleted) {
+            hasChanges = true;
+            const targetSize = newBase.targetMapSize || Math.max(newBase.mapWidth || 30, newBase.mapHeight || 30) + 10;
+            newBase.mapWidth = targetSize;
+            newBase.mapHeight = targetSize;
+            newBase.mapExpansionUnderConstruction = false;
+            newBase.targetMapSize = undefined;
+            newBase.mapExpansionStartDate = undefined;
+            newBase.mapExpansionStartTime = undefined;
+            newBase.mapExpansionCompletionDate = undefined;
+            newBase.mapExpansionCompletionTime = undefined;
+            newBase.mapExpansionTotalMinutes = undefined;
+
+            completedList.push({ name: `기지 영지 확장 (${targetSize}×${targetSize})`, level: newBase.level || 1 });
+            logs.push(`[영지 확장 완공] 기지 부지 확장 공사가 완료되어 기지 맵이 ${targetSize}×${targetSize} 타일로 넓어졌습니다!`);
+        }
+    }
+
     // 2. 배치된 개별 시설 건설 및 레벨업 완공 검사
     if (newBase.layout && Array.isArray(newBase.layout)) {
         newBase.layout = newBase.layout.map(inst => {

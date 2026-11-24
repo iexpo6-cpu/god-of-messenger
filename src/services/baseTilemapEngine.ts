@@ -4,6 +4,8 @@ import {
     CityCultureKey,
     CultureAssetPart,
     getBaseBuildingSpriteUrl,
+    getBaseFacilityLevelSpriteUrl,
+    getConstructionSpriteUrl,
     getCultureAssetUrl,
     getHousingBuildingUrl,
     getPropAssetUrl,
@@ -15,6 +17,7 @@ import {
 import { resolveEntityRpgSprite, SpriteDirection } from './rpgSpriteManifest';
 import { getCompanionRoutine } from './npcRoutineService';
 import { getTimeOfDay } from './gameTimeService';
+import { getConstructionRemainingTime } from './baseConstructionService';
 
 export const BASE_TILE_SIZE = 48;
 
@@ -70,18 +73,24 @@ export const getBaseMapExpansionOption = (
     };
 };
 
-/** 시설 성격별 차지하는 타일 크기 (Footprint) */
-export const getFacilityFootprint = (facilityType: string): { w: number; h: number } => {
-    if (facilityType === 'hq') return { w: 6, h: 5 };
-    if (
+/** 시설 성격 및 레벨별 차지하는 타일 크기 (Footprint — 레벨업할 때마다 +1×+1 증가!) */
+export const getFacilityFootprint = (facilityType: string, level: number = 1): { w: number; h: number } => {
+    const lv = Math.max(1, Math.floor(level || 1));
+    const growth = lv - 1;
+    let baseW = 2;
+    let baseH = 2;
+    if (facilityType === 'hq') {
+        baseW = 6;
+        baseH = 5;
+    } else if (
         facilityType === 'monster_farm' ||
         facilityType === 'monster_ranch' ||
         facilityType === 'monster_arena' ||
         facilityType === 'tactical_training'
     ) {
-        return { w: 5, h: 4 };
-    }
-    if (
+        baseW = 5;
+        baseH = 4;
+    } else if (
         facilityType === 'farm' ||
         facilityType === 'mine' ||
         facilityType === 'combat_training' ||
@@ -92,9 +101,9 @@ export const getFacilityFootprint = (facilityType: string): { w: number; h: numb
         facilityType === 'child_academy' ||
         facilityType === 'defense'
     ) {
-        return { w: 4, h: 3 };
-    }
-    if (
+        baseW = 4;
+        baseH = 3;
+    } else if (
         facilityType === 'housing' ||
         facilityType === 'home' ||
         facilityType === 'my_home' ||
@@ -106,9 +115,10 @@ export const getFacilityFootprint = (facilityType: string): { w: number; h: numb
         facilityType === 'storage' ||
         facilityType === 'dispatch'
     ) {
-        return { w: 3, h: 3 };
+        baseW = 3;
+        baseH = 3;
     }
-    return { w: 2, h: 2 };
+    return { w: baseW + growth, h: baseH + growth };
 };
 
 export type BaseFloorTileId =
@@ -218,6 +228,7 @@ export interface BaseFacilityNode {
     underConstruction: boolean;
     completionText?: string;
     spriteUrl?: string;
+    constructionSpriteUrl?: string;
     iconText: string;
     accentColor: string;
     isHq?: boolean;
@@ -389,7 +400,8 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
 
     // 1. 기본 자연 도로/광장 + 사용자 customTiles 오버라이드 병합
     const floorOverrides: Record<string, BaseFloorTileId> = {};
-    const hqFoot = getFacilityFootprint('hq');
+    const hqEffectiveLv = Math.max(baseLevel, base?.underConstruction ? base.targetLevel || baseLevel : baseLevel);
+    const hqFoot = getFacilityFootprint('hq', hqEffectiveLv);
     const hqX = Math.max(2, Math.min(cols - 2 - hqFoot.w, base?.hqPos?.x ?? cx - Math.floor(hqFoot.w / 2)));
     const hqY = Math.max(2, Math.min(rows - 4 - hqFoot.h, base?.hqPos?.y ?? 4));
     const hqDoorX = hqX + Math.floor(hqFoot.w / 2);
@@ -460,6 +472,7 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
                 ? '외형 개축 공사 중'
                 : undefined,
             spriteUrl: getBaseBuildingSpriteUrl(buildingPackKey, baseLevel),
+            constructionSpriteUrl: getConstructionSpriteUrl('hq'),
             iconText: '🏰',
             accentColor: '#f59e0b',
             isHq: true,
@@ -529,7 +542,8 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
     };
 
     layoutList.forEach((inst, idx) => {
-        const foot = getFacilityFootprint(inst.type);
+        const effectiveLv = Math.max(1, inst.underConstruction ? inst.targetLevel || inst.level || 1 : inst.level || 1);
+        const foot = getFacilityFootprint(inst.type, effectiveLv);
         let tileX = inst.freeX;
         let tileY = inst.freeY;
         if (
@@ -547,7 +561,7 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
 
         const facInfo = FACILITIES_INFO.find(f => f.id === inst.type);
         const meta = FACILITY_VISUAL_META[inst.type] || { icon: '🏛️', color: '#94a3b8', activity: '⚙️ 시설 근무 중' };
-        const isHousing = inst.type === 'housing' || inst.type === 'home' || inst.type === 'my_home';
+        const isPersonalHome = inst.type === 'home' || inst.type === 'my_home';
         const isMonsterPen = inst.type === 'monster_farm' || inst.type === 'monster_ranch';
         const isFarm = inst.type === 'farm';
 
@@ -560,9 +574,20 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         }
 
         const assignedComps = getAssignedCompsForInstance(inst);
-        const spriteUrl = isHousing
+        const spriteUrl = isPersonalHome
             ? getHousingBuildingUrl(cultureKey, resolveHousingPartForInstance(character, inst))
-            : undefined;
+            : getBaseFacilityLevelSpriteUrl(inst.type, Math.max(1, inst.level || 1));
+        const constructionSizeKind: 'small' | 'medium' | 'large' =
+            foot.w >= 5 ? 'large' : foot.w >= 3 ? 'medium' : 'small';
+        const remainingCheck =
+            inst.underConstruction && inst.constructionCompletionDate && inst.constructionCompletionTime
+                ? getConstructionRemainingTime(
+                      character.currentDate || '2000-03-02',
+                      character.currentTime || '08:00',
+                      inst.constructionCompletionDate,
+                      inst.constructionCompletionTime
+                  )
+                : null;
 
         const doorX = tileX + Math.floor(foot.w / 2);
         const doorY = tileY + foot.h;
@@ -573,7 +598,7 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
             facilityType: inst.type,
             label: facInfo?.name || inst.type,
             subLabel: inst.underConstruction
-                ? '공사 진행 중'
+                ? `Lv.${inst.targetLevel || (inst.level || 0) + 1} 공사 중`
                 : `Lv.${inst.level || 1}${assignedComps.length > 0 ? ` · 담당 ${assignedComps.length}명` : ''}`,
             level: inst.level || 1,
             tileX,
@@ -583,8 +608,13 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
             doorX,
             doorY,
             underConstruction: Boolean(inst.underConstruction),
-            completionText: inst.underConstruction ? '공사 중' : undefined,
+            completionText: inst.underConstruction
+                ? remainingCheck && !remainingCheck.isCompleted
+                    ? remainingCheck.remainingText
+                    : '공사 중'
+                : undefined,
             spriteUrl,
+            constructionSpriteUrl: getConstructionSpriteUrl(constructionSizeKind),
             iconText: meta.icon,
             accentColor: meta.color,
             isMonsterPen,
@@ -785,5 +815,177 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         farmMonsters,
         spawnPos: { x: cx, y: Math.max(hqDoorY + 1, rows - 3) },
         exitGate
+    };
+};
+
+export interface FacilityLevelUpSpaceValidation {
+    ok: boolean;
+    facilityName: string;
+    instanceId?: string;
+    curLevel: number;
+    nextLevel: number;
+    curW: number;
+    curH: number;
+    nextW: number;
+    nextH: number;
+    tileX: number;
+    tileY: number;
+    reason?: string;
+}
+
+/**
+ * 시설(또는 기지 본부 HQ)을 다음 레벨로 증축할 때 타일 면적이 +1×+1 증가하므로,
+ * 현재 위치(tileX, tileY) 기준으로 주변 공간에 다른 시설·물 타일·조경물·성벽 침범이 없는지 검증합니다.
+ */
+export const validateFacilityLevelUpSpace = (
+    character: Character,
+    facilityOrInstanceId: string
+): FacilityLevelUpSpaceValidation => {
+    const mapData = generateBaseTilemap(character);
+    const isHq = facilityOrInstanceId === 'hq' || facilityOrInstanceId === 'base_hq';
+    const targetNode = isHq
+        ? mapData.facilities.find(f => f.isHq)
+        : mapData.facilities.find(
+              f => f.instanceId === facilityOrInstanceId || f.id === facilityOrInstanceId || f.facilityType === facilityOrInstanceId
+          );
+
+    if (!targetNode) {
+        return {
+            ok: true,
+            facilityName: facilityOrInstanceId,
+            curLevel: 1,
+            nextLevel: 2,
+            curW: 3,
+            curH: 3,
+            nextW: 4,
+            nextH: 4,
+            tileX: 0,
+            tileY: 0
+        };
+    }
+
+    const curLevel = Math.max(1, targetNode.level || 1);
+    const nextLevel = curLevel + 1;
+    const curFoot = getFacilityFootprint(targetNode.facilityType, curLevel);
+    const nextFoot = getFacilityFootprint(targetNode.facilityType, nextLevel);
+    const { tileX, tileY } = targetNode;
+    const { w: nextW, h: nextH } = nextFoot;
+
+    if (tileX < 2 || tileY < 2 || tileX + nextW > mapData.cols - 2 || tileY + nextH > mapData.rows - 3) {
+        return {
+            ok: false,
+            facilityName: targetNode.label,
+            instanceId: targetNode.instanceId,
+            curLevel,
+            nextLevel,
+            curW: curFoot.w,
+            curH: curFoot.h,
+            nextW,
+            nextH,
+            tileX,
+            tileY,
+            reason: `레벨업 시 시설 크기가 ${curFoot.w}×${curFoot.h}에서 ${nextW}×${nextH} 타일로 넓어져 외곽 성벽 경계를 벗어납니다. [🚚 시설 이동]으로 안쪽 넓은 공간으로 옮기거나 기지 부지를 확장해 주세요.`
+        };
+    }
+
+    if (
+        tileX < mapData.exitGate.x + mapData.exitGate.w + 1 &&
+        tileX + nextW > mapData.exitGate.x - 1 &&
+        tileY + nextH > mapData.exitGate.y - 3
+    ) {
+        return {
+            ok: false,
+            facilityName: targetNode.label,
+            instanceId: targetNode.instanceId,
+            curLevel,
+            nextLevel,
+            curW: curFoot.w,
+            curH: curFoot.h,
+            nextW,
+            nextH,
+            tileX,
+            tileY,
+            reason: `레벨업 시 시설 크기가 ${nextW}×${nextH} 타일로 넓어져 남쪽 정문 출입로를 막게 됩니다. [🚚 시설 이동]으로 위치를 옮겨 주세요.`
+        };
+    }
+
+    for (let ty = tileY; ty < tileY + nextH; ty++) {
+        for (let tx = tileX; tx < tileX + nextW; tx++) {
+            if (mapData.floorOverrides[`${tx},${ty}`] === 'water') {
+                return {
+                    ok: false,
+                    facilityName: targetNode.label,
+                    instanceId: targetNode.instanceId,
+                    curLevel,
+                    nextLevel,
+                    curW: curFoot.w,
+                    curH: curFoot.h,
+                    nextW,
+                    nextH,
+                    tileX,
+                    tileY,
+                    reason: `레벨업 확장 구역(${tx},${ty})에 연못/수로 타일이 있어 증축할 수 없습니다. 바닥 타일을 변경하거나 시설을 이동해 주세요.`
+                };
+            }
+        }
+    }
+
+    for (const f of mapData.facilities) {
+        if (f.id === targetNode.id || (targetNode.instanceId && f.instanceId === targetNode.instanceId)) continue;
+        if (
+            tileX < f.tileX + f.tileW + 1 &&
+            tileX + nextW + 1 > f.tileX &&
+            tileY < f.tileY + f.tileH + 1 &&
+            tileY + nextH + 1 > f.tileY
+        ) {
+            return {
+                ok: false,
+                facilityName: targetNode.label,
+                instanceId: targetNode.instanceId,
+                curLevel,
+                nextLevel,
+                curW: curFoot.w,
+                curH: curFoot.h,
+                nextW,
+                nextH,
+                tileX,
+                tileY,
+                reason: `레벨업 시 크기가 ${curFoot.w}×${curFoot.h} → ${nextW}×${nextH} 타일로 1×1 증가하며 인접한 [${f.label}] 시설과 겹치게 됩니다. 먼저 주변 시설을 [🚚 시설 이동]으로 옮겨 공간을 확보해 주세요!`
+            };
+        }
+    }
+
+    const blockingDeco = mapData.decorations.find(
+        d => d.x >= tileX && d.x < tileX + nextW && d.y >= tileY && d.y < tileY + nextH
+    );
+    if (blockingDeco) {
+        return {
+            ok: false,
+            facilityName: targetNode.label,
+            instanceId: targetNode.instanceId,
+            curLevel,
+            nextLevel,
+            curW: curFoot.w,
+            curH: curFoot.h,
+            nextW,
+            nextH,
+            tileX,
+            tileY,
+            reason: `레벨업 확장 구역(${blockingDeco.x},${blockingDeco.y})에 조경 소품(${blockingDeco.label})이 놓여 있습니다. [🌳 조경 꾸미기]에서 해당 소품을 철거하거나 시설을 이동해 주세요.`
+        };
+    }
+
+    return {
+        ok: true,
+        facilityName: targetNode.label,
+        instanceId: targetNode.instanceId,
+        curLevel,
+        nextLevel,
+        curW: curFoot.w,
+        curH: curFoot.h,
+        nextW,
+        nextH,
+        tileX,
+        tileY
     };
 };

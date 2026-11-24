@@ -1,0 +1,117 @@
+========================================================================
+신의 사자 RPG — 누락 기지 시설 11종 레벨별(Lv.1~Lv.5) 추가 스프라이트 프롬프트
+========================================================================
+※ `FACILITIES_INFO` 전수 대조 결과 누락되었던 11개 시설을 빠짐없이 담았습니다!
+   (이미 적용된 17종: 숙소 6종, 농장, 광산, 대장간, 연금술 실험실, 요리 시설,
+    연구소, 제작소, 창고, 몬스터 사육소, 몬스터 수련 투기장, 전투 훈련소,
+    전술 훈련소, 파견소, 방어소, 탐험 관측소, 초월의 성소)
+
+※ 생성 후 assets/visuals 폴더에 파일명 그대로 넣어주시면
+   자동 분할·마젠타 투명화·레벨별 매핑까지 한 번에 적용해 드립니다!
+
+========================================================================
+[추가 시트 1] base_fac_training_exp_stat_lv1_5.png (5열×2행 = 10건물)
+  1행(좌→우): 경험 훈련장(training_exp) Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5
+  2행(좌→우): 스탯 훈련장(training_stat) Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5
+========================================================================
+2D top-down 3/4 view RPG fantasy base facility evolution sprite sheet arranged in an exact 5 columns by 2 rows grid (10 distinct buildings total), strictly isolated on a solid flat pure magenta (#FF00FF) background with generous empty magenta margin between every building so nothing touches adjacent cells. Crisp hand-painted JRPG pixel-art style, clean dark outlines, no text, no numbers, no grid lines, no watermarks.
+Top row — Experience Training Hall (경험 훈련장, scholar-warrior combat simulation dojo) evolution (left to right):
+1) Small open-air wooden study ring with tactical scroll stand and straw target (training_exp_lv1).
+2) Cozy wooden training hall with blue-tiled roof, combat manuals rack, and glowing blue training crystal (training_exp_lv2).
+3) Grand stone martial academy hall with hourglass tower, blue banners, and holographic battle training courtyard (training_exp_lv3).
+4) Imperial elite simulation citadel with twin sapphire spires, floating golden wisdom orbs, and marble courtyard (training_exp_lv4).
+5) Mythic astral enlightenment sanctum with levitating celestial hourglass crystal, radiant blue-gold marble arches, and glowing starlight runes (training_exp_lv5).
+Bottom row — Stat Training Gym (스탯 훈련장, physical & body conditioning gym) evolution (left to right):
+1) Humble dirt yard with heavy stone boulders, wooden pull-up bar, and sandbags (training_stat_lv1).
+2) Timber athletic gym pavilion with iron barbells, stone weights, and red pennants (training_stat_lv2).
+3) Sturdy stone coliseum gym with strength statues, iron training rings, and crimson-gold banners (training_stat_lv3).
+4) Grand titan conditioning fortress with massive bronze lion emblems, glowing red vitality braziers, and marble pillars (training_stat_lv4).
+5) Mythic demigod body-tempering temple with levitating crimson-gold gravity rings, radiant marble dome, and blazing aura pillars (training_stat_lv5).
+
+========================================================================
+[추가 시트 2] base_fac_mastery_style_lv1_5.png (5열×2행 = 10건물)
+  1행(좌→우): 무기숙련도 훈련장(training_mastery) Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5
+  2행(좌→우): 전투 스타일 훈련소(training_style) Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5
+========================================================================
+2D top-down 3/4 view RPG fantasy base facility evolution sprite sheet arranged in an exact 5 columns by 2 rows grid (10 distinct buildings total), strictly isolated on a solid flat pure magenta (#FF00FF) background with generous empty magenta margin between every building. Crisp hand-painted JRPG pixel-art style, clean dark outlines, no text, no numbers, no grid lines, no watermarks.
+Top row — Weapon Mastery Dojo (무기숙련도 훈련장) evolution (left to right):
+1) Simple wooden weapon rack and single training post with sword, spear, and bow (training_mastery_lv1).
+2) Timber armory dojo with arched weapon display gate, archery targets, and iron dummies (training_mastery_lv2).
+3) Stone grand armory hall with crossed giant greatsword emblem on roof, steel training dummies, and orange-gold banners (training_mastery_lv3).
+4) Imperial sword-saint fortress hall with gilded weapon statues, marble duel stage, and glowing forged blades (training_mastery_lv4).
+5) Mythic weapon-god cathedral with floating glowing spectral weapons orbiting a golden-white citadel dome (training_mastery_lv5).
+Bottom row — Combat Style Academy (전투 스타일 훈련소) evolution (left to right):
+1) Small bamboo-and-wood martial arts mat with yin-yang banner and wooden staff stand (training_style_lv1).
+2) Cozy multi-discipline dojo cottage with curved roof, elemental flags, and sparring circle (training_style_lv2).
+3) Ornate stone martial arts hall with twin elemental pillars (sword & magic emblems) and tiled courtyard (training_style_lv3).
+4) Grand master's style citadel with four-element glowing banners, gilded pagoda-castle roof, and marble arena (training_style_lv4).
+5) Mythic grandmaster omnistyle temple with levitating rainbow aura crests, radiant white-gold spires, and sacred dueling circle (training_style_lv5).
+
+========================================================================
+[추가 시트 3] base_fac_sparring_potential_lv1_5.png (5열×2행 = 10건물)
+  1행(좌→우): 전술 모의 대련장(sparring_arena) Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5
+  2행(좌→우): 기지 잠재력 돌파소(potential_breakthrough) Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5
+========================================================================
+2D top-down 3/4 view RPG fantasy base facility evolution sprite sheet arranged in an exact 5 columns by 2 rows grid (10 distinct buildings total), strictly isolated on a solid flat pure magenta (#FF00FF) background with generous empty magenta margin between every building. Crisp hand-painted JRPG pixel-art style, clean dark outlines, no text, no numbers, no grid lines, no watermarks.
+Top row — Tactical Mock Sparring Arena (전술 모의 대련장, 1v1 duel ring) evolution (left to right):
+1) Small rope-fenced sand duel circle with two wooden weapon stands (sparring_arena_lv1).
+2) Wooden-railed tournament sparring stage with spectator benches and blue-red corner flags (sparring_arena_lv2).
+3) Stone amphitheater dueling ring with arched stone entrance, torch pillars, and checkered marble floor (sparring_arena_lv3).
+4) Grand royal dueling colosseum with gilded balconies, twin crossed-lance monuments, and glowing barrier edge (sparring_arena_lv4).
+5) Mythic celestial champion's duel sanctum with levitating golden arena ring, radiant white marble colonnades, and starlight barrier (sparring_arena_lv5).
+Bottom row — Potential Breakthrough Chamber (기지 잠재력 돌파소, awakening & limit-break shrine) evolution (left to right):
+1) Small stone meditation circle with glowing purple crystal shard and incense burner (potential_breakthrough_lv1).
+2) Stone awakening pavilion with purple-gold roof, runic pillars, and floating mana sparks (potential_breakthrough_lv2).
+3) Ornate arcane breakthrough temple with violet crystal spire, concentric magic rings, and glowing archway (potential_breakthrough_lv3).
+4) Grand celestial limit-break citadel with levitating amethyst-gold prism, radiant energy beams, and marble stairs (potential_breakthrough_lv4).
+5) Mythic transcendent soul-awakening nexus with orbiting golden-violet halo rings, floating crystal monolith, and heavenly aura (potential_breakthrough_lv5).
+
+========================================================================
+[추가 시트 4] base_fac_customlab_skillvfx_lv1_5.png (5열×2행 = 10건물)
+  1행(좌→우): 커스텀 개조실(custom_lab) Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5
+  2행(좌→우): 스킬 커스텀 개조실(skill_vfx_lab) Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5
+========================================================================
+2D top-down 3/4 view RPG fantasy base facility evolution sprite sheet arranged in an exact 5 columns by 2 rows grid (10 distinct buildings total), strictly isolated on a solid flat pure magenta (#FF00FF) background with generous empty magenta margin between every building. Crisp hand-painted JRPG pixel-art style, clean dark outlines, no text, no numbers, no grid lines, no watermarks.
+Top row — Custom Lab / Appearance & Gear Studio (커스텀 개조실) evolution (left to right):
+1) Cozy wooden tailor-and-tinker shack with mannequin stand, dye jars, and easel (custom_lab_lv1).
+2) Colorful timber atelier cottage with stained-glass window, mirror emblem, and craft awning (custom_lab_lv2).
+3) Ornate stone-and-glass grand atelier with turquoise dome, glowing customization crystal, and display arch (custom_lab_lv3).
+4) Grand imperial arcane design hall with holographic prism roof, gilded mirrors, and marble facade (custom_lab_lv4).
+5) Mythic reality-sculptor's crystal palace with floating rainbow prism core, white-gold spires, and ethereal starlight aura (custom_lab_lv5).
+Bottom row — Skill VFX & Spell Custom Lab (스킬 커스텀 개조실) evolution (left to right):
+1) Small wooden mage booth with glowing spellbook pedestal and colorful elemental sparks (skill_vfx_lab_lv1).
+2) Timber-and-stone arcane studio with glowing cyan-orange chimney sparks and rune boards (skill_vfx_lab_lv2).
+3) Tall prismatic spellcraft tower with swirling elemental vortex above the roof and glowing stained glass (skill_vfx_lab_lv3).
+4) Grand arcane spectacle observatory with twin lightning-and-flame crystal spires and glowing rune plaza (skill_vfx_lab_lv4).
+5) Mythic cosmic spell-weaver citadel with orbiting elemental fire/ice/lightning/light orbs, radiant crystal dome, and golden runes (skill_vfx_lab_lv5).
+
+========================================================================
+[추가 시트 5] base_fac_trade_academy_lv1_5.png (5열×2행 = 10건물)
+  1행(좌→우): 물자 교류소(trade_exchange) Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5
+  2행(좌→우): 유년 서당(child_academy) Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5
+========================================================================
+2D top-down 3/4 view RPG fantasy base facility evolution sprite sheet arranged in an exact 5 columns by 2 rows grid (10 distinct buildings total), strictly isolated on a solid flat pure magenta (#FF00FF) background with generous empty magenta margin between every building. Crisp hand-painted JRPG pixel-art style, clean dark outlines, no text, no numbers, no grid lines, no watermarks.
+Top row — Resource Trade Exchange (물자 교류소) evolution (left to right):
+1) Simple wooden market stall with striped awning, coin scale, and supply crates (trade_exchange_lv1).
+2) Cozy timber merchant trading post with horse cart, golden coin sign, and cargo barrels (trade_exchange_lv2).
+3) Grand stone guild exchange hall with arched merchant portico, green-gold banners, and bustling supply veranda (trade_exchange_lv3).
+4) Imperial golden commerce palace with domed roof, gilded balance-scale monument, and marble colonnade (trade_exchange_lv4).
+5) Mythic dimensional grand bourse citadel with levitating golden coin-halo emblem, crystal trade spires, and white-gold walls (trade_exchange_lv5).
+Bottom row — Youth Academy / Child Schoolhouse (유년 서당) evolution (left to right):
+1) Small cozy wooden schoolhouse cabin with bell post, chalkboard, and flower pots (child_academy_lv1).
+2) Warm brick-and-timber village academy with clock gable, green yard, and book emblem (child_academy_lv2).
+3) Elegant stone preparatory academy with blue-teal pitched roof, bell tower, and courtyard fountain (child_academy_lv3).
+4) Grand royal youth institute with twin clocktowers, library dome, and sunlit garden arch (child_academy_lv4).
+5) Mythic starlight prodigy academy palace with floating golden book-and-quill crest, white-teal marble spires, and radiant garden (child_academy_lv5).
+
+========================================================================
+[추가 시트 6] base_fac_shinryoku_sanctuary_lv1_5.png (5열×1행 = 5건물)
+  1행(좌→우): 신력 결계전(shinryoku_sanctuary) Lv.1 → Lv.2 → Lv.3 → Lv.4 → Lv.5
+========================================================================
+2D top-down 3/4 view RPG fantasy base facility evolution sprite sheet arranged in an exact 5 columns by 1 row horizontal strip (5 distinct buildings total), strictly isolated on a solid flat pure magenta (#FF00FF) background with generous empty magenta margin between every building. Crisp hand-painted JRPG pixel-art style, clean dark outlines, no text, no numbers, no grid lines, no watermarks.
+Horizontal row — Shinryoku Barrier Sanctuary (신력 결계전, radiant protective magic barrier hall) evolution (left to right):
+1) Small stone barrier obelisk surrounded by 4 glowing cyan rune stones (shinryoku_sanctuary_lv1).
+2) Stone ward shrine with pale blue crystal spire and translucent barrier ring (shinryoku_sanctuary_lv2).
+3) Ornate white-and-cyan marble barrier temple with glowing protective dome and twin ward pillars (shinryoku_sanctuary_lv3).
+4) Grand imperial aegis citadel with giant levitating sapphire-gold barrier crystal and concentric glowing shield rings (shinryoku_sanctuary_lv4).
+5) Mythic divine omnibarrier palace with radiant prismatic energy dome, orbiting sacred golden ward pylons, and heavenly white-blue marble architecture (shinryoku_sanctuary_lv5).
