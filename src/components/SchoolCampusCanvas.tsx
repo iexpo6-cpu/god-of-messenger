@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Character, ClubType, CombatStyle, JobType, SchoolTier, SimpleStudent } from '../types';
-import { SCHOOL_CONFIG } from '../constants';
-import { generateName } from '../utils';
+import { Character, ClubType, CombatStyle, JobType, SchoolTier, SimpleStudent, WeaponType } from '../types';
+import { SCHOOL_CONFIG, WEAPON_TYPE_KOREAN } from '../constants';
+import { addMasteryExp, generateName, getWeaponTypeFromItem } from '../utils';
 import { processTimeSkip } from '../services/timeEngine';
 import {
     getBuildingSpriteUrl,
@@ -230,7 +230,7 @@ interface RoomProp {
     ty: number;
     w: number;
     h: number;
-    interactKind?: 'attendance' | 'report' | 'divine_book' | 'club_desk' | 'subject_room' | 'dorm_door';
+    interactKind?: 'attendance' | 'report' | 'divine_book' | 'club_desk' | 'club_activity' | 'subject_room' | 'dorm_door';
     bookDef?: DivineBookDef;
     clubType?: ClubType;
     subjectType?: ClassroomSubjectType;
@@ -255,10 +255,12 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
 }) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const npcOffsetsRef = useRef<Record<string, { dx: number; dy: number; vx: number; vy: number; timer: number; dir: SpriteDirection }>>({});
     const [viewport, setViewport] = useState({ w: 960, h: 580 });
     const [activeSchoolTier, setActiveSchoolTier] = useState<SchoolTier | null>(null);
     const [activeRoom, setActiveRoom] = useState<SchoolZone | null>(null);
     const [activeDormRoom, setActiveDormRoom] = useState<{ gender: '남성' | '여성'; grade: 1 | 2 | 3; label: string } | null>(null);
+    const [activeClubRoom, setActiveClubRoom] = useState<ClubType | null>(null);
     const [openModalZone, setOpenModalZone] = useState<SchoolZone | null>(null);
     const [nearbyLabel, setNearbyLabel] = useState<string | null>(null);
     const [accessDeniedMsg, setAccessDeniedMsg] = useState<string | null>(null);
@@ -279,6 +281,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     const [activeClubApply, setActiveClubApply] = useState<typeof CLUB_DESK_SPECS[number] | null>(null);
     const [showClubVisualModal, setShowClubVisualModal] = useState(false);
     const [activeSubjectRoom, setActiveSubjectRoom] = useState<typeof CLASSROOM_SUBJECT_ROOMS[number] | null>(null);
+    const [selectedWeapon, setSelectedWeapon] = useState<WeaponType>('Sword');
     const [campusToast, setCampusToast] = useState<string | null>(null);
 
     const cultureKey = useMemo(() => resolveCityCultureKey(region, nation, city), [region, nation, city]);
@@ -553,6 +556,41 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 };
             case 'Club': {
                 const joinedClub = character.clubData?.joinedClub || ClubType.NONE;
+                if (activeClubRoom) {
+                    const clubSpec = CLUB_DESK_SPECS.find(c => c.club === activeClubRoom);
+                    const clubNpcs: Record<string, SchoolNpcActor[]> = {
+                        [ClubType.MELEE]: [
+                            { id: 'npc_club_melee', name: isKorean ? '강태오' : generateName(nation), role: '근접 무기부 부장', tx: 4.5, ty: 4.5, gender: 'male', dialogue: '검과 창의 극의를 함께 수련하지 않을래? 대련도 언제든 환영이야!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.SWORDSMAN },
+                            { id: 'npc_club_melee_2', name: isKorean ? '임지훈' : generateName(nation), role: '근접 무기부 부원', tx: 12.5, ty: 5.5, gender: 'male', dialogue: '오늘도 목검 휘두르기 500회 완료했어!', canBondAndSpar: true, npcLevel: Math.max(4, character.level || 5), combatStyle: CombatStyle.SWORDSMAN },
+                        ],
+                        [ClubType.RANGED]: [
+                            { id: 'npc_club_ranged', name: isKorean ? '신유나' : generateName(nation), role: '원거리 무기부 부장', tx: 4.5, ty: 4.5, gender: 'female', dialogue: '백발백중의 정밀 사격을 배우고 싶다면 바람의 흐름을 읽어!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.ARCHER },
+                            { id: 'npc_club_ranged_2', name: isKorean ? '한별' : generateName(nation), role: '원거리 무기부 부원', tx: 12.5, ty: 5.5, gender: 'female', dialogue: '새로 맞춘 활 시위 탄성이 정말 좋네요.', canBondAndSpar: true, npcLevel: Math.max(4, character.level || 5), combatStyle: CombatStyle.ARCHER },
+                        ],
+                        [ClubType.MAGIC_ENG]: [
+                            { id: 'npc_club_magic', name: isKorean ? '최민혁' : generateName(nation), role: '마법 공학부 부장', tx: 4.5, ty: 4.5, gender: 'male', dialogue: '신력과 마도 공학의 결합은 무궁무진해. 한 번 겨뤄볼래?', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 2), combatStyle: CombatStyle.MAGE },
+                            { id: 'npc_club_magic_2', name: isKorean ? '윤서아' : generateName(nation), role: '마법 공학부 연구원', tx: 12.5, ty: 5.5, gender: 'female', dialogue: '신력 증폭 회로 효율이 어제보다 12% 올랐어요!', canBondAndSpar: true, npcLevel: Math.max(4, character.level || 5), combatStyle: CombatStyle.MAGE },
+                        ],
+                        [ClubType.COUNCIL]: [
+                            { id: 'npc_club_council', name: isKorean ? '오서현' : generateName(nation), role: '학생회장', tx: 4.5, ty: 4.5, gender: 'female', dialogue: '학교의 질서와 축제를 함께 기획할 유능한 학우가 와서 든든해.', canBondAndSpar: true, npcLevel: Math.max(5, (character.level || 5) + 2) },
+                            { id: 'npc_club_council_2', name: isKorean ? '도진우' : generateName(nation), role: '학생회 부회장', tx: 12.5, ty: 5.5, gender: 'male', dialogue: '예산안 결재와 동아리 지원금 정산 중이에요.', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1) },
+                        ],
+                        [ClubType.DISCIPLINARY]: [
+                            { id: 'npc_club_disc', name: isKorean ? '장현우' : generateName(nation), role: '선도부장', tx: 4.5, ty: 4.5, gender: 'male', dialogue: '교내 치안을 지키는 선도부다. 실력 검증 대련을 해볼 텐가?', canBondAndSpar: true, npcLevel: Math.max(5, (character.level || 5) + 2), combatStyle: CombatStyle.SPEARMAN },
+                            { id: 'npc_club_disc_2', name: isKorean ? '차예린' : generateName(nation), role: '선도부원', tx: 12.5, ty: 5.5, gender: 'female', dialogue: '야간 순찰 준비 완료! 교칙 위반자는 용납하지 않아요.', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.SPEARMAN },
+                        ],
+                    };
+                    return {
+                        props: [
+                            { key: 'bookshelf', tx: 2.2, ty: 1.8, w: 2, h: 2 },
+                            { key: 'bookshelf', tx: 13.8, ty: 1.8, w: 2, h: 2 },
+                            { key: 'club_desk', tx: 8.0, ty: 2.6, w: 2.2, h: 1.8, interactKind: 'club_activity', label: `🎭 ${clubSpec?.title || activeClubRoom} 활동 (ClubModal)` },
+                            { key: activeClubRoom === ClubType.MELEE || activeClubRoom === ClubType.DISCIPLINARY ? 'dummy_wood' : 'dummy_arcane', tx: 3.5, ty: 7.5, w: 1.8, h: 1.8 },
+                            { key: 'student_desk', tx: 12.5, ty: 7.5, w: 1.8, h: 1.6 }
+                        ],
+                        npcs: clubNpcs[activeClubRoom] || []
+                    };
+                }
                 return {
                     props: [
                         ...CLUB_DESK_SPECS.map((spec) => ({
@@ -563,7 +601,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             h: 1.6,
                             interactKind: 'club_desk' as const,
                             clubType: spec.club,
-                            label: joinedClub === spec.club ? `🎭 ${spec.title} 입장 (동아리실)` : `📌 ${spec.title} 가입 신청`
+                            label: joinedClub === spec.club ? `🚪 ${spec.title} 입장` : `📌 ${spec.title} 가입 신청`
                         })),
                         { key: 'bookshelf', tx: 1, ty: 1.2, w: 1.6, h: 1.6 }
                     ],
@@ -581,14 +619,14 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     return {
                         props: [
                             ...DORM_ROOM_DOORS.map((door) => ({
-                                key: 'dorm_bed',
+                                key: 'tile_door',
                                 tx: door.tx,
                                 ty: door.ty,
-                                w: 2.2,
-                                h: 1.9,
+                                w: 1.8,
+                                h: 1.8,
                                 interactKind: 'dorm_door' as const,
                                 dormDoor: door,
-                                label: `🚪 ${door.label} 입장`
+                                label: `🚪 ${door.label}`
                             }))
                         ],
                         npcs: [
@@ -659,7 +697,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 };
             }
         }
-    }, [activeRoom, activeDormRoom, activeSchoolTier, nation, character.schoolData?.homeroomTeacher?.name, character.schoolData?.classmates, character.schoolData?.classNumber, character.schoolData?.grade, character.level, character.clubData?.joinedClub, plazaStudents]);
+    }, [activeRoom, activeDormRoom, activeClubRoom, activeSchoolTier, nation, character.schoolData?.homeroomTeacher?.name, character.schoolData?.classmates, character.schoolData?.classNumber, character.schoolData?.grade, character.level, character.clubData?.joinedClub, plazaStudents]);
 
     useEffect(() => {
         loadRpgSpriteImage(playerSpriteUrl);
@@ -785,6 +823,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     const enterRoom = useCallback((zone: SchoolZone) => {
         setActiveDialogue(null);
         setActiveDormRoom(null);
+        setActiveClubRoom(null);
         playerRef.current.x = Math.floor(ROOM_COLS / 2) * CITY_TILE_SIZE;
         playerRef.current.y = (ROOM_ROWS - 2.2) * CITY_TILE_SIZE;
         playerRef.current.dir = 'up';
@@ -804,42 +843,56 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             exitCooldownRef.current = Date.now() + 700;
             return;
         }
+        if (activeRoom === 'Club' && activeClubRoom) {
+            setActiveDialogue(null);
+            setActiveClubRoom(null);
+            playerRef.current.x = Math.floor(ROOM_COLS / 2) * CITY_TILE_SIZE;
+            playerRef.current.y = (ROOM_ROWS - 2.2) * CITY_TILE_SIZE;
+            playerRef.current.dir = 'up';
+            exitCooldownRef.current = Date.now() + 700;
+            return;
+        }
         if (!activeSchoolTier) return;
+        const exitedBldg = campusBuildings.find(b => b.zone === activeRoom);
         const nextCols = activeSchoolTier === 'Elementary' ? 26 : activeSchoolTier === 'Middle' ? 30 : 34;
         const nextRows = activeSchoolTier === 'Elementary' ? 18 : activeSchoolTier === 'Middle' ? 20 : 22;
         setActiveDialogue(null);
         setActiveDormRoom(null);
+        setActiveClubRoom(null);
         setActiveRoom(null);
-        playerRef.current.x = Math.floor(nextCols / 2) * CITY_TILE_SIZE;
-        playerRef.current.y = (nextRows - 2.5) * CITY_TILE_SIZE;
-        playerRef.current.dir = 'up';
+        playerRef.current.x = exitedBldg ? (exitedBldg.tx + exitedBldg.tw / 2) * CITY_TILE_SIZE : Math.floor(nextCols / 2) * CITY_TILE_SIZE;
+        playerRef.current.y = exitedBldg ? (exitedBldg.ty + exitedBldg.th + 1.0) * CITY_TILE_SIZE : (nextRows - 2.5) * CITY_TILE_SIZE;
+        playerRef.current.dir = 'down';
         playerRef.current.targetX = null;
         playerRef.current.targetY = null;
         exitCooldownRef.current = Date.now() + 700;
-    }, [activeSchoolTier, activeRoom, activeDormRoom]);
+    }, [activeSchoolTier, activeRoom, activeDormRoom, activeClubRoom, campusBuildings]);
 
     const exitCampusToPlaza = useCallback(() => {
+        const exitedSchool = buildingSlots.find(b => b.tier === activeSchoolTier);
         setActiveDialogue(null);
         setActiveDormRoom(null);
+        setActiveClubRoom(null);
         setActiveRoom(null);
         setActiveSchoolTier(null);
-        playerRef.current.x = Math.floor(PLAZA_COLS / 2) * CITY_TILE_SIZE;
-        playerRef.current.y = (PLAZA_ROWS - 2.5) * CITY_TILE_SIZE;
-        playerRef.current.dir = 'up';
+        playerRef.current.x = exitedSchool ? (exitedSchool.tx + exitedSchool.tw / 2) * CITY_TILE_SIZE : Math.floor(PLAZA_COLS / 2) * CITY_TILE_SIZE;
+        playerRef.current.y = exitedSchool ? (exitedSchool.ty + exitedSchool.th + 1.0) * CITY_TILE_SIZE : (PLAZA_ROWS - 2.5) * CITY_TILE_SIZE;
+        playerRef.current.dir = 'down';
         playerRef.current.targetX = null;
         playerRef.current.targetY = null;
         exitCooldownRef.current = Date.now() + 700;
-    }, []);
+    }, [activeSchoolTier, buildingSlots]);
 
     const handleInteract = useCallback(() => {
         const p = playerRef.current;
         if (!activeSchoolTier) {
             // Check Plaza Students first
             for (const stu of plazaStudents) {
-                const sx = (stu.tx + 0.5) * CITY_TILE_SIZE;
-                const sy = (stu.ty + 0.5) * CITY_TILE_SIZE;
+                const off = npcOffsetsRef.current[stu.id] || { dx: 0, dy: 0 };
+                const sx = (stu.tx + 0.5) * CITY_TILE_SIZE + off.dx;
+                const sy = (stu.ty + 0.5) * CITY_TILE_SIZE + off.dy;
                 if (Math.hypot(sx - p.x, sy - p.y) <= CITY_TILE_SIZE * 1.6) {
-                    setActiveDialogue({ name: stu.name, role: stu.role, text: stu.dialogue });
+                    setActiveDialogue({ id: stu.id, name: stu.name, role: stu.role, text: stu.dialogue, canBondAndSpar: true });
                     return;
                 }
             }
@@ -888,17 +941,25 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     }
                 } else if (pr.interactKind === 'club_desk' && pr.clubType) {
                     if (character.clubData?.joinedClub === pr.clubType) {
-                        setShowClubVisualModal(true);
+                        setActiveClubRoom(pr.clubType);
+                        playerRef.current.x = Math.floor(ROOM_COLS / 2) * CITY_TILE_SIZE;
+                        playerRef.current.y = (ROOM_ROWS - 2.2) * CITY_TILE_SIZE;
+                        playerRef.current.dir = 'up';
+                        setCampusToast(`${pr.clubType} 동아리실에 입장했습니다.`);
+                        setTimeout(() => setCampusToast(null), 2200);
                     } else {
                         setActiveClubApply(CLUB_DESK_SPECS.find(c => c.club === pr.clubType) || null);
                     }
+                } else if (pr.interactKind === 'club_activity') {
+                    setShowClubVisualModal(true);
                 }
                 return;
             }
         }
         for (const npc of roomContent.npcs) {
-            const nx = (npc.tx + 0.5) * CITY_TILE_SIZE;
-            const ny = (npc.ty + 0.5) * CITY_TILE_SIZE;
+            const off = npcOffsetsRef.current[npc.id] || { dx: 0, dy: 0 };
+            const nx = (npc.tx + 0.5) * CITY_TILE_SIZE + off.dx;
+            const ny = (npc.ty + 0.5) * CITY_TILE_SIZE + off.dy;
             if (Math.hypot(nx - p.x, ny - p.y) <= CITY_TILE_SIZE * 1.75) {
                 if (npc.opensZone && !npc.canBondAndSpar) {
                     setOpenModalZone(npc.opensZone);
@@ -1175,8 +1236,42 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 }
 
                 const drawNpcActor = (npc: SchoolNpcActor) => {
-                    const nx = (npc.tx + 0.5) * ts;
-                    const ny = (npc.ty + 0.5) * ts;
+                    const isFixedStaff = ['npc_teacher', 'npc_vice', 'npc_lib', 'npc_dorm', 'npc_dorm_rest', 'npc_trainer', 'npc_lect'].includes(npc.id);
+                    let off = npcOffsetsRef.current[npc.id];
+                    if (!off) {
+                        off = { dx: 0, dy: 0, vx: 0, vy: 0, timer: Math.random() * 1.8, dir: 'down' };
+                        npcOffsetsRef.current[npc.id] = off;
+                    }
+                    if (!isFixedStaff) {
+                        off.timer -= dt;
+                        if (off.timer <= 0) {
+                            off.timer = 1.4 + Math.random() * 2.2;
+                            if (Math.random() < 0.35) {
+                                off.vx = 0;
+                                off.vy = 0;
+                            } else {
+                                const ang = Math.random() * Math.PI * 2;
+                                const spd = 24;
+                                off.vx = Math.cos(ang) * spd;
+                                off.vy = Math.sin(ang) * spd;
+                            }
+                        }
+                        const maxR = ts * 1.15;
+                        const ndx = off.dx + off.vx * dt;
+                        const ndy = off.dy + off.vy * dt;
+                        if (Math.hypot(ndx, ndy) > maxR) {
+                            off.vx = -off.dx * 0.8;
+                            off.vy = -off.dy * 0.8;
+                        } else {
+                            off.dx = ndx;
+                            off.dy = ndy;
+                        }
+                        if (Math.abs(off.vx) > 2 || Math.abs(off.vy) > 2) {
+                            off.dir = Math.abs(off.vx) >= Math.abs(off.vy) ? (off.vx < 0 ? 'left' : 'right') : (off.vy < 0 ? 'up' : 'down');
+                        }
+                    }
+                    const nx = (npc.tx + 0.5) * ts + off.dx;
+                    const ny = (npc.ty + 0.5) * ts + off.dy;
                     const npcSprite = resolveEntityRpgSprite({ gender: npc.gender } as any, region, nation);
                     loadRpgSpriteImage(npcSprite.url);
                     const nImg = getCachedRpgSpriteImage(npcSprite.url);
@@ -1184,13 +1279,16 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     ctx.beginPath();
                     ctx.ellipse(nx, ny + 8, 11, 5, 0, 0, Math.PI * 2);
                     ctx.fill();
+                    const isMoving = Math.abs(off.vx) > 2 || Math.abs(off.vy) > 2;
+                    const frame = isMoving ? (Math.floor(Date.now() / 180) % 3) : 1;
+                    const row = DIRECTION_ROW_MAP[off.dir];
                     if (nImg && nImg.complete && nImg.naturalWidth > 0) {
                         const cw = nImg.naturalWidth / 3;
                         const ch = nImg.naturalHeight / 4;
                         ctx.imageSmoothingEnabled = false;
-                        ctx.drawImage(nImg, cw, 0, cw, ch, Math.round(nx - 21), Math.round(ny - 34), 42, 42);
+                        ctx.drawImage(nImg, frame * cw, row * ch, cw, ch, Math.round(nx - 21), Math.round(ny - 34), 42, 42);
                     } else {
-                        drawFallbackChibiSprite(ctx, nx, ny + 8, region as RpgSpriteRegionKey, npc.gender, 'down', 1);
+                        drawFallbackChibiSprite(ctx, nx, ny + 8, region as RpgSpriteRegionKey, npc.gender, off.dir, frame);
                     }
                     ctx.font = 'bold 10px sans-serif';
                     const tw = Math.max(58, ctx.measureText(npc.name).width + 12);
@@ -1324,7 +1422,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         ctx.fillText(title, bx + bw / 2, by - 10);
                     });
                 } else {
-                    if (activeRoom === 'Club') {
+                    if (activeRoom === 'Club' && !activeClubRoom) {
                         CLUB_DESK_SPECS.forEach(spec => {
                             ctx.save();
                             ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
@@ -1345,14 +1443,30 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         const py = pr.ty * ts;
                         const pw = pr.w * ts;
                         const ph = pr.h * ts;
-                        const img =
-                            getCachedCityAssetImage(getAcademyAssetUrl(`props/${pr.key}.png`)) ||
-                            getCachedCityAssetImage(getInteriorPropSpriteUrl(pr.key));
-                        if (img && img.complete && img.naturalWidth > 0) {
-                            const scale = Math.min(pw / img.naturalWidth, ph / img.naturalHeight);
-                            const dw = img.naturalWidth * scale;
-                            const dh = img.naturalHeight * scale;
-                            ctx.drawImage(img, px + (pw - dw) / 2, py + ph - dh, dw, dh);
+                        if (pr.key === 'tile_door') {
+                            if (doorImg && doorImg.complete && doorImg.naturalWidth > 0) {
+                                ctx.drawImage(doorImg, px + pw * 0.1, py, pw * 0.8, ph);
+                            } else {
+                                ctx.fillStyle = '#78350f';
+                                ctx.fillRect(px + pw * 0.15, py + 4, pw * 0.7, ph - 4);
+                                ctx.strokeStyle = '#fbbf24';
+                                ctx.lineWidth = 2;
+                                ctx.strokeRect(px + pw * 0.15, py + 4, pw * 0.7, ph - 4);
+                                ctx.fillStyle = '#fcd34d';
+                                ctx.beginPath();
+                                ctx.arc(px + pw * 0.72, py + ph * 0.55, 4, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+                        } else {
+                            const img =
+                                getCachedCityAssetImage(getAcademyAssetUrl(`props/${pr.key}.png`)) ||
+                                getCachedCityAssetImage(getInteriorPropSpriteUrl(pr.key));
+                            if (img && img.complete && img.naturalWidth > 0) {
+                                const scale = Math.min(pw / img.naturalWidth, ph / img.naturalHeight);
+                                const dw = img.naturalWidth * scale;
+                                const dh = img.naturalHeight * scale;
+                                ctx.drawImage(img, px + (pw - dw) / 2, py + ph - dh, dw, dh);
+                            }
                         }
                         if (pr.label && pr.interactKind) {
                             ctx.font = 'bold 9px sans-serif';
@@ -1544,9 +1658,19 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                     <>
                                         <button
                                             onClick={() => {
+                                                const npcId = activeDialogue.id || `campus_${activeDialogue.name}`;
+                                                const curDate = character.currentDate || '0001-01-01';
+                                                const prevDate = ((character.schoolData as any)?.weeklyBondDates || {})[npcId];
+                                                if (prevDate) {
+                                                    const diffDays = Math.floor((new Date(curDate).getTime() - new Date(prevDate).getTime()) / 86400000);
+                                                    if (!Number.isNaN(diffDays) && diffDays < 7) {
+                                                        setCampusToast(`일주일에 한 번만 교류할 수 있습니다! (${7 - diffDays}일 후 가능)`);
+                                                        setTimeout(() => setCampusToast(null), 2600);
+                                                        return;
+                                                    }
+                                                }
                                                 const newChar = JSON.parse(JSON.stringify(character)) as Character;
                                                 if (!newChar.socialNetwork) newChar.socialNetwork = [];
-                                                const npcId = activeDialogue.id || `campus_${activeDialogue.name}`;
                                                 const idx = newChar.socialNetwork.findIndex(n => n.id === npcId || n.name === activeDialogue.name);
                                                 if (idx === -1) {
                                                     const newNpc: SimpleStudent = {
@@ -1572,13 +1696,19 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                     ex.isPastConnection = true;
                                                     newChar.socialNetwork[idx] = ex;
                                                 }
-                                                onUpdateCharacter(newChar, `[학원 교류] ${activeDialogue.name}(${activeDialogue.role})와(과) 교류하여 인연 목록(과거 인연)에 등록되었습니다.`);
-                                                setCampusToast(`${activeDialogue.name} 과거 인연 등록 & 호감도 +5!`);
+                                                if (newChar.schoolData) {
+                                                    (newChar.schoolData as any).weeklyBondDates = {
+                                                        ...((newChar.schoolData as any).weeklyBondDates || {}),
+                                                        [npcId]: curDate
+                                                    };
+                                                }
+                                                onUpdateCharacter(newChar, `[학원 교류] ${activeDialogue.name}(${activeDialogue.role})와(과) 교류했습니다. (호감도 +5)`);
+                                                setCampusToast(`${activeDialogue.name}와(과) 교류 완료! (호감도 +5)`);
                                                 setTimeout(() => setCampusToast(null), 2800);
                                             }}
                                             className="px-3 py-1.5 rounded-lg bg-cyan-900/70 hover:bg-cyan-800 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                                         >
-                                            <UserPlus size={13} /> 교류 & 과거 인연 등록
+                                            <UserPlus size={13} /> 교류
                                         </button>
                                         {!activeDialogue.isTeacher && (
                                             <button
@@ -1627,8 +1757,17 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                         </button>
                                         <button
                                             onClick={() => {
+                                                const curMonth = (character.currentDate || '').slice(0, 7);
+                                                if ((character.schoolData as any)?.lastCounselingMonth === curMonth) {
+                                                    setCampusToast('담임 선생님과의 진로 상담은 한 달에 1번만 가능합니다!');
+                                                    setTimeout(() => setCampusToast(null), 2600);
+                                                    return;
+                                                }
                                                 const newChar = JSON.parse(JSON.stringify(character)) as Character;
                                                 newChar.stats.wis = (newChar.stats.wis || 10) + 1;
+                                                if (newChar.schoolData) {
+                                                    (newChar.schoolData as any).lastCounselingMonth = curMonth;
+                                                }
                                                 onUpdateCharacter(newChar, `[교무실 상담] ${activeDialogue.name} 선생님과 진로·학업 상담을 진행했습니다. (WIS +1)`);
                                                 setActiveDialogue(prev => prev ? { ...prev, text: '조급해하지 말고 자신의 신력과 적성에 맞는 길을 차근차근 걸어가세요. 언제든 응원하고 있습니다.' } : null);
                                                 setCampusToast('담임 선생님과 진로 상담 완료! (WIS +1)');
@@ -1636,7 +1775,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                             }}
                                             className="px-3 py-1.5 rounded-lg bg-emerald-900/70 hover:bg-emerald-800 border border-emerald-500/60 text-emerald-200 text-[11px] font-bold cursor-pointer"
                                         >
-                                            🗨️ 진로 상담
+                                            🗨️ 진로 상담 (월 1회)
                                         </button>
                                     </>
                                 )}
@@ -1771,53 +1910,95 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                 <button onClick={() => setActiveSubjectRoom(null)} className="text-slate-400 hover:text-white cursor-pointer"><X size={18} /></button>
                             </div>
                             <p className="text-xs text-slate-300 leading-relaxed">
-                                {activeSubjectRoom.title}에서 정규 강의를 수강합니다. 수강 시 {activeSubjectRoom.statLabel} 능력치와 경험치를 획득하며 7일이 경과합니다.
+                                {activeSubjectRoom.title}에서 정규 강의를 수강합니다. 수강 시 {activeSubjectRoom.statLabel} 및 경험치를 획득하며 7일이 경과합니다. (일행 전체 반영)
                             </p>
+                            {activeSubjectRoom.type === 'Weapon' && (
+                                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
+                                    <div className="text-[11px] font-bold text-emerald-300">훈련할 무기 종류 선택</div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {(Object.keys(WEAPON_TYPE_KOREAN) as WeaponType[]).map(wt => (
+                                            <button
+                                                key={wt}
+                                                onClick={() => setSelectedWeapon(wt)}
+                                                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer border transition-all ${
+                                                    selectedWeapon === wt
+                                                        ? 'bg-emerald-600 text-white border-emerald-400'
+                                                        : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-500'
+                                                }`}
+                                            >
+                                                {WEAPON_TYPE_KOREAN[wt]}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
-                                <div className="flex justify-between"><span className="text-slate-400">소모 MP</span><span className="text-cyan-300 font-bold">MP {activeSubjectRoom.mpCost}</span></div>
-                                <div className="flex justify-between"><span className="text-slate-400">성장 분야</span><span className="text-amber-300 font-bold">{activeSubjectRoom.statLabel} (+7일 경과)</span></div>
+                                <div className="flex justify-between"><span className="text-slate-400">수강 비용</span><span className="text-emerald-300 font-bold">무료 (정규 수업)</span></div>
+                                <div className="flex justify-between"><span className="text-slate-400">성장 분야</span><span className="text-amber-300 font-bold">{activeSubjectRoom.type === 'Weapon' ? `${WEAPON_TYPE_KOREAN[selectedWeapon]} 숙련도` : activeSubjectRoom.statLabel} (+7일 경과)</span></div>
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setActiveSubjectRoom(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer">닫기</button>
                                 <button
                                     onClick={() => {
-                                        if ((character.stats.mp || 0) < activeSubjectRoom.mpCost) {
-                                            setCampusToast(`MP가 부족합니다! (필요 MP: ${activeSubjectRoom.mpCost})`);
-                                            setTimeout(() => setCampusToast(null), 2500);
+                                        if (character.job !== JobType.STUDENT) {
+                                            setCampusToast('학생 직업일 때만 정규 수업 수강이 가능합니다.');
+                                            setTimeout(() => setCampusToast(null), 2600);
                                             return;
                                         }
-                                        const newChar = JSON.parse(JSON.stringify(character)) as Character;
-                                        newChar.stats.mp = Math.max(0, (newChar.stats.mp || 0) - activeSubjectRoom.mpCost);
-                                        if (activeSubjectRoom.type === 'Combat') {
-                                            newChar.stats.str += 2;
-                                            newChar.stats.agi += 1;
-                                        } else if (activeSubjectRoom.type === 'Magic') {
-                                            newChar.stats.int += 3;
-                                        } else if (activeSubjectRoom.type === 'Divine') {
-                                            newChar.stats.ctrl = (newChar.stats.ctrl || 10) + 3;
-                                        } else if (activeSubjectRoom.type === 'Strategy') {
-                                            newChar.stats.wis += 3;
-                                        } else if (activeSubjectRoom.type === 'Physical') {
-                                            newChar.stats.def += 2;
-                                            newChar.stats.maxHp += 10;
-                                            newChar.stats.hp = Math.min(newChar.stats.maxHp, newChar.stats.hp + 10);
-                                        } else if (activeSubjectRoom.type === 'Weapon') {
-                                            newChar.stats.str += 1;
-                                            newChar.stats.agi += 2;
+                                        if ((character.schoolData?.warnings || 0) >= 3) {
+                                            setCampusToast('정학 상태입니다. 교무실에서 징계가 풀릴 때까지 대기하세요.');
+                                            setTimeout(() => setCampusToast(null), 2600);
+                                            return;
                                         }
-                                        newChar.exp = (newChar.exp || 0) + 80;
-                                        if (newChar.schoolData) {
-                                            newChar.schoolData.reputation = (newChar.schoolData.reputation || 0) + 5;
+                                        const curMonth = parseInt((character.currentDate || '0001-03-01').split('-')[1] || '3', 10);
+                                        if (curMonth === 1 || curMonth === 2) {
+                                            setCampusToast('현재는 겨울 방학 기간입니다. (1~2월)');
+                                            setTimeout(() => setCampusToast(null), 2600);
+                                            return;
                                         }
-                                        const timeRes = processTimeSkip(newChar, 7);
-                                        onUpdateCharacter(timeRes.updatedCharacter, `[강의실] '${activeSubjectRoom.title}' 수강 완료! (${activeSubjectRoom.statLabel} 상승, 7일 경과)`);
-                                        setCampusToast(`${activeSubjectRoom.title} 수강 완료! (${activeSubjectRoom.statLabel} 상승)`);
+                                        const { updatedCharacter } = processTimeSkip(character, 7);
+                                        const newChar = JSON.parse(JSON.stringify(updatedCharacter)) as Character;
+                                        const repBonus = (newChar.schoolData?.reputation || 0) >= 10 ? 1 : 0;
+                                        const val = 1 + repBonus;
+                                        const applyToEntity = (entity: any) => {
+                                            entity.currentExp = (entity.currentExp || 0) + 20;
+                                            if (activeSubjectRoom.type === 'Combat') { entity.stats.str += val; entity.stats.agi += val; }
+                                            else if (activeSubjectRoom.type === 'Magic') { entity.stats.int += 2 * val; }
+                                            else if (activeSubjectRoom.type === 'Divine') { entity.stats.ctrl = (entity.stats.ctrl || 10) + 2 * val; }
+                                            else if (activeSubjectRoom.type === 'Strategy') { entity.stats.wis += 2 * val; }
+                                            else if (activeSubjectRoom.type === 'Physical') { entity.stats.def += 2 * val; }
+                                            else if (activeSubjectRoom.type === 'Weapon') {
+                                                const wt = ('id' in entity) ? (entity.equipment?.weapon ? getWeaponTypeFromItem(entity.equipment.weapon) : null) : selectedWeapon;
+                                                if (wt) {
+                                                    const res = addMasteryExp(entity, wt as WeaponType, 5 + repBonus);
+                                                    entity.weaponMastery = (res.char as any).weaponMastery;
+                                                }
+                                            }
+                                        };
+                                        applyToEntity(newChar);
+                                        newChar.companions = (newChar.companions || []).map(c => {
+                                            const nc = { ...c, stats: { ...c.stats }, weaponMastery: { ...(c.weaponMastery || {}) } };
+                                            applyToEntity(nc);
+                                            return nc;
+                                        });
+                                        if (newChar.inactiveCompanions) {
+                                            newChar.inactiveCompanions = newChar.inactiveCompanions.map(c => {
+                                                const nc = { ...c, stats: { ...c.stats }, weaponMastery: { ...(c.weaponMastery || {}) } };
+                                                applyToEntity(nc);
+                                                return nc;
+                                            });
+                                        }
+                                        const gainText = activeSubjectRoom.type === 'Weapon'
+                                            ? `${WEAPON_TYPE_KOREAN[selectedWeapon]} 숙련도 +${5 + repBonus}`
+                                            : activeSubjectRoom.statLabel;
+                                        onUpdateCharacter(newChar, `[학교 생활] ${activeSubjectRoom.title} 수강 완료 (${gainText}, EXP +20, 7일 경과)`);
+                                        setCampusToast(`${activeSubjectRoom.title} 수강 완료! (${gainText})`);
                                         setTimeout(() => setCampusToast(null), 2800);
                                         setActiveSubjectRoom(null);
                                     }}
                                     className="flex-1 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold cursor-pointer"
                                 >
-                                    수강하기 (MP {activeSubjectRoom.mpCost})
+                                    수강하기 (7일 경과)
                                 </button>
                             </div>
                         </div>
@@ -1886,7 +2067,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     <SchoolModal
                         character={character}
                         initialZone={openModalZone}
-                        lockedZone={openModalZone === 'Office' ? 'Office' : undefined}
+                        lockedZone={openModalZone === 'Office' || openModalZone === 'Classroom' || openModalZone === 'Training' ? openModalZone : undefined}
                         targetSchoolTier={activeSchoolTier}
                         onClose={() => setOpenModalZone(null)}
                         onUpdateCharacter={(newChar, log) => onUpdateCharacter(newChar, log)}
