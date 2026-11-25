@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, ClubType, CombatStyle, JobType, SchoolTier, SimpleStudent, WeaponType } from '../types';
 import { SCHOOL_CONFIG, WEAPON_TYPE_KOREAN } from '../constants';
-import { addMasteryExp, generateName, getWeaponTypeFromItem } from '../utils';
+import { addMasteryExp, generateDefaultVisualUrl, generateName, getWeaponTypeFromItem } from '../utils';
 import { processTimeSkip } from '../services/timeEngine';
 import {
     getBuildingSpriteUrl,
@@ -256,11 +256,36 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const npcOffsetsRef = useRef<Record<string, { dx: number; dy: number; vx: number; vy: number; timer: number; dir: SpriteDirection }>>({});
+    const dpadRef = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
+    const savedCampusState = useMemo(() => {
+        try {
+            const raw = sessionStorage.getItem('shinryoku_school_campus_state');
+            if (!raw) return null;
+            const p = JSON.parse(raw);
+            return p?.charId === character.id ? p : null;
+        } catch {
+            return null;
+        }
+    }, [character.id]);
     const [viewport, setViewport] = useState({ w: 960, h: 580 });
-    const [activeSchoolTier, setActiveSchoolTier] = useState<SchoolTier | null>(null);
-    const [activeRoom, setActiveRoom] = useState<SchoolZone | null>(null);
-    const [activeDormRoom, setActiveDormRoom] = useState<{ gender: '남성' | '여성'; grade: 1 | 2 | 3; label: string } | null>(null);
-    const [activeClubRoom, setActiveClubRoom] = useState<ClubType | null>(null);
+    const [activeSchoolTier, setActiveSchoolTier] = useState<SchoolTier | null>(() => savedCampusState?.tier || null);
+    const [activeRoom, setActiveRoom] = useState<SchoolZone | null>(() => savedCampusState?.room || null);
+    const [activeDormRoom, setActiveDormRoom] = useState<{ gender: '남성' | '여성'; grade: 1 | 2 | 3; label: string } | null>(() => savedCampusState?.dormRoom || null);
+    const [activeClubRoom, setActiveClubRoom] = useState<ClubType | null>(() => savedCampusState?.clubRoom || null);
+    useEffect(() => {
+        try {
+            sessionStorage.setItem(
+                'shinryoku_school_campus_state',
+                JSON.stringify({
+                    charId: character.id,
+                    tier: activeSchoolTier,
+                    room: activeRoom,
+                    dormRoom: activeDormRoom,
+                    clubRoom: activeClubRoom
+                })
+            );
+        } catch {}
+    }, [character.id, activeSchoolTier, activeRoom, activeDormRoom, activeClubRoom]);
     const [openModalZone, setOpenModalZone] = useState<SchoolZone | null>(null);
     const [nearbyLabel, setNearbyLabel] = useState<string | null>(null);
     const [accessDeniedMsg, setAccessDeniedMsg] = useState<string | null>(null);
@@ -269,6 +294,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         name: string;
         role: string;
         text: string;
+        gender?: RpgSpriteGenderKey;
         zone?: SchoolZone;
         canBondAndSpar?: boolean;
         isTeacher?: boolean;
@@ -282,7 +308,24 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     const [showClubVisualModal, setShowClubVisualModal] = useState(false);
     const [activeSubjectRoom, setActiveSubjectRoom] = useState<typeof CLASSROOM_SUBJECT_ROOMS[number] | null>(null);
     const [selectedWeapon, setSelectedWeapon] = useState<WeaponType>('Sword');
+    const [activityProgress, setActivityProgress] = useState<{ title: string; subtitle: string; progress: number } | null>(null);
     const [campusToast, setCampusToast] = useState<string | null>(null);
+
+    const resolveNpcVisual = useCallback(
+        (id: string | undefined, name: string, gender: RpgSpriteGenderKey = 'female', isTeacher?: boolean): string => {
+            if (isTeacher && character.schoolData?.homeroomTeacher?.visualUrl) {
+                return character.schoolData.homeroomTeacher.visualUrl;
+            }
+            const cm = character.schoolData?.classmates?.find(c => (id && c.id === id) || c.name === name);
+            if (cm?.visualUrl) return cm.visualUrl;
+            const sn = character.socialNetwork?.find(s => (id && s.id === id) || s.name === name);
+            if (sn?.visualUrl) return sn.visualUrl;
+            const cp = character.companions?.find(c => (id && c.id === id) || c.name === name);
+            if (cp?.visualUrl) return cp.visualUrl;
+            return generateDefaultVisualUrl(nation, gender === 'male' ? '남성' : '여성', isTeacher ? '교사' : '학생');
+        },
+        [character.schoolData?.homeroomTeacher, character.schoolData?.classmates, character.socialNetwork, character.companions, nation]
+    );
 
     const cultureKey = useMemo(() => resolveCityCultureKey(region, nation, city), [region, nation, city]);
     const academyTileCulture = useMemo(() => resolveAcademyTileCulture(cultureKey), [cultureKey]);
@@ -892,7 +935,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 const sx = (stu.tx + 0.5) * CITY_TILE_SIZE + off.dx;
                 const sy = (stu.ty + 0.5) * CITY_TILE_SIZE + off.dy;
                 if (Math.hypot(sx - p.x, sy - p.y) <= CITY_TILE_SIZE * 1.6) {
-                    setActiveDialogue({ id: stu.id, name: stu.name, role: stu.role, text: stu.dialogue, canBondAndSpar: true });
+                    setActiveDialogue({ id: stu.id, name: stu.name, role: stu.role, text: stu.dialogue, gender: stu.gender, canBondAndSpar: true });
                     return;
                 }
             }
@@ -969,6 +1012,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         name: npc.name,
                         role: npc.role,
                         text: npc.dialogue,
+                        gender: npc.gender,
                         zone: npc.opensZone,
                         canBondAndSpar: npc.canBondAndSpar,
                         isTeacher: npc.isTeacher,
@@ -983,7 +1027,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
-            if (openModalZone || showAttendanceDirect || showReportDirect || activeDivineBook || activeClubApply || showClubVisualModal || activeSubjectRoom) return;
+            if (openModalZone || showAttendanceDirect || showReportDirect || activeDivineBook || activeClubApply || showClubVisualModal || activeSubjectRoom || activityProgress) return;
             const k = e.key.toLowerCase();
             if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) {
                 keysRef.current.add(k);
@@ -1005,7 +1049,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             window.removeEventListener('keydown', onKeyDown);
             window.removeEventListener('keyup', onKeyUp);
         };
-    }, [openModalZone, showAttendanceDirect, showReportDirect, activeDivineBook, activeClubApply, showClubVisualModal, activeSubjectRoom, activeDialogue, activeRoom, activeSchoolTier, handleInteract, exitRoomToCampus, exitCampusToPlaza, onExitToCity]);
+    }, [openModalZone, showAttendanceDirect, showReportDirect, activeDivineBook, activeClubApply, showClubVisualModal, activeSubjectRoom, activityProgress, activeDialogue, activeRoom, activeSchoolTier, handleInteract, exitRoomToCampus, exitCampusToPlaza, onExitToCity]);
 
     useEffect(() => {
         let rafId = 0;
@@ -1020,14 +1064,14 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             const rows = campusDims.rows;
             const ts = CITY_TILE_SIZE;
 
-            if (!openModalZone && !activeDialogue) {
+            if (!openModalZone && !activeDialogue && !activityProgress) {
                 let vx = 0;
                 let vy = 0;
                 const keys = keysRef.current;
-                if (keys.has('arrowleft') || keys.has('a')) vx -= 1;
-                if (keys.has('arrowright') || keys.has('d')) vx += 1;
-                if (keys.has('arrowup') || keys.has('w')) vy -= 1;
-                if (keys.has('arrowdown') || keys.has('s')) vy += 1;
+                if (keys.has('arrowleft') || keys.has('a') || dpadRef.current === 'left') vx -= 1;
+                if (keys.has('arrowright') || keys.has('d') || dpadRef.current === 'right') vx += 1;
+                if (keys.has('arrowup') || keys.has('w') || dpadRef.current === 'up') vy -= 1;
+                if (keys.has('arrowdown') || keys.has('s') || dpadRef.current === 'down') vy += 1;
 
                 let moving = false;
                 if (vx !== 0 || vy !== 0) {
@@ -1641,17 +1685,27 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
 
                 {activeDialogue && (
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-30 bg-slate-900/95 border border-cyan-500/50 rounded-2xl p-4 shadow-2xl space-y-2.5">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <MessageCircle size={15} className="text-cyan-400" />
-                                <span className="text-xs font-black text-white">{activeDialogue.name}</span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300">{activeDialogue.role}</span>
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <img
+                                    src={resolveNpcVisual(activeDialogue.id, activeDialogue.name, activeDialogue.gender || 'female', activeDialogue.isTeacher)}
+                                    alt={activeDialogue.name}
+                                    className="w-12 h-12 rounded-xl object-cover border border-cyan-400/60 bg-slate-800 shrink-0"
+                                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                />
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <MessageCircle size={14} className="text-cyan-400" />
+                                        <span className="text-xs font-black text-white">{activeDialogue.name}</span>
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300">{activeDialogue.role}</span>
+                                    </div>
+                                    <p className="text-xs text-slate-200 leading-relaxed mt-1">&ldquo;{activeDialogue.text}&rdquo;</p>
+                                </div>
                             </div>
-                            <button onClick={() => setActiveDialogue(null)} className="text-slate-400 hover:text-white cursor-pointer">
+                            <button onClick={() => setActiveDialogue(null)} className="text-slate-400 hover:text-white cursor-pointer shrink-0">
                                 <X size={15} />
                             </button>
                         </div>
-                        <p className="text-xs text-slate-200 leading-relaxed">&ldquo;{activeDialogue.text}&rdquo;</p>
                         {(activeDialogue.canBondAndSpar || activeDialogue.zone) && (
                             <div className="flex flex-wrap gap-2 pt-1">
                                 {activeDialogue.canBondAndSpar && (
@@ -1698,12 +1752,13 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                         id: npcId,
                                                         name: activeDialogue.name,
                                                         age: activeDialogue.isTeacher ? '32세' : '18세',
-                                                        gender: '여성',
+                                                        gender: activeDialogue.gender === 'male' ? '남성' : '여성',
                                                         race: '인간',
                                                         nation,
                                                         level: activeDialogue.npcLevel || Math.max(3, character.level || 5),
                                                         personality: '성실함',
                                                         appearance: activeDialogue.isTeacher ? '단정한 교사 복장' : '단정한 교복',
+                                                        visualUrl: resolveNpcVisual(npcId, activeDialogue.name, activeDialogue.gender || 'female', activeDialogue.isTeacher),
                                                         stats: { str: 18, int: 18, wis: 15, agi: 16, con: 18 },
                                                         affection: finalAff,
                                                         isPastConnection: true,
@@ -1737,6 +1792,9 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                 onClick={() => {
                                                     const lv = activeDialogue.npcLevel || Math.max(4, character.level || 5);
                                                     const maxHp = Math.max(140, lv * 45);
+                                                    const npcGender: RpgSpriteGenderKey = activeDialogue.gender || 'female';
+                                                    const npcSprite = resolveEntityRpgSprite({ gender: npcGender } as any, region, nation);
+                                                    const npcVisual = resolveNpcVisual(activeDialogue.id, activeDialogue.name, npcGender, activeDialogue.isTeacher);
                                                     const enemy = {
                                                         id: `spar_${activeDialogue.id || activeDialogue.name}`,
                                                         name: `${activeDialogue.name} (${activeDialogue.role})`,
@@ -1746,13 +1804,21 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                         atk: Math.max(20, lv * 6),
                                                         def: Math.max(10, lv * 3),
                                                         spd: Math.max(12, lv * 3),
+                                                        stats: { str: Math.max(15, lv * 5), int: Math.max(15, lv * 5), def: Math.max(10, lv * 3), agi: Math.max(12, lv * 3), ctrl: 10, hp: maxHp, mp: 100 },
                                                         expReward: lv * 22,
                                                         goldReward: lv * 15,
                                                         combatStyle: activeDialogue.combatStyle || CombatStyle.SWORDSMAN,
+                                                        gender: npcGender === 'male' ? '남성' : '여성',
+                                                        race: '인간',
+                                                        nation,
+                                                        visualUrl: npcVisual,
+                                                        spriteUrl: npcSprite.url,
+                                                        isNpc: true,
+                                                        isSparringPartner: true,
                                                         isBoss: false,
                                                     };
                                                     setActiveDialogue(null);
-                                                    onStartBattle?.([enemy], 'sparring_arena', `[학원 대련] ${activeDialogue.name}`);
+                                                    onStartBattle?.(enemy, 'sparring_arena', `[학원 대련] ${activeDialogue.name}`);
                                                 }}
                                                 className="px-3 py-1.5 rounded-lg bg-rose-900/70 hover:bg-rose-800 border border-rose-500/60 text-rose-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                                             >
@@ -1897,23 +1963,36 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                 <button onClick={() => setActiveDivineBook(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer">닫기</button>
                                 <button
                                     onClick={() => {
-                                        const newChar = JSON.parse(JSON.stringify(character)) as Character;
-                                        if (activeDivineBook.hpCost) {
-                                            if ((newChar.stats.hp || 0) <= activeDivineBook.hpCost) {
-                                                setCampusToast('체력이 부족하여 금서를 읽을 수 없습니다.');
-                                                setTimeout(() => setCampusToast(null), 2500);
-                                                return;
-                                            }
-                                            newChar.stats.hp = Math.max(1, (newChar.stats.hp || 10) - activeDivineBook.hpCost);
-                                        }
-                                        newChar.stats.ctrl = (newChar.stats.ctrl || 10) + activeDivineBook.ctrlGain;
-                                        newChar.stats[activeDivineBook.statKey] = (newChar.stats[activeDivineBook.statKey] || 10) + activeDivineBook.statGain;
-                                        newChar.exp = (newChar.exp || 0) + activeDivineBook.expGain;
-                                        const timeRes = processTimeSkip(newChar, activeDivineBook.daysElapsed || 3);
-                                        onUpdateCharacter(timeRes.updatedCharacter, `[도서관] '${activeDivineBook.title}' 정독 (${activeDivineBook.daysElapsed || 3}일 경과)! (CTRL +${activeDivineBook.ctrlGain}, ${activeDivineBook.statKey.toUpperCase()} +${activeDivineBook.statGain})`);
-                                        setCampusToast(`CTRL +${activeDivineBook.ctrlGain}, ${activeDivineBook.statKey.toUpperCase()} +${activeDivineBook.statGain} (${activeDivineBook.daysElapsed || 3}일 경과)`);
-                                        setTimeout(() => setCampusToast(null), 2800);
+                                        const bookSnap = activeDivineBook;
                                         setActiveDivineBook(null);
+                                        setActivityProgress({ title: `📖 ${bookSnap.title} 정독 중...`, subtitle: '서적의 원리와 신력 제어법을 체득하고 있습니다. (3일 경과)', progress: 15 });
+                                        let pct = 15;
+                                        const iv = setInterval(() => {
+                                            pct += 25;
+                                            if (pct < 100) {
+                                                setActivityProgress({ title: `📖 ${bookSnap.title} 정독 중...`, subtitle: '서적의 원리와 신력 제어법을 체득하고 있습니다. (3일 경과)', progress: pct });
+                                            } else {
+                                                clearInterval(iv);
+                                                const newChar = JSON.parse(JSON.stringify(character)) as Character;
+                                                if (bookSnap.hpCost) {
+                                                    if ((newChar.stats.hp || 0) <= bookSnap.hpCost) {
+                                                        setActivityProgress(null);
+                                                        setCampusToast('체력이 부족하여 금서를 읽을 수 없습니다.');
+                                                        setTimeout(() => setCampusToast(null), 2500);
+                                                        return;
+                                                    }
+                                                    newChar.stats.hp = Math.max(1, (newChar.stats.hp || 10) - bookSnap.hpCost);
+                                                }
+                                                newChar.stats.ctrl = (newChar.stats.ctrl || 10) + bookSnap.ctrlGain;
+                                                newChar.stats[bookSnap.statKey] = (newChar.stats[bookSnap.statKey] || 10) + bookSnap.statGain;
+                                                newChar.exp = (newChar.exp || 0) + bookSnap.expGain;
+                                                const timeRes = processTimeSkip(newChar, bookSnap.daysElapsed || 3);
+                                                onUpdateCharacter(timeRes.updatedCharacter, `[도서관] '${bookSnap.title}' 정독 (${bookSnap.daysElapsed || 3}일 경과)! (CTRL +${bookSnap.ctrlGain}, ${bookSnap.statKey.toUpperCase()} +${bookSnap.statGain})`);
+                                                setActivityProgress(null);
+                                                setCampusToast(`CTRL +${bookSnap.ctrlGain}, ${bookSnap.statKey.toUpperCase()} +${bookSnap.statGain} (${bookSnap.daysElapsed || 3}일 경과)`);
+                                                setTimeout(() => setCampusToast(null), 2800);
+                                            }
+                                        }, 240);
                                     }}
                                     className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold cursor-pointer"
                                 >
@@ -1978,45 +2057,58 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                             setTimeout(() => setCampusToast(null), 2600);
                                             return;
                                         }
-                                        const { updatedCharacter } = processTimeSkip(character, 7);
-                                        const newChar = JSON.parse(JSON.stringify(updatedCharacter)) as Character;
-                                        const repBonus = (newChar.schoolData?.reputation || 0) >= 10 ? 1 : 0;
-                                        const val = 1 + repBonus;
-                                        const applyToEntity = (entity: any) => {
-                                            entity.currentExp = (entity.currentExp || 0) + 20;
-                                            if (activeSubjectRoom.type === 'Combat') { entity.stats.str += val; entity.stats.agi += val; }
-                                            else if (activeSubjectRoom.type === 'Magic') { entity.stats.int += 2 * val; }
-                                            else if (activeSubjectRoom.type === 'Divine') { entity.stats.ctrl = (entity.stats.ctrl || 10) + 2 * val; }
-                                            else if (activeSubjectRoom.type === 'Strategy') { entity.stats.wis += 2 * val; }
-                                            else if (activeSubjectRoom.type === 'Physical') { entity.stats.def += 2 * val; }
-                                            else if (activeSubjectRoom.type === 'Weapon') {
-                                                const wt = ('id' in entity) ? (entity.equipment?.weapon ? getWeaponTypeFromItem(entity.equipment.weapon) : null) : selectedWeapon;
-                                                if (wt) {
-                                                    const res = addMasteryExp(entity, wt as WeaponType, 5 + repBonus);
-                                                    entity.weaponMastery = (res.char as any).weaponMastery;
-                                                }
-                                            }
-                                        };
-                                        applyToEntity(newChar);
-                                        newChar.companions = (newChar.companions || []).map(c => {
-                                            const nc = { ...c, stats: { ...c.stats }, weaponMastery: { ...(c.weaponMastery || {}) } };
-                                            applyToEntity(nc);
-                                            return nc;
-                                        });
-                                        if (newChar.inactiveCompanions) {
-                                            newChar.inactiveCompanions = newChar.inactiveCompanions.map(c => {
-                                                const nc = { ...c, stats: { ...c.stats }, weaponMastery: { ...(c.weaponMastery || {}) } };
-                                                applyToEntity(nc);
-                                                return nc;
-                                            });
-                                        }
-                                        const gainText = activeSubjectRoom.type === 'Weapon'
-                                            ? `${WEAPON_TYPE_KOREAN[selectedWeapon]} 숙련도 +${5 + repBonus}`
-                                            : activeSubjectRoom.statLabel;
-                                        onUpdateCharacter(newChar, `[학교 생활] ${activeSubjectRoom.title} 수강 완료 (${gainText}, EXP +20, 7일 경과)`);
-                                        setCampusToast(`${activeSubjectRoom.title} 수강 완료! (${gainText})`);
-                                        setTimeout(() => setCampusToast(null), 2800);
+                                        const subjSnap = activeSubjectRoom;
+                                        const wepSnap = selectedWeapon;
                                         setActiveSubjectRoom(null);
+                                        setActivityProgress({ title: `🏫 ${subjSnap.title} 수업 진행 중...`, subtitle: '이론 강의와 실전 수련을 진행하고 있습니다. (7일 경과)', progress: 15 });
+                                        let pct = 15;
+                                        const iv = setInterval(() => {
+                                            pct += 25;
+                                            if (pct < 100) {
+                                                setActivityProgress({ title: `🏫 ${subjSnap.title} 수업 진행 중...`, subtitle: '이론 강의와 실전 수련을 진행하고 있습니다. (7일 경과)', progress: pct });
+                                            } else {
+                                                clearInterval(iv);
+                                                const { updatedCharacter } = processTimeSkip(character, 7);
+                                                const newChar = JSON.parse(JSON.stringify(updatedCharacter)) as Character;
+                                                const repBonus = (newChar.schoolData?.reputation || 0) >= 10 ? 1 : 0;
+                                                const val = 1 + repBonus;
+                                                const applyToEntity = (entity: any) => {
+                                                    entity.currentExp = (entity.currentExp || 0) + 20;
+                                                    if (subjSnap.type === 'Combat') { entity.stats.str += val; entity.stats.agi += val; }
+                                                    else if (subjSnap.type === 'Magic') { entity.stats.int += 2 * val; }
+                                                    else if (subjSnap.type === 'Divine') { entity.stats.ctrl = (entity.stats.ctrl || 10) + 2 * val; }
+                                                    else if (subjSnap.type === 'Strategy') { entity.stats.wis += 2 * val; }
+                                                    else if (subjSnap.type === 'Physical') { entity.stats.def += 2 * val; }
+                                                    else if (subjSnap.type === 'Weapon') {
+                                                        const wt = ('id' in entity) ? (entity.equipment?.weapon ? getWeaponTypeFromItem(entity.equipment.weapon) : null) : wepSnap;
+                                                        if (wt) {
+                                                            const res = addMasteryExp(entity, wt as WeaponType, 5 + repBonus);
+                                                            entity.weaponMastery = (res.char as any).weaponMastery;
+                                                        }
+                                                    }
+                                                };
+                                                applyToEntity(newChar);
+                                                newChar.companions = (newChar.companions || []).map(c => {
+                                                    const nc = { ...c, stats: { ...c.stats }, weaponMastery: { ...(c.weaponMastery || {}) } };
+                                                    applyToEntity(nc);
+                                                    return nc;
+                                                });
+                                                if (newChar.inactiveCompanions) {
+                                                    newChar.inactiveCompanions = newChar.inactiveCompanions.map(c => {
+                                                        const nc = { ...c, stats: { ...c.stats }, weaponMastery: { ...(c.weaponMastery || {}) } };
+                                                        applyToEntity(nc);
+                                                        return nc;
+                                                    });
+                                                }
+                                                const gainText = subjSnap.type === 'Weapon'
+                                                    ? `${WEAPON_TYPE_KOREAN[wepSnap]} 숙련도 +${5 + repBonus}`
+                                                    : subjSnap.statLabel;
+                                                onUpdateCharacter(newChar, `[학교 생활] ${subjSnap.title} 수강 완료 (${gainText}, EXP +20, 7일 경과)`);
+                                                setActivityProgress(null);
+                                                setCampusToast(`${subjSnap.title} 수강 완료! (${gainText})`);
+                                                setTimeout(() => setCampusToast(null), 2800);
+                                            }
+                                        }, 240);
                                     }}
                                     className="flex-1 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold cursor-pointer"
                                 >
@@ -2026,6 +2118,81 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         </div>
                     </div>
                 )}
+
+                {activityProgress && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+                        <div className="bg-slate-900 border border-cyan-500/70 p-5 rounded-2xl max-w-sm w-full space-y-3 shadow-2xl">
+                            <div className="text-sm font-black text-cyan-300">{activityProgress.title}</div>
+                            <p className="text-xs text-slate-300">{activityProgress.subtitle}</p>
+                            <div className="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-700">
+                                <div
+                                    className="h-full bg-gradient-to-r from-cyan-500 to-sky-400 transition-all duration-200"
+                                    style={{ width: `${Math.min(100, activityProgress.progress)}%` }}
+                                />
+                            </div>
+                            <div className="text-right text-[11px] font-bold text-cyan-200">{Math.min(100, activityProgress.progress)}%</div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Mobile D-Pad */}
+                <div className="md:hidden absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1 w-28 h-28 opacity-90 select-none">
+                    <div />
+                    <button
+                        type="button"
+                        onTouchStart={() => (dpadRef.current = 'up')}
+                        onTouchEnd={() => (dpadRef.current = null)}
+                        onMouseDown={() => (dpadRef.current = 'up')}
+                        onMouseUp={() => (dpadRef.current = null)}
+                        onMouseLeave={() => (dpadRef.current = null)}
+                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                    >
+                        ▲
+                    </button>
+                    <div />
+                    <button
+                        type="button"
+                        onTouchStart={() => (dpadRef.current = 'left')}
+                        onTouchEnd={() => (dpadRef.current = null)}
+                        onMouseDown={() => (dpadRef.current = 'left')}
+                        onMouseUp={() => (dpadRef.current = null)}
+                        onMouseLeave={() => (dpadRef.current = null)}
+                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                    >
+                        ◀
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleInteract}
+                        className="bg-cyan-600/90 active:bg-cyan-500 border border-cyan-400 rounded-lg flex items-center justify-center text-white text-[10px] font-black"
+                    >
+                        OK
+                    </button>
+                    <button
+                        type="button"
+                        onTouchStart={() => (dpadRef.current = 'right')}
+                        onTouchEnd={() => (dpadRef.current = null)}
+                        onMouseDown={() => (dpadRef.current = 'right')}
+                        onMouseUp={() => (dpadRef.current = null)}
+                        onMouseLeave={() => (dpadRef.current = null)}
+                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                    >
+                        ▶
+                    </button>
+                    <div />
+                    <button
+                        type="button"
+                        onTouchStart={() => (dpadRef.current = 'down')}
+                        onTouchEnd={() => (dpadRef.current = null)}
+                        onMouseDown={() => (dpadRef.current = 'down')}
+                        onMouseUp={() => (dpadRef.current = null)}
+                        onMouseLeave={() => (dpadRef.current = null)}
+                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                    >
+                        ▼
+                    </button>
+                    <div />
+                </div>
 
                 {showClubVisualModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85">

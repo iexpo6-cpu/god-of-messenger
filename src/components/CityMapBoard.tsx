@@ -79,8 +79,17 @@ const CityMapBoard: React.FC<Props> = ({
     const [isZoneFading, setIsZoneFading] = useState(false);
     const [activeDistrictCanvas, setActiveDistrictCanvas] = useState<VisualDistrictKind | null>(null);
     const [activeCompoundCanvas, setActiveCompoundCanvas] = useState<FactionCompoundKind | null>(null);
-    const [isSchoolCanvasOpen, setIsSchoolCanvasOpen] = useState(false);
     const loc = character.currentLocation || { region: "아시아", nation: "대한민국", city: "서울" };
+    const [isSchoolCanvasOpen, setIsSchoolCanvasOpen] = useState<boolean>(() => {
+        try {
+            const raw = sessionStorage.getItem('shinryoku_school_resume');
+            if (!raw) return false;
+            const parsed = JSON.parse(raw);
+            return parsed?.charId === character.id && parsed?.city === loc.city;
+        } catch {
+            return false;
+        }
+    });
     const [isOutskirtsCanvasOpen, setIsOutskirtsCanvasOpen] = useState<boolean>(() => {
         try {
             const raw = sessionStorage.getItem('shinryoku_outskirts_resume');
@@ -120,6 +129,8 @@ const CityMapBoard: React.FC<Props> = ({
         setIsOutskirtsCanvasOpen(false);
         try {
             sessionStorage.removeItem('shinryoku_outskirts_resume');
+            sessionStorage.removeItem('shinryoku_school_resume');
+            sessionStorage.removeItem('shinryoku_school_campus_state');
         } catch {}
     }, [loc.city, Boolean(character.base)]);
 
@@ -140,6 +151,9 @@ const CityMapBoard: React.FC<Props> = ({
             return;
         }
         if (!openHuntMap && district === 'Academic') {
+            try {
+                sessionStorage.setItem('shinryoku_school_resume', JSON.stringify({ charId: character.id, city: loc.city }));
+            } catch {}
             setIsSchoolCanvasOpen(true);
             return;
         }
@@ -857,7 +871,13 @@ const CityMapBoard: React.FC<Props> = ({
                             region={loc.region}
                             nation={loc.nation}
                             city={loc.city}
-                            onExitToCity={() => setIsSchoolCanvasOpen(false)}
+                            onExitToCity={() => {
+                                try {
+                                    sessionStorage.removeItem('shinryoku_school_resume');
+                                    sessionStorage.removeItem('shinryoku_school_campus_state');
+                                } catch {}
+                                setIsSchoolCanvasOpen(false);
+                            }}
                             onUpdateCharacter={onUpdateCharacter || (() => {})}
                             onAction={onAction}
                             onStartBattle={onStartBattle}
