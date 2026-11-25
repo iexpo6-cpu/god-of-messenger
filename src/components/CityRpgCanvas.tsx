@@ -87,6 +87,7 @@ interface DustParticle {
 interface ActiveDialogue {
     npcName: string;
     npcRole: string;
+    spriteUrl?: string;
     lines: string[];
     lineIndex: number;
 }
@@ -438,6 +439,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             setDialogue({
                 npcName: target.npc.name,
                 npcRole: target.npc.role,
+                spriteUrl: target.npc.spriteUrl,
                 lines: target.npc.dialogues,
                 lineIndex: 0
             });
@@ -560,6 +562,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 setDialogue({
                     npcName: clickedNpc.name,
                     npcRole: clickedNpc.role,
+                    spriteUrl: clickedNpc.spriteUrl,
                     lines: clickedNpc.dialogues,
                     lineIndex: 0
                 });
@@ -707,6 +710,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                                 setDialogue({
                                     npcName: npc.name,
                                     npcRole: npc.role,
+                                    spriteUrl: npc.spriteUrl,
                                     lines: npc.dialogues,
                                     lineIndex: 0
                                 });
@@ -1606,24 +1610,41 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     onClick={handleInteract}
                     className="absolute bottom-3 left-2.5 right-2.5 sm:bottom-5 sm:left-8 sm:right-8 z-30 cursor-pointer rounded-2xl border-2 border-slate-100/90 bg-gradient-to-b from-blue-950/95 via-slate-950/95 to-slate-950/98 p-3 sm:p-4 shadow-[0_0_30px_rgba(0,0,0,0.85)]"
                 >
-                    <div className="flex items-center justify-between mb-1.5">
-                        <div className="flex items-center gap-2">
-                            <MessageSquare size={14} className="text-amber-400" />
-                            <span className="text-xs sm:text-sm font-black text-amber-300">{dialogue.npcName}</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">
-                                {dialogue.npcRole}
-                            </span>
+                    <div className="flex items-start gap-3">
+                        {(() => {
+                            const sn = character.socialNetwork?.find(s => s.name === dialogue.npcName);
+                            const cp = character.companions?.find(c => c.name === dialogue.npcName);
+                            const vUrl = sn?.visualUrl || cp?.visualUrl;
+                            return vUrl ? (
+                                <img src={vUrl} alt={dialogue.npcName} className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover border border-amber-400/60 bg-slate-900 shrink-0" />
+                            ) : dialogue.spriteUrl ? (
+                                <div
+                                    className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl border border-amber-400/60 bg-slate-900 shrink-0"
+                                    style={{ backgroundImage: `url(${dialogue.spriteUrl})`, backgroundSize: '300% 400%', backgroundPosition: '50% 0%', imageRendering: 'pixelated' }}
+                                />
+                            ) : null;
+                        })()}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <div className="flex items-center gap-2">
+                                    <MessageSquare size={14} className="text-amber-400" />
+                                    <span className="text-xs sm:text-sm font-black text-amber-300">{dialogue.npcName}</span>
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">
+                                        {dialogue.npcRole}
+                                    </span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                    {dialogue.lineIndex + 1} / {dialogue.lines.length}
+                                </span>
+                            </div>
+                            <p className="text-xs sm:text-sm text-slate-100 leading-relaxed min-h-[2.4rem] font-medium">
+                                {currentDialogueText}
+                            </p>
+                            <div className="flex justify-end items-center gap-1 mt-1 text-[10px] text-amber-300/90 font-bold animate-pulse">
+                                <CornerDownLeft size={11} />
+                                <span>클릭 또는 Space / Enter 계속</span>
+                            </div>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                            {dialogue.lineIndex + 1} / {dialogue.lines.length}
-                        </span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-slate-100 leading-relaxed min-h-[2.4rem] font-medium">
-                        {currentDialogueText}
-                    </p>
-                    <div className="flex justify-end items-center gap-1 mt-1 text-[10px] text-amber-300/90 font-bold animate-pulse">
-                        <CornerDownLeft size={11} />
-                        <span>클릭 또는 Space / Enter 계속</span>
                     </div>
                 </div>
             )}

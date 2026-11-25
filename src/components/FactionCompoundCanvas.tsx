@@ -1264,22 +1264,37 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
             {/* NPC Dialogue Card */}
             {selectedNpc && (
                 <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 w-[92%] max-w-md bg-slate-950/95 border border-indigo-500/60 rounded-2xl p-4 shadow-2xl">
-                    <div className="flex items-start justify-between gap-2">
-                        <div>
-                            <div className="text-sm font-black text-white flex items-center gap-1.5">
-                                <MessageSquare size={14} className="text-indigo-400" />
-                                {selectedNpc.name}
-                                <span className="text-[11px] font-bold text-indigo-300 bg-indigo-950 px-2 py-0.5 rounded">
-                                    {selectedNpc.role}
-                                </span>
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                            {(() => {
+                                const sn = character.socialNetwork?.find(s => s.name === selectedNpc.name);
+                                const cp = character.companions?.find(c => c.name === selectedNpc.name);
+                                const vUrl = (selectedNpc as any).visualUrl || sn?.visualUrl || cp?.visualUrl;
+                                return vUrl ? (
+                                    <img src={vUrl} alt={selectedNpc.name} className="w-12 h-12 rounded-xl object-cover border border-indigo-400/60 bg-slate-900 shrink-0" />
+                                ) : selectedNpc.spriteUrl ? (
+                                    <div
+                                        className="w-12 h-12 rounded-xl border border-indigo-400/60 bg-slate-900 shrink-0"
+                                        style={{ backgroundImage: `url(${selectedNpc.spriteUrl})`, backgroundSize: '300% 400%', backgroundPosition: '50% 0%', imageRendering: 'pixelated' }}
+                                    />
+                                ) : null;
+                            })()}
+                            <div className="flex-1 min-w-0">
+                                <div className="text-sm font-black text-white flex items-center gap-1.5">
+                                    <MessageSquare size={14} className="text-indigo-400" />
+                                    {selectedNpc.name}
+                                    <span className="text-[11px] font-bold text-indigo-300 bg-indigo-950 px-2 py-0.5 rounded">
+                                        {selectedNpc.role}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-200 mt-2 bg-slate-900 px-3 py-2 rounded-lg border border-slate-800 leading-relaxed">
+                                    {blockedByEnlist
+                                        ? `"이 업무는 ${nation} 국방군에 입대한 대원만 이용할 수 있습니다. 남쪽 위병소의 모병관을 통해 먼저 입대해 주십시오."`
+                                        : `"${selectedNpc.dialogue}"`}
+                                </p>
                             </div>
-                            <p className="text-xs text-slate-200 mt-2 bg-slate-900 px-3 py-2 rounded-lg border border-slate-800 leading-relaxed">
-                                {blockedByEnlist
-                                    ? `"이 업무는 ${nation} 국방군에 입대한 대원만 이용할 수 있습니다. 남쪽 위병소의 모병관을 통해 먼저 입대해 주십시오."`
-                                    : `"${selectedNpc.dialogue}"`}
-                            </p>
                         </div>
-                        <button type="button" onClick={() => setSelectedNpc(null)} className="text-slate-400 hover:text-white p-1">
+                        <button type="button" onClick={() => setSelectedNpc(null)} className="text-slate-400 hover:text-white p-1 shrink-0">
                             <X size={16} />
                         </button>
                     </div>
