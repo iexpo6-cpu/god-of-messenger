@@ -1985,11 +1985,12 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                 }
                                                 newChar.stats.ctrl = (newChar.stats.ctrl || 10) + bookSnap.ctrlGain;
                                                 newChar.stats[bookSnap.statKey] = (newChar.stats[bookSnap.statKey] || 10) + bookSnap.statGain;
+                                                newChar.currentExp = (newChar.currentExp || 0) + bookSnap.expGain;
                                                 newChar.exp = (newChar.exp || 0) + bookSnap.expGain;
                                                 const timeRes = processTimeSkip(newChar, bookSnap.daysElapsed || 3);
-                                                onUpdateCharacter(timeRes.updatedCharacter, `[도서관] '${bookSnap.title}' 정독 (${bookSnap.daysElapsed || 3}일 경과)! (CTRL +${bookSnap.ctrlGain}, ${bookSnap.statKey.toUpperCase()} +${bookSnap.statGain})`);
+                                                onUpdateCharacter(timeRes.updatedCharacter, `[도서관] '${bookSnap.title}' 정독 (${bookSnap.daysElapsed || 3}일 경과)! (CTRL +${bookSnap.ctrlGain}, ${bookSnap.statKey.toUpperCase()} +${bookSnap.statGain}, EXP +${bookSnap.expGain})`);
                                                 setActivityProgress(null);
-                                                setCampusToast(`CTRL +${bookSnap.ctrlGain}, ${bookSnap.statKey.toUpperCase()} +${bookSnap.statGain} (${bookSnap.daysElapsed || 3}일 경과)`);
+                                                setCampusToast(`CTRL +${bookSnap.ctrlGain}, ${bookSnap.statKey.toUpperCase()} +${bookSnap.statGain}, EXP +${bookSnap.expGain} (${bookSnap.daysElapsed || 3}일 경과)`);
                                                 setTimeout(() => setCampusToast(null), 2800);
                                             }
                                         }, 240);
@@ -2011,7 +2012,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                 <button onClick={() => setActiveSubjectRoom(null)} className="text-slate-400 hover:text-white cursor-pointer"><X size={18} /></button>
                             </div>
                             <p className="text-xs text-slate-300 leading-relaxed">
-                                {activeSubjectRoom.title}에서 정규 강의를 수강합니다. 수강 시 {activeSubjectRoom.statLabel} 및 경험치를 획득하며 7일이 경과합니다. (일행 전체 반영)
+                                {activeSubjectRoom.title}에서 정규 강의를 수강합니다. 수강 시 {activeSubjectRoom.statLabel} 및 경험치(EXP +20)를 획득하며 7일이 경과합니다. (일행 전체 반영)
                             </p>
                             {activeSubjectRoom.type === 'Weapon' && (
                                 <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1.5">
@@ -2068,22 +2069,51 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                 setActivityProgress({ title: `🏫 ${subjSnap.title} 수업 진행 중...`, subtitle: '이론 강의와 실전 수련을 진행하고 있습니다. (7일 경과)', progress: pct });
                                             } else {
                                                 clearInterval(iv);
-                                                const { updatedCharacter } = processTimeSkip(character, 7);
+                                                const { updatedCharacter, systemLogs } = processTimeSkip(character, 7);
                                                 const newChar = JSON.parse(JSON.stringify(updatedCharacter)) as Character;
+                                                let multiplier = 1;
+                                                let expGain = 20;
+                                                let eventMsg = '';
                                                 const repBonus = (newChar.schoolData?.reputation || 0) >= 10 ? 1 : 0;
-                                                const val = 1 + repBonus;
+                                                if (repBonus > 0) eventMsg += ' (높은 평판으로 효율 증가)';
+                                                if (newChar.schoolData?.homeroomTeacher && Math.random() < 0.3) {
+                                                    const teacher = newChar.schoolData.homeroomTeacher;
+                                                    teacher.affection = (teacher.affection || 0) + 1;
+                                                    if (newChar.socialNetwork) {
+                                                        const st = newChar.socialNetwork.find(n => n.id === teacher.id);
+                                                        if (st) st.affection = teacher.affection;
+                                                    }
+                                                    eventMsg += `\n(담임 교사 ${teacher.name}의 호감도가 상승했습니다.)`;
+                                                }
+                                                const roll = Math.random();
+                                                if (roll < 0.1) {
+                                                    multiplier = 2;
+                                                    eventMsg += '\n(이벤트: 교관님께 칭찬을 들어 성취감이 2배가 되었습니다!)';
+                                                    if (newChar.schoolData) newChar.schoolData.reputation += 2;
+                                                } else if (roll < 0.2) {
+                                                    multiplier = 0;
+                                                    expGain = 0;
+                                                    eventMsg += '\n(이벤트: 수업 중에 졸다가 걸려 혼났습니다... 능력치 변동 없음)';
+                                                    if (newChar.schoolData) newChar.schoolData.reputation -= 1;
+                                                }
+                                                const val = (multiplier === 2 ? 2 : 1) * multiplier + repBonus;
                                                 const applyToEntity = (entity: any) => {
-                                                    entity.currentExp = (entity.currentExp || 0) + 20;
-                                                    if (subjSnap.type === 'Combat') { entity.stats.str += val; entity.stats.agi += val; }
-                                                    else if (subjSnap.type === 'Magic') { entity.stats.int += 2 * val; }
-                                                    else if (subjSnap.type === 'Divine') { entity.stats.ctrl = (entity.stats.ctrl || 10) + 2 * val; }
-                                                    else if (subjSnap.type === 'Strategy') { entity.stats.wis += 2 * val; }
-                                                    else if (subjSnap.type === 'Physical') { entity.stats.def += 2 * val; }
-                                                    else if (subjSnap.type === 'Weapon') {
-                                                        const wt = ('id' in entity) ? (entity.equipment?.weapon ? getWeaponTypeFromItem(entity.equipment.weapon) : null) : wepSnap;
-                                                        if (wt) {
-                                                            const res = addMasteryExp(entity, wt as WeaponType, 5 + repBonus);
-                                                            entity.weaponMastery = (res.char as any).weaponMastery;
+                                                    if (expGain > 0) {
+                                                        entity.currentExp = (entity.currentExp || 0) + expGain;
+                                                        if (typeof entity.exp === 'number') entity.exp += expGain;
+                                                    }
+                                                    if (multiplier > 0) {
+                                                        if (subjSnap.type === 'Combat') { entity.stats.str += val; entity.stats.agi += val; }
+                                                        else if (subjSnap.type === 'Magic') { entity.stats.int += 2 * val; }
+                                                        else if (subjSnap.type === 'Divine') { entity.stats.ctrl = (entity.stats.ctrl || 10) + 2 * val; }
+                                                        else if (subjSnap.type === 'Strategy') { entity.stats.wis += 2 * val; }
+                                                        else if (subjSnap.type === 'Physical') { entity.stats.def += 2 * val; }
+                                                        else if (subjSnap.type === 'Weapon') {
+                                                            const wt = ('id' in entity) ? (entity.equipment?.weapon ? getWeaponTypeFromItem(entity.equipment.weapon) : null) : wepSnap;
+                                                            if (wt) {
+                                                                const res = addMasteryExp(entity, wt as WeaponType, 5 * multiplier + repBonus);
+                                                                entity.weaponMastery = (res.char as any).weaponMastery;
+                                                            }
                                                         }
                                                     }
                                                 };
@@ -2100,10 +2130,18 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                         return nc;
                                                     });
                                                 }
-                                                const gainText = subjSnap.type === 'Weapon'
-                                                    ? `${WEAPON_TYPE_KOREAN[wepSnap]} 숙련도 +${5 + repBonus}`
-                                                    : subjSnap.statLabel;
-                                                onUpdateCharacter(newChar, `[학교 생활] ${subjSnap.title} 수강 완료 (${gainText}, EXP +20, 7일 경과)`);
+                                                let gainText = '변동 없음';
+                                                if (multiplier > 0) {
+                                                    if (subjSnap.type === 'Combat') gainText = `STR +${val}, AGI +${val}`;
+                                                    else if (subjSnap.type === 'Magic') gainText = `INT +${2 * val}`;
+                                                    else if (subjSnap.type === 'Divine') gainText = `CTRL +${2 * val}`;
+                                                    else if (subjSnap.type === 'Strategy') gainText = `WIS +${2 * val}`;
+                                                    else if (subjSnap.type === 'Physical') gainText = `DEF +${2 * val}`;
+                                                    else if (subjSnap.type === 'Weapon') gainText = `${WEAPON_TYPE_KOREAN[wepSnap]} 숙련도 +${5 * multiplier + repBonus}`;
+                                                }
+                                                if (expGain > 0) gainText += `, EXP +${expGain}`;
+                                                const sysMsg = systemLogs.length > 0 ? `\n[기간 중 소식]\n${systemLogs.slice(0, 3).join('\n')}` : '';
+                                                onUpdateCharacter(newChar, `[학교 생활] ${subjSnap.title} 수업 완료. (${gainText}) (일행 전체 반영됨) (1주일 경과)${eventMsg}${sysMsg}`);
                                                 setActivityProgress(null);
                                                 setCampusToast(`${subjSnap.title} 수강 완료! (${gainText})`);
                                                 setTimeout(() => setCampusToast(null), 2800);
@@ -2136,7 +2174,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 )}
 
                 {/* Mobile D-Pad */}
-                <div className="xl:hidden absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1 w-28 h-28 opacity-90 select-none">
+                <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1 w-28 h-28 opacity-90 select-none">
                     <div />
                     <button
                         type="button"

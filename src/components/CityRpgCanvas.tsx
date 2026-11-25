@@ -1652,7 +1652,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             {/* 모바일 컴팩트 가상 D-Pad (좌하단) + 확인 버튼 (우하단) — 퀵바 펼침 시 자동으로 위로 이동해 겹침 방지 */}
             {!dialogue && (
                 <>
-                    <div className={`xl:hidden absolute left-2.5 z-20 grid grid-cols-3 gap-0.5 w-24 h-24 transition-all ${showQuickBar ? 'bottom-[74px]' : 'bottom-9'}`}>
+                    <div className={`absolute left-2.5 z-20 grid grid-cols-3 gap-0.5 w-24 h-24 transition-all ${showQuickBar ? 'bottom-[74px]' : 'bottom-9'}`}>
                         <div />
                         <button
                             type="button"
@@ -1699,7 +1699,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     <button
                         type="button"
                         onClick={handleInteract}
-                        className={`xl:hidden absolute right-2.5 z-20 w-12 h-12 rounded-full bg-amber-600/90 active:scale-95 border-2 border-amber-300 text-white font-black text-[11px] shadow-xl flex flex-col items-center justify-center transition-all ${showQuickBar ? 'bottom-[82px]' : 'bottom-12'}`}
+                        className={`absolute right-2.5 z-20 w-12 h-12 rounded-full bg-amber-600/90 active:scale-95 border-2 border-amber-300 text-white font-black text-[11px] shadow-xl flex flex-col items-center justify-center transition-all ${showQuickBar ? 'bottom-[82px]' : 'bottom-12'}`}
                     >
                         <span>확인</span>
                     </button>

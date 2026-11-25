@@ -1843,7 +1843,7 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
             )}
 
             {/* Mobile D-Pad */}
-            <div className="absolute bottom-4 right-4 z-20 xl:hidden grid grid-cols-3 gap-1 w-28 h-28 opacity-85">
+            <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-1 w-28 h-28 opacity-85">
                 <div />
                 <button type="button" onTouchStart={() => (dpadRef.current = 'up')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white">
                     <ArrowUp size={16} />

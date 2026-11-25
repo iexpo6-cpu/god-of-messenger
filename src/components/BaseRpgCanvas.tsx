@@ -2174,7 +2174,7 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
 
             {/* Mobile D-Pad */}
             {mode === 'explore' && (
-                <div className="absolute bottom-4 right-4 z-20 xl:hidden grid grid-cols-3 gap-1 w-28 h-28 opacity-85">
+                <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-1 w-28 h-28 opacity-85">
                     <div />
                     <button
                         type="button"
