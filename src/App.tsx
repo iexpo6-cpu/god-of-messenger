@@ -7013,7 +7013,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                     {isMobileHeaderCollapsed ? '▼ 메뉴·즐찾 펼치기' : '▲ 상단 메뉴 접기'}
                                 </button>
                                 {/* Top Row: 기능 & 메뉴 버튼 */}
-                                <div className={`${isMobileHeaderCollapsed ? 'hidden' : 'flex'} items-center gap-1.5 sm:gap-2`}>
+                                <div className={`${isMobileHeaderCollapsed ? 'hidden' : 'flex'} items-center gap-1.5 sm:gap-2 relative z-[140]`}>
                                     {/* 1. 기능 드롭다운 버튼 */}
                                     <div className="relative">
                                     <button 

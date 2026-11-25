@@ -180,7 +180,7 @@ export const HeaderShortcuts: React.FC<HeaderShortcutsProps> = ({ unreadMailCoun
     const categories: ShortcutCategory[] = ['기능', '장소', '시스템'];
 
     return (
-        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 bg-slate-950/90 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl border border-slate-800/95 backdrop-blur-md shadow-xl max-w-[92vw] sm:max-w-[72vw] select-none shrink-0 relative z-[130]">
+        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 bg-slate-950/90 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl border border-slate-800/95 backdrop-blur-md shadow-xl max-w-[92vw] sm:max-w-[72vw] select-none shrink-0 relative z-[110]">
             {/* Pinned Shortcut Action Buttons */}
             {pinnedIds.map(id => {
                 const def = ALL_SHORTCUTS.find(s => s.id === id);
