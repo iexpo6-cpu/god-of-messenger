@@ -10,6 +10,7 @@ import {
     SpriteDirection
 } from '../services/rpgSpriteManifest';
 import { ZoomIn, ZoomOut, Maximize2, Compass } from 'lucide-react';
+import { getCachedCityAssetImage, getPropAssetUrl, loadCityAssetImage } from '../services/cityAssetManifest';
 
 export interface DungeonFloatingText {
     id: string;
@@ -863,6 +864,22 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                             ctx.drawImage(spImg, px + 6, py + 8, TILE_PX - 12, TILE_PX - 12);
                             drawMiniBadge(ctx, cx, py + TILE_PX - 7, '가시함정', '#450a0a', '#fda4af');
                         }
+                    } else if (tile.propType === 'rescue_survivor' && !tile.isCleared) {
+                        const survUrl = getPropAssetUrl('srpg', 'rescued_survivor');
+                        loadCityAssetImage(survUrl);
+                        const survImg = getCachedCityAssetImage(survUrl);
+                        ctx.save();
+                        ctx.fillStyle = `rgba(34, 211, 238, ${0.22 + pulse * 0.2})`;
+                        ctx.beginPath();
+                        ctx.arc(cx, cy + 4, 24, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                        if (survImg && survImg.complete && survImg.naturalWidth > 0) {
+                            ctx.drawImage(survImg, px + 4, py + 2 + bob * 0.5, TILE_PX - 8, TILE_PX - 6);
+                        } else {
+                            drawMiniBadge(ctx, cx, cy, '🆘', '#0e7490', '#ecfeff');
+                        }
+                        drawMiniBadge(ctx, cx, py + TILE_PX - 7, '🆘 실종자', '#0e7490', '#cffafe');
                     }
 
                     // 3-B. Entrance / Stairs

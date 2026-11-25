@@ -601,6 +601,7 @@ export enum SkillType {
   HEAL = '회복',
   SUMMON = '소환',
   CLONE = '분신',
+  TELEPORT = '이동 (텔레포트)',
 }
 
 export enum BattleRole {
@@ -801,6 +802,8 @@ export interface FinalSkillEnhanceData {
   squareWidthBonus?: number;
   squareLengthBonus?: number;
   areaRadiusBonus?: number;
+  teleportRangeBonus?: number; // 이동(텔레포트) 스킬 사거리 보너스 (+1m per stack)
+  summonStatBoostPct?: number; // 소환/분신 스킬 소환수 능력치 % 강화 (+10% per stack)
   
   // 공격 스킬 전용 강화
   levelScaleBonus?: number; // 계수 한계 돌파 (강화 횟수당 +50% 증가)

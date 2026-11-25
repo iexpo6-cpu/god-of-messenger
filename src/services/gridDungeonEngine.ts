@@ -13,7 +13,8 @@ export type GridPropType =
     | 'campfire'
     | 'spike_trap'
     | 'lever'
-    | 'merchant';
+    | 'merchant'
+    | 'rescue_survivor';
 export type GridZoneType = 'fire' | 'water' | 'ice' | 'poison' | 'holy' | 'thunder';
 export type GridRoomRole = 'start' | 'boss' | 'shrine' | 'rune' | 'treasure' | 'storage' | 'normal';
 export type GridEnemyVariant = 'shadow' | 'wraith' | 'golem' | 'mimic';

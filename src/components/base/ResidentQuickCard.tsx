@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Character, Companion, ItemRarity, JobType } from '../../types';
+import { Character, ClassTier, Companion, ItemRarity, JobType, SkillType } from '../../types';
 import { MAX_PARTY_SIZE } from '../../constants';
 import { BaseResidentEntity } from '../../services/baseTilemapEngine';
-import { FlaskConical, Gift, Hammer, Heart, MessageCircle, UserPlus, Users, X } from 'lucide-react';
+import { hasDimensionalLeapSkill } from '../../services/travelCalculationService';
+import { FlaskConical, Gift, Hammer, Heart, MessageCircle, Sparkles, UserPlus, Users, X } from 'lucide-react';
 
 interface ResidentQuickCardProps {
     resident: BaseResidentEntity;
@@ -15,11 +16,11 @@ interface ResidentQuickCardProps {
     onClose: () => void;
 }
 
-const QUICK_CHAT_LINES = [
-    '오늘도 기지가 평화롭네요. 사자님 덕분에 마음이 놓입니다!',
+const getQuickChatLines = (playerName: string) => [
+    `오늘도 기지가 평화롭네요. ${playerName}님 덕분에 마음이 놓입니다!`,
     '방금 전까지 맡은 일을 정리하고 있었어요. 혹시 필요한 게 있으신가요?',
     '기지 동료들과 함께 지내다 보니 하루가 금세 지나가네요.',
-    '다음 원정도 사자님과 함께라면 분명 좋은 결과가 있을 거예요!',
+    `다음 원정도 ${playerName}님과 함께라면 분명 좋은 결과가 있을 거예요!`,
     '잠깐 쉬면서 차라도 한 잔 하실래요? 언제든 환영입니다.'
 ];
 
@@ -45,6 +46,84 @@ const ResidentQuickCard: React.FC<ResidentQuickCardProps> = ({
 }) => {
     const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
     const [showGiftMenu, setShowGiftMenu] = useState(false);
+    const [showDetailModal, setShowDetailModal] = useState(false);
+
+    const isDimensionalSage = resident.id === 'npc_dimensional_sage';
+    const hasDimensionalLeap = hasDimensionalLeapSkill(character);
+
+    if (isDimensionalSage) {
+        const handleLearnDimensionalLeap = () => {
+            if (!onUpdateCharacter || hasDimensionalLeap) return;
+            const nextSkills = [
+                ...(character.skills || []),
+                {
+                    id: 'skill_dimensional_leap',
+                    name: '차원 도약',
+                    tier: ClassTier.LAST,
+                    type: SkillType.TELEPORT,
+                    targetType: 'self' as any,
+                    mpCost: 100,
+                    baseMpCost: 100,
+                    level: 1,
+                    maxLevel: 10,
+                    currentMastery: 0,
+                    effectFormula: '차원의 경계를 넘어 신계와 인간계를 자유롭게 오가는 초월 이동 비기',
+                    description: '차원의 경계를 넘어 신계로 진입하거나 신계 내부를 이동할 때 사용하는 초월 이동 스킬입니다. (Map 모달 신계 차원 도약 해금)'
+                }
+            ];
+            onUpdateCharacter(
+                { ...character, skills: nextSkills },
+                '[차원 현자 아스트라] 초월 이동 비기 [차원 도약]을 전수받았습니다! 이제 Map 모달에서 신계 차원 도약을 사용할 수 있습니다.'
+            );
+            setFeedbackMsg('✨ [차원 도약] 스킬을 습득했습니다! 이제 신계로 차원 도약할 수 있습니다.');
+        };
+
+        return (
+            <div className="fixed bottom-4 right-4 z-[90] w-[92vw] max-w-sm bg-slate-950/95 border-2 border-amber-400/70 rounded-2xl shadow-2xl p-4 space-y-3 animate-in slide-in-from-bottom-4">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-400/40 text-amber-300">
+                            <Sparkles size={18} />
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-black text-amber-200">{resident.name}</h4>
+                            <p className="text-[11px] text-indigo-300 font-bold">{resident.role}</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-1 text-slate-400 hover:text-white cursor-pointer">
+                        <X size={16} />
+                    </button>
+                </div>
+                <p className="text-xs text-slate-200 leading-relaxed bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                    {hasDimensionalLeap
+                        ? `"${character.name}, 그대는 이미 [차원 도약]의 이치를 깨우쳤소. 언제든 세계 지도(Map)에서 신계로 차원 도약할 수 있을 것이오."`
+                        : `"라스트 클래스와 500레벨의 경지에 오른 자여, 내 그대에게 신계와 인간계를 잇는 초월 이동 비기 [차원 도약]을 전수하러 왔소."`}
+                </p>
+                {feedbackMsg && (
+                    <div className="p-2.5 rounded-xl bg-emerald-950/70 border border-emerald-500/50 text-xs text-emerald-200 font-bold">
+                        {feedbackMsg}
+                    </div>
+                )}
+                <div className="flex gap-2">
+                    {!hasDimensionalLeap && (
+                        <button
+                            onClick={handleLearnDimensionalLeap}
+                            className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-black text-xs shadow-lg cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                            <Sparkles size={14} />
+                            <span>차원 도약 스킬 배우기</span>
+                        </button>
+                    )}
+                    <button
+                        onClick={onClose}
+                        className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer"
+                    >
+                        닫기
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const isInActiveParty = character.companions.some(c => c.id === resident.id);
     const liveComp: Companion =
@@ -111,7 +190,8 @@ const ResidentQuickCard: React.FC<ResidentQuickCardProps> = ({
     };
 
     const handleQuickChat = () => {
-        const line = QUICK_CHAT_LINES[Math.floor(Math.random() * QUICK_CHAT_LINES.length)];
+        const lines = getQuickChatLines(character.name || '플레이어');
+        const line = lines[Math.floor(Math.random() * lines.length)];
         setFeedbackMsg(`💬 "${line}" (호감도 +1)`);
         setShowGiftMenu(false);
         updateCompanionInChar(comp => {
@@ -153,7 +233,7 @@ const ResidentQuickCard: React.FC<ResidentQuickCardProps> = ({
         const isChild = liveComp.classType?.includes('자녀') || liveComp.classType?.includes('Child');
         const ageNum = parseInt(String(liveComp.age || '20').replace(/[^0-9]/g, ''), 10) || 20;
         if (isChild && ageNum < 11) {
-            setFeedbackMsg(`⚠️ 자녀는 11세부터 모험 파티에 합류할 수 있습니다. (현재 ${ageNum}세)`);
+            setFeedbackMsg(`⚠️ 자녀는 11세부터 모험 파티에 합류할 수 있습니다. (현재 ${ageNum})`);
             return;
         }
         const draft: Character = JSON.parse(JSON.stringify(character));
@@ -170,22 +250,34 @@ const ResidentQuickCard: React.FC<ResidentQuickCardProps> = ({
     return (
         <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 w-[94%] max-w-md bg-slate-950/95 border border-indigo-500/60 rounded-2xl p-4 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                    <div className="text-sm font-black text-white flex items-center gap-2 flex-wrap">
-                        <Users size={15} className="text-indigo-400 shrink-0" />
-                        <span>{liveComp.name}</span>
-                        <span className="text-[11px] font-bold text-indigo-300 bg-indigo-950 px-2 py-0.5 rounded">
-                            Lv.{liveComp.level || 1}
-                        </span>
-                        <span className="text-[11px] font-bold text-rose-300 bg-rose-950/70 px-2 py-0.5 rounded flex items-center gap-1">
-                            <Heart size={10} className="text-rose-400" /> {liveComp.affection ?? 0} / 100
-                        </span>
-                    </div>
-                    <div className="text-xs text-slate-400 mt-0.5">
-                        {resident.role} · {isInActiveParty ? '현재 파티 동행 중' : busyReason ? busyReason : '기지 대기 동료'}
-                    </div>
-                    <div className="text-xs text-indigo-200 mt-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
-                        {feedbackMsg || resident.activityBubble}
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                    {liveComp.visualUrl ? (
+                        <img
+                            src={liveComp.visualUrl}
+                            alt={liveComp.name}
+                            className="w-16 h-16 rounded-xl object-cover border border-indigo-500/40 shrink-0 bg-slate-900"
+                        />
+                    ) : (
+                        <div className="w-16 h-16 rounded-xl border border-indigo-500/40 bg-slate-900 flex items-center justify-center shrink-0">
+                            <Users size={24} className="text-indigo-400" />
+                        </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                        <div className="text-sm font-black text-white flex items-center gap-2 flex-wrap">
+                            <span>{liveComp.name}</span>
+                            <span className="text-[11px] font-bold text-indigo-300 bg-indigo-950 px-2 py-0.5 rounded">
+                                Lv.{liveComp.level || 1}
+                            </span>
+                            <span className="text-[11px] font-bold text-rose-300 bg-rose-950/70 px-2 py-0.5 rounded flex items-center gap-1">
+                                <Heart size={10} className="text-rose-400" /> {liveComp.affection ?? 0} / 100
+                            </span>
+                        </div>
+                        <div className="text-xs text-slate-400 mt-0.5">
+                            {resident.role} · {isInActiveParty ? '현재 파티 동행 중' : busyReason ? busyReason : '기지 대기 동료'}
+                        </div>
+                        <div className="text-xs text-indigo-200 mt-2 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                            {feedbackMsg || resident.activityBubble}
+                        </div>
                     </div>
                 </div>
                 <button type="button" onClick={onClose} className="text-slate-400 hover:text-white p-1 shrink-0">
@@ -289,19 +381,21 @@ const ResidentQuickCard: React.FC<ResidentQuickCardProps> = ({
                         )}
                     </>
                 )}
-                {onInspectCompanion && (
-                    <button
-                        type="button"
-                        onClick={() => {
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (isInActiveParty && onInspectCompanion) {
                             const cid = resident.id;
                             onClose();
                             onInspectCompanion(cid);
-                        }}
-                        className="flex-1 py-2 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black"
-                    >
-                        상세 정보
-                    </button>
-                )}
+                        } else {
+                            setShowDetailModal(true);
+                        }
+                    }}
+                    className="flex-1 py-2 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black"
+                >
+                    상세 정보
+                </button>
                 <button
                     type="button"
                     onClick={onClose}
@@ -310,6 +404,108 @@ const ResidentQuickCard: React.FC<ResidentQuickCardProps> = ({
                     닫기
                 </button>
             </div>
+
+            {showDetailModal && (
+                <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-md bg-slate-950 border-2 border-indigo-500/60 rounded-2xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto custom-scrollbar">
+                        <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
+                            <div className="flex items-center gap-3">
+                                {liveComp.visualUrl ? (
+                                    <img
+                                        src={liveComp.visualUrl}
+                                        alt={liveComp.name}
+                                        className="w-16 h-16 rounded-xl object-cover border border-indigo-500/50 bg-slate-900 shrink-0"
+                                    />
+                                ) : (
+                                    <div className="w-16 h-16 rounded-xl border border-indigo-500/50 bg-slate-900 flex items-center justify-center shrink-0">
+                                        <Users size={24} className="text-indigo-400" />
+                                    </div>
+                                )}
+                                <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <h3 className="text-base font-black text-white">{liveComp.name}</h3>
+                                        <span className="text-[11px] font-bold text-indigo-300 bg-indigo-950 px-2 py-0.5 rounded">
+                                            Lv.{liveComp.level || 1}
+                                        </span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 mt-0.5">
+                                        {liveComp.job || resident.role} · {liveComp.gender || '미상'} · {liveComp.age || '?'} · {liveComp.nation || '무소속'}
+                                    </div>
+                                    <div className="text-xs text-rose-300 font-bold mt-1 flex items-center gap-1">
+                                        <Heart size={11} className="text-rose-400" /> 호감도 {liveComp.affection ?? 0} / 100
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowDetailModal(false)}
+                                className="text-slate-400 hover:text-white p-1"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
+                                <div className="text-slate-400 text-[10px]">HP</div>
+                                <div className="text-emerald-300 font-black">
+                                    {(liveComp.stats?.hp || 0).toLocaleString()} / {(liveComp.stats?.maxHp || liveComp.stats?.hp || 100).toLocaleString()}
+                                </div>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800">
+                                <div className="text-slate-400 text-[10px]">MP</div>
+                                <div className="text-sky-300 font-black">
+                                    {(liveComp.stats?.mp || 0).toLocaleString()} / {(liveComp.stats?.maxMp || liveComp.stats?.mp || 50).toLocaleString()}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                            {[
+                                { label: '근력 (STR)', val: liveComp.stats?.str ?? 0, color: 'text-rose-300' },
+                                { label: '지력 (INT)', val: liveComp.stats?.int ?? 0, color: 'text-sky-300' },
+                                { label: '지혜 (WIS)', val: liveComp.stats?.wis ?? 0, color: 'text-violet-300' },
+                                { label: '민첩 (AGI)', val: liveComp.stats?.agi ?? 0, color: 'text-emerald-300' },
+                                { label: '방어 (DEF)', val: liveComp.stats?.def ?? 0, color: 'text-amber-300' },
+                                { label: '제어 (CTRL)', val: liveComp.stats?.ctrl ?? 0, color: 'text-cyan-300' },
+                            ].map(s => (
+                                <div key={s.label} className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
+                                    <div className="text-[10px] text-slate-400">{s.label}</div>
+                                    <div className={`text-sm font-black ${s.color}`}>{s.val.toLocaleString()}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1.5 text-xs">
+                            <div>
+                                <span className="text-slate-400">성격:</span>{' '}
+                                <span className="text-slate-200 font-semibold">{liveComp.personality || '알 수 없음'}</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-400">전투 스타일:</span>{' '}
+                                <span className="text-indigo-300 font-semibold">{liveComp.combatStyle || '일반'}</span>
+                            </div>
+                            <div>
+                                <span className="text-slate-400">기지 상태:</span>{' '}
+                                <span className="text-amber-300 font-semibold">{busyReason || '기지 대기 거주민'}</span>
+                            </div>
+                            {liveComp.appearance && (
+                                <div className="text-slate-300 text-[11px] leading-relaxed pt-1 border-t border-slate-800">
+                                    {liveComp.appearance}
+                                </div>
+                            )}
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setShowDetailModal(false)}
+                            className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black"
+                        >
+                            확인
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

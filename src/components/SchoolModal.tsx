@@ -375,7 +375,12 @@ const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, o
                 else if (type === 'Magic') { entity.stats.int += 2*val; }
                 else if (type === 'Divine') { entity.stats.ctrl += 2*val; }
                 else if (type === 'Strategy') { entity.stats.wis += 2*val; }
-                else if (type === 'Physical') { entity.stats.def += 2*val; }
+                else if (type === 'Physical') {
+                    const hpGain = 10 * val;
+                    entity.stats.maxHp = (entity.stats.maxHp || 100) + hpGain;
+                    entity.stats.hp = Math.min(entity.stats.maxHp, (entity.stats.hp || 0) + hpGain);
+                    entity.stats.def += 2 * val;
+                }
                 else if (type === 'Weapon') {
                     const weaponTypeToUpdate = ('id' in entity) 
                         ? (entity.equipment.weapon ? getWeaponTypeFromItem(entity.equipment.weapon) : null)
@@ -411,7 +416,7 @@ const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, o
             else if (type === 'Magic') statMsg = `INT +${2*val}`;
             else if (type === 'Divine') statMsg = `CTRL +${2*val}`;
             else if (type === 'Strategy') statMsg = `WIS +${2*val}`;
-            else if (type === 'Physical') statMsg = `DEF +${2*val}`;
+            else if (type === 'Physical') statMsg = `MAX HP +${10 * val}, DEF +${2 * val}`;
             else if (type === 'Weapon') statMsg = `${WEAPON_TYPE_KOREAN[selectedWeapon]} 숙련도 +${5 * multiplier + repBonus}`;
         } else {
             statMsg = "변동 없음";

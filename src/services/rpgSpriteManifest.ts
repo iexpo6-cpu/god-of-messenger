@@ -183,6 +183,12 @@ export const RPG_SPRITE_CATALOG: RpgSpriteCatalogItem[] = [
     { key: 'npc_teacher_lady', regionKey: 'europe', gender: 'female', label: '아카데미 여성 교사', tag: 'NPC' },
     { key: 'npc_teacher_lib', regionKey: 'europe', gender: 'female', label: '마법 도서관 사서', tag: 'NPC' },
     { key: 'npc_teacher_alch', regionKey: 'europe', gender: 'male', label: '연금술 연구 학자', tag: 'NPC' },
+    { key: 'npc_quest_noble', regionKey: 'europe', gender: 'male', label: '귀족 의뢰인', tag: 'NPC' },
+    { key: 'npc_quest_scout', regionKey: 'europe', gender: 'male', label: '외곽 정찰병', tag: 'NPC' },
+    { key: 'npc_quest_dungeon', regionKey: 'europe', gender: 'female', label: '던전 수색대원', tag: 'NPC' },
+    { key: 'npc_quest_escort', regionKey: 'europe', gender: 'male', label: '상단 호송원', tag: 'NPC' },
+    { key: 'npc_quest_student', regionKey: 'asia', gender: 'female', label: '학교 파견 안내생', tag: 'NPC' },
+    { key: 'npc_quest_officer', regionKey: 'europe', gender: 'male', label: '전선 연락 장교', tag: 'NPC' },
 ];
 
 /**

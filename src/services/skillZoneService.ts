@@ -86,6 +86,34 @@ export const getZoneCapsForTier = (tier?: ClassTier | string): TierZoneCap => {
     return SKILL_ZONE_TIER_CAPS[key] || SKILL_ZONE_TIER_CAPS[ClassTier.FIRST];
 };
 
+export const TELEPORT_RANGE_BY_TIER: Record<string, number> = {
+    [ClassTier.NONE]: 4,
+    [ClassTier.FIRST]: 6,
+    [ClassTier.SECOND]: 10,
+    [ClassTier.LAST]: 15,
+    [ClassTier.FINAL]: 22
+};
+
+export const getTeleportRangeByTier = (tier?: ClassTier | string): number => {
+    const key = normalizeSkillTierKey(tier);
+    return TELEPORT_RANGE_BY_TIER[key] ?? 6;
+};
+
+export const getEffectiveTeleportRange = (skill: Skill): number => {
+    const baseRange = skill.zoneConfig?.targetRadius || getTeleportRangeByTier(skill.tier);
+    const lv = Math.max(1, skill.level || 1);
+    const levelBonus = normalizeSkillTierKey(skill.tier) === ClassTier.FINAL ? Number((lv * 0.1).toFixed(1)) : 0;
+    const enhBonus = skill.finalEnhanceData?.teleportRangeBonus ?? skill.finalEnhanceData?.targetRadiusBonus ?? 0;
+    return Number((baseRange + levelBonus + enhBonus).toFixed(1));
+};
+
+export const getSummonLevelStatMultiplier = (skill: Skill): number => {
+    const lv = Math.max(1, skill.level || 1);
+    const levelBoost = (lv - 1) * 0.05;
+    const enhanceBoost = (skill.finalEnhanceData?.summonStatBoostPct || 0) / 100;
+    return 1 + levelBoost + enhanceBoost;
+};
+
 export const getDefaultZoneConfig = (
     skillType: SkillType | string,
     targetType: 'single' | 'aoe' | string,

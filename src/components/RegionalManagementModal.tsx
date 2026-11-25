@@ -31,16 +31,17 @@ import {
     DefenseDispatch
 } from '../services/territoryDefenseService';
 
+type TabType = 'overview' | 'dispatch' | 'status' | 'defense';
+
 interface Props {
     character: Character;
     onClose: () => void;
     onUpdateCharacter: (newChar: Character, logMsg: string) => void;
+    initialTab?: TabType;
 }
 
-type TabType = 'overview' | 'dispatch' | 'status' | 'defense';
-
-const RegionalManagementModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter }) => {
-    const [activeTab, setActiveTab] = useState<TabType>('overview');
+const RegionalManagementModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, initialTab }) => {
+    const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'overview');
     const [resultData, setResultData] = useState<ResultData | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);

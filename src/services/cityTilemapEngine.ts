@@ -59,7 +59,9 @@ export type PortalActionType =
     | 'beast_city'
     | 'demon_city'
     | 'transcendent_arena'
-    | 'abyss_tower';
+    | 'abyss_tower'
+    | 'regional_admin'
+    | 'hunt_info';
 
 export interface CityPortalNode {
     id: string;
@@ -441,7 +443,7 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
         const templeH = northH + 1;
         const templeX = cx - Math.floor(templeW / 2);
         placeBuilding({
-            id: 'shingye_temple', label: '신의 사자 신전', subLabel: `${params.city} 성전 진입`,
+            id: 'shingye_temple', label: params.city === '신의 거처' ? '절대 신 엘라의 신전' : '신의 사자 신전', subLabel: `${params.city} 성전 진입`,
             actionType: 'district', district: 'Imperial', spriteKind: 'landmark',
             buildingX: templeX, buildingY: 2, buildingW: templeW, buildingH: templeH,
             doorX: cx, doorY: 2 + templeH - 1, roofColor: '#d97706', accentColor: '#fde047', iconText: '✨'
@@ -469,6 +471,22 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
             doorX: rx + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
             roofColor: '#059669', accentColor: '#6ee7b7', iconText: '🌿'
         });
+        portals.push({
+            id: 'hunt_signpost',
+            label: '사냥터 몬스터 정보',
+            subLabel: '출몰 몬스터·레벨 표지판',
+            actionType: 'hunt_info',
+            spriteKind: 'house',
+            buildingX: rx - 1,
+            buildingY: 2 + sideH,
+            buildingW: 1,
+            buildingH: 1,
+            doorX: rx - 1,
+            doorY: 2 + sideH,
+            roofColor: '#065f46',
+            accentColor: '#6ee7b7',
+            iconText: '📋'
+        });
 
         // 4. 초월 그랜드 아레나 (오직 '신의 거처' 전용!)
         if (params.canOpenTranscendentArena && params.city === '신의 거처') {
@@ -486,7 +504,7 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
         // === 마계 전용 시설만 배치 (상업지구·학교·용병길드·군사구역 없음, 무한 심연 탑은 '임페리얼' 전용!) ===
         // 1. 북쪽 중앙: 마신황의 궁궐
         placeBuilding({
-            id: 'magye_palace', label: '마신황의 궁궐', subLabel: `${params.city} 궁궐 진입`,
+            id: 'magye_palace', label: params.city === '임페리얼' ? '마신황의 궁궐' : '제너럴의 궁궐', subLabel: `${params.city} 궁궐 진입`,
             actionType: 'district', district: 'Imperial', spriteKind: 'landmark',
             buildingX: northX, buildingY: 2, buildingW: northW, buildingH: northH,
             doorX: cx, doorY: 2 + northH - 1, roofColor: '#991b1b', accentColor: '#f87171', iconText: '👑'
@@ -513,6 +531,22 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
             buildingX: rx, buildingY: 2, buildingW: sideW, buildingH: sideH,
             doorX: rx + Math.floor(sideW / 2), doorY: 2 + sideH - 1,
             roofColor: '#7f1d1d', accentColor: '#fca5a5', iconText: '🔥'
+        });
+        portals.push({
+            id: 'hunt_signpost',
+            label: '사냥터 몬스터 정보',
+            subLabel: '출몰 몬스터·레벨 표지판',
+            actionType: 'hunt_info',
+            spriteKind: 'house',
+            buildingX: rx - 1,
+            buildingY: 2 + sideH,
+            buildingW: 1,
+            buildingH: 1,
+            doorX: rx - 1,
+            doorY: 2 + sideH,
+            roofColor: '#7f1d1d',
+            accentColor: '#fca5a5',
+            iconText: '📋'
         });
 
         // 4. 무한 심연 탑 (오직 마계 수도 '임페리얼' 전용!)
@@ -639,12 +673,29 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
         // 남동쪽: 도시 외곽(사냥터) + 시험 던전
         if (hasDistrict('Outskirts')) {
             const ox = cols - 2 - botW * 2 - 1;
+            const outX = Math.max(cx + 2, ox);
             placeBuilding({
                 id: 'outskirts', label: '야외 사냥터', subLabel: '필드 몬스터 토벌',
                 actionType: 'district', district: 'Outskirts', openHuntMap: true, spriteKind: 'hunting_field',
-                buildingX: Math.max(cx + 2, ox), buildingY: botY, buildingW: botW, buildingH: 2,
-                doorX: Math.max(cx + 2, ox) + Math.floor(botW / 2), doorY: botY + 1,
+                buildingX: outX, buildingY: botY, buildingW: botW, buildingH: 2,
+                doorX: outX + Math.floor(botW / 2), doorY: botY + 1,
                 roofColor: '#c2410c', accentColor: '#fdba74', iconText: '🏕️'
+            });
+            portals.push({
+                id: 'hunt_signpost',
+                label: '사냥터 몬스터 정보',
+                subLabel: '출몰 몬스터·레벨 표지판',
+                actionType: 'hunt_info',
+                spriteKind: 'house',
+                buildingX: outX - 1,
+                buildingY: botY + 1,
+                buildingW: 1,
+                buildingH: 1,
+                doorX: outX - 1,
+                doorY: botY + 1,
+                roofColor: '#9a3412',
+                accentColor: '#fdba74',
+                iconText: '📋'
             });
         }
 
@@ -679,6 +730,31 @@ export const buildCityTilemap = (params: BuildCityTilemapParams): CityTilemapDat
             doorX: baseX + Math.floor(baseW / 2), doorY: baseY + baseH - 1,
             roofColor: '#047857', accentColor: '#34d399', iconText: '🏰'
         });
+    }
+
+    // 지역 행정 건물 (수도: 수도 행정청 / 일반 도시: 지역행정소) — 신계·마계 제외
+    if (!isShingye && !isMagye) {
+    const isCapAdmin = params.tier === 'Capital';
+    const adminW = isCapAdmin ? 4 : 3;
+    const adminH = isCapAdmin ? 3 : 2;
+    const adminX = Math.max(2, Math.min(cols - adminW - 2, cx - plazaHalfW - adminW - 1));
+    const adminY = Math.max(2, Math.min(rows - adminH - 3, cy + 1));
+    placeBuilding({
+        id: isCapAdmin ? 'capital_admin' : 'city_admin_plaza',
+        label: isCapAdmin ? '수도 행정청' : '지역행정소',
+        subLabel: isCapAdmin ? '수도 지역대장·총독 관저' : '지역대장·행정 관리',
+        actionType: 'regional_admin',
+        spriteKind: isCapAdmin ? 'landmark' : 'house',
+        buildingX: adminX,
+        buildingY: adminY,
+        buildingW: adminW,
+        buildingH: adminH,
+        doorX: adminX + Math.floor(adminW / 2),
+        doorY: adminY + adminH - 1,
+        roofColor: isCapAdmin ? '#92400e' : '#0f766e',
+        accentColor: isCapAdmin ? '#fbbf24' : '#2dd4bf',
+        iconText: '🏛️'
+    });
     }
 
     // 남쪽 중앙 성문 (월드맵 이동)

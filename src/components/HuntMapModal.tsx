@@ -13,6 +13,7 @@ interface Props {
     character: Character;
     onEnterField: (bandId: string, minLvl: number, maxLvl: number) => void;
     initialBandId?: string;
+    readOnlyInfoOnly?: boolean;
 }
 
 // 지역 및 국가별 세부 고유 분위기 / 테마 셋업
@@ -129,7 +130,7 @@ const getRegionAtmosphere = (region: string, nation: string) => {
     };
 };
 
-const HuntMapModal: React.FC<Props> = ({ isOpen, onClose, character, onEnterField, initialBandId }) => {
+const HuntMapModal: React.FC<Props> = ({ isOpen, onClose, character, onEnterField, initialBandId, readOnlyInfoOnly }) => {
     const defaultBandId = initialBandId || character.lastHuntingBandId || null;
     const [selectedBandId, setSelectedBandId] = useState<string | null>(defaultBandId);
     const [filterCategory, setFilterCategory] = useState<'all' | 'safe' | 'danger'>('all');
@@ -553,6 +554,7 @@ const HuntMapModal: React.FC<Props> = ({ isOpen, onClose, character, onEnterFiel
                         </div>
 
                         {/* 하단 진입 실행 버튼 */}
+                        {!readOnlyInfoOnly && (
                         <div className="w-full max-w-xl mt-6 pt-2">
                             <button 
                                 id="enter-field-departure-btn"
@@ -567,6 +569,7 @@ const HuntMapModal: React.FC<Props> = ({ isOpen, onClose, character, onEnterFiel
                                 <span>진입 즉시 {selectedBand.name}의 야생 마물과 조우하여 사냥 전투가 진행됩니다.</span>
                             </p>
                         </div>
+                        )}
 
                     </div>
                 </div>

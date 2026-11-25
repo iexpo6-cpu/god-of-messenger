@@ -54,7 +54,7 @@ export type ShortcutId =
     | 'settings' 
     | 'exit';
 
-export type ShortcutCategory = '기능' | '기지 시설' | '장소' | '시스템';
+export type ShortcutCategory = '기능' | '장소' | '시스템';
 
 interface ShortcutDefinition {
     id: ShortcutId;
@@ -116,9 +116,6 @@ const ALL_SHORTCUTS: ShortcutDefinition[] = [
     { id: 'tactics', label: '전술', icon: Target, category: '기능', colorClass: 'text-purple-400 hover:border-purple-500' },
     { id: 'dashboard', label: '종합관리', icon: Grid, category: '기능', colorClass: 'text-cyan-400 hover:border-cyan-500' },
 
-    // 2. 기지 시설 바로가기 (모든 22개 기지 시설 등록)
-    ...ALL_FACILITY_SHORTCUTS,
-
     // 3. 장소 및 이동 바로가기
     { id: 'loc_base', label: '기지 귀환', icon: Castle, category: '장소', colorClass: 'text-emerald-400 hover:border-emerald-500' },
     { id: 'loc_capital', label: '수도 이동', icon: Crown, category: '장소', colorClass: 'text-yellow-300 hover:border-yellow-400' },
@@ -132,7 +129,7 @@ const ALL_SHORTCUTS: ShortcutDefinition[] = [
     { id: 'exit', label: '종료', icon: LogOut, category: '시스템', colorClass: 'text-red-400 hover:border-red-500' }
 ];
 
-const DEFAULT_PINNED: ShortcutId[] = ['base', 'map', 'mailbox', 'facility_workshop', 'facility_monster_farm'];
+const DEFAULT_PINNED: ShortcutId[] = ['character', 'base', 'map', 'mailbox', 'quest'];
 
 interface HeaderShortcutsProps {
     unreadMailCount: number;
@@ -147,7 +144,8 @@ export const HeaderShortcuts: React.FC<HeaderShortcutsProps> = ({ unreadMailCoun
             if (saved) {
                 const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed) && parsed.length > 0) {
-                    return parsed.slice(0, 10);
+                    const filtered = parsed.filter((id: any) => !String(id).startsWith('facility_'));
+                    return (filtered.length > 0 ? filtered : DEFAULT_PINNED).slice(0, 10);
                 }
             }
         } catch {
@@ -179,10 +177,10 @@ export const HeaderShortcuts: React.FC<HeaderShortcutsProps> = ({ unreadMailCoun
         }
     };
 
-    const categories: ShortcutCategory[] = ['기능', '기지 시설', '장소', '시스템'];
+    const categories: ShortcutCategory[] = ['기능', '장소', '시스템'];
 
     return (
-        <div className="flex items-center gap-1.2 sm:gap-2 bg-slate-950/85 p-1 sm:p-2 rounded-xl sm:rounded-2xl border border-slate-800/95 backdrop-blur-md shadow-lg max-w-[210px] xs:max-w-[250px] sm:max-w-md md:max-w-lg lg:max-w-none overflow-x-auto custom-scrollbar select-none shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 bg-slate-950/90 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl border border-slate-800/95 backdrop-blur-md shadow-xl max-w-[92vw] sm:max-w-[72vw] select-none shrink-0 relative z-[130]">
             {/* Pinned Shortcut Action Buttons */}
             {pinnedIds.map(id => {
                 const def = ALL_SHORTCUTS.find(s => s.id === id);

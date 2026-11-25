@@ -235,6 +235,36 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
             newDungeon.totalRunesRequired = isSeasonalBoss ? 3 : 0;
             newDungeon.floorCache = currentCache;
 
+            // 진행 중인 구출 임무(Rescue)가 현재 도시 던전 대상이면 실종자 NPC를 빈 바닥 타일에 배치
+            const activeRescueQuest = (character.mercenaryData?.activeQuests || []).find(
+                q =>
+                    q.type === 'Rescue' &&
+                    (q.currentAmount || 0) < (q.targetAmount || 1) &&
+                    (!q.location?.city || q.location.city === currentCity || q.title.includes(currentCity))
+            );
+            if (activeRescueQuest) {
+                const candidates: GridTile[] = [];
+                for (let ry = 1; ry < newDungeon.height - 1; ry++) {
+                    for (let rx = 1; rx < newDungeon.width - 1; rx++) {
+                        const t = newDungeon.tiles[ry][rx];
+                        if (
+                            t.type === 'floor' &&
+                            !t.content &&
+                            !t.propType &&
+                            Math.hypot(rx - newDungeon.playerPos.x, ry - newDungeon.playerPos.y) >= 3
+                        ) {
+                            candidates.push(t);
+                        }
+                    }
+                }
+                if (candidates.length > 0) {
+                    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+                    pick.propType = 'rescue_survivor';
+                    pick.name = '고립된 실종자';
+                    pick.description = '던전 안에서 구조를 기다리고 있는 조난자입니다. 다가가 구출하세요!';
+                }
+            }
+
             const logMsg = targetFloor === 0
                 ? `[미궁 탐험] ${currentCity}의 ${isSeasonalBoss ? '시즌 신화 광활 미궁(5층 심연)' : '지하 미궁(3층)'}에 진입했습니다.`
                 : `[미궁 심층 진입] 지하 ${targetFloor + 1}층으로 계단을 내려왔습니다.`;
@@ -510,6 +540,31 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                 revealFogOfWar(tiles, playerPos.x, playerPos.y, 3.2);
                 logMsg = `[마력 수정 공명] 수정의 마나를 흡수하여 MP +35% 회복 및 주변 3.2칸 시야를 영구 점등했습니다!`;
                 emitFloatingGimmick(playerPos.x, playerPos.y, '💎 MP +35% · 수정 비콘 점등!', '#38bdf8', logMsg);
+            } else if (targetTile.propType === 'rescue_survivor') {
+                targetTile.isCleared = true;
+                targetTile.name = '구조 완료된 실종자';
+                targetTile.description = '무사히 구조되어 안전지대로 이동했습니다.';
+                const { rescuedPerson, modalInfo, rewardGold, rewardItem } = createRescuedPersonData(newChar, '용병');
+                newChar.money = (newChar.money || 0) + rewardGold;
+                newChar.inventory = [...(newChar.inventory || []), rewardItem];
+                newChar.socialNetwork = [
+                    ...(newChar.socialNetwork || []),
+                    rescuedPerson
+                ];
+                if (newChar.mercenaryData?.activeQuests) {
+                    newChar.mercenaryData = {
+                        ...newChar.mercenaryData,
+                        activeQuests: newChar.mercenaryData.activeQuests.map(q =>
+                            q.type === 'Rescue' &&
+                            (!q.location?.city || q.location.city === currentCity || q.title.includes(currentCity))
+                                ? { ...q, currentAmount: q.targetAmount || 1 }
+                                : q
+                        )
+                    };
+                }
+                logMsg = `[실종자 구출] ${rescuedPerson.name}을(를) 무사히 구조했습니다! (+${rewardGold.toLocaleString()}G, ${rewardItem.name})`;
+                emitFloatingGimmick(playerPos.x, playerPos.y, `🆘 ${rescuedPerson.name} 구출 완료!`, '#67e8f9', logMsg);
+                setRescuedModalInfo(modalInfo);
             } else if (targetTile.propType === 'campfire') {
                 targetTile.isCleared = true;
                 targetTile.name = '따뜻한 모닥불 야영지 (휴식됨)';
@@ -1107,6 +1162,8 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                                             <img src={resolveDungeonAssetUrl('barrel_crates')} alt="보급통" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
                                                         ) : tile.propType === 'bones' && !tile.isCleared ? (
                                                             <img src={resolveDungeonAssetUrl('skeleton_bones')} alt="유골" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
+                                                        ) : tile.propType === 'rescue_survivor' && !tile.isCleared ? (
+                                                            <img src={`${(import.meta as any).env?.BASE_URL || './'}assets/visuals/city_tiles/props/srpg/rescued_survivor.png`} alt="실종자" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
                                                         ) : tile.propType === 'crystal' && !tile.isCleared ? (
                                                             <img src={resolveDungeonAssetUrl('crystal_cluster')} alt="마력수정" className="w-6 h-6 sm:w-7 sm:h-7 object-contain drop-shadow" />
                                                         ) : tile.propType === 'pillar' ? (
@@ -1153,7 +1210,10 @@ const DungeonModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, o
                                         <div className="flex items-center gap-2">
                                             {selectedTile && (
                                                 <img
-                                                    src={resolveDungeonAssetUrl(
+                                                    src={
+                                                        selectedTile.propType === 'rescue_survivor' && !selectedTile.isCleared
+                                                            ? `${(import.meta as any).env?.BASE_URL || './'}assets/visuals/city_tiles/props/srpg/rescued_survivor.png`
+                                                            : resolveDungeonAssetUrl(
                                                         selectedTile.content === 'boss' ? 'boss_throne' :
                                                         selectedTile.content === 'miniboss' ? 'miniboss_marker' :
                                                         selectedTile.content === 'enemy' ? 'enemy_marker' :

@@ -4,15 +4,17 @@ import { Character, GrandArenaState, ArenaParticipant, ArenaMatch, MercenaryRank
 import { X, Trophy, Sword, Users, Shield, Skull, Crown, Star, GitBranch, MessageCircle, AlertTriangle, Coins, TrendingUp, UserCheck, Flame, Loader2 } from 'lucide-react';
 import { ARENA_CROWD_CHEERS, generateArenaParticipant } from '../grandArena';
 import ActionResultModal, { ResultData } from './ActionResultModal';
+import ChallengeLobbyCanvas, { ChallengeLobbyNpc } from './ChallengeLobbyCanvas';
 
 interface Props {
     character: Character;
     onClose: () => void;
     onUpdateCharacter: (newChar: Character, logMsg: string) => void;
     onBattle: (enemy: Enemy | Enemy[], type?: string) => void;
+    embedded?: boolean;
 }
 
-const GrandArenaModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onBattle }) => {
+const GrandArenaModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onBattle, embedded = false }) => {
     const [arenaState, setArenaState] = useState<GrandArenaState | null>(character.mercenaryData?.arenaState || null);
     const [resultData, setResultData] = useState<ResultData | null>(null);
     const [cheer, setCheer] = useState(ARENA_CROWD_CHEERS[0]);
@@ -159,10 +161,10 @@ const GrandArenaModal: React.FC<Props> = ({ character, onClose, onUpdateCharacte
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in">
+        <div className={embedded ? 'w-full h-full flex-1 flex flex-col animate-in fade-in relative' : 'fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in'}>
             {resultData && <ActionResultModal data={resultData} onClose={() => setResultData(null)} />}
 
-            <div className="bg-slate-900 border border-indigo-500 w-full max-w-4xl h-[85vh] rounded-3xl shadow-[0_0_80px_rgba(79,70,229,0.3)] flex flex-col overflow-hidden relative">
+            <div className={embedded ? 'bg-slate-900 border border-indigo-500 w-full h-full flex-1 rounded-2xl flex flex-col overflow-hidden relative' : 'bg-slate-900 border border-indigo-500 w-full max-w-4xl h-[85vh] rounded-3xl shadow-[0_0_80px_rgba(79,70,229,0.3)] flex flex-col overflow-hidden relative'}>
                 {/* Background Animation */}
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none"></div>
                 
@@ -191,102 +193,84 @@ const GrandArenaModal: React.FC<Props> = ({ character, onClose, onUpdateCharacte
                     <button onClick={onClose} className="text-slate-500 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors"><X size={24} /></button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-8 bg-slate-900 custom-scrollbar z-10 flex flex-col">
-                    {!arenaState ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 animate-in zoom-in-95">
-                            <div className="relative">
-                                <Users size={80} className="text-slate-700 opacity-50" />
-                                <Sword size={40} className="absolute -bottom-2 -right-2 text-red-500 animate-bounce" />
-                            </div>
-                            <div className="max-w-md">
-                                <h3 className="text-2xl font-bold text-white mb-2">영광의 무대, 그랜드 아레나</h3>
-                                <p className="text-sm text-slate-400 leading-relaxed">
-                                    전 세계의 실력 있는 용병들이 모여 최강자를 가리는 자리입니다.<br/>
-                                    64강부터 시작하여 결승까지, 오직 실력만으로 승부하십시오.<br/>
-                                    우승 시 막대한 <span className="text-amber-400 font-bold">명성(RP)</span>과 <span className="text-amber-400 font-bold">금상</span>이 수여됩니다.
-                                </p>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4 w-full max-w-sm bg-slate-950 p-6 rounded-2xl border border-slate-800">
-                                <div className="text-center">
-                                    <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">참가 자격</div>
-                                    <div className="text-sm text-green-400 font-bold">용병 (B급 이상 권장)</div>
-                                </div>
-                                <div className="text-center border-l border-slate-800">
-                                    <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">개최 주기</div>
-                                    <div className="text-sm text-blue-400 font-bold">매년 12월</div>
-                                </div>
-                            </div>
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-slate-900 custom-scrollbar z-10 flex flex-col">
+                    <ChallengeLobbyCanvas
+                        character={character}
+                        mode="grand_arena"
+                        title="그랜드 아레나 · 투기장 대기실"
+                        subtitle={
+                            !arenaState
+                                ? `${currentYear}년도 세계 랭킹 토너먼트 · 접수관에게 참가 신청하세요`
+                                : arenaState.isEliminated
+                                    ? `${currentYear}년도 토너먼트 탈락`
+                                    : arenaState.currentRound === 0
+                                        ? `${currentYear}년도 그랜드 아레나 챔피언!`
+                                        : `현재 진행: ${getRoundName(arenaState.currentRound)} · 중앙 링의 랭커에게 도전하세요`
+                        }
+                        cheerText={cheer}
+                        onClose={onClose}
+                        heightClassName="h-[460px] sm:h-[520px]"
+                        npcs={(() => {
+                            const list: ChallengeLobbyNpc[] = [
+                                {
+                                    id: 'grand_official',
+                                    name: '아레나 총진행관',
+                                    role: '그랜드 아레나 접수 및 대진 관리',
+                                    tx: 7,
+                                    ty: 7,
+                                    dir: 'down',
+                                    gender: 'male',
+                                    kind: 'official',
+                                    dialogue: !arenaState
+                                        ? `영광의 무대, 그랜드 아레나에 오신 것을 환영합니다!\n전 세계 실력 있는 용병들이 64강부터 결승까지 격돌합니다. 참가 신청을 하시겠습니까?`
+                                        : arenaState.isEliminated
+                                            ? `안타깝게도 올해 토너먼트에서 탈락하셨습니다. 내년 12월 대회에 다시 도전하십시오.`
+                                            : arenaState.currentRound === 0
+                                                ? `축하합니다, ${character.name} 님! 올해 그랜드 아레나의 제왕이 되셨습니다!`
+                                                : `현재 라운드: ${getRoundName(arenaState.currentRound)}\n중앙 링에 대기 중인 다음 랭커 도전자에게 걸어가 결투를 시작하십시오.`,
+                                    actionLabel: !arenaState ? '토너먼트 참가 신청 (64강)' : undefined,
+                                    onAction: !arenaState ? handleEnterArena : undefined
+                                }
+                            ];
 
-                            <button 
-                                onClick={handleEnterArena}
-                                disabled={isLoading}
-                                className="px-12 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl shadow-xl shadow-indigo-900/40 transition-all transform hover:scale-105 active:scale-95 flex items-center gap-3"
-                            >
-                                {isLoading ? <Loader2 className="animate-spin"/> : <Star size={20}/>}
-                                <span>토너먼트 참가 신청</span>
-                            </button>
-                        </div>
-                    ) : arenaState.isEliminated ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6 animate-in fade-in">
-                            <Skull size={80} className="text-red-500 opacity-50" />
-                            <h3 className="text-4xl font-bold text-red-500 font-cinzel">탈락</h3>
-                            <p className="text-slate-400">안타깝게도 패배하여 올해의 도전을 마쳤습니다.</p>
-                            <div className="bg-slate-950 p-4 rounded-xl border border-red-900/30 text-xs text-red-300">
-                                패배로 인해 명성치가 하락하고 치료비가 지출되었습니다.
-                            </div>
-                            <button onClick={onClose} className="px-8 py-2 bg-slate-800 text-white rounded-lg">나가기</button>
-                        </div>
-                    ) : (
-                        <div className="flex-1 flex flex-col space-y-10">
-                            {renderBracket()}
+                            if (arenaState && !arenaState.isEliminated && arenaState.currentRound > 0) {
+                                list.push({
+                                    id: 'grand_challenger',
+                                    name: `랭커 도전자 (${getRoundName(arenaState.currentRound)})`,
+                                    role: `RANKER · ${getRoundName(arenaState.currentRound)} 상대`,
+                                    tx: 12,
+                                    ty: 5,
+                                    dir: 'down',
+                                    gender: 'male',
+                                    auraColor: 'rgba(239, 68, 68, 0.45)',
+                                    kind: 'challenger',
+                                    dialogue: `호오, ${mData?.rank || 'C'}급 용병 ${character.name}인가?\n${getRoundName(arenaState.currentRound)} 무대에서 네 실력이 진짜인지 시험해 주마!\n관중들의 함성 속에서 누가 살아남을지 겨뤄보자!`,
+                                    actionLabel: '경기장 입장 (결투 시작)',
+                                    onAction: handleMatchStart
+                                });
+                            }
 
-                            {arenaState.currentRound > 0 ? (
-                                <>
-                                    <div className="flex flex-col md:flex-row items-center justify-center gap-12 py-6">
-                                        <div className="flex flex-col items-center space-y-4">
-                                            <div className="w-24 h-24 rounded-full bg-blue-900/20 border-4 border-blue-500 flex items-center justify-center text-4xl shadow-2xl">👑</div>
-                                            <div className="text-center">
-                                                <div className="text-xl font-bold text-white">{character.name}</div>
-                                                <div className="text-xs text-blue-400 font-bold uppercase">{mData?.rank}등급 용병</div>
-                                            </div>
-                                        </div>
+                            const standCoords: Array<[number, number, 'left' | 'right']> = [
+                                [1, 3, 'right'], [2, 5, 'right'], [1, 7, 'right'], [2, 9, 'right'], [1, 11, 'right'], [2, 13, 'right'],
+                                [21, 3, 'left'], [22, 5, 'left'], [21, 7, 'left'], [22, 9, 'left'], [21, 11, 'left'], [22, 13, 'left']
+                            ];
+                            standCoords.forEach(([tx, ty, dir], idx) => {
+                                list.push({
+                                    id: `grand_spec_${idx}`,
+                                    name: `투기장 관중 ${idx + 1}`,
+                                    role: '그랜드 아레나 관객',
+                                    tx,
+                                    ty,
+                                    dir,
+                                    gender: idx % 2 === 0 ? 'male' : 'female',
+                                    kind: 'spectator',
+                                    dialogue: ARENA_CROWD_CHEERS[idx % ARENA_CROWD_CHEERS.length]
+                                });
+                            });
 
-                                        <div className="flex flex-col items-center">
-                                            <div className="text-slate-500 font-cinzel text-2xl font-bold mb-2">VS</div>
-                                            <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-500 to-transparent"></div>
-                                        </div>
-
-                                        <div className="flex flex-col items-center space-y-4">
-                                            <div className="w-24 h-24 rounded-full bg-red-900/20 border-4 border-red-500 flex items-center justify-center text-4xl shadow-2xl relative">
-                                                👤
-                                                <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[8px] px-1.5 py-0.5 rounded font-bold animate-pulse">RANKER</div>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="text-xl font-bold text-white">매칭 대기 중...</div>
-                                                <div className="text-xs text-red-400 font-bold uppercase">준비 완료</div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-auto max-w-md mx-auto w-full">
-                                        <button 
-                                            onClick={handleMatchStart}
-                                            className="w-full py-5 bg-gradient-to-r from-red-800 to-red-600 hover:from-red-700 hover:to-red-500 text-white font-bold rounded-2xl shadow-xl shadow-red-900/20 transition-all transform hover:scale-105 flex items-center justify-center gap-4 group"
-                                        >
-                                            <Sword size={24} className="group-hover:rotate-12 transition-transform" />
-                                            <span className="text-xl tracking-tighter">경기장 입장</span>
-                                        </button>
-                                        <p className="text-[10px] text-slate-500 text-center mt-3 uppercase tracking-widest">Victory brings glory. Defeat brings shame.</p>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="text-center py-10">
-                                     <button onClick={onClose} className="px-10 py-3 bg-amber-700 text-white rounded-xl font-bold">영광을 뒤로하고 나가기</button>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                            return list;
+                        })()}
+                    />
                 </div>
 
                 {/* Footer Info */}

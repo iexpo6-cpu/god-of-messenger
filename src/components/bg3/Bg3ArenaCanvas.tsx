@@ -1270,6 +1270,43 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 return;
             }
 
+            // Pure Teleport / Movement Skill -> 장애물·기회공격 무시하고 지정 위치로 즉시 순간이동!
+            if (targeting.isTeleport && skill) {
+                const dM = pxToMeters(distPx(caster.x, caster.y, targetX, targetY));
+                if (dM > targeting.rangeMeters + 0.35) {
+                    if (!fromAi) setBannerMsg(`이동 사거리 초과! (최대 ${targeting.rangeMeters.toFixed(1)}m / 선택 ${dM.toFixed(1)}m)`);
+                    return;
+                }
+                if (!isPointWalkable(targetX, targetY, caster.id, arena.obstacles, unitsRef.current, arenaW, arenaH)) {
+                    if (!fromAi) setBannerMsg('해당 위치로 순간이동할 수 없습니다! (장애물 또는 유닛 겹침)');
+                    return;
+                }
+                setBusySafe(true);
+                const faceDir: Bg3Unit['dir'] = targetX >= caster.x ? 'right' : 'left';
+                spawnParticles(caster.x, caster.y, '#c084fc', 26, 4.0);
+                addFloatText(caster.x, caster.y - 32, '⚡ 순간이동!', '#c084fc', 1.2);
+                setUnits(prev =>
+                    prev.map(u => {
+                        if (u.id !== caster.id) return u;
+                        const nextMp = Math.max(0, u.mp - mpCost);
+                        if (u.sourceEntity && (u.sourceEntity as any).stats) {
+                            (u.sourceEntity as any).stats.mp = nextMp;
+                        }
+                        return { ...u, x: targetX, y: targetY, dir: faceDir, mp: nextMp, hasAction: false };
+                    })
+                );
+                cameraTargetRef.current = { x: targetX, y: targetY };
+                spawnParticles(targetX, targetY, '#fde047', 28, 4.2);
+                addFloatText(targetX, targetY - 34, `✨ ${skill.name}`, '#e9d5ff', 1.15);
+                const msg = `⚡ ${caster.name}이(가) [${skill.name}] 발동! (${dM.toFixed(1)}m 순간이동)`;
+                setBannerMsg(msg);
+                pushCombatLog(msg, 'info', roundNum);
+                setActionMode('move');
+                setSelectedSkill(null);
+                if (!fromAi) setBusySafe(false);
+                return;
+            }
+
             // Support skill (Heal / MP Recov / Resurrection / Mana Shield / Cleanse / Buff) — SSOT 정규 엔진 100% 연동
             if (targeting.isSupport && skill) {
                 setBusySafe(true);
@@ -3010,7 +3047,44 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     ctx.stroke();
                     ctx.restore();
                 } else if (currentTargeting) {
-                    if (currentTargeting.shape === 'circle') {
+                    if (currentTargeting.isTeleport) {
+                        const dM = pxToMeters(distPx(curActive.x, curActive.y, hover.x, hover.y));
+                        const walkable = isPointWalkable(hover.x, hover.y, curActive.id, arena.obstacles, unitsRef.current, arenaW, arenaH);
+                        const inRange = dM <= currentTargeting.rangeMeters + 0.35;
+                        const ok = inRange && walkable;
+                        ctx.save();
+                        ctx.strokeStyle = ok ? '#c084fc' : '#ef4444';
+                        ctx.lineWidth = 2.5;
+                        ctx.setLineDash([6, 5]);
+                        ctx.beginPath();
+                        ctx.moveTo(curActive.x, curActive.y);
+                        ctx.lineTo(hover.x, hover.y);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        ctx.fillStyle = ok ? 'rgba(192, 132, 252, 0.28)' : 'rgba(239, 68, 68, 0.25)';
+                        ctx.beginPath();
+                        ctx.arc(hover.x, hover.y, 18, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                        const pill = !inRange
+                            ? `사거리 초과 (${dM.toFixed(1)}m / ${currentTargeting.rangeMeters.toFixed(1)}m)`
+                            : !walkable
+                                ? '이동 불가 위치'
+                                : `⚡ 순간이동 ${dM.toFixed(1)}m / ${currentTargeting.rangeMeters.toFixed(1)}m`;
+                        ctx.font = 'bold 11px sans-serif';
+                        const tw = ctx.measureText(pill).width + 14;
+                        ctx.fillStyle = 'rgba(2, 6, 23, 0.9)';
+                        ctx.beginPath();
+                        ctx.roundRect(hover.x - tw / 2, hover.y - 36, tw, 18, 6);
+                        ctx.fill();
+                        ctx.strokeStyle = ok ? '#c084fc' : '#ef4444';
+                        ctx.lineWidth = 1.2;
+                        ctx.stroke();
+                        ctx.textAlign = 'center';
+                        ctx.fillStyle = ok ? '#e9d5ff' : '#fecaca';
+                        ctx.fillText(pill, hover.x, hover.y - 23);
+                        ctx.restore();
+                    } else if (currentTargeting.shape === 'circle') {
                         const rPx = metersToPx(currentTargeting.aoeRadiusMeters);
                         const dM = pxToMeters(distPx(curActive.x, curActive.y, hover.x, hover.y));
                         const inRange = dM <= currentTargeting.rangeMeters + 0.4;
@@ -3254,9 +3328,18 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 if (isFlashing) ctx.filter = 'brightness(2.4)';
 
                 if (u.team === 'enemy') {
-                    const realMonster = getCachedMonsterSprite(u.visualUrl);
+                    const isRpgSheetUrl = (url?: string) => !!url && (url.includes('rpg_sprites') || url.includes('_rpg.png'));
+                    const enemySheetUrl = isRpgSheetUrl(u.visualUrl) ? u.visualUrl : (!u.visualUrl && isRpgSheetUrl(u.spriteUrl) ? u.spriteUrl : undefined);
+                    const enemySheet = enemySheetUrl ? getCachedRpgSpriteImage(enemySheetUrl) : null;
+                    const realMonster = !enemySheetUrl ? getCachedMonsterSprite(u.visualUrl) : null;
                     const sz = u.isBoss ? 112 : 76;
-                    if (realMonster) {
+                    if (enemySheet) {
+                        const charSz = u.isBoss ? 72 : 56;
+                        const fw = enemySheet.width / 3;
+                        const fh = enemySheet.height / 4;
+                        const row = DIRECTION_ROW_MAP[u.dir] ?? 0;
+                        ctx.drawImage(enemySheet, walkFrame * fw, row * fh, fw, fh, ux - charSz / 2, drawY - charSz * 0.78, charSz, charSz);
+                    } else if (realMonster) {
                         if (realMonster.isCutout) {
                             // 투명화 처리된 실제 몬스터 스프라이트! (비율 유지 + 은은한 그림자)
                             const aspect = realMonster.width / Math.max(1, realMonster.height);

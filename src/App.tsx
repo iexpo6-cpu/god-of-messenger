@@ -2591,7 +2591,7 @@ useEffect(() => {
       }
 
       setIsLoading(true);
-      setLoadingMessage("목적지(" + destination.city + ")로 이동하고 있습니다... (" + travelCalc.durationText + " 소요)");
+      setLoadingMessage("목적지(" + destination.city + ")로 이동하고 있습니다... (" + durationLabel + " 소요)");
       setIsMapOpen(false);
 
       let currentStep = 0;
@@ -6969,8 +6969,8 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
         <>
             <div className="flex flex-1 overflow-hidden relative">
                 {sceneType !== 'combat' && (
-                    <div className={`fixed inset-0 z-[100] transition-all duration-300 ${isMobileMenuOpen ? 'visible bg-black/75 backdrop-blur-[2px]' : 'invisible pointer-events-none'}`} onClick={() => setIsMobileMenuOpen(false)}>
-                        <div className={`h-full w-80 sm:w-96 max-w-[90vw] flex flex-col relative bg-slate-900 border-r border-slate-700 shadow-2xl transition-transform duration-300 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`} onClick={(e) => e.stopPropagation()}>
+                    <div className={`fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-200 ${isMobileMenuOpen ? 'visible opacity-100 bg-black/75 backdrop-blur-sm' : 'invisible opacity-0 pointer-events-none'}`} onClick={() => setIsMobileMenuOpen(false)}>
+                        <div className={`w-full sm:max-w-3xl h-[92vh] sm:h-[88vh] flex flex-col relative bg-slate-900 border border-slate-700 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden transition-transform duration-200 ${isMobileMenuOpen ? 'translate-y-0 sm:scale-100' : 'translate-y-6 sm:scale-95'}`} onClick={(e) => e.stopPropagation()}>
                             <button 
                                 onClick={() => setIsMobileMenuOpen(false)} 
                                 className="absolute top-2.5 right-2.5 text-slate-200 hover:text-white bg-slate-800/95 hover:bg-slate-700 p-2 rounded-full z-[110] shadow-2xl border border-slate-600 active:scale-95 cursor-pointer"
@@ -6999,8 +6999,8 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                     {sceneType !== 'combat' && (
                         <>
                             {/* Unified Top-Right Buttons (기능 & 메뉴 & HeaderShortcuts) */}
-                            <div className="absolute top-3.5 right-2 sm:top-5 sm:right-4 z-[120] flex flex-col items-end gap-1.5 sm:gap-2">
-                                {/* Mobile Collapse Toggle for 기능/메뉴/즐찾 */}
+                            <div className="absolute top-3 right-2 sm:top-4 sm:right-4 z-[130] flex flex-col items-end gap-1.5 sm:gap-2">
+                                {/* Collapse Toggle for 기능/메뉴/즐찾 (PC & 모바일 공통) */}
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -7008,12 +7008,12 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                         setIsMobileFunctionsOpen(false);
                                         setIsMobileMenuOpen(false);
                                     }}
-                                    className="sm:hidden px-2.5 py-1 rounded-lg bg-slate-900/90 border border-slate-700 text-[11px] font-black text-amber-300 shadow-md active:scale-95"
+                                    className="px-2.5 py-1 rounded-lg bg-slate-900/95 border border-slate-700 text-[11px] font-black text-amber-300 shadow-md active:scale-95 hover:border-amber-500 transition-colors"
                                 >
                                     {isMobileHeaderCollapsed ? '▼ 메뉴·즐찾 펼치기' : '▲ 상단 메뉴 접기'}
                                 </button>
                                 {/* Top Row: 기능 & 메뉴 버튼 */}
-                                <div className={`${isMobileHeaderCollapsed ? 'hidden sm:flex' : 'flex'} items-center gap-1.5 sm:gap-2`}>
+                                <div className={`${isMobileHeaderCollapsed ? 'hidden' : 'flex'} items-center gap-1.5 sm:gap-2`}>
                                     {/* 1. 기능 드롭다운 버튼 */}
                                     <div className="relative">
                                     <button 
@@ -7252,7 +7252,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                             </div>
 
                             {/* Bottom Row (메뉴 버튼 하단): 바로가기 바 (Header Shortcuts) */}
-                            <div className={isMobileHeaderCollapsed ? 'hidden sm:block' : 'block'}>
+                            <div className={isMobileHeaderCollapsed ? 'hidden' : 'block'}>
                                 <HeaderShortcuts 
                                     unreadMailCount={unreadMailCount} 
                                     unclaimedSettlementCount={unclaimedSettlementCount}
@@ -7673,9 +7673,30 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                         </Suspense>
                     ) : (
                         <div className="flex-1 flex flex-col relative min-h-0 w-full overflow-hidden">
-                            {/* City Map Board as the main visual viewport */}
+                            {isTranscendentArenaOpen ? (
+                                <TranscendentArenaModal
+                                    key="transcendent-arena-modal-main"
+                                    embedded
+                                    character={character}
+                                    onClose={() => setIsTranscendentArenaOpen(false)}
+                                    onUpdateCharacter={handleUpdateCharacter}
+                                    onBattle={(enemies, type) => handleBattleTrigger(enemies, (type || 'transcendent_arena') as any)}
+                                />
+                            ) : isAbyssTowerOpen ? (
+                                <AbyssTowerModal
+                                    key="abyss-tower-modal-main"
+                                    embedded
+                                    isOpen={true}
+                                    character={character}
+                                    onClose={() => setIsAbyssTowerOpen(false)}
+                                    onUpdateCharacter={handleUpdateCharacter}
+                                    onBattle={(enemies, type) => handleBattleTrigger(enemies, (type || 'abyss_tower_mob') as any)}
+                                />
+                            ) : (
+                            /* City Map Board as the main visual viewport */
                             <CityMapBoard 
                                 character={character}
+                                suspendCanvas={isDungeonOpen || isMapOpen || isCityOpen}
                                 onAction={handleActionWithTime}
                                 onOpenCharacterSheet={() => setIsMobileMenuOpen(true)}
                                 onEnterCity={(district, openHuntMap) => {
@@ -7726,6 +7747,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                 onUpdateCharacter={handleUpdateCharacter}
                                 onStartBattle={(enemies, type, source) => handleBattleTrigger(enemies, type as any, source)}
                             />
+                            )}
 
                              {/* Collapsible, Toggleable Floating Log Chat Overlay */}
                             <div className="absolute left-3 bottom-3 sm:left-4 sm:bottom-4 z-40 flex flex-col items-start gap-2">
@@ -7952,25 +7974,6 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                         onUpdateCharacter={handleUpdateCharacter}
                     />
                 )}
-                {isTranscendentArenaOpen && (
-                    <TranscendentArenaModal
-                        key="transcendent-arena-modal-main"
-                        character={character}
-                        onClose={() => setIsTranscendentArenaOpen(false)}
-                        onUpdateCharacter={handleUpdateCharacter}
-                        onBattle={(enemies, type) => handleBattleTrigger(enemies, (type || 'transcendent_arena') as any)}
-                    />
-                )}
-                {isAbyssTowerOpen && sceneType === 'normal' && (
-                    <AbyssTowerModal
-                        key="abyss-tower-modal-main"
-                        isOpen={isAbyssTowerOpen && sceneType === 'normal'}
-                        character={character}
-                        onClose={() => setIsAbyssTowerOpen(false)}
-                        onUpdateCharacter={handleUpdateCharacter}
-                        onBattle={(enemies, type) => handleBattleTrigger(enemies, (type || 'abyss_tower_mob') as any)}
-                    />
-                )}
                 <MailboxModal
                     isOpen={isMailboxOpen}
                     onClose={() => setIsMailboxOpen(false)}
@@ -8015,42 +8018,6 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                         onToggleFavorite={handleToggleItemFavorite}
                         onAutoSell={handleAutoSellItems}
                         onUpdateCharacter={setCharacter}
-                    />
-                )}
-
-                {/* [모바일 전용] 엄지손가락 하단 7대 고정 탭 바 (오직 CityMapBoard 메인 화면에서만 노출, 접기/펼치기 지원) */}
-                {view === 'game' && 
-                 sceneType !== 'combat' && 
-                 !isCityOpen && 
-                 !isDungeonOpen && 
-                 !isMapOpen && 
-                 !isMobileMenuOpen && 
-                 !isBaseModalOpen && 
-                 !isCompanionModalOpen && 
-                 !isSaveLoadOpen && 
-                 !isSkillBookOpen && 
-                 !isDevModeOpen && 
-                 !isInventoryModalOpen && 
-                 !isSettingsOpen && (
-                    <MobileBottomNavigationBar
-                        sceneType={sceneType}
-                        onOpenCharacter={() => setIsMobileMenuOpen(true)}
-                        onOpenInventory={() => setIsInventoryModalOpen(true)}
-                        onOpenBase={handleOpenBase}
-                        onOpenCompanion={() => setIsCompanionModalOpen(true)}
-                        onOpenHunt={() => {
-                            setCityInitialConfig({ openHuntMap: true });
-                            setIsCityOpen(true);
-                        }}
-                        onOpenMap={() => {
-                            setMapMode('travel');
-                            setIsMobileMenuOpen(false);
-                            setIsMapOpen(true);
-                        }}
-                        onSave={() => {
-                            setSaveLoadMode('save');
-                            setIsSaveLoadOpen(true);
-                        }}
                     />
                 )}
 

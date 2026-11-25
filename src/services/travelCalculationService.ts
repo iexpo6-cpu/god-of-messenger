@@ -1,8 +1,21 @@
-import { Character, Location } from '../types';
+import { Character, ClassTier, Location } from '../types';
 import { WORLD_GEOGRAPHY } from '../constants';
 import { calculateFinalStats } from '../utils';
 import { GEO_POSITIONS, ISLAND_NATIONS } from '../components/MapModal';
 import { formatDuration } from './gameTimeService';
+
+export const hasDimensionalLeapEligible = (character: Character): boolean => {
+    return (
+        (character.level || 0) >= 500 &&
+        (character.classTier === ClassTier.LAST || character.classTier === ClassTier.FINAL)
+    );
+};
+
+export const hasDimensionalLeapSkill = (character: Character): boolean => {
+    return Boolean(
+        character.skills?.some(s => s.name === '차원 도약' || s.name === '차원도약')
+    );
+};
 
 export type TravelTransportType = 'walk' | 'carriage' | 'ship' | 'airship' | 'portal';
 
@@ -21,6 +34,8 @@ export interface TravelOption {
     passActive?: boolean;
     passStatusText?: string;
     requiresContract?: boolean;
+    locked?: boolean;
+    lockReason?: string;
     note?: string;
 }
 
@@ -127,11 +142,11 @@ export function calculateTravelCostAndDays(
         minMinutes = 30;
         method = '신계 차원 도약';
     } else if (tgtRegion === '신계') {
-        // 신계 내부 이동: 기본 10분, 최소 10분
+        // 신계 내부 이동: 기본 10분, 최소 10분 (차원 도약)
         cost = 30000;
         baseMinutes = 10;
         minMinutes = 10;
-        method = '신성 순례 이동';
+        method = '신계 차원 도약';
     } else if (tgtNation === curNation) {
         // 같은 국가 내 도시 간: 20분 ~ 1시간 30분
         const p1 = GEO_POSITIONS[curCity] || GEO_POSITIONS[curNation] || { x: 50, y: 50 };
@@ -370,6 +385,7 @@ export function calculateTravelOptions(
     const isRealmCrossing =
         (tgtRegion === '신계' && curRegion !== '신계') ||
         (tgtRegion !== '신계' && curRegion === '신계');
+    const involvesDivineRealm = tgtRegion === '신계' || curRegion === '신계';
     const isDimensional =
         isRealmCrossing ||
         tgtRegion === '마계' ||
@@ -382,12 +398,17 @@ export function calculateTravelOptions(
         ISLAND_NATIONS.includes(curNation) ||
         (tgtRegion !== curRegion && !isDimensional);
 
-    if (isRealmCrossing) {
+    if (involvesDivineRealm) {
+        const hasLeap = hasDimensionalLeapSkill(character);
+        const meetsCond = hasDimensionalLeapEligible(character);
         return [
             {
                 type: 'portal',
                 label: '신계 차원 도약',
-                description: '신성 마법진으로 차원 경계를 넘어 이동합니다. (여정 중 차원 균열 조우 가능)',
+                description:
+                    tgtRegion === '신계' && curRegion === '신계'
+                        ? '신계 내부 성역 간 이동은 차원 도약으로만 이동할 수 있습니다.'
+                        : '신성 마법진으로 차원 경계를 넘어 이동합니다. (여정 중 차원 균열 조우 가능)',
                 cost: base.cost,
                 baseCost: base.cost,
                 days: base.days,
@@ -396,7 +417,15 @@ export function calculateTravelOptions(
                 ambushRisk: 'medium',
                 ambushChancePct: 25,
                 recommended: true,
-                note: '추후 Lv.500+ · 라스트 클래스 · 차원도약 스킬 퀘스트 연동 예정'
+                locked: !hasLeap,
+                lockReason: !hasLeap
+                    ? meetsCond
+                        ? '기지에 찾아온 [차원 현자 아스트라]에게 [차원 도약] 스킬을 습득하세요.'
+                        : 'Lv.500 이상 · 라스트 클래스 이상 달성 후 기지 NPC에게 [차원 도약] 습득 필요'
+                    : undefined,
+                note: hasLeap
+                    ? '차원 도약 스킬 보유 · 신계 차원 도약 가능'
+                    : '필수 조건: Lv.500+ · 라스트 클래스 이상 · [차원 도약] 스킬'
             }
         ];
     }

@@ -14,7 +14,7 @@ import { checkNinjaCombatStyleOwnership } from '../services/ninjaCloneService';
 import { isLegacySkillFormat } from '../services/skillReconfigureService';
 import { getTierBuffScale, getTierAttackScale } from '../services/skillBuffScaleService';
 import { getAuraDisplayLabel, getShinryokuAuraType } from '../services/buffDiminishingManager';
-import { calculateZonePowerMultiplier, getDefaultZoneConfig, getZoneCapsForTier } from '../services/skillZoneService';
+import { calculateZonePowerMultiplier, getDefaultZoneConfig, getZoneCapsForTier, getTeleportRangeByTier, getEffectiveTeleportRange } from '../services/skillZoneService';
 import { SkillZoneConfig, SkillZoneType } from '../types';
 
 import {
@@ -75,6 +75,7 @@ const SKILL_TYPE_ICONS: Record<string, any> = {
   [SkillType.BUFF]: Shield,
   [SkillType.DEBUFF]: Skull,
   [SkillType.PASSIVE]: BookOpen,
+  [SkillType.TELEPORT]: Wind,
 };
 
 const BUFF_STATS = ['STR', 'INT', 'WIS', 'DEF', 'AGI', 'CTRL', 'MaxHP', 'MaxMP', 'Acc', 'MAcc', 'Eva', 'MEva'];
@@ -331,6 +332,9 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
     } else if (customSkillType === SkillType.SUMMON) {
       setSelectedIcon('Sparkles');
       setSummonName('정령 소환수');
+    } else if (customSkillType === SkillType.TELEPORT) {
+      setSelectedIcon('Wind');
+      setCustomTargetType('single');
     }
   }, [customSkillType]);
   const [customTargetType, setCustomTargetType] = useState<SkillTarget>('single');
@@ -447,6 +451,15 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
       const effTarget = customSkillType === SkillType.BUFF ? buffTargetType : customTargetType;
       const isBuffOrDebuff = customSkillType === SkillType.BUFF || customSkillType === SkillType.DEBUFF || customSkillType === SkillType.HEAL;
       setCustomZoneConfig(prev => {
+          if (customSkillType === SkillType.TELEPORT) {
+              const maxTp = getTeleportRangeByTier(activeTab);
+              const nextTp = Math.max(2, Math.min(maxTp, prev.movementMode === 'teleport' && prev.targetRadius ? prev.targetRadius : maxTp));
+              return {
+                  targetRadius: nextTp,
+                  zoneType: 'target',
+                  movementMode: 'teleport'
+              };
+          }
           const def = getDefaultZoneConfig(customSkillType, effTarget, activeTab);
           const clamp = (v: number | undefined, lo: number, hi: number, fb: number) =>
               Math.max(lo, Math.min(hi, v ?? fb));
@@ -662,6 +675,9 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
           } else if (customSkillType === SkillType.CLONE) {
               const totalCloneMp = activeTab === ClassTier.SECOND ? 1750 : activeTab === ClassTier.LAST ? 4750 : 16000;
               cost = Math.floor(totalCloneMp / Math.max(1, getMpTierMultiplier(activeTab)));
+          } else if (customSkillType === SkillType.TELEPORT) {
+              const maxDist = customZoneConfig.targetRadius || getTeleportRangeByTier(activeTab);
+              cost = Math.round(maxDist * 4);
           }
 
           if (customSkillType === SkillType.PASSIVE) {
@@ -1249,6 +1265,11 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
           });
 
           return `PASSIVE: ${parts.join(' ')}${condStr}`;
+      }
+
+      if (customSkillType === SkillType.TELEPORT) {
+          const maxDist = customZoneConfig.targetRadius ?? getTeleportRangeByTier(activeTab);
+          return `TELEPORT: 최대 ${maxDist}m 자유 순간이동 (장애물·기회공격 무시)`;
       }
       
       if (customSkillType === SkillType.DEBUFF) {
@@ -2902,8 +2923,19 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                     );
                                                 })()}
 
-                                                {/* 1. Attack / Buff / Debuff: Power Ratio for active skills */}
-                                                {!isPassive && (
+                                                {/* 1. Attack / Buff / Debuff / Teleport: Power Ratio or Range */}
+                                                {!isPassive && skill.type === SkillType.TELEPORT && (
+                                                    <div className="flex items-center justify-between px-3 py-2 rounded-lg border text-xs bg-purple-950/20 border-purple-900/30">
+                                                        <span className="text-slate-400 flex items-center gap-1.5 font-medium">
+                                                            <Wind size={13} className="text-purple-400" />
+                                                            <span>순간이동 사거리:</span>
+                                                        </span>
+                                                        <div className="font-mono font-bold text-purple-300">
+                                                            최대 {getEffectiveTeleportRange(skill)}m (기회공격 무시)
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {!isPassive && skill.type !== SkillType.TELEPORT && (
                                                     <div className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs ${
                                                         isAttack ? 'bg-red-950/20 border-red-900/30' :
                                                         isBuff ? 'bg-emerald-950/20 border-emerald-900/30' :
@@ -3300,7 +3332,7 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                 </div>
                                 
                                 {/* Target Selection */}
-                                {customSkillType !== SkillType.PASSIVE && customSkillType !== SkillType.BUFF && customSkillType !== SkillType.SUMMON && customSkillType !== SkillType.CLONE && (
+                                {customSkillType !== SkillType.PASSIVE && customSkillType !== SkillType.BUFF && customSkillType !== SkillType.SUMMON && customSkillType !== SkillType.CLONE && customSkillType !== SkillType.TELEPORT && (
                                      <div>
                                         <label className="block text-[10px] uppercase text-slate-500 mb-1 font-bold">대상 지정</label>
                                         <div className="grid grid-cols-2 gap-2">
@@ -4708,6 +4740,37 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                             ))}
                                         </div>
                                     </div>
+                                ) : customSkillType === SkillType.TELEPORT ? (
+                                    <div className="bg-purple-950/30 p-3.5 rounded-lg border border-purple-500/40 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold text-purple-200 flex items-center gap-1.5">
+                                                <Wind size={14} className="text-purple-400" />
+                                                공간 이동(텔레포트) 거리 설정
+                                            </span>
+                                            <span className="text-[10px] font-mono font-bold text-purple-300 bg-purple-900/50 px-2 py-0.5 rounded border border-purple-500/40">
+                                                {currentTierConfig.label} 상한: {getTeleportRangeByTier(activeTab)}m
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <div className="flex justify-between text-[10px] text-slate-300 mb-1">
+                                                <span>최대 순간이동 거리</span>
+                                                <span className="font-mono text-purple-300 font-bold">{customZoneConfig.targetRadius ?? getTeleportRangeByTier(activeTab)}m / {getTeleportRangeByTier(activeTab)}m</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min={2}
+                                                max={getTeleportRangeByTier(activeTab)}
+                                                step={1}
+                                                value={Math.min(getTeleportRangeByTier(activeTab), Math.max(2, customZoneConfig.targetRadius ?? getTeleportRangeByTier(activeTab)))}
+                                                onChange={(e) => setCustomZoneConfig(prev => ({ ...prev, targetRadius: Number(e.target.value), zoneType: 'target', movementMode: 'teleport' }))}
+                                                className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                            />
+                                        </div>
+                                        <div className="bg-black/40 p-2 rounded border border-slate-800">
+                                            <label className="text-[9px] text-slate-500 block mb-0.5">적용 공식 미리보기</label>
+                                            <span className="text-xs font-mono text-purple-300">{getFormulaPreview()}</span>
+                                        </div>
+                                    </div>
                                 ) : (
                                     <div className="bg-slate-950/50 p-3 rounded border border-slate-800 space-y-4">
                                         <div><label className="block text-[10px] uppercase text-slate-500 mb-1 font-bold">위력 계수: {customPowerRatio}% <span className="text-amber-500 ml-2 text-[9px]">(등급 상한: {adjustedMaxRatio}%)</span></label><input type="range" min="10" max={adjustedMaxRatio} step="5" value={customPowerRatio} onChange={(e) => setCustomPowerRatio(parseInt(e.target.value))} className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"/></div>
@@ -4889,10 +4952,15 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                 name: customSkillName,
                                                 type: customSkillType,
                                                 description: customSkillDesc || `${customSkillType} 스킬`,
-                                                powerRatio: finalPower,
+                                                powerRatio: customSkillType === SkillType.TELEPORT ? 0 : finalPower,
                                                 mpCost: calculatedMpCost,
                                                 formulaOverride: getFormulaPreview(),
-                                                targetType: customSkillType === SkillType.BUFF ? buffTargetType : customTargetType,
+                                                targetType: customSkillType === SkillType.BUFF ? buffTargetType : (customSkillType === SkillType.TELEPORT ? 'single' : customTargetType),
+                                                zoneConfig: customSkillType === SkillType.TELEPORT ? {
+                                                    targetRadius: customZoneConfig.targetRadius || getTeleportRangeByTier(activeTab),
+                                                    zoneType: 'target',
+                                                    movementMode: 'teleport'
+                                                } : undefined,
                                                 buffType: isAttackWithBuff ? 'STAT_BOOST' : undefined,
                                                 buffEffects: isAttackWithBuff 
                                                     ? sanitizedAttackBuffEffects

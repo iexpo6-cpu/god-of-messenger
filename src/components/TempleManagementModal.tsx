@@ -19,15 +19,18 @@ import GodPowerModal from './GodPowerModal'; // [NEW]
 import { calculateTempleMajesty } from '../templedefensesystem';
 import { checkAndInitializeLiberationEligibility, getCompanionCP, isMonsterCompanion } from '../services/companionGrowthService';
 
+export type TempleTab = 'guardian' | 'personnel' | 'reception' | 'foreign_affairs' | 'facility' | 'equipment' | 'oracle' | 'divine_power'| 'god_power' | 'divine_elemental_enhancement' | 'potential_liberation';
+type Tab = TempleTab;
+
 interface Props {
     character: Character;
     onClose: () => void;
     onUpdateCharacter: (newChar: Character, logMsg: string) => void;
     onAction: (action: string) => void;
     onBattle?: (enemy: Enemy | Enemy[], type: string, source: string, targetCity?: string, targetNation?: string) => void;
-}
-
-type Tab = 'guardian' | 'personnel' | 'reception' | 'foreign_affairs' | 'facility' | 'equipment' | 'oracle' | 'divine_power'| 'god_power' | 'divine_elemental_enhancement' | 'potential_liberation'; 
+    initialTab?: TempleTab;
+    singleTabOnly?: boolean;
+} 
 
 const MESSENGER_POWER_CONFIG: Partial<Record<JobType, { 
     powerName: string, 
@@ -52,8 +55,11 @@ const MESSENGER_POWER_CONFIG: Partial<Record<JobType, {
     [JobType.NATURE_MESSENGER]: { powerName: "자연의 힘", itemName: "태고의 씨앗", boost: 5, color: "text-green-500", bg: "bg-green-950/40", icon: Leaf },
 };
 
-const TempleManagementModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onAction, onBattle }) => {
-    const [activeTab, setActiveTab] = useState<Tab>('guardian');
+const TempleManagementModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onAction, onBattle, initialTab, singleTabOnly }) => {
+    const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'guardian');
+    useEffect(() => {
+        if (initialTab) setActiveTab(initialTab);
+    }, [initialTab]);
     const [resultData, setResultData] = useState<ResultData | null>(null);
     const [isTransferationOpen, setIsTransferationOpen] = useState(false);
     const [isGuardianManagementOpen, setIsGuardianManagementOpen] = useState(false);
@@ -549,6 +555,7 @@ const TempleManagementModal: React.FC<Props> = ({ character, onClose, onUpdateCh
                     <button onClick={onClose} className="text-slate-500 hover:text-white p-1.5 md:p-2 rounded-full hover:bg-slate-800 transition-colors"><X className="w-5 h-5 md:w-6 md:h-6" /></button>
                 </div>
 
+                {!singleTabOnly && (
                 <div className="flex border-b border-slate-800 bg-slate-950 shrink-0 overflow-x-auto no-scrollbar">
                     <button onClick={() => setActiveTab('guardian')} className={`flex-1 py-4 px-6 text-xs font-bold flex items-center justify-center transition-all border-b-2 whitespace-nowrap ${activeTab === 'guardian' ? 'text-indigo-400 border-indigo-500 bg-slate-900' : 'text-slate-500 border-transparent hover:text-slate-300'}`}>
                         <Shield size={16} className="mr-2"/> 수호수 관리
@@ -615,6 +622,7 @@ const TempleManagementModal: React.FC<Props> = ({ character, onClose, onUpdateCh
                         </button>
                     )}
                 </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-900 custom-scrollbar overscroll-contain">
                     {activeTab === 'divine_elemental_enhancement' && (

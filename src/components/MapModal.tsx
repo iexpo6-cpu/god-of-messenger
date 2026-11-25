@@ -7,6 +7,8 @@ import { SEASONAL_BOSS_CONFIG, SEASONAL_BOSSES } from '../mythicbossmonsters';
 import {
     calculateTravelCostAndDays,
     calculateTravelOptions,
+    hasDimensionalLeapEligible,
+    hasDimensionalLeapSkill,
     TRANSPORT_CONTRACT_PRICES,
     TravelOption,
     TravelTransportType
@@ -990,6 +992,10 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, onUpd
           const destination: Location = { region: selectedRegion, nation: selectedNation, city: selectedCity };
           if (mode === 'travel') {
               const opt = activeTransportOption;
+              if (opt?.locked) {
+                  alert(opt.lockReason || '이동 조건이 충족되지 않았습니다.');
+                  return;
+              }
               if (opt?.type === 'walk') {
                   setOverlandTarget(destination);
                   setSelectedCity(null);
@@ -2085,7 +2091,26 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, onUpd
                     </div>
                 )}
 
-                {/* Travel Details Table (relocate mode or fallback) */}
+                {/* Travel Details Table (travel selected option or relocate mode) */}
+                {mode === 'travel' && activeTransportOption && (
+                    <div className="space-y-1 text-xs mb-3 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 font-mono">
+                        <div className="flex justify-between text-slate-400">
+                            <span>선택 수단</span>
+                            <span className="text-cyan-300 font-bold">{activeTransportOption.label}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-400">
+                            <span>예상 소요 시간</span>
+                            <span className="text-slate-100 font-bold">{activeTransportOption.durationText}</span>
+                        </div>
+                        <div className="flex justify-between text-slate-400">
+                            <span>이동 비용</span>
+                            <span className="text-amber-300 font-bold">
+                                {activeTransportOption.cost === 0 ? '무료' : `${activeTransportOption.cost.toLocaleString()} G`}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {mode === 'relocate' && (
                     <div className="space-y-1.5 text-xs mb-3 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 font-mono">
                         <div className="flex justify-between text-slate-400">
@@ -2103,14 +2128,20 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, onUpd
                     </div>
                 )}
 
-                {/* Divine Realm Level 500 Lock Notice */}
-                {selectedRegion === '신계' && character.level < 500 && (
+                {/* Divine Realm Level 500 / Dimensional Leap Skill Lock Notice */}
+                {(selectedRegion === '신계' || originLocation.region === '신계') && (character.level < 500 || !hasDimensionalLeapSkill(character)) && (
                     <div className="mb-3 p-2.5 rounded-xl bg-red-950/80 border border-red-500/80 text-red-200 text-xs flex items-center gap-2 shadow-lg">
                         <Lock size={18} className="text-amber-400 shrink-0" />
                         <div className="min-w-0 flex-1">
-                            <div className="font-bold text-red-300">신계 진입 불가</div>
-                            <div className="text-[10px] text-red-300/90">
-                                신계는 500레벨 이상만 진입할 수 있습니다. (현재 레벨: {character.level})
+                            <div className="font-bold text-red-300">
+                                {character.level < 500 ? '신계 진입 불가' : '차원 도약 스킬 필요'}
+                            </div>
+                            <div className="text-[10px] text-red-300/90 leading-relaxed">
+                                {character.level < 500
+                                    ? `신계는 500레벨 이상만 진입할 수 있습니다. (현재 레벨: ${character.level})`
+                                    : hasDimensionalLeapEligible(character)
+                                        ? '기지에 방문한 [차원 현자 아스트라] NPC에게 [차원 도약] 스킬을 배우세요!'
+                                        : 'Lv.500 이상 및 라스트 클래스 이상 달성 후 기지 방문 NPC에게 [차원 도약] 스킬을 배워야 합니다.'}
                             </div>
                         </div>
                     </div>
@@ -2177,25 +2208,28 @@ const MapModal: React.FC<Props> = ({ isOpen, onClose, character, onTravel, onUpd
 
                 {(() => {
                     const isDivineLocked = selectedRegion === '신계' && character.level < 500;
+                    const needsLeapSkill = mode === 'travel' && Boolean(activeTransportOption?.locked);
                     const needsContract = mode === 'travel' && Boolean(activeTransportOption?.requiresContract);
                     const effectiveCost = mode === 'travel' && activeTransportOption ? activeTransportOption.cost : travelInfo.cost;
-                    const isNotEnoughMoney = mode === 'travel' && !needsContract && character.money < effectiveCost;
+                    const isNotEnoughMoney = mode === 'travel' && !needsContract && !needsLeapSkill && character.money < effectiveCost;
                     return (
                         <button 
                             onClick={handleTravelClick}
-                            disabled={isDivineLocked || needsContract || isNotEnoughMoney}
+                            disabled={isDivineLocked || needsLeapSkill || needsContract || isNotEnoughMoney}
                             className={`w-full py-2.5 font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-1.5 active:scale-98 ${
-                                isDivineLocked || needsContract
+                                isDivineLocked || needsLeapSkill || needsContract
                                     ? 'bg-slate-800 text-amber-400 cursor-not-allowed border border-amber-800/60'
                                     : isNotEnoughMoney
                                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
                                     : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-cyan-900/30'
                             }`}
                         >
-                            {isDivineLocked || needsContract ? <Lock size={15} /> : <Footprints size={15} />}
+                            {isDivineLocked || needsLeapSkill || needsContract ? <Lock size={15} /> : <Footprints size={15} />}
                             <span>
                                 {isDivineLocked 
                                     ? '신계 진입 불가 (500레벨 필요)' 
+                                    : needsLeapSkill
+                                    ? '차원 도약 스킬 필요'
                                     : needsContract
                                     ? '1달 정기계약 또는 영구 구매 필요'
                                     : isNotEnoughMoney 

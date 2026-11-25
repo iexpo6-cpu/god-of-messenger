@@ -10,6 +10,7 @@ import { MILITARY_RANK_ORDER, MAGYE_LEADERS, NATION_INFO, TEMPLE_MESSENGER_MAP, 
 import { addDays, getDaysDiff } from '../utils';
 import { generateInitialDiplomacy } from '../nationalDiplomacy';
 import { generateDivineWarEnemies } from '../divineWarSystem';
+import StrategicMapCanvas, { getNationRegionAndPos, getTempleStrategicPos, StrategicArrow, StrategicFactionStatus, StrategicNode } from './map/StrategicMapCanvas';
 
 interface Props {
     character: Character;
@@ -301,49 +302,80 @@ const MagyeWarModal: React.FC<Props> = ({ character, onClose, onAction, onUpdate
                     </button>
                 </div>
 
-                <div className="flex flex-1 overflow-hidden">
+                <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
                     {activeTab === 'targets' ? (
                         <>
-                            <div className="w-full md:w-80 border-r border-red-900/30 p-4 overflow-y-auto custom-scrollbar shrink-0 bg-black/40 flex flex-col">
-                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <ShieldAlert size={14} className="text-red-600"/> 정벌 대상 국가
-                                </h3>
-                                <div className="flex-1 space-y-2">
-                                    {nationList.length > 0 ? nationList.map((name, idx) => {
+                            <div className={`w-full md:w-[54%] border-b md:border-b-0 md:border-r border-red-900/30 flex flex-col shrink-0 bg-black/40 ${selectedNation ? 'h-[260px] md:h-full' : 'flex-1 md:h-full'}`}>
+                                {nationList.length > 0 ? (() => {
+                                    const originPos = getNationRegionAndPos('임페리얼');
+                                    const nodes: StrategicNode[] = [
+                                        {
+                                            id: 'ORIGIN_IMPERIAL',
+                                            name: '임페리얼 제국',
+                                            region: '마계',
+                                            x: originPos.x || 50,
+                                            y: originPos.y || 92,
+                                            status: 'origin'
+                                        }
+                                    ];
+                                    const arrows: StrategicArrow[] = [];
+                                    nationList.forEach((name) => {
                                         const rel = diplomacy[name];
-                                        const style = STATUS_STYLE[rel.status];
-                                        return (
-                                            <button
-                                                key={`${name}-${idx}`}
-                                                onClick={() => setSelectedNation(name)}
-                                                className={`w-full p-3 rounded-2xl border text-left transition-all flex flex-col gap-2 ${selectedNation === name ? 'bg-red-900/20 border-red-500 shadow-lg' : 'bg-slate-900 border border-slate-800 hover:border-red-900/30'}`}
-                                            >
-                                                <div className="flex justify-between items-center w-full">
-                                                    <div className="flex items-center gap-2">
-                                                        {getNationTypeIcon(name)}
-                                                        <span className="font-bold text-sm text-slate-200">{name}</span>
-                                                    </div>
-                                                    <span className={`text-[9px] font-bold px-1.5 rounded border ${style.color} ${style.border}`}>{rel.status}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
-                                                        <div className={`h-full ${rel.tension > 80 ? 'bg-red-500' : 'bg-orange-500'}`} style={{ width: `${rel.tension}%` }}></div>
-                                                    </div>
-                                                    <span className="text-[10px] font-mono text-slate-500">{rel.tension}%</span>
-                                                </div>
-                                            </button>
-                                        );
-                                    }) : (
-                                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
-                                            <AlertTriangle size={48} className="text-red-600/50 animate-pulse" />
-                                            <button onClick={handleForceInitDiplomacy} className="w-full py-3 bg-red-900/40 hover:bg-red-800 text-red-200 border border-red-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all">
-                                                <RefreshCw size={14}/> 외교 정보망 활성화
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
+                                        const pos = getNationRegionAndPos(name);
+                                        let st: StrategicFactionStatus = 'neutral';
+                                        if (rel.status === DiplomaticStatus.WAR) st = 'war';
+                                        else if (rel.status === DiplomaticStatus.HOSTILE) st = 'hostile';
+                                        else if (rel.status === DiplomaticStatus.ALLIANCE) st = 'alliance';
+                                        else if (rel.status === DiplomaticStatus.VASSAL_OWNER || rel.status === DiplomaticStatus.VASSAL_SUBJECT) st = 'vassal';
+
+                                        const isInvading = pendingInvasions.includes(name);
+                                        nodes.push({
+                                            id: name,
+                                            name,
+                                            region: pos.region,
+                                            x: pos.x,
+                                            y: pos.y,
+                                            status: st,
+                                            badge: isInvading ? '역습!' : rel.status === DiplomaticStatus.WAR ? '전쟁' : undefined,
+                                            hasAlert: isInvading || rel.status === DiplomaticStatus.WAR
+                                        });
+                                        if (isInvading) {
+                                            arrows.push({ fromId: name, toId: 'ORIGIN_IMPERIAL', kind: 'invasion' });
+                                        } else if (rel.status === DiplomaticStatus.WAR) {
+                                            arrows.push({ fromId: 'ORIGIN_IMPERIAL', toId: name, kind: 'war' });
+                                        }
+                                    });
+                                    if (selectedNation && !arrows.some((a) => a.toId === selectedNation && a.fromId === 'ORIGIN_IMPERIAL')) {
+                                        arrows.push({ fromId: 'ORIGIN_IMPERIAL', toId: selectedNation, kind: 'selected' });
+                                    }
+                                    return (
+                                        <StrategicMapCanvas
+                                            nodes={nodes}
+                                            arrows={arrows}
+                                            selectedNodeId={selectedNation}
+                                            onSelectNode={(n) => setSelectedNation(n.id)}
+                                            realm="magye"
+                                            title="마계 정벌 전략 지도"
+                                            legendItems={[
+                                                { status: 'origin', label: '임페리얼' },
+                                                { status: 'war', label: '전쟁 중' },
+                                                { status: 'hostile', label: '적대' },
+                                                { status: 'neutral', label: '중립' },
+                                                { status: 'vassal', label: '속국' },
+                                                { status: 'alliance', label: '동맹' }
+                                            ]}
+                                        />
+                                    );
+                                })() : (
+                                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
+                                        <AlertTriangle size={48} className="text-red-600/50 animate-pulse" />
+                                        <button onClick={handleForceInitDiplomacy} className="px-6 py-3 bg-red-900/40 hover:bg-red-800 text-red-200 border border-red-700 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer">
+                                            <RefreshCw size={14}/> 외교 정보망 활성화
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex-1 p-8 overflow-y-auto custom-scrollbar bg-slate-900 flex flex-col">
+                            <div className="flex-1 p-5 sm:p-8 overflow-y-auto custom-scrollbar bg-slate-900 flex flex-col">
                                 {selectedNation ? (
                                     <div className="space-y-8 animate-in slide-in-from-right-4">
                                         <div className={`p-8 rounded-[2.5rem] border ${STATUS_STYLE[diplomacy[selectedNation].status].border} ${STATUS_STYLE[diplomacy[selectedNation].status].bg} relative overflow-hidden`}>
@@ -387,54 +419,69 @@ const MagyeWarModal: React.FC<Props> = ({ character, onClose, onAction, onUpdate
                         </>
                     ) : activeTab === 'heaven' ? (
                         <>
-                            {/* Heavenly Targets List */}
-                            <div className="w-full md:w-80 border-r border-red-900/30 p-6 overflow-y-auto custom-scrollbar shrink-0 bg-black/40">
-                                <h3 className="text-xs font-bold text-slate-500 uppercase mb-6 flex items-center gap-2">
-                                    <Target size={14} className="text-red-600"/> 신계 정벌 대상 (Celestial)
-                                </h3>
-                                
-                                <div className="space-y-3">
-                                    <button 
-                                        onClick={() => setSelectedTemple('신의 거처')}
-                                        className={`w-full p-4 rounded-2xl border transition-all flex items-center gap-4 ${selectedTemple === '신의 거처' ? 'bg-red-900/40 border-red-500 shadow-lg ring-2 ring-red-600' : 'bg-slate-900 border border-slate-800 hover:border-red-900/50'} ${isGodDefeated ? 'opacity-60 border-amber-500/50' : ''}`}
-                                    >
-                                        <div className={`p-2 rounded-lg shadow-md ${isGodDefeated ? 'bg-amber-600 text-white' : 'bg-red-600 text-white'}`}>
-                                            {isGodDefeated ? <CheckCircle size={20}/> : <Crown size={20}/>}
-                                        </div>
-                                        <div className="text-left">
-                                            <div className={`font-bold text-sm ${isGodDefeated ? 'text-amber-400' : 'text-white'}`}>신의 거처</div>
-                                            <div className={`text-[10px] font-bold uppercase ${isGodDefeated ? 'text-amber-600' : 'text-red-400'}`}>
-                                                {isGodDefeated ? 'Conquered' : 'Ultimate Target'}
-                                            </div>
-                                        </div>
-                                    </button>
-
-                                    <div className="h-px bg-red-900/30 my-4"></div>
-
-                                    {temples.map((name, idx) => {
+                            {/* Heavenly Targets Strategic Map */}
+                            <div className={`w-full md:w-[54%] border-b md:border-b-0 md:border-r border-red-900/30 shrink-0 bg-black/40 flex flex-col ${selectedTemple ? 'h-[260px] md:h-full' : 'flex-1 md:h-full'}`}>
+                                {(() => {
+                                    const nodes: StrategicNode[] = [
+                                        {
+                                            id: 'ORIGIN_MAGYE_HEAVEN',
+                                            name: '마계 침공군',
+                                            region: '신계',
+                                            x: 50,
+                                            y: 90,
+                                            status: 'origin'
+                                        },
+                                        {
+                                            id: '신의 거처',
+                                            name: '신의 거처',
+                                            region: '신계',
+                                            x: 50,
+                                            y: 20,
+                                            status: isGodDefeated ? 'vassal' : 'war',
+                                            badge: isGodDefeated ? '함락' : '절대신',
+                                            hasAlert: !isGodDefeated
+                                        }
+                                    ];
+                                    temples.forEach((name, idx) => {
                                         const job = TEMPLE_MESSENGER_MAP[name];
                                         const isAlly = allMembers.some(m => m.job === job);
-                                        return (
-                                            <button
-                                                key={`${name}-${idx}`}
-                                                onClick={() => setSelectedTemple(name)}
-                                                className={`w-full p-3 rounded-xl border text-left transition-all flex items-center gap-3 ${selectedTemple === name ? 'bg-indigo-900/40 border-indigo-500 shadow-md' : isAlly ? 'bg-green-950/20 border-green-900/50' : 'bg-slate-900 border border-slate-800 hover:border-slate-700'}`}
-                                            >
-                                                <div className={`p-1.5 rounded-lg ${isAlly ? 'bg-green-900 text-green-400' : 'bg-slate-800 text-slate-500'}`}>
-                                                    {isAlly ? <ShieldCheck size={16}/> : <Flame size={16}/>}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-xs font-bold text-slate-200 truncate">{name}</div>
-                                                    {isAlly && <span className="text-[8px] text-green-500 font-bold uppercase">Alliance</span>}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                        const pos = getTempleStrategicPos(name, idx, temples.length);
+                                        nodes.push({
+                                            id: name,
+                                            name,
+                                            region: '신계',
+                                            x: pos.x,
+                                            y: pos.y,
+                                            status: isAlly ? 'alliance' : 'hostile',
+                                            badge: isAlly ? '동맹' : undefined
+                                        });
+                                    });
+                                    const arrows: StrategicArrow[] = [];
+                                    if (selectedTemple) {
+                                        arrows.push({ fromId: 'ORIGIN_MAGYE_HEAVEN', toId: selectedTemple, kind: 'war' });
+                                    }
+                                    return (
+                                        <StrategicMapCanvas
+                                            nodes={nodes}
+                                            arrows={arrows}
+                                            selectedNodeId={selectedTemple}
+                                            onSelectNode={(n) => setSelectedTemple(n.id)}
+                                            realm="divine"
+                                            title="신계 정벌 전략 지도"
+                                            legendItems={[
+                                                { status: 'origin', label: '마계 침공군' },
+                                                { status: 'war', label: '신의 거처' },
+                                                { status: 'hostile', label: '적대 성전' },
+                                                { status: 'alliance', label: '동맹 성전' },
+                                                { status: 'vassal', label: '함락됨' }
+                                            ]}
+                                        />
+                                    );
+                                })()}
                             </div>
 
                             {/* Heavenly Strategy View */}
-                            <div className="flex-1 p-10 overflow-y-auto custom-scrollbar bg-slate-900/50 flex flex-col items-center justify-center">
+                            <div className="flex-1 p-5 sm:p-10 overflow-y-auto custom-scrollbar bg-slate-900/50 flex flex-col items-center justify-center">
                                 {selectedTemple ? (
                                     <div className="max-w-xl w-full space-y-8 animate-in zoom-in-95">
                                         <div className="text-center space-y-4">

@@ -208,6 +208,8 @@ export const FinalSkillEnhanceModal: React.FC<Props> = ({
     const isBuff = selectedSkill?.type === SkillType.BUFF;
     const isDebuff = selectedSkill?.type === SkillType.DEBUFF;
     const isPassive = selectedSkill?.type === SkillType.PASSIVE;
+    const isSummonOrClone = selectedSkill?.type === SkillType.SUMMON || selectedSkill?.type === SkillType.CLONE || Boolean(selectedSkill?.isSummonSkill);
+    const isTeleport = selectedSkill?.type === SkillType.TELEPORT;
 
     // 신력특수개방 스킬 판별 (실제 신력전용 패시브 스킬 - 수치 한계 돌파 전용)
     const isShinryokuSpecialPassive = isPassive && Boolean(
@@ -346,7 +348,16 @@ export const FinalSkillEnhanceModal: React.FC<Props> = ({
             }
         }
 
-        // 0. 공통 MP 소모 감소 강화 (공격/버프/디버프)
+        // 0-C. 소환수/분신 능력치 % 강화 (+10% per stack) & 이동(텔레포트) 거리 +1m 강화
+        if (selectedOption === 'summon_stat_boost') {
+            nextEnhanceData.summonStatBoostPct = (nextEnhanceData.summonStatBoostPct || 0) + 10;
+        }
+        if (selectedOption === 'teleport_range_expand') {
+            nextEnhanceData.teleportRangeBonus = (nextEnhanceData.teleportRangeBonus || 0) + 1;
+            nextEnhanceData.targetRadiusBonus = (nextEnhanceData.targetRadiusBonus || 0) + 1;
+        }
+
+        // 0. 공통 MP 소모 감소 강화 (공격/버프/디버프/소환/이동)
         if (selectedOption === 'mp_cost_reduction') {
             const prevStack = enhanceData.mpReductionStack || 0;
             const nextStack = prevStack + 1;
@@ -1318,6 +1329,9 @@ export const FinalSkillEnhanceModal: React.FC<Props> = ({
                                                                 <button type="button" onClick={() => { setSelectedOption('zone_range_expand'); setExtraZoneAxis('coneAngle'); }} className={`py-1.5 px-2 rounded text-[11px] font-bold border ${selectedOption === 'zone_range_expand' && extraZoneAxis === 'coneAngle' ? 'bg-sky-600 border-sky-300 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
                                                                     Cone 각도 {effZ.coneAngle}° → {Math.min(220, effZ.coneAngle + zCaps.enhanceStepAngle)}°
                                                                 </button>
+                                                                <button type="button" onClick={() => { setSelectedOption('zone_range_expand'); setExtraZoneAxis('targetRadius'); }} className={`col-span-2 py-1.5 px-2 rounded text-[11px] font-bold border ${selectedOption === 'zone_range_expand' && extraZoneAxis === 'targetRadius' ? 'bg-sky-600 border-sky-300 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
+                                                                    사정 거리 {effZ.targetRadius}m → {effZ.targetRadius + zCaps.enhanceStepMeters}m (+{zCaps.enhanceStepMeters}m)
+                                                                </button>
                                                             </>
                                                         )}
                                                         {effZ.zoneType === 'square' && (
@@ -1327,6 +1341,9 @@ export const FinalSkillEnhanceModal: React.FC<Props> = ({
                                                                 </button>
                                                                 <button type="button" onClick={() => { setSelectedOption('zone_range_expand'); setExtraZoneAxis('squareLength'); }} className={`py-1.5 px-2 rounded text-[11px] font-bold border ${selectedOption === 'zone_range_expand' && extraZoneAxis === 'squareLength' ? 'bg-sky-600 border-sky-300 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
                                                                     Square 세로 {effZ.squareLength}m → {effZ.squareLength + zCaps.enhanceStepMeters}m
+                                                                </button>
+                                                                <button type="button" onClick={() => { setSelectedOption('zone_range_expand'); setExtraZoneAxis('targetRadius'); }} className={`col-span-2 py-1.5 px-2 rounded text-[11px] font-bold border ${selectedOption === 'zone_range_expand' && extraZoneAxis === 'targetRadius' ? 'bg-sky-600 border-sky-300 text-white' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
+                                                                    사정 거리 {effZ.targetRadius}m → {effZ.targetRadius + zCaps.enhanceStepMeters}m (+{zCaps.enhanceStepMeters}m)
                                                                 </button>
                                                             </>
                                                         )}
@@ -1347,6 +1364,110 @@ export const FinalSkillEnhanceModal: React.FC<Props> = ({
                                     </label>
                                 );
                             })()}
+
+                            {/* 소환/분신 스킬 전용 선택지 */}
+                            {isSummonOrClone && (
+                                <div className="space-y-2 mb-2">
+                                    <label
+                                        onClick={() => setSelectedOption('summon_stat_boost')}
+                                        className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
+                                            selectedOption === 'summon_stat_boost'
+                                                ? 'bg-emerald-950/50 border-emerald-400 text-emerald-100'
+                                                : 'bg-slate-950/70 border-slate-800 hover:border-emerald-600 text-slate-300'
+                                        }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="enhance_option"
+                                            checked={selectedOption === 'summon_stat_boost'}
+                                            onChange={() => setSelectedOption('summon_stat_boost')}
+                                            className="mt-1 text-emerald-400 focus:ring-0"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-black text-emerald-300">🐉 소환수/분신 능력치 강화 (+10%)</span>
+                                                <span className="text-[10px] text-emerald-400 font-bold">
+                                                    현재 +{selectedSkill.finalEnhanceData?.summonStatBoostPct || 0}% → +{(selectedSkill.finalEnhanceData?.summonStatBoostPct || 0) + 10}%
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                                                소환되는 소환수/분신의 HP·공격력·방어력 계수를 10% 추가로 상승시킵니다.
+                                            </p>
+                                        </div>
+                                    </label>
+                                    <label
+                                        onClick={() => setSelectedOption('mp_cost_reduction')}
+                                        className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
+                                            selectedOption === 'mp_cost_reduction'
+                                                ? 'bg-amber-950/40 border-amber-500 text-amber-200'
+                                                : 'bg-slate-950/70 border-slate-800 hover:border-slate-700 text-slate-300'
+                                        }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="enhance_option"
+                                            checked={selectedOption === 'mp_cost_reduction'}
+                                            onChange={() => setSelectedOption('mp_cost_reduction')}
+                                            className="mt-1 text-amber-500 focus:ring-0"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-xs font-bold text-cyan-300">MP 소모 감소 (-{tierConfig.mpReductionAmount} / Lv)</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            )}
+
+                            {/* 이동(텔레포트) 스킬 전용 선택지 */}
+                            {isTeleport && (
+                                <div className="space-y-2 mb-2">
+                                    <label
+                                        onClick={() => setSelectedOption('teleport_range_expand')}
+                                        className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
+                                            selectedOption === 'teleport_range_expand'
+                                                ? 'bg-purple-950/50 border-purple-400 text-purple-100'
+                                                : 'bg-slate-950/70 border-slate-800 hover:border-purple-600 text-slate-300'
+                                        }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="enhance_option"
+                                            checked={selectedOption === 'teleport_range_expand'}
+                                            onChange={() => setSelectedOption('teleport_range_expand')}
+                                            className="mt-1 text-purple-400 focus:ring-0"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-black text-purple-300">⚡ 이동(텔레포트) 거리 1m 확장</span>
+                                                <span className="text-[10px] text-purple-300 font-bold">
+                                                    보너스 +{selectedSkill.finalEnhanceData?.teleportRangeBonus ?? selectedSkill.finalEnhanceData?.targetRadiusBonus ?? 0}m → +{(selectedSkill.finalEnhanceData?.teleportRangeBonus ?? selectedSkill.finalEnhanceData?.targetRadiusBonus ?? 0) + 1}m
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+                                                전장에서 순간이동 가능한 최대 사정 거리를 1m 영구적으로 증가시킵니다.
+                                            </p>
+                                        </div>
+                                    </label>
+                                    <label
+                                        onClick={() => setSelectedOption('mp_cost_reduction')}
+                                        className={`p-3 rounded-xl border flex items-start gap-3 cursor-pointer transition-all ${
+                                            selectedOption === 'mp_cost_reduction'
+                                                ? 'bg-amber-950/40 border-amber-500 text-amber-200'
+                                                : 'bg-slate-950/70 border-slate-800 hover:border-slate-700 text-slate-300'
+                                        }`}
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="enhance_option"
+                                            checked={selectedOption === 'mp_cost_reduction'}
+                                            onChange={() => setSelectedOption('mp_cost_reduction')}
+                                            className="mt-1 text-amber-500 focus:ring-0"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <span className="text-xs font-bold text-cyan-300">MP 소모 감소 (-{tierConfig.mpReductionAmount} / Lv)</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            )}
 
                             {/* 버프 및 회복 스킬 전용 선택지 */}
                             {isBuff && (

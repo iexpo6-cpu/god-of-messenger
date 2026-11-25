@@ -10,21 +10,25 @@ import { ItemTooltip } from './CharacterSheet';
 import { getShinryokuThematicClassName, checkAndInitializeLiberationEligibility } from '../services/companionGrowthService';
 import { determineRecruitClassTier } from '../services/classLiberationHelper';
 
+export type DemonCityTab = 'audience' | 'recruits' | 'shop' | 'slaves';
+type Tab = DemonCityTab;
+
 interface Props {
     character: Character;
     onClose: () => void;
     onUpdateCharacter: (newChar: Character, logMsg: string) => void;
+    initialTab?: DemonCityTab;
+    singleTabOnly?: boolean;
 }
-
-type Tab = 'audience' | 'recruits' | 'shop' | 'slaves';
 
 const RANK_ORDER: MercenaryRank[] = [
     MercenaryRank.F, MercenaryRank.E, MercenaryRank.D, MercenaryRank.C,
     MercenaryRank.B, MercenaryRank.A, MercenaryRank.S, MercenaryRank.SS, MercenaryRank.SSS
 ];
 
-const DemonCityModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter }) => {
-    const [activeTab, setActiveTab] = useState<Tab>('audience');
+const DemonCityModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, initialTab, singleTabOnly }) => {
+    const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'audience');
+    useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
     const [recruits, setRecruits] = useState<Companion[]>([]);
     const [slaves, setSlaves] = useState<Companion[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -876,6 +880,7 @@ const DemonCityModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter
                 </div>
 
                 {/* 탭 네비게이션 */}
+                {!singleTabOnly && (
                 <div className="grid grid-cols-4 border-b border-slate-800 bg-slate-950 shrink-0">
                     <button onClick={() => setActiveTab('audience')} className={`py-3 text-xs font-bold flex items-center justify-center transition-all border-b-2 ${activeTab === 'audience' ? 'text-purple-400 border-purple-500 bg-slate-900/80' : 'text-slate-400 border-transparent hover:text-slate-200'}`}>
                         <Crown size={14} className="mr-1 hidden sm:inline shrink-0"/> 제국 의회
@@ -890,6 +895,7 @@ const DemonCityModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter
                         <UserMinus size={14} className="mr-1 hidden sm:inline shrink-0"/> 노예 시장
                     </button>
                 </div>
+                )}
 
                 {/* 메인 컨텐츠 영역 */}
                 <div className="flex-1 overflow-y-auto p-3 sm:p-5 bg-slate-900 custom-scrollbar">

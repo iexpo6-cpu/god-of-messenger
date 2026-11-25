@@ -13,6 +13,7 @@ import DivineRelationshipModal from './DivineRelationshipModal';
 import ProtectedNationManagementModal from './ProtectedNationManagementModal';
 import TempleVassalManagementModal from './TempleVassalManagementModal';
 import { getDaysDiff, addDays } from '../utils';
+import StrategicMapCanvas, { getNationRegionAndPos, StrategicArrow, StrategicFactionStatus, StrategicNode } from './map/StrategicMapCanvas';
 
 interface Props {
     character: Character;
@@ -272,50 +273,65 @@ const TempleForeignAffairsModal: React.FC<Props> = ({ character, templeCity, onC
                 </div>
 
                 <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
-                    <div className={`w-full md:w-80 border-r border-slate-800 p-4 overflow-y-auto custom-scrollbar shrink-0 bg-slate-950/30 flex flex-col overscroll-contain h-full ${selectedNation ? 'hidden md:flex' : 'flex'}`}>
-                        <h3 className="text-xs font-bold text-slate-500 uppercase mb-4 flex items-center gap-2">
-                            <MapPin size={14} className="text-amber-500"/> 포교 및 관리 대상
-                        </h3>
-                        <div className="space-y-2">
-                            {NATION_LIST.map((name, idx) => {
+                    <div className={`w-full md:w-[54%] border-b md:border-b-0 md:border-r border-slate-800 shrink-0 bg-slate-950/30 flex flex-col ${selectedNation ? 'h-[260px] md:h-full' : 'flex-1 md:h-full'}`}>
+                        {(() => {
+                            const originNation = character.currentLocation?.nation || character.nation || '대한민국';
+                            const originPos = getNationRegionAndPos(originNation);
+                            const nodes: StrategicNode[] = [
+                                {
+                                    id: 'ORIGIN_TEMPLE',
+                                    name: templeCity,
+                                    region: originPos.region,
+                                    x: originPos.x,
+                                    y: originPos.y,
+                                    status: 'origin'
+                                }
+                            ];
+                            const arrows: StrategicArrow[] = [];
+                            NATION_LIST.forEach((name) => {
                                 const rel = templeDiplomacy[name] || { status: DivineDiplomacyStatus.NEUTRAL, faithPoints: 50, influence: 10, tension: 0 };
-                                const style = STATUS_STYLE_DIVINE[rel.status];
-                                const isMyNation = name === character.nation;
-                                return (
-                                    <button
-                                        key={`${name}-${idx}`}
-                                        onClick={() => setSelectedNation(name)}
-                                        className={`w-full p-3 rounded-xl border text-left transition-all flex flex-col gap-1 ${selectedNation === name ? 'bg-indigo-900/40 border-indigo-500 shadow-lg' : 'bg-slate-900 border border-slate-800 hover:border-slate-700'} ${rel.status === DivineDiplomacyStatus.CORRUPTED ? 'border-red-900/50' : ''}`}
-                                    >
-                                        <div className="flex justify-between items-center w-full">
-                                            <span className={`font-bold text-sm truncate ${isMyNation ? 'text-blue-400' : 'text-slate-200'}`}>
-                                                {name}
-                                            </span>
-                                            {rel.status === DivineDiplomacyStatus.SUBJUGATED && <Crown size={12} className="text-amber-400" />}
-                                            {rel.status === DivineDiplomacyStatus.BLESSED && <Sparkles size={12} className="text-green-400" />}
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className={`text-[9px] font-bold ${style.color}`}>{style.label}</span>
-                                            <div className="flex items-center gap-1">
-                                                <Heart size={8} className="text-pink-500 fill-pink-500"/>
-                                                <span className="text-[9px] font-mono text-slate-500">{rel.faithPoints}</span>
-                                            </div>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
+                                const pos = getNationRegionAndPos(name);
+                                let st: StrategicFactionStatus = 'neutral';
+                                if (rel.status === DivineDiplomacyStatus.BLESSED) st = 'blessed';
+                                else if (rel.status === DivineDiplomacyStatus.SUBJUGATED) st = 'subjugated';
+                                else if (rel.status === DivineDiplomacyStatus.CORRUPTED) st = 'corrupted';
+                                nodes.push({
+                                    id: name,
+                                    name,
+                                    region: pos.region,
+                                    x: pos.x,
+                                    y: pos.y,
+                                    status: st,
+                                    badge: rel.status === DivineDiplomacyStatus.BLESSED ? '비호' : rel.status === DivineDiplomacyStatus.SUBJUGATED ? '굴복' : undefined
+                                });
+                                if (rel.status === DivineDiplomacyStatus.BLESSED) {
+                                    arrows.push({ fromId: 'ORIGIN_TEMPLE', toId: name, kind: 'bless' });
+                                }
+                            });
+                            if (selectedNation) {
+                                arrows.push({ fromId: 'ORIGIN_TEMPLE', toId: selectedNation, kind: 'selected' });
+                            }
+                            return (
+                                <StrategicMapCanvas
+                                    nodes={nodes}
+                                    arrows={arrows}
+                                    selectedNodeId={selectedNation}
+                                    onSelectNode={(n) => setSelectedNation(n.id)}
+                                    realm="mortal"
+                                    title="신성 외교 세력도"
+                                    legendItems={[
+                                        { status: 'origin', label: '내 성전' },
+                                        { status: 'blessed', label: '비호 중' },
+                                        { status: 'neutral', label: '포교 중' },
+                                        { status: 'subjugated', label: '굴복함' },
+                                        { status: 'corrupted', label: '타락함' }
+                                    ]}
+                                />
+                            );
+                        })()}
                     </div>
 
-                    <div className={`flex-1 p-4 md:p-8 overflow-y-auto custom-scrollbar bg-slate-900 flex flex-col overscroll-contain h-full ${selectedNation ? 'flex' : 'hidden md:flex'}`}>
-                        {selectedNation && (
-                            <button 
-                                onClick={() => setSelectedNation(null)}
-                                className="md:hidden flex items-center text-slate-400 hover:text-white mb-4 bg-slate-800/50 w-fit px-3 py-1.5 rounded-lg border border-slate-700"
-                            >
-                                <ArrowRight size={18} className="rotate-180 mr-2" /> 국가 목록으로
-                            </button>
-                        )}
+                    <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar bg-slate-900 flex flex-col overscroll-contain">
                         {selectedNation ? (
                             <div className="max-w-2xl mx-auto w-full space-y-8 animate-in slide-in-from-right-4 pb-10">
                                 {(() => {

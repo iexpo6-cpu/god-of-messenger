@@ -1,5 +1,6 @@
 import { BaseDecorationItem, Character, Companion, CapturedMonster, FacilityInstance } from '../types';
 import { BASE_GRID_EXPANSION_COSTS, BASE_UPGRADE_COSTS, FACILITIES_INFO } from '../constants';
+import { hasDimensionalLeapEligible, hasDimensionalLeapSkill } from './travelCalculationService';
 import {
     CityCultureKey,
     CultureAssetPart,
@@ -772,6 +773,40 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
             assignedFacilityLabel
         });
     });
+
+    // 5-1. Lv.500+ & 라스트 클래스 이상 시 기지 방문 NPC '차원 현자 아스트라' 스폰
+    if (hasDimensionalLeapEligible(character)) {
+        const learnedLeap = hasDimensionalLeapSkill(character);
+        const sagePx = (cx + 2 + 0.5) * BASE_TILE_SIZE;
+        const sagePy = (Math.max(hqDoorY + 1, rows - 3) - 1 + 0.5) * BASE_TILE_SIZE;
+        const sageSpriteUrl = resolveEntityRpgSprite({ name: '차원 현자 아스트라', gender: '여성', role: '차원도약 전수자' } as any, '신계', loc.nation).url;
+        residents.push({
+            id: 'npc_dimensional_sage',
+            name: '차원 현자 아스트라',
+            role: '차원도약 전수자',
+            activityBubble: learnedLeap ? '🌀 차원의 길이 열려 있소' : '✨ 차원 도약 비기 전수 가능!',
+            spriteUrl: sageSpriteUrl,
+            px: sagePx,
+            py: sagePy,
+            homePx: sagePx,
+            homePy: sagePy,
+            dir: 'down',
+            walkFrame: 1,
+            animTimer: 0,
+            wanderTimer: 2.5,
+            targetPx: null,
+            targetPy: null,
+            companionRef: {
+                id: 'npc_dimensional_sage',
+                name: '차원 현자 아스트라',
+                gender: '여성',
+                race: '신족',
+                job: '차원 현자' as any,
+                level: 999,
+                affection: 100
+            } as any
+        });
+    }
 
     // 6. 기지 밖(마당)에는 사육 몬스터를 표시하지 않고, 몬스터 사육소 내부 맵에서만 스폰
     const farmMonsters: BaseFarmMonsterEntity[] = [];

@@ -17,6 +17,10 @@ import DistrictRpgCanvas, { VisualDistrictKind } from './DistrictRpgCanvas';
 import FactionCompoundCanvas, { FactionCompoundKind } from './FactionCompoundCanvas';
 import OutskirtsRpgCanvas from './OutskirtsRpgCanvas';
 import SchoolCampusCanvas from './SchoolCampusCanvas';
+import RegionalAdminCanvas from './RegionalAdminCanvas';
+import TempleRpgCanvas from './TempleRpgCanvas';
+import MagyeDominionCanvas from './MagyeDominionCanvas';
+import RaceHubCanvas, { RaceHubKind } from './RaceHubCanvas';
 import FacilityClosedModal from './FacilityClosedModal';
 import { getFacilityOperatingState } from '../services/facilityOperatingService';
 import { 
@@ -45,6 +49,7 @@ interface Props {
     onStartBattle?: (enemies: any[], battleType: string, sourceId?: string) => void;
     onAction?: (action: string) => void;
     onOpenCharacterSheet?: () => void;
+    suspendCanvas?: boolean;
 }
 
 const CityMapBoard: React.FC<Props> = ({ 
@@ -65,7 +70,8 @@ const CityMapBoard: React.FC<Props> = ({
     onUpdateCharacter,
     onStartBattle,
     onAction,
-    onOpenCharacterSheet
+    onOpenCharacterSheet,
+    suspendCanvas = false
 }) => {
     const [isQuickTravelOpen, setIsQuickTravelOpen] = useState(false);
     const [isMidnightModalOpen, setIsMidnightModalOpen] = useState(false);
@@ -79,6 +85,10 @@ const CityMapBoard: React.FC<Props> = ({
     const [isZoneFading, setIsZoneFading] = useState(false);
     const [activeDistrictCanvas, setActiveDistrictCanvas] = useState<VisualDistrictKind | null>(null);
     const [activeCompoundCanvas, setActiveCompoundCanvas] = useState<FactionCompoundKind | null>(null);
+    const [showRegionalAdmin, setShowRegionalAdmin] = useState(false);
+    const [showTempleCanvas, setShowTempleCanvas] = useState(false);
+    const [showMagyeDominionCanvas, setShowMagyeDominionCanvas] = useState(false);
+    const [activeRaceCanvas, setActiveRaceCanvas] = useState<RaceHubKind | null>(null);
     const loc = character.currentLocation || { region: "아시아", nation: "대한민국", city: "서울" };
     const [isSchoolCanvasOpen, setIsSchoolCanvasOpen] = useState<boolean>(() => {
         try {
@@ -102,20 +112,7 @@ const CityMapBoard: React.FC<Props> = ({
     });
     const [closedFacilityType, setClosedFacilityType] = useState<'Mercenary' | 'Military' | null>(null);
     const [royalCourtDenied, setRoyalCourtDenied] = useState<{ rep: number; merit: number } | null>(null);
-    const [mapViewMode, setMapViewMode] = useState<'rpg' | 'classic'>(() => {
-        try {
-            const saved = localStorage.getItem('shinryoku_city_map_view_mode');
-            return saved === 'classic' ? 'classic' : 'rpg';
-        } catch {
-            return 'rpg';
-        }
-    });
-    const toggleMapViewMode = (mode: 'rpg' | 'classic') => {
-        setMapViewMode(mode);
-        try {
-            localStorage.setItem('shinryoku_city_map_view_mode', mode);
-        } catch {}
-    };
+    const mapViewMode = 'rpg' as const;
 
     const prevLocKeyRef = useRef<string>(`${loc.city}|${Boolean(character.base)}`);
     useEffect(() => {
@@ -185,6 +182,14 @@ const CityMapBoard: React.FC<Props> = ({
             setActiveDistrictCanvas('RoyalCourt');
             return;
         }
+        if (!openHuntMap && district === 'Imperial' && isShingye) {
+            setShowTempleCanvas(true);
+            return;
+        }
+        if (!openHuntMap && district === 'Imperial' && isMagye) {
+            setShowMagyeDominionCanvas(true);
+            return;
+        }
         onEnterCity(district, openHuntMap);
     };
 
@@ -196,6 +201,10 @@ const CityMapBoard: React.FC<Props> = ({
                 setActiveDistrictCanvas(null);
                 setActiveCompoundCanvas(null);
                 setIsOutskirtsCanvasOpen(false);
+                setShowRegionalAdmin(false);
+                setShowTempleCanvas(false);
+                setShowMagyeDominionCanvas(false);
+                setActiveRaceCanvas(null);
             }
             window.setTimeout(() => setIsZoneFading(false), 140);
         }, 160);
@@ -816,38 +825,10 @@ const CityMapBoard: React.FC<Props> = ({
                         <span>내 정보</span>
                     </button>
                 )}
-
-                {/* 쯔꾸르 2D 필드 <-> 클래식 보드 전환 토글 */}
-                <div className="ml-1.5 sm:ml-2 mt-1 sm:mt-2.5 flex items-center bg-slate-950/90 border border-slate-700/80 rounded-xl p-0.5 shadow-xl backdrop-blur-md shrink-0">
-                    <button
-                        type="button"
-                        onClick={() => toggleMapViewMode('rpg')}
-                        className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-black transition-all flex items-center gap-1 ${
-                            mapViewMode === 'rpg'
-                                ? 'bg-amber-500 text-slate-950 shadow'
-                                : 'text-slate-400 hover:text-white'
-                        }`}
-                        title="쯔꾸르 2D 탑다운 필드 모드"
-                    >
-                        <span>🎮 <span className="hidden xs:inline">쯔꾸르</span><span className="xs:hidden">필드</span></span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => toggleMapViewMode('classic')}
-                        className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-[11px] font-black transition-all flex items-center gap-1 ${
-                            mapViewMode === 'classic'
-                                ? 'bg-indigo-600 text-white shadow'
-                                : 'text-slate-400 hover:text-white'
-                        }`}
-                        title="기존 클래식 보드 모드"
-                    >
-                        <span>📋 클래식</span>
-                    </button>
-                </div>
             </div>
 
-            {activeMapZone === 'base' && character.base ? (
-                <div className="z-10 flex-1 mt-1 mb-[62px] sm:mb-[54px] flex flex-col w-full min-h-[320px] sm:min-h-[calc(100vh-165px)] relative">
+            {suspendCanvas ? null : activeMapZone === 'base' && character.base ? (
+                <div className="z-10 flex-1 mt-1 flex flex-col w-full min-h-[320px] sm:min-h-[calc(100vh-165px)] relative">
                     <BaseRpgCanvas
                         character={character}
                         onExitToCity={() => switchMapZone('city')}
@@ -864,7 +845,7 @@ const CityMapBoard: React.FC<Props> = ({
                     )}
                 </div>
             ) : mapViewMode === 'rpg' || activeDistrictCanvas || activeCompoundCanvas || isOutskirtsCanvasOpen || isSchoolCanvasOpen ? (
-                <div className="z-10 flex-1 mt-1 mb-[62px] sm:mb-[54px] flex flex-col w-full min-h-[320px] sm:min-h-[calc(100vh-165px)] relative">
+                <div className="z-10 flex-1 mt-1 flex flex-col w-full min-h-[320px] sm:min-h-[calc(100vh-165px)] relative">
                     {isSchoolCanvasOpen ? (
                         <SchoolCampusCanvas
                             character={character}
@@ -916,6 +897,49 @@ const CityMapBoard: React.FC<Props> = ({
                             onUpdateCharacter={onUpdateCharacter || (() => {})}
                             onAction={onAction}
                         />
+                    ) : showTempleCanvas ? (
+                        <TempleRpgCanvas
+                            character={character}
+                            region={loc.region}
+                            nation={loc.nation}
+                            city={loc.city}
+                            onExitToCity={() => setShowTempleCanvas(false)}
+                            onUpdateCharacter={onUpdateCharacter || (() => {})}
+                            onAction={onAction || (() => {})}
+                            onBattle={onStartBattle}
+                        />
+                    ) : showMagyeDominionCanvas ? (
+                        <MagyeDominionCanvas
+                            character={character}
+                            region={loc.region}
+                            nation={loc.nation}
+                            city={loc.city}
+                            onExitToCity={() => setShowMagyeDominionCanvas(false)}
+                            onUpdateCharacter={onUpdateCharacter || (() => {})}
+                            onAction={onAction || (() => {})}
+                            onBattle={onStartBattle}
+                            onOpenAbyssTower={onOpenAbyssTower}
+                        />
+                    ) : activeRaceCanvas ? (
+                        <RaceHubCanvas
+                            character={character}
+                            kind={activeRaceCanvas}
+                            region={loc.region}
+                            nation={loc.nation}
+                            city={loc.city}
+                            onExitToCity={() => setActiveRaceCanvas(null)}
+                            onUpdateCharacter={onUpdateCharacter || (() => {})}
+                        />
+                    ) : showRegionalAdmin ? (
+                        <RegionalAdminCanvas
+                            character={character}
+                            region={loc.region}
+                            nation={loc.nation}
+                            city={loc.city}
+                            isCapital={tier === 'Capital'}
+                            onUpdateCharacter={onUpdateCharacter || (() => {})}
+                            onClose={() => setShowRegionalAdmin(false)}
+                        />
                     ) : activeDistrictCanvas ? (
                         <DistrictRpgCanvas
                             character={character}
@@ -956,12 +980,16 @@ const CityMapBoard: React.FC<Props> = ({
                             onOpenDungeon={onOpenDungeon}
                             onOpenMap={onOpenMap}
                             onOpenBase={handleEnterBaseFromMap}
-                            onOpenElfCity={onOpenElfCity}
-                            onOpenDemonCity={onOpenDemonCity}
-                            onOpenBeastCity={onOpenBeastCity}
+                            onOpenElfCity={() => setActiveRaceCanvas('elf')}
+                            onOpenDemonCity={() => setActiveRaceCanvas('demon')}
+                            onOpenBeastCity={() => setActiveRaceCanvas('beast')}
                             onOpenTranscendentArena={onOpenTranscendentArena}
                             onOpenAbyssTower={onOpenAbyssTower}
                             onInspectCompanion={onInspectCompanion}
+                            onUpdateCharacter={onUpdateCharacter}
+                            onStartBattle={onStartBattle}
+                            onAction={onAction}
+                            onOpenRegionalAdmin={() => setShowRegionalAdmin(true)}
                         />
                     )}
                     {isZoneFading && (
@@ -1153,7 +1181,7 @@ const CityMapBoard: React.FC<Props> = ({
                                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-amber-400 border border-slate-950 rounded-full"></span>
                                 </div>
                                 <span className="text-[7.5px] xs:text-[8.5px] sm:text-[10px] font-black text-amber-300 mt-0.5 xs:mt-1 text-center truncate w-full group-hover:text-amber-100 transition-colors leading-tight">
-                                    신의 사자 신전
+                                    {loc.city === '신의 거처' ? '절대 신 엘라의 신전' : '신의 사자 신전'}
                                 </span>
                                 <span className="text-[6.5px] sm:text-[7.5px] text-amber-400 font-bold px-1.5 py-0.2 rounded-full bg-amber-950/80 border border-amber-600/50 mt-0.5">
                                     신전 진입
@@ -1239,7 +1267,7 @@ const CityMapBoard: React.FC<Props> = ({
                                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 border border-slate-950 rounded-full"></span>
                                 </div>
                                 <span className="text-[7.5px] xs:text-[8.5px] sm:text-[10px] font-black text-red-300 mt-0.5 xs:mt-1 text-center truncate w-full group-hover:text-red-100 transition-colors leading-tight">
-                                    마신황의 궁궐
+                                    {loc.city === '임페리얼' ? '마신황의 궁궐' : '제너럴의 궁궐'}
                                 </span>
                                 <span className="text-[6.5px] sm:text-[7.5px] text-red-400 font-bold px-1.5 py-0.2 rounded-full bg-red-950/80 border border-red-700/50 mt-0.5">
                                     궁궐 진입

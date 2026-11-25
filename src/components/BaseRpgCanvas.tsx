@@ -1112,135 +1112,92 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                 const startR = Math.max(0, Math.floor(camY / BASE_TILE_SIZE) - 1);
                 const endR = Math.min(mapData.rows - 1, Math.ceil((camY + viewportSize.h) / BASE_TILE_SIZE) + 1);
 
-                const loadedTerrainCount = [groundImg, roadImg, plazaImg, royalImg, wallImg, waterImg].filter(
-                    im => im && im.complete && im.naturalWidth > 0
-                ).length;
+                // Direct viewport-culled terrain rendering (matches CityRpgCanvas for smooth 60fps without huge offscreen cache spikes)
+                for (let r = startR; r <= endR; r++) {
+                    for (let c = startC; c <= endC; c++) {
+                        const x = c * BASE_TILE_SIZE;
+                        const y = r * BASE_TILE_SIZE;
+                        const isPerimeterWall =
+                            r === 0 ||
+                            c === 0 ||
+                            c === mapData.cols - 1 ||
+                            (r === mapData.rows - 1 &&
+                                (c < mapData.exitGate.x || c >= mapData.exitGate.x + mapData.exitGate.w));
+                        const isGate =
+                            r === mapData.exitGate.y &&
+                            c >= mapData.exitGate.x &&
+                            c < mapData.exitGate.x + mapData.exitGate.w;
 
-                // Viewport-sliding offscreen terrain cache (works for ALL map sizes up to 200x200!)
-                const needRedrawTerrain =
-                    !terrainCacheRef.current ||
-                    terrainCacheRef.current.loadedCount !== loadedTerrainCount ||
-                    startC < terrainCacheRef.current.startC ||
-                    endC > terrainCacheRef.current.endC ||
-                    startR < terrainCacheRef.current.startR ||
-                    endR > terrainCacheRef.current.endR;
+                        if (isPerimeterWall) {
+                            if (wallImg && wallImg.complete && wallImg.naturalWidth > 0) {
+                                ctx.drawImage(wallImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                            } else {
+                                ctx.fillStyle = '#334155';
+                                ctx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                            }
+                            continue;
+                        }
 
-                if (needRedrawTerrain) {
-                    const cacheWholeMap = mapData.cols <= 105 && mapData.rows <= 105;
-                    const padTiles = 24;
-                    const c0 = cacheWholeMap ? 0 : Math.max(0, startC - padTiles);
-                    const r0 = cacheWholeMap ? 0 : Math.max(0, startR - padTiles);
-                    const c1 = cacheWholeMap ? mapData.cols - 1 : Math.min(mapData.cols - 1, endC + padTiles);
-                    const r1 = cacheWholeMap ? mapData.rows - 1 : Math.min(mapData.rows - 1, endR + padTiles);
-                    const off = terrainCacheRef.current?.canvas || document.createElement('canvas');
-                    const reqW = (c1 - c0 + 1) * BASE_TILE_SIZE;
-                    const reqH = (r1 - r0 + 1) * BASE_TILE_SIZE;
-                    if (off.width !== reqW) off.width = reqW;
-                    if (off.height !== reqH) off.height = reqH;
-                    const octx = off.getContext('2d');
-                    if (octx) {
-                        for (let r = r0; r <= r1; r++) {
-                            for (let c = c0; c <= c1; c++) {
-                                const x = (c - c0) * BASE_TILE_SIZE;
-                                const y = (r - r0) * BASE_TILE_SIZE;
-                                const isPerimeterWall =
-                                    r === 0 ||
-                                    c === 0 ||
-                                    c === mapData.cols - 1 ||
-                                    (r === mapData.rows - 1 &&
-                                        (c < mapData.exitGate.x || c >= mapData.exitGate.x + mapData.exitGate.w));
-                                const isGate =
-                                    r === mapData.exitGate.y &&
-                                    c >= mapData.exitGate.x &&
-                                    c < mapData.exitGate.x + mapData.exitGate.w;
+                        if (groundImg && groundImg.complete && groundImg.naturalWidth > 0) {
+                            ctx.drawImage(groundImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                        } else {
+                            ctx.fillStyle = (r + c) % 2 === 0 ? '#2f5e2c' : '#356831';
+                            ctx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                        }
 
-                                if (isPerimeterWall) {
-                                    if (wallImg && wallImg.complete && wallImg.naturalWidth > 0) {
-                                        octx.drawImage(wallImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                    } else {
-                                        octx.fillStyle = '#334155';
-                                        octx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                    }
-                                    continue;
-                                }
-
-                                if (groundImg && groundImg.complete && groundImg.naturalWidth > 0) {
-                                    octx.drawImage(groundImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                } else {
-                                    octx.fillStyle = (r + c) % 2 === 0 ? '#2f5e2c' : '#356831';
-                                    octx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                }
-
-                                const floorId = mapData.floorOverrides[`${c},${r}`];
-                                if (floorId && floorId !== 'default') {
-                                    const fDef = FLOOR_TILE_MAP[floorId];
-                                    if (floorId === 'stone_road' && roadImg?.complete && roadImg.naturalWidth > 0) {
-                                        octx.drawImage(roadImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                    } else if (floorId === 'plaza' && plazaImg?.complete && plazaImg.naturalWidth > 0) {
-                                        octx.drawImage(plazaImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                    } else if (floorId === 'royal_marble' && royalImg?.complete && royalImg.naturalWidth > 0) {
-                                        octx.drawImage(royalImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                    } else if (floorId === 'water' && waterImg?.complete && waterImg.naturalWidth > 0) {
-                                        octx.drawImage(waterImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                    } else if (fDef) {
-                                        octx.fillStyle = (r + c) % 2 === 0 ? fDef.color : fDef.accentColor;
-                                        octx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                                        if (floorId === 'flower_field') {
-                                            octx.fillStyle = '#f472b6';
-                                            octx.fillRect(x + 10, y + 10, 5, 5);
-                                            octx.fillStyle = '#fde047';
-                                            octx.fillRect(x + 28, y + 16, 5, 5);
-                                            octx.fillStyle = '#c084fc';
-                                            octx.fillRect(x + 16, y + 30, 5, 5);
-                                        } else if (floorId === 'wood_deck') {
-                                            octx.strokeStyle = 'rgba(0,0,0,0.22)';
-                                            octx.lineWidth = 1;
-                                            octx.beginPath();
-                                            octx.moveTo(x, y + 16);
-                                            octx.lineTo(x + BASE_TILE_SIZE, y + 16);
-                                            octx.moveTo(x, y + 32);
-                                            octx.lineTo(x + BASE_TILE_SIZE, y + 32);
-                                            octx.stroke();
-                                        } else if (floorId === 'shingye_jade' || floorId === 'magye_obsidian') {
-                                            octx.strokeStyle =
-                                                floorId === 'shingye_jade'
-                                                    ? 'rgba(245,158,11,0.45)'
-                                                    : 'rgba(168,85,247,0.45)';
-                                            octx.strokeRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4);
-                                        }
-                                    }
-                                }
-
-                                if (isGate) {
-                                    octx.fillStyle = 'rgba(251, 191, 36, 0.35)';
-                                    octx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                        const floorId = mapData.floorOverrides[`${c},${r}`];
+                        if (floorId && floorId !== 'default') {
+                            const fDef = FLOOR_TILE_MAP[floorId];
+                            if (floorId === 'stone_road' && roadImg?.complete && roadImg.naturalWidth > 0) {
+                                ctx.drawImage(roadImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                            } else if (floorId === 'plaza' && plazaImg?.complete && plazaImg.naturalWidth > 0) {
+                                ctx.drawImage(plazaImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                            } else if (floorId === 'royal_marble' && royalImg?.complete && royalImg.naturalWidth > 0) {
+                                ctx.drawImage(royalImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                            } else if (floorId === 'water' && waterImg?.complete && waterImg.naturalWidth > 0) {
+                                ctx.drawImage(waterImg, x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                            } else if (fDef) {
+                                ctx.fillStyle = (r + c) % 2 === 0 ? fDef.color : fDef.accentColor;
+                                ctx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                                if (floorId === 'flower_field') {
+                                    ctx.fillStyle = '#f472b6';
+                                    ctx.fillRect(x + 10, y + 10, 5, 5);
+                                    ctx.fillStyle = '#fde047';
+                                    ctx.fillRect(x + 28, y + 16, 5, 5);
+                                    ctx.fillStyle = '#c084fc';
+                                    ctx.fillRect(x + 16, y + 30, 5, 5);
+                                } else if (floorId === 'wood_deck') {
+                                    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+                                    ctx.lineWidth = 1;
+                                    ctx.beginPath();
+                                    ctx.moveTo(x, y + 16);
+                                    ctx.lineTo(x + BASE_TILE_SIZE, y + 16);
+                                    ctx.moveTo(x, y + 32);
+                                    ctx.lineTo(x + BASE_TILE_SIZE, y + 32);
+                                    ctx.stroke();
+                                } else if (floorId === 'shingye_jade' || floorId === 'magye_obsidian') {
+                                    ctx.strokeStyle =
+                                        floorId === 'shingye_jade'
+                                            ? 'rgba(245,158,11,0.45)'
+                                            : 'rgba(168,85,247,0.45)';
+                                    ctx.strokeRect(x + 2, y + 2, BASE_TILE_SIZE - 4, BASE_TILE_SIZE - 4);
                                 }
                             }
                         }
-                        terrainCacheRef.current = {
-                            canvas: off,
-                            startC: c0,
-                            startR: r0,
-                            endC: c1,
-                            endR: r1,
-                            loadedCount: loadedTerrainCount
-                        };
+
+                        if (isGate) {
+                            ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
+                            ctx.fillRect(x, y, BASE_TILE_SIZE, BASE_TILE_SIZE);
+                        }
                     }
                 }
 
-                if (terrainCacheRef.current) {
-                    ctx.drawImage(
-                        terrainCacheRef.current.canvas,
-                        terrainCacheRef.current.startC * BASE_TILE_SIZE,
-                        terrainCacheRef.current.startR * BASE_TILE_SIZE
-                    );
-                    if (mode !== 'explore') {
-                        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-                        ctx.lineWidth = 1;
-                        for (let r = startR; r <= endR; r++) {
-                            for (let c = startC; c <= endC; c++) {
-                                ctx.strokeRect(c * BASE_TILE_SIZE, r * BASE_TILE_SIZE, BASE_TILE_SIZE, BASE_TILE_SIZE);
-                            }
+                if (mode !== 'explore') {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                    ctx.lineWidth = 1;
+                    for (let r = startR; r <= endR; r++) {
+                        for (let c = startC; c <= endC; c++) {
+                            ctx.strokeRect(c * BASE_TILE_SIZE, r * BASE_TILE_SIZE, BASE_TILE_SIZE, BASE_TILE_SIZE);
                         }
                     }
                 }

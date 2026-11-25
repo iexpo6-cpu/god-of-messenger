@@ -183,6 +183,18 @@ export const OverlandExploreCanvas: React.FC<OverlandExploreCanvasProps> = ({
         return routeWaypoints[hopIndex] || routeWaypoints[routeWaypoints.length - 1] || null;
     }, [routeWaypoints, activeNation, targetDestination?.nation, hopIndex]);
 
+    const waypointPortalPos = useMemo(() => {
+        if (!nextWaypoint) return { tx: 30.5, ty: 10.5, enterTx: 3.5, enterTy: 10.5, dirLabel: '동쪽' };
+        const key = `${activeNation}->${nextWaypoint.nation}:${nextWaypoint.city}`;
+        let h = 0;
+        for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+        const side = h % 4;
+        if (side === 0) return { tx: 30.5, ty: 10.5, enterTx: 3.5, enterTy: 10.5, dirLabel: '동쪽' };
+        if (side === 1) return { tx: 2.5, ty: 10.5, enterTx: 29.5, enterTy: 10.5, dirLabel: '서쪽' };
+        if (side === 2) return { tx: 16.5, ty: 2.5, enterTx: 16.5, enterTy: 18.5, dirLabel: '북쪽' };
+        return { tx: 16.5, ty: 18.5, enterTx: 16.5, enterTy: 3.5, dirLabel: '남쪽' };
+    }, [nextWaypoint, activeNation]);
+
     const curCity =
         activeNation === (character.currentLocation?.nation || initialNation)
             ? (character.currentLocation?.city || WORLD_GEOGRAPHY[region]?.[nation]?.capital || '서울')
@@ -443,8 +455,8 @@ export const OverlandExploreCanvas: React.FC<OverlandExploreCanvasProps> = ({
         const p = playerRef.current;
         // 0. Check Next Waypoint Portal (multi-hop overland route)
         if (nextWaypoint) {
-            const wx = 30.5 * CITY_TILE_SIZE;
-            const wy = 10.5 * CITY_TILE_SIZE;
+            const wx = waypointPortalPos.tx * CITY_TILE_SIZE;
+            const wy = waypointPortalPos.ty * CITY_TILE_SIZE;
             if (Math.hypot(wx - p.x, wy - p.y) <= CITY_TILE_SIZE * 1.7) {
                 const walkInfo = getWalkMinutesBetweenCities(
                     { region, nation, city: curCity },
@@ -459,8 +471,8 @@ export const OverlandExploreCanvas: React.FC<OverlandExploreCanvasProps> = ({
                 setActiveRegion(nextWaypoint.region);
                 setActiveNation(nextWaypoint.nation);
                 setHopIndex(idx => idx + 1);
-                playerRef.current.x = 3.5 * CITY_TILE_SIZE;
-                playerRef.current.y = 10.5 * CITY_TILE_SIZE;
+                playerRef.current.x = waypointPortalPos.enterTx * CITY_TILE_SIZE;
+                playerRef.current.y = waypointPortalPos.enterTy * CITY_TILE_SIZE;
                 playerRef.current.targetX = null;
                 playerRef.current.targetY = null;
                 graceRef.current = Date.now() + 1400;
@@ -714,8 +726,8 @@ export const OverlandExploreCanvas: React.FC<OverlandExploreCanvasProps> = ({
                 uiTick = 0;
                 let found: { label: string; kind: 'city' | 'gather' | 'merchant' | 'waypoint' } | null = null;
                 if (nextWaypoint) {
-                    const wx = 30.5 * CITY_TILE_SIZE;
-                    const wy = 10.5 * CITY_TILE_SIZE;
+                    const wx = waypointPortalPos.tx * CITY_TILE_SIZE;
+                    const wy = waypointPortalPos.ty * CITY_TILE_SIZE;
                     if (Math.hypot(wx - p.x, wy - p.y) <= CITY_TILE_SIZE * 1.7) {
                         found = {
                             label: `🌀 다음 경유지: ${nextWaypoint.nation} (${nextWaypoint.city} 방면) [Space]`,
@@ -997,10 +1009,10 @@ export const OverlandExploreCanvas: React.FC<OverlandExploreCanvasProps> = ({
                     ctx.fillText(`${m.name} (Lv.${m.levelRange[0]}~${m.levelRange[1]})`, m.px, m.py + 22);
                 });
 
-                // Next Waypoint Gate Portal (East border at tx=30, ty=10)
+                // Next Waypoint Gate Portal (varies by route direction)
                 if (nextWaypoint) {
-                    const wx = 30.5 * ts;
-                    const wy = 10.5 * ts;
+                    const wx = waypointPortalPos.tx * ts;
+                    const wy = waypointPortalPos.ty * ts;
                     const pulse = 0.65 + 0.35 * Math.sin(now * 0.005);
                     ctx.fillStyle = `rgba(16, 185, 129, ${0.28 * pulse})`;
                     ctx.beginPath();
@@ -1074,7 +1086,7 @@ export const OverlandExploreCanvas: React.FC<OverlandExploreCanvasProps> = ({
         };
         rafId = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(rafId);
-    }, [viewport, cultureKey, huntStyle, playerSpriteUrl, spriteInfo, cityPortals, fieldProps, merchantPos, nextWaypoint, curCity, nation, region, character, onTriggerBattle]);
+    }, [viewport, cultureKey, huntStyle, playerSpriteUrl, spriteInfo, cityPortals, fieldProps, merchantPos, nextWaypoint, waypointPortalPos, curCity, nation, region, character, onTriggerBattle]);
 
     const supplyCost = Math.max(150, character.level * 25);
 
@@ -1094,7 +1106,7 @@ export const OverlandExploreCanvas: React.FC<OverlandExploreCanvasProps> = ({
                         </div>
                         <div className="text-[11px] text-slate-400">
                             {nextWaypoint
-                                ? `동쪽 관문(🌀 ${nextWaypoint.nation} 방면)으로 이동해 다음 국가를 거쳐가세요! · 상단(🧳)·채집(🌿🔥) [Space]`
+                                ? `${waypointPortalPos.dirLabel} 관문(🌀 ${nextWaypoint.nation} 방면)으로 이동해 다음 국가를 거쳐가세요! · 상단(🧳)·채집(🌿🔥) [Space]`
                                 : 'WASD/방향키 또는 클릭 이동 · 도시 포탈(🏰)/국경(🚩) 입장 시 도보 시간 경과 · 상단(🧳)·채집(🌿🔥) [Space]'}
                         </div>
                     </div>

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { GridDungeonState, GridTile, revealFogOfWar, updateTileIdentifications } from '../services/gridDungeonEngine';
 import { calculateFinalStats } from '../utils';
+import ChallengeLobbyCanvas, { ChallengeLobbyNpc } from './ChallengeLobbyCanvas';
 import {
     generateAbyssTowerFloor,
     generateAbyssTowerEnemies,
@@ -20,9 +21,10 @@ interface Props {
     onClose: () => void;
     onBattle: (enemy: Enemy | Enemy[], type?: string) => void;
     onUpdateCharacter: (newChar: Character, logMsg: string) => void;
+    embedded?: boolean;
 }
 
-const AbyssTowerModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, onUpdateCharacter }) => {
+const AbyssTowerModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle, onUpdateCharacter, embedded = false }) => {
     const towerState = character.abyssTowerState;
     const unlockedCheckpoint = Math.max(1, towerState?.unlockedCheckpointFloor || 1);
     const highestFloor = towerState?.highestFloor || 0;
@@ -272,8 +274,8 @@ const AbyssTowerModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle
     const floorLevel = getAbyssFloorLevel(currentFloor);
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/92 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in">
-            <div className="w-full max-w-4xl bg-gradient-to-b from-slate-950 via-red-950/20 to-black border-2 border-red-600/60 rounded-2xl sm:rounded-3xl shadow-[0_0_60px_rgba(220,38,38,0.3)] overflow-hidden flex flex-col max-h-[92vh]">
+        <div className={embedded ? 'w-full h-full flex-1 flex flex-col animate-in fade-in' : 'fixed inset-0 z-50 bg-black/92 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in'}>
+            <div className={embedded ? 'w-full h-full flex-1 bg-gradient-to-b from-slate-950 via-red-950/20 to-black border border-red-600/50 rounded-2xl overflow-hidden flex flex-col' : 'w-full max-w-4xl bg-gradient-to-b from-slate-950 via-red-950/20 to-black border-2 border-red-600/60 rounded-2xl sm:rounded-3xl shadow-[0_0_60px_rgba(220,38,38,0.3)] overflow-hidden flex flex-col max-h-[92vh]'}>
                 {/* Header */}
                 <div className="p-4 sm:p-5 bg-gradient-to-r from-red-950/80 via-slate-950 to-black border-b border-red-800/40 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -301,58 +303,110 @@ const AbyssTowerModal: React.FC<Props> = ({ isOpen, character, onClose, onBattle
                 </div>
 
                 {/* Body */}
-                <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-4">
-                    {!hasLv2000Unit ? (
-                        <div className="max-w-lg mx-auto py-8 px-6 rounded-2xl bg-slate-900/80 border border-red-500/40 text-center space-y-3">
-                            <AlertTriangle size={40} className="text-red-400 mx-auto" />
-                            <h3 className="text-lg font-black text-white">심연 입장 조건 미달</h3>
-                            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                                마계 임페리얼의 <span className="text-red-300 font-bold">무한 심연 탑</span>은
-                                1층부터 <span className="text-amber-300 font-bold">Lv.2,000</span> 이상의 초월 몬스터가 출현합니다.
-                                주인공 또는 동료 중 1명 이상 Lv.2,000 달성 시 입장할 수 있습니다.
-                            </p>
-                        </div>
-                    ) : !gridState ? (
-                        <div className="max-w-xl mx-auto space-y-5 py-4">
-                            <div className="p-4 rounded-2xl bg-slate-900/80 border border-red-800/40 space-y-2">
-                                <h3 className="text-base font-black text-red-200 flex items-center gap-2">
-                                    <Skull size={18} className="text-red-400" />
-                                    <span>무한 심연 탑 등반 안내</span>
-                                </h3>
-                                <p className="text-xs text-slate-300 leading-relaxed">
-                                    • 1층(Lv.2,000)부터 시작해 10층마다 적 레벨이 +100씩 상승합니다. (100층 = Lv.3,000)<br />
-                                    • 매 10층의 <span className="text-amber-300 font-bold">차원 수호자</span> 격파 시 다음 10층 체크포인트와 초월 성소 희귀 재료를 획득합니다.<br />
-                                    • 게임 내 날짜가 흐르지 않아 자유롭게 반복 등반할 수 있습니다.
-                                </p>
-                            </div>
+                <div className="p-3 sm:p-4 overflow-y-auto flex-1 space-y-4">
+                    {!gridState ? (
+                        <ChallengeLobbyCanvas
+                            character={character}
+                            mode="abyss_tower"
+                            title="무한 심연 탑 · 1층 로비"
+                            subtitle={
+                                hasLv2000Unit
+                                    ? `선택된 체크포인트: ${selectedFloorStart}층 (권장 Lv.${getAbyssFloorLevel(selectedFloorStart).toLocaleString()})`
+                                    : '입장 조건: 주인공 또는 동료 Lv.2,000 이상'
+                            }
+                            cheerText={
+                                hasLv2000Unit
+                                    ? '심연 차원문 앞의 차원 수호자 환영에게 걸어가 도전을 시작하십시오.'
+                                    : '1층부터 Lv.2,000 이상의 초월 몬스터가 출현합니다. 전력을 더 연마하세요.'
+                            }
+                            onClose={onClose}
+                            heightClassName="h-[460px] sm:h-[520px]"
+                            headerExtra={
+                                hasLv2000Unit ? (
+                                    <div className="flex flex-wrap items-center gap-1">
+                                        {checkpointOptions.map((cp) => (
+                                            <button
+                                                key={cp}
+                                                onClick={() => setSelectedFloorStart(cp)}
+                                                className={`px-2 py-1 rounded-lg border text-[11px] font-black transition-all cursor-pointer ${
+                                                    selectedFloorStart === cp
+                                                        ? 'bg-red-600/40 border-red-400 text-white'
+                                                        : 'bg-slate-900/70 border-slate-700 text-slate-400 hover:text-slate-200'
+                                                }`}
+                                            >
+                                                {cp}층
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : undefined
+                            }
+                            npcs={(() => {
+                                const bossFloor = Math.ceil(selectedFloorStart / 10) * 10;
+                                const list: ChallengeLobbyNpc[] = [
+                                    {
+                                        id: 'abyss_boss_echo',
+                                        name: `차원 수호자 환영 (${selectedFloorStart}층)`,
+                                        role: `다음 심연 보스 · 권장 Lv.${getAbyssFloorLevel(selectedFloorStart).toLocaleString()}`,
+                                        tx: 12,
+                                        ty: 5,
+                                        dir: 'down',
+                                        gender: 'male',
+                                        regionKey: 'magye',
+                                        auraColor: 'rgba(239, 68, 68, 0.45)',
+                                        kind: 'boss',
+                                        dialogue: hasLv2000Unit
+                                            ? `어리석은 침입자여... ${selectedFloorStart}층부터 ${bossFloor}층의 차원 수호자까지 살아남을 수 있을 것인가?\n\n• 10층마다 적 레벨 +100 상승 (날짜 경과 없음)\n• 매 10층 보스 격파 시 체크포인트 해금 & 초월 희귀 재료 획득`
+                                            : `감히 심연의 문턱을 넘으려 하다니...\n주인공 또는 동료 중 최소 1명이 Lv.2,000을 달성해야 심연에 발을 들일 수 있다.`,
+                                        actionLabel: hasLv2000Unit ? `${selectedFloorStart}층 심연 진입하기` : undefined,
+                                        onAction: hasLv2000Unit ? () => startFloor(selectedFloorStart) : undefined
+                                    },
+                                    {
+                                        id: 'abyss_guide',
+                                        name: '심연의 문지기 벨페고르',
+                                        role: '탑 안내자 · 체크포인트 관리',
+                                        tx: 9,
+                                        ty: 7,
+                                        dir: 'down',
+                                        gender: 'male',
+                                        regionKey: 'magye',
+                                        kind: 'official',
+                                        dialogue: `무한 심연 탑 1층 로비에 오신 것을 환영합니다.\n현재 최고 도달: ${highestFloor}층 / 해금 체크포인트: ${unlockedCheckpoint}층.\n상단 바에서 해금된 체크포인트 층을 선택한 뒤 차원 수호자 환영에게 도전을 거세요.`,
+                                        actionLabel: hasLv2000Unit ? `${selectedFloorStart}층 바로 진입` : undefined,
+                                        onAction: hasLv2000Unit ? () => startFloor(selectedFloorStart) : undefined
+                                    }
+                                ];
 
-                            <div className="space-y-2">
-                                <div className="text-xs font-black text-slate-300">해금된 체크포인트 층 선택</div>
-                                <div className="flex flex-wrap gap-2">
-                                    {checkpointOptions.map((cp) => (
-                                        <button
-                                            key={cp}
-                                            onClick={() => setSelectedFloorStart(cp)}
-                                            className={`px-3 py-2 rounded-xl border text-xs font-black transition-all cursor-pointer ${
-                                                selectedFloorStart === cp
-                                                    ? 'bg-red-600/30 border-red-400 text-white shadow'
-                                                    : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200'
-                                            }`}
-                                        >
-                                            {cp}층 (Lv.{getAbyssFloorLevel(cp).toLocaleString()})
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={() => startFloor(selectedFloorStart)}
-                                className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-purple-700 hover:from-red-500 hover:to-purple-600 text-white font-black text-sm shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2"
-                            >
-                                <Compass size={18} />
-                                <span>{selectedFloorStart}층 심연 진입하기</span>
-                            </button>
-                        </div>
+                                const spectatorLines = [
+                                    '10층마다 나오는 차원 수호자는 정말 끔찍하더군...',
+                                    '오늘도 누군가 심연에서 돌아오지 못했어.',
+                                    '체크포인트만 뚫어두면 언제든 이어서 등반할 수 있지.',
+                                    '초월 성소 재료를 모으려면 10층 단위로 공략해야 해.',
+                                    '긴장되는군... 내 차례는 언제쯤 올까.',
+                                    '마계 임페리얼에서도 가장 위험한 곳이야.'
+                                ];
+                                const standCoords: Array<[number, number, 'left' | 'right']> = [
+                                    [4, 4, 'right'], [4, 7, 'right'], [4, 10, 'right'],
+                                    [19, 4, 'left'], [19, 7, 'left'], [19, 10, 'left'],
+                                    [7, 11, 'up'], [16, 11, 'up']
+                                ];
+                                standCoords.forEach(([tx, ty, dir], idx) => {
+                                    list.push({
+                                        id: `abyss_spec_${idx}`,
+                                        name: idx % 2 === 0 ? `마계 도전자 ${idx + 1}` : `심연 감시자 ${idx + 1}`,
+                                        role: '탑 1층 대기자',
+                                        tx,
+                                        ty,
+                                        dir,
+                                        gender: idx % 2 === 0 ? 'male' : 'female',
+                                        regionKey: 'magye',
+                                        kind: 'spectator',
+                                        canPatrol: true,
+                                        dialogue: spectatorLines[idx % spectatorLines.length]
+                                    });
+                                });
+                                return list;
+                            })()}
+                        />
                     ) : (
                         <div className="space-y-3">
                             {/* Floor Status Bar */}

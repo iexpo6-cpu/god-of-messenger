@@ -4,7 +4,8 @@ import { Character, Enemy, CombatState } from '../types';
 import { X, Flame, Skull, Sparkles, Sword, Coins, ShieldAlert, Crown, AlertTriangle, Loader2, Gift, Gem } from 'lucide-react';
 import { DIVINE_WAR_CONSTANTS, generateDivineWarEnemies } from '../divineWarSystem';
 import ActionResultModal, { ResultData } from './ActionResultModal';
-import { WORLD_GEOGRAPHY } from '../constants';
+import { TEMPLE_MESSENGER_MAP, WORLD_GEOGRAPHY } from '../constants';
+import StrategicMapCanvas, { getTempleStrategicPos, StrategicArrow, StrategicNode } from './map/StrategicMapCanvas';
 
 interface Props {
     character: Character;
@@ -15,14 +16,15 @@ interface Props {
 }
 
 const DivineWarModal: React.FC<Props> = ({ character, targetId, onClose, onUpdateCharacter, onBattle }) => {
+    const [activeTargetId, setActiveTargetId] = useState<'god' | string>(targetId);
     const [isProcessing, setIsProcessing] = useState(false);
     const [resultData, setResultData] = useState<ResultData | null>(null);
 
-    const isGod = targetId === 'god';
-    const targetName = isGod ? "절대신 엘라" : targetId;
+    const isGod = activeTargetId === 'god' || activeTargetId === '신의 거처';
+    const targetName = isGod ? "절대신 엘라" : activeTargetId;
     const relation = isGod 
         ? (character.divineRelations?.god || { affection: 0, status: '중립' })
-        : (character.divineRelations?.temples?.[targetId] || { affection: 0, status: '중립' });
+        : (character.divineRelations?.temples?.[activeTargetId] || { affection: 0, status: '중립' });
 
     const handleSendGift = () => {
         const { GIFT_COST_GOLD, GIFT_COST_CRYSTAL } = DIVINE_WAR_CONSTANTS;
@@ -46,8 +48,8 @@ const DivineWarModal: React.FC<Props> = ({ character, targetId, onClose, onUpdat
                 newChar.divineRelations.god.affection = Math.min(100, newChar.divineRelations.god.affection + boost);
             } else {
                 if (!newChar.divineRelations) newChar.divineRelations = { god: { affection: 0, status: '중립' }, temples: {} };
-                if (!newChar.divineRelations.temples[targetId]) newChar.divineRelations.temples[targetId] = { affection: 0, status: '중립' };
-                newChar.divineRelations.temples[targetId].affection = Math.min(100, newChar.divineRelations.temples[targetId].affection + boost);
+                if (!newChar.divineRelations.temples[activeTargetId]) newChar.divineRelations.temples[activeTargetId] = { affection: 0, status: '중립' };
+                newChar.divineRelations.temples[activeTargetId].affection = Math.min(100, newChar.divineRelations.temples[activeTargetId].affection + boost);
             }
 
             onUpdateCharacter(newChar, `[신성 친선] ${targetName}에게 골드 1,000만 G와 마정석 5,000개로 구성된 귀중한 예물 세트를 증정하여 유대를 다졌습니다. (친밀도 +${boost})`);
@@ -94,18 +96,18 @@ const DivineWarModal: React.FC<Props> = ({ character, targetId, onClose, onUpdat
             newChar.divineRelations.god.status = "적대";
         } else {
             if (!newChar.divineRelations) newChar.divineRelations = { god: { affection: 0, status: '중립' }, temples: {} };
-            if (!newChar.divineRelations.temples[targetId]) newChar.divineRelations.temples[targetId] = { affection: 0, status: '중립' };
-            newChar.divineRelations.temples[targetId].affection = -100;
-            newChar.divineRelations.temples[targetId].status = "적대";
+            if (!newChar.divineRelations.temples[activeTargetId]) newChar.divineRelations.temples[activeTargetId] = { affection: 0, status: '중립' };
+            newChar.divineRelations.temples[activeTargetId].affection = -100;
+            newChar.divineRelations.temples[activeTargetId].status = "적대";
         }
 
         let nation = "신계";
-        let city = isGod ? "신의 거처" : targetId;
+        let city = isGod ? "신의 거처" : activeTargetId;
         
         if (!isGod) {
             for (const r in WORLD_GEOGRAPHY) {
                 for (const n in WORLD_GEOGRAPHY[r]) {
-                    if (WORLD_GEOGRAPHY[r][n].cities.includes(targetId)) {
+                    if (WORLD_GEOGRAPHY[r][n].cities.includes(activeTargetId)) {
                         nation = n;
                         break;
                     }
@@ -128,7 +130,7 @@ const DivineWarModal: React.FC<Props> = ({ character, targetId, onClose, onUpdat
         <div className="fixed inset-0 z-[170] flex items-center justify-center bg-black/90 backdrop-blur-md p-2 sm:p-4 animate-in fade-in duration-300">
             {resultData && <ActionResultModal data={resultData} onClose={() => { setResultData(null); onClose(); }} />}
 
-            <div className={`w-full max-w-lg h-[92vh] sm:h-auto sm:max-h-[90vh] rounded-3xl border shadow-2xl flex flex-col overflow-hidden relative transition-all duration-300 ${isGod ? 'bg-slate-950 border-red-500/40' : 'bg-slate-950 border-indigo-500/40'}`}>
+            <div className={`w-full max-w-5xl h-[92vh] sm:h-[85vh] rounded-3xl border shadow-2xl flex flex-col overflow-hidden relative transition-all duration-300 ${isGod ? 'bg-slate-950 border-red-500/40' : 'bg-slate-950 border-indigo-500/40'}`}>
                 
                 {/* Header */}
                 <div className={`px-4 py-3.5 sm:px-6 sm:py-4 border-b flex justify-between items-center shrink-0 ${isGod ? 'bg-gradient-to-r from-red-950/60 via-slate-900 to-red-950/40 border-red-500/30' : 'bg-gradient-to-r from-indigo-950/60 via-slate-900 to-amber-950/40 border-indigo-500/30'}`}>
@@ -154,8 +156,71 @@ const DivineWarModal: React.FC<Props> = ({ character, targetId, onClose, onUpdat
                     </button>
                 </div>
 
-                {/* Body Content */}
-                <div className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto custom-scrollbar">
+                {/* Body Content: Strategic Map + Command Panel */}
+                <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                    <div className="w-full md:w-[52%] h-[250px] md:h-full border-b md:border-b-0 md:border-r border-slate-800 shrink-0 flex flex-col">
+                        {(() => {
+                            const originCity = character.currentLocation?.city || '내 거점';
+                            const templeList = Object.keys(TEMPLE_MESSENGER_MAP);
+                            const nodes: StrategicNode[] = [
+                                {
+                                    id: 'ORIGIN_DIVINE_WAR',
+                                    name: originCity,
+                                    region: '신계',
+                                    x: 50,
+                                    y: 90,
+                                    status: 'origin'
+                                },
+                                {
+                                    id: 'god',
+                                    name: '절대신 엘라 (신의 거처)',
+                                    region: '신계',
+                                    x: 50,
+                                    y: 20,
+                                    status: (character.divineRelations?.god?.affection || 0) <= -50 ? 'war' : (character.divineRelations?.god?.affection || 0) >= 50 ? 'alliance' : 'neutral',
+                                    badge: '절대신'
+                                }
+                            ];
+                            templeList.forEach((tName, idx) => {
+                                const rel = character.divineRelations?.temples?.[tName];
+                                const aff = rel?.affection || 0;
+                                const pos = getTempleStrategicPos(tName, idx, templeList.length);
+                                nodes.push({
+                                    id: tName,
+                                    name: tName,
+                                    region: '신계',
+                                    x: pos.x,
+                                    y: pos.y,
+                                    status: aff <= -50 ? 'war' : aff >= 50 ? 'alliance' : 'neutral'
+                                });
+                            });
+                            const selectedMapId = isGod ? 'god' : activeTargetId;
+                            const arrows: StrategicArrow[] = [
+                                {
+                                    fromId: 'ORIGIN_DIVINE_WAR',
+                                    toId: selectedMapId,
+                                    kind: relation.affection <= -50 ? 'war' : 'selected'
+                                }
+                            ];
+                            return (
+                                <StrategicMapCanvas
+                                    nodes={nodes}
+                                    arrows={arrows}
+                                    selectedNodeId={selectedMapId}
+                                    onSelectNode={(n) => setActiveTargetId(n.id)}
+                                    realm="divine"
+                                    title="신계 세력 · 전선 지도"
+                                    legendItems={[
+                                        { status: 'origin', label: '내 거점' },
+                                        { status: 'alliance', label: '친선' },
+                                        { status: 'neutral', label: '중립' },
+                                        { status: 'war', label: '적대' }
+                                    ]}
+                                />
+                            );
+                        })()}
+                    </div>
+                    <div className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto custom-scrollbar">
                     
                     {/* Status Display Card */}
                     <div className="bg-slate-900/90 p-4 rounded-2xl border border-slate-800 text-center space-y-2">
@@ -279,6 +344,7 @@ const DivineWarModal: React.FC<Props> = ({ character, targetId, onClose, onUpdat
                             </button>
                         </div>
                     </div>
+                </div>
                 </div>
 
                 {/* Loading Overlay */}

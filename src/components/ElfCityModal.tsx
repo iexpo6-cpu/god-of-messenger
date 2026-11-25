@@ -10,21 +10,25 @@ import { ItemTooltip } from './CharacterSheet';
 import { getShinryokuThematicClassName, checkAndInitializeLiberationEligibility } from '../services/companionGrowthService';
 import { determineRecruitClassTier } from '../services/classLiberationHelper';
 
+export type ElfCityTab = 'audience' | 'recruits' | 'shop' | 'skills';
+type Tab = ElfCityTab;
+
 interface Props {
     character: Character;
     onClose: () => void;
     onUpdateCharacter: (newChar: Character, logMsg: string) => void;
+    initialTab?: ElfCityTab;
+    singleTabOnly?: boolean;
 }
-
-type Tab = 'audience' | 'recruits' | 'shop' | 'skills';
 
 const RANK_ORDER: MercenaryRank[] = [
     MercenaryRank.F, MercenaryRank.E, MercenaryRank.D, MercenaryRank.C,
     MercenaryRank.B, MercenaryRank.A, MercenaryRank.S, MercenaryRank.SS, MercenaryRank.SSS
 ];
 
-const ElfCityModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter }) => {
-    const [activeTab, setActiveTab] = useState<Tab>('audience');
+const ElfCityModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, initialTab, singleTabOnly }) => {
+    const [activeTab, setActiveTab] = useState<Tab>(initialTab || 'audience');
+    useEffect(() => { if (initialTab) setActiveTab(initialTab); }, [initialTab]);
     const [recruits, setRecruits] = useState<Companion[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isQuestLoading, setIsQuestLoading] = useState(false);
@@ -887,6 +891,7 @@ const ElfCityModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter }
                 </div>
 
                 {/* 탭 네비게이션 */}
+                {!singleTabOnly && (
                 <div className="grid grid-cols-4 border-b border-slate-800 bg-slate-950 shrink-0">
                     <button onClick={() => setActiveTab('audience')} className={`py-3 text-xs font-bold flex items-center justify-center transition-all border-b-2 ${activeTab === 'audience' ? 'text-emerald-400 border-emerald-500 bg-slate-900/80' : 'text-slate-400 border-transparent hover:text-slate-200'}`}>
                         <Crown size={14} className="mr-1 hidden sm:inline shrink-0"/> 알현 및 임무
@@ -901,6 +906,7 @@ const ElfCityModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter }
                         <BookOpen size={14} className="mr-1 hidden sm:inline shrink-0"/> 숲의 비기
                     </button>
                 </div>
+                )}
 
                 {/* 메인 컨텐츠 영역 */}
                 <div className="flex-1 overflow-y-auto p-3 sm:p-5 bg-slate-900 custom-scrollbar">

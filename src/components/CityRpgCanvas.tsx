@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { Character, CityTier, DistrictType } from '../types';
+import { Character, CityTier, DistrictType, DivineDiplomacyStatus, Quest } from '../types';
+import HuntMapModal from './HuntMapModal';
 import {
     buildCityTilemap,
     CITY_TILE_SIZE,
@@ -7,6 +8,21 @@ import {
     CityPortalNode,
     findPathBFS
 } from '../services/cityTilemapEngine';
+import {
+    buildCityQuestMapEntities,
+    buildRegionalDefenseEnemies,
+    CityQuestMonsterEntity,
+    CityQuestNpcEntity,
+    classifyActiveCityQuests,
+    clearExpiredQuestNotificationsState,
+    getPortalQuestBadge,
+    startEscortQuestState
+} from '../services/cityQuestService';
+import FrontlineModal from './FrontlineModal';
+import MilitaryCityActionPanel from './MilitaryCityActionPanel';
+import MilitaryInfiltrationModal from './MilitaryInfiltrationModal';
+import RegionalAdminCanvas from './RegionalAdminCanvas';
+import ActionResultModal, { ResultData } from './ActionResultModal';
 import {
     DIRECTION_ROW_MAP,
     drawFallbackChibiSprite,
@@ -32,7 +48,8 @@ import {
 import { getGroundTileTextures } from '../services/cityGroundTextureEngine';
 import {
     ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Compass, CornerDownLeft,
-    Map as MapIcon, MessageSquare, Sparkles, ChevronUp, ChevronDown
+    Map as MapIcon, MessageSquare, Sparkles, ChevronUp, ChevronDown,
+    ScrollText, ShieldAlert, Truck, Flame, BookOpen, Swords, AlertTriangle, X
 } from 'lucide-react';
 
 export interface CityRpgCanvasProps {
@@ -67,6 +84,10 @@ export interface CityRpgCanvasProps {
     onOpenTranscendentArena?: () => void;
     onOpenAbyssTower?: () => void;
     onInspectCompanion?: (companionId: string) => void;
+    onUpdateCharacter?: (updatedChar: Character, logMessage: string) => void;
+    onStartBattle?: (enemies: any[], battleType: string, sourceId?: string) => void;
+    onAction?: (action: string) => void;
+    onOpenRegionalAdmin?: () => void;
 }
 
 interface TrailPoint {
@@ -90,6 +111,8 @@ interface ActiveDialogue {
     spriteUrl?: string;
     lines: string[];
     lineIndex: number;
+    actionLabel?: string;
+    onActionAfter?: () => void;
 }
 
 const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
@@ -123,7 +146,11 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     onOpenBeastCity,
     onOpenTranscendentArena,
     onOpenAbyssTower,
-    onInspectCompanion
+    onInspectCompanion,
+    onUpdateCharacter,
+    onStartBattle,
+    onAction,
+    onOpenRegionalAdmin
 }) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -134,6 +161,13 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     const [showQuickBar, setShowQuickBar] = useState<boolean>(() =>
         typeof window !== 'undefined' ? window.innerWidth >= 640 : true
     );
+    const [showQuestHud, setShowQuestHud] = useState<boolean>(false);
+    const [isFrontlineOpen, setIsFrontlineOpen] = useState<boolean>(false);
+    const [showMilitaryOpsModal, setShowMilitaryOpsModal] = useState<boolean>(false);
+    const [isInfiltrationModalOpen, setIsInfiltrationModalOpen] = useState<boolean>(false);
+    const [showRegionalAdmin, setShowRegionalAdmin] = useState<boolean>(false);
+    const [isHuntInfoOpen, setIsHuntInfoOpen] = useState<boolean>(false);
+    const [resultData, setResultData] = useState<ResultData | null>(null);
     const [, setSpriteTick] = useState(0);
 
     // 1. 현재 도시 타일맵 생성
@@ -185,26 +219,106 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     const playerGenderKey: RpgSpriteGenderKey = playerSprite.genderKey;
     const playerSpriteUrl = playerSprite.url;
 
-    // 파티 동료(최대 4명) 팔로워 스프라이트 정보 (각 동료 고유 rpgSpriteKey 또는 개성 있는 결정적 배정)
+    const isRegionalAuthority = useMemo(() => {
+        if (!character.militaryData) return false;
+        const playerIsCmdr = character.militaryData.regionalAppointments?.[city] === 'player';
+        const playerIsVice = character.militaryData.regionalViceAppointments?.[city] === 'player';
+        const compIsCmdr = (character.companions || []).some(c => character.militaryData?.regionalAppointments?.[city] === c.id);
+        const compIsVice = (character.companions || []).some(c => character.militaryData?.regionalViceAppointments?.[city] === c.id);
+        return playerIsCmdr || playerIsVice || compIsCmdr || compIsVice;
+    }, [character.militaryData, character.companions, city]);
+
+    // 용병단/군대 퀘스트 분류 및 맵 엔티티 생성
+    const classifiedQuests = useMemo(
+        () => classifyActiveCityQuests(character, city, nation),
+        [character, city, nation]
+    );
+    const questEntities = useMemo(
+        () => buildCityQuestMapEntities(classifiedQuests, city, nation, region, mapData, character.level),
+        [classifiedQuests, city, nation, region, mapData, character.level]
+    );
+
+    const triggerEmergencyBattle = useCallback(
+        (quest: Quest) => {
+            if (!onStartBattle) {
+                onEnterCity(quest.type === 'MilitaryRegionalDefense' ? 'Military' : 'Mercenary');
+                return;
+            }
+            const { enemies, battleType } = buildRegionalDefenseEnemies(quest, character, { nation, city, region });
+            onStartBattle(enemies, battleType, quest.id);
+        },
+        [onStartBattle, onEnterCity, character, nation, city, region]
+    );
+
+    const handleStartEscortQuest = useCallback(
+        (quest: Quest) => {
+            if (!onUpdateCharacter) return;
+            const res = startEscortQuestState(character, quest.id);
+            if (!res) {
+                setResultData({
+                    type: 'warning',
+                    title: '오류 발생',
+                    message: '해당 호위 임무 데이터를 찾을 수 없습니다. 퀘스트 목록을 확인해주세요.',
+                    items: [{ label: '퀘스트 ID', after: quest.id }]
+                });
+                return;
+            }
+            const logMsg = `[호송/호위 시작] ${res.quest.title} - 목적지 ${res.quest.destination?.city || '지정 도시'}까지 이동 시작`;
+            onUpdateCharacter(res.updatedChar, logMsg);
+            setResultData({
+                type: 'success',
+                title: `🛡️ ${res.quest.title} 출발`,
+                message: `${res.targetName}이(가) 호위 대열에 합류했습니다! 이제 도시 내에서 뒤를 따라오며, 지도(M)를 열어 목적지 [${res.quest.destination?.city || '목적지'}]로 이동할 수 있습니다.`,
+                items: [
+                    { label: '목적지 도시', after: res.quest.destination?.city || '알 수 없음' },
+                    { label: '목적지 국가', after: res.quest.destination?.nation || '자국' },
+                    { label: '예상 보상', after: `${(res.quest.rewardGold || 0).toLocaleString()}G / ${(res.quest.rewardExp || 0).toLocaleString()}EXP` }
+                ]
+            });
+        },
+        [character, onUpdateCharacter]
+    );
+
+    const handleClearExpiredQuests = useCallback(() => {
+        if (!onUpdateCharacter) return;
+        const updated = clearExpiredQuestNotificationsState(character);
+        onUpdateCharacter(updated, '만료된 퀘스트 알림을 확인했습니다.');
+    }, [character, onUpdateCharacter]);
+
+    // 파티 동료(최대 4명) + 호송 중인 NPC 팔로워 스프라이트 정보
     const followers = useMemo(() => {
-        return (character.companions || []).slice(0, 4).map((c, idx) => {
+        const compFollowers = (character.companions || []).slice(0, 4).map((c, idx) => {
             const resolved = resolveEntityRpgSprite(c, region, nation);
             return {
                 id: c.id || `comp_${idx}`,
                 name: c.name,
                 regionKey: resolved.regionKey,
                 genderKey: resolved.genderKey,
-                spriteUrl: resolved.url
+                spriteUrl: resolved.url,
+                isEscort: false,
+                destinationCity: ''
             };
         });
-    }, [character.companions, region, nation]);
+        const escortFollowers = questEntities.questFollowers.map(qf => ({
+            id: qf.id,
+            name: qf.name,
+            regionKey: qf.regionKey,
+            genderKey: qf.genderKey,
+            spriteUrl: qf.spriteUrl,
+            isEscort: true,
+            destinationCity: qf.destinationCity
+        }));
+        return [...compFollowers, ...escortFollowers];
+    }, [character.companions, questEntities.questFollowers, region, nation]);
 
     // 필요한 스프라이트 이미지 & 고품질 도시 건물/소품 PNG 프리로드
     useEffect(() => {
         const spriteUrls = new Set<string>([
             playerSpriteUrl,
             ...followers.map(f => f.spriteUrl),
-            ...mapData.npcs.map(n => getRpgSpriteUrlByKey(`${n.regionKey}_${n.gender}`))
+            ...mapData.npcs.map(n => getRpgSpriteUrlByKey(`${n.regionKey}_${n.gender}`)),
+            ...questEntities.questNpcs.map(qn => qn.spriteUrl || getRpgSpriteUrlByKey(`${qn.regionKey}_${qn.gender}`)),
+            ...questEntities.questMonsters.map(qm => qm.spriteUrl)
         ]);
         const cityAssetUrls = new Set<string>([
             ...(['landmark', 'shop', 'house', 'tree', 'fountain', 'lamp'] as CultureAssetPart[]).map(part =>
@@ -222,7 +336,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     }
                     return getBuildingSpriteUrl(mapData.cultureKey, pt.spriteKind);
                 }),
-            ...mapData.props.map(pr => getPropAssetUrl(pr.pack, pr.part))
+            ...mapData.props.map(pr => getPropAssetUrl(pr.pack, pr.part)),
+            ...questEntities.questMonsters.map(qm => qm.visualUrl).filter((u): u is string => Boolean(u))
         ]);
 
         let mounted = true;
@@ -239,7 +354,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
         return () => {
             mounted = false;
         };
-    }, [playerSpriteUrl, followers, mapData.npcs, mapData.cultureKey, mapData.portals, mapData.props, (character.base as any)?.customBuildingPack, character.base?.level]);
+    }, [playerSpriteUrl, followers, mapData.npcs, mapData.cultureKey, mapData.portals, mapData.props, questEntities, (character.base as any)?.customBuildingPack, character.base?.level]);
 
     // 2. 런타임 게임 상태 Refs (60fps 루프용)
     const keysPressedRef = useRef<Set<string>>(new Set());
@@ -253,7 +368,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
         walkFrame: 1,
         path: [] as Array<{ x: number; y: number }>,
         pendingPortal: null as CityPortalNode | null,
-        pendingNpc: null as CityNpcEntity | null
+        pendingNpc: null as CityNpcEntity | null,
+        pendingQuestNpc: null as CityQuestNpcEntity | null,
+        pendingQuestMob: null as CityQuestMonsterEntity | null
     });
     const trailRef = useRef<TrailPoint[]>([]);
     const npcsRef = useRef<
@@ -269,13 +386,25 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             }
         >
     >([]);
+    const questNpcsRef = useRef<CityQuestNpcEntity[]>([]);
+    const questMonstersRef = useRef<CityQuestMonsterEntity[]>([]);
+
+    useEffect(() => {
+        questNpcsRef.current = questEntities.questNpcs.map(q => ({ ...q }));
+        questMonstersRef.current = questEntities.questMonsters.map(m => ({ ...m }));
+    }, [questEntities]);
     const cameraRef = useRef({ x: 0, y: 0, zoom: 1.5 });
     const particlesRef = useRef<DustParticle[]>([]);
     const dialogueOpenRef = useRef(false);
 
     useEffect(() => {
-        dialogueOpenRef.current = Boolean(dialogue);
-    }, [dialogue]);
+        const anyOpen = Boolean(dialogue || showMilitaryOpsModal || isFrontlineOpen || isInfiltrationModalOpen || showRegionalAdmin || isHuntInfoOpen || resultData);
+        dialogueOpenRef.current = anyOpen;
+        if (anyOpen) {
+            keysPressedRef.current.clear();
+            dpadDirRef.current = null;
+        }
+    }, [dialogue, showMilitaryOpsModal, isFrontlineOpen, isInfiltrationModalOpen, showRegionalAdmin, isHuntInfoOpen, resultData]);
 
     // 도시 전환 시 플레이어·트레일·NPC 초기화
     useEffect(() => {
@@ -290,7 +419,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             walkFrame: 1,
             path: [],
             pendingPortal: null,
-            pendingNpc: null
+            pendingNpc: null,
+            pendingQuestNpc: null,
+            pendingQuestMob: null
         };
         trailRef.current = Array.from({ length: 64 }, () => ({ x: sx, y: sy, dir: 'down' as SpriteDirection }));
         npcsRef.current = mapData.npcs.map(n => ({
@@ -356,6 +487,23 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 case 'abyss_tower':
                     onOpenAbyssTower?.();
                     break;
+                case 'regional_admin':
+                    if (!isRegionalAuthority) {
+                        setResultData({
+                            type: 'warning',
+                            title: tier === 'Capital' ? '수도 행정청 출입 제한' : '지역행정소 출입 제한',
+                            message: `${city}의 지역대장 또는 지역부대장 권한을 보유한 지휘관(본인 또는 직속 동료)만 입장할 수 있습니다.`,
+                            items: [{ label: '현재 위치', after: `${nation} · ${city}` }]
+                        });
+                    } else if (onOpenRegionalAdmin) {
+                        onOpenRegionalAdmin();
+                    } else {
+                        setShowRegionalAdmin(true);
+                    }
+                    break;
+                case 'hunt_info':
+                    setIsHuntInfoOpen(true);
+                    break;
             }
         },
         [
@@ -371,11 +519,67 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
         ]
     );
 
-    // 가장 가까운 상호작용 대상 찾기 (문/포탈/NPC)
+    const openQuestNpcDialogue = useCallback(
+        (qNpc: CityQuestNpcEntity) => {
+            let actionLabel = '진행하기';
+            let onActionAfter: (() => void) | undefined;
+            if (qNpc.questKind === 'escort_wait' && qNpc.quest) {
+                actionLabel = '🛡️ 호송/호위 출발';
+                const q = qNpc.quest;
+                onActionAfter = () => handleStartEscortQuest(q);
+            } else if (qNpc.questKind === 'instructor') {
+                actionLabel = '🎓 학원 지구 입장';
+                onActionAfter = () => onEnterCity('Academic');
+            } else if (qNpc.questKind === 'hunt_board') {
+                actionLabel = '⚔️ 외곽 사냥터로 출격';
+                onActionAfter = () => onEnterCity('Gate', true);
+            } else if (qNpc.questKind === 'dungeon_guide') {
+                actionLabel = '🧭 던전 입장';
+                onActionAfter = () => onOpenDungeon();
+            } else if (qNpc.questKind === 'war_officer') {
+                if (classifiedQuests.isWarState) {
+                    actionLabel = '🔥 전선 상황실 열기';
+                    onActionAfter = () => setIsFrontlineOpen(true);
+                } else {
+                    actionLabel = '🎖️ 군사 작전 개시 (작전 패널)';
+                    onActionAfter = () => setShowMilitaryOpsModal(true);
+                }
+            }
+            setDialogue({
+                npcName: qNpc.name,
+                npcRole: qNpc.role,
+                spriteUrl: qNpc.spriteUrl || getRpgSpriteUrlByKey(`${qNpc.regionKey}_${qNpc.gender}`),
+                lines: qNpc.dialogues?.length ? qNpc.dialogues : ((qNpc as any).lines || ['무엇을 도와드릴까요?']),
+                lineIndex: 0,
+                actionLabel,
+                onActionAfter
+            });
+            setTypedChars(0);
+        },
+        [handleStartEscortQuest, onEnterCity, onOpenDungeon, classifiedQuests.isWarState]
+    );
+
+    // 가장 가까운 상호작용 대상 찾기 (긴급 몬스터 / 퀘스트 NPC / 문·포탈 / 일반 NPC)
     const findNearbyInteractable = useCallback(() => {
         const p = playerRef.current;
         const tileX = Math.floor(p.x / CITY_TILE_SIZE);
         const tileY = Math.floor(p.y / CITY_TILE_SIZE);
+
+        // 0. 긴급 출몰 몬스터 (1.5타일 이내)
+        for (const mob of questMonstersRef.current) {
+            const d = Math.hypot(mob.px - p.x, mob.py - p.y) / CITY_TILE_SIZE;
+            if (d <= 1.55) {
+                return { type: 'quest_mob' as const, mob };
+            }
+        }
+
+        // 0.5. 퀘스트 연계 NPC (1.65타일 이내)
+        for (const qNpc of questNpcsRef.current) {
+            const d = Math.hypot(qNpc.px - p.x, qNpc.py - p.y) / CITY_TILE_SIZE;
+            if (d <= 1.65) {
+                return { type: 'quest_npc' as const, qNpc };
+            }
+        }
 
         // 1. 포탈/건물 문 (현재 타일 또는 1칸 이내)
         let closestPortal: CityPortalNode | null = null;
@@ -416,15 +620,25 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 setDialogue({ ...dialogue, lineIndex: dialogue.lineIndex + 1 });
                 setTypedChars(0);
             } else {
+                const cb = dialogue.onActionAfter;
                 setDialogue(null);
                 setTypedChars(0);
+                if (cb) cb();
             }
             return;
         }
 
         const target = findNearbyInteractable();
         if (!target) return;
-        if (target.type === 'portal') {
+        if (target.type === 'quest_mob') {
+            triggerEmergencyBattle(target.mob.quest);
+        } else if (target.type === 'quest_npc') {
+            const p = playerRef.current;
+            const dx = p.x - target.qNpc.px;
+            const dy = p.y - target.qNpc.py;
+            target.qNpc.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
+            openQuestNpcDialogue(target.qNpc);
+        } else if (target.type === 'portal') {
             triggerPortalAction(target.portal);
         } else if (target.type === 'npc') {
             // NPC가 플레이어를 바라보도록 회전
@@ -436,16 +650,24 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             } else {
                 target.npc.dir = dy > 0 ? 'down' : 'up';
             }
+            const isBlessedNation = character.templeDiplomacy?.[nation]?.status === DivineDiplomacyStatus.BLESSED;
+            const lines = isBlessedNation
+                ? [
+                      `✨ 위대하신 신의 사자 ${character.name}님! 우리 ${nation}을(를) 비호해 주셔서 진심으로 감사드립니다!`,
+                      `온 국민이 ${character.name}님의 성스러운 가호를 우러러보며 진심으로 환영합니다.`,
+                      ...(target.npc.dialogues || [])
+                  ]
+                : target.npc.dialogues;
             setDialogue({
                 npcName: target.npc.name,
-                npcRole: target.npc.role,
+                npcRole: isBlessedNation ? `${target.npc.role} (비호국 · 우호)` : target.npc.role,
                 spriteUrl: target.npc.spriteUrl,
-                lines: target.npc.dialogues,
+                lines,
                 lineIndex: 0
             });
             setTypedChars(0);
         }
-    }, [dialogue, typedChars, findNearbyInteractable, triggerPortalAction]);
+    }, [dialogue, typedChars, findNearbyInteractable, triggerPortalAction, triggerEmergencyBattle, openQuestNpcDialogue]);
 
     // 타자기 텍스트 효과
     useEffect(() => {
@@ -461,6 +683,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     // 키보드 입력 리스너
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
+            if (dialogueOpenRef.current && !dialogue) return;
             const tag = (e.target as HTMLElement)?.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
@@ -531,6 +754,44 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             }
         }
 
+        // 0. 긴급 출몰 몬스터 클릭 체크
+        const clickedMob = questMonstersRef.current.find(
+            m => Math.hypot(m.px - worldX, m.py - worldY) <= CITY_TILE_SIZE * 0.95
+        );
+        if (clickedMob) {
+            const mtx = Math.floor(clickedMob.px / CITY_TILE_SIZE);
+            const mty = Math.floor(clickedMob.py / CITY_TILE_SIZE);
+            if (Math.hypot(mtx - start.x, mty - start.y) <= 1.65) {
+                triggerEmergencyBattle(clickedMob.quest);
+            } else {
+                p.path = findPathBFS(mapData.solid, start, { x: mtx, y: mty });
+                p.pendingQuestMob = clickedMob;
+                p.pendingQuestNpc = null;
+                p.pendingPortal = null;
+                p.pendingNpc = null;
+            }
+            return;
+        }
+
+        // 0.5. 퀘스트 연계 NPC 클릭 체크
+        const clickedQuestNpc = questNpcsRef.current.find(
+            n => Math.hypot(n.px - worldX, n.py - worldY) <= CITY_TILE_SIZE * 0.85
+        );
+        if (clickedQuestNpc) {
+            const ntx = Math.floor(clickedQuestNpc.px / CITY_TILE_SIZE);
+            const nty = Math.floor(clickedQuestNpc.py / CITY_TILE_SIZE);
+            if (Math.hypot(ntx - start.x, nty - start.y) <= 1.65) {
+                openQuestNpcDialogue(clickedQuestNpc);
+            } else {
+                p.path = findPathBFS(mapData.solid, start, { x: ntx, y: nty });
+                p.pendingQuestNpc = clickedQuestNpc;
+                p.pendingQuestMob = null;
+                p.pendingPortal = null;
+                p.pendingNpc = null;
+            }
+            return;
+        }
+
         // 1. 건물 영역 클릭 체크 -> 해당 건물 문 앞으로 이동 후 자동 입장
         const clickedPortal = mapData.portals.find(
             pt =>
@@ -547,6 +808,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 p.path = path;
                 p.pendingPortal = clickedPortal;
                 p.pendingNpc = null;
+                p.pendingQuestNpc = null;
+                p.pendingQuestMob = null;
             }
             return;
         }
@@ -571,6 +834,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 p.path = findPathBFS(mapData.solid, start, { x: ntx, y: nty });
                 p.pendingNpc = clickedNpc;
                 p.pendingPortal = null;
+                p.pendingQuestNpc = null;
+                p.pendingQuestMob = null;
             }
             return;
         }
@@ -580,6 +845,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
         p.path = path;
         p.pendingPortal = null;
         p.pendingNpc = null;
+        p.pendingQuestNpc = null;
+        p.pendingQuestMob = null;
     };
 
     // 3. 메인 60fps 게임 루프 (업데이트 + 렌더링)
@@ -700,7 +967,15 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                         p.y = ty;
                         p.path.shift();
                         if (p.path.length === 0) {
-                            if (p.pendingPortal) {
+                            if (p.pendingQuestMob) {
+                                const mob = p.pendingQuestMob;
+                                p.pendingQuestMob = null;
+                                triggerEmergencyBattle(mob.quest);
+                            } else if (p.pendingQuestNpc) {
+                                const qNpc = p.pendingQuestNpc;
+                                p.pendingQuestNpc = null;
+                                openQuestNpcDialogue(qNpc);
+                            } else if (p.pendingPortal) {
                                 const pt = p.pendingPortal;
                                 p.pendingPortal = null;
                                 triggerPortalAction(pt);
@@ -808,6 +1083,36 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 }
             });
 
+            // --- B-2. 긴급 출몰 몬스터 자율 배회 업데이트 ---
+            questMonstersRef.current.forEach(mob => {
+                if (dialogueOpenRef.current) return;
+                const dist = Math.hypot(mob.targetX - mob.px, mob.targetY - mob.py);
+                if (dist > 3) {
+                    const mSpeed = 48 * dt;
+                    const dx = mob.targetX - mob.px;
+                    const dy = mob.targetY - mob.py;
+                    mob.px += (dx / dist) * Math.min(mSpeed, dist);
+                    mob.py += (dy / dist) * Math.min(mSpeed, dist);
+                    mob.dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
+                    mob.stepPhase += dt * 7;
+                } else {
+                    mob.waitTicks -= dt * 60;
+                    if (mob.waitTicks <= 0) {
+                        const ox = (Math.random() - 0.5) * CITY_TILE_SIZE * 2.5;
+                        const oy = (Math.random() - 0.5) * CITY_TILE_SIZE * 2.5;
+                        const nx = Math.max(CITY_TILE_SIZE * 2, Math.min((mapData.cols - 3) * CITY_TILE_SIZE, mob.homeX + ox));
+                        const ny = Math.max(CITY_TILE_SIZE * 2, Math.min((mapData.rows - 3) * CITY_TILE_SIZE, mob.homeY + oy));
+                        const tx = Math.floor(nx / CITY_TILE_SIZE);
+                        const ty = Math.floor(ny / CITY_TILE_SIZE);
+                        if (!mapData.solid[ty]?.[tx]) {
+                            mob.targetX = nx;
+                            mob.targetY = ny;
+                        }
+                        mob.waitTicks = 45 + Math.random() * 65;
+                    }
+                }
+            });
+
             // --- C. 파티클 업데이트 ---
             particlesRef.current = particlesRef.current
                 .map(pt => ({ ...pt, x: pt.x + pt.vx * dt, y: pt.y + pt.vy * dt, life: pt.life - dt }))
@@ -818,7 +1123,11 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             if (uiSyncAccum >= 0.12) {
                 uiSyncAccum = 0;
                 const near = findNearbyInteractable();
-                if (near?.type === 'portal') {
+                if (near?.type === 'quest_mob') {
+                    setNearbyLabel(`[Space / E] 🚨 ${near.mob.name} 즉시 교전!`);
+                } else if (near?.type === 'quest_npc') {
+                    setNearbyLabel(`[Space / E] ${near.qNpc.badgeText} · ${near.qNpc.name} 대화`);
+                } else if (near?.type === 'portal') {
                     setNearbyLabel(`[Space / E] ${near.portal.label} 입장`);
                 } else if (near?.type === 'npc') {
                     setNearbyLabel(`[Space / E] ${near.npc.name}에게 말 걸기`);
@@ -1180,6 +1489,23 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     ctx.stroke();
                     ctx.fillStyle = '#f8fafc';
                     ctx.fillText(title, bx + bw / 2, by + 18);
+
+                    const pBadge = getPortalQuestBadge(pt, questEntities.portalBadges);
+                    if (pBadge) {
+                        const bobY = Math.sin(now / 190) * 3;
+                        const badgeCx = bx + bw / 2;
+                        const badgeCy = by - 12 + bobY;
+                        ctx.beginPath();
+                        ctx.arc(badgeCx, badgeCy, 11, 0, Math.PI * 2);
+                        ctx.fillStyle = pBadge === 'emergency' ? '#dc2626' : '#f59e0b';
+                        ctx.fill();
+                        ctx.strokeStyle = '#ffffff';
+                        ctx.lineWidth = 1.6;
+                        ctx.stroke();
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 12px sans-serif';
+                        ctx.fillText(pBadge === 'emergency' ? '!' : '!', badgeCx, badgeCy + 4);
+                    }
                 });
 
                 // 바닥 위 통과 가능 소품 (화단, 마법진 등) 먼저 렌더링
@@ -1305,7 +1631,80 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     });
                 });
 
-                // 파티 동료 팔로워 트레일 추가 (이름표 표시 + 클릭 시 동료 정보창 열기)
+                // 퀘스트 연계 NPC 추가
+                questNpcsRef.current.forEach(qNpc => {
+                    const qNpcUrl = qNpc.spriteUrl || getRpgSpriteUrlByKey(`${qNpc.regionKey}_${qNpc.gender}`);
+                    loadRpgSpriteImage(qNpcUrl);
+                    ySortItems.push({
+                        y: qNpc.py + 8,
+                        draw: () => {
+                            const bob = Math.sin(now / 220) * 2;
+                            renderSprite(ctx, qNpcUrl, qNpc.px, qNpc.py + 12, qNpc.dir, 1, qNpc.regionKey, qNpc.gender);
+                            ctx.font = 'bold 10px sans-serif';
+                            ctx.textAlign = 'center';
+                            const label = qNpc.badgeText;
+                            const lw = ctx.measureText(label).width + 12;
+                            ctx.fillStyle = qNpc.badgeColor;
+                            ctx.beginPath();
+                            ctx.roundRect(qNpc.px - lw / 2, qNpc.py - 50 + bob, lw, 17, 5);
+                            ctx.fill();
+                            ctx.strokeStyle = '#fde047';
+                            ctx.lineWidth = 1.2;
+                            ctx.stroke();
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillText(label, qNpc.px, qNpc.py - 38 + bob);
+                        }
+                    });
+                });
+
+                // 긴급 출몰 몬스터 추가
+                questMonstersRef.current.forEach(mob => {
+                    const mobImg = mob.visualUrl ? getCachedCityAssetImage(mob.visualUrl) : null;
+                    ySortItems.push({
+                        y: mob.py + 10,
+                        draw: () => {
+                            const pulseR = 22 + Math.sin(now / 150) * 3;
+                            ctx.fillStyle = 'rgba(239, 68, 68, 0.28)';
+                            ctx.beginPath();
+                            ctx.arc(mob.px, mob.py + 6, pulseR, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = 'rgba(248, 113, 113, 0.85)';
+                            ctx.lineWidth = 1.5;
+                            ctx.stroke();
+
+                            if (mobImg && mobImg.complete && mobImg.naturalWidth > 0) {
+                                const sz = mob.isBoss ? 54 : 44;
+                                ctx.save();
+                                ctx.beginPath();
+                                ctx.arc(mob.px, mob.py - 6, sz / 2, 0, Math.PI * 2);
+                                ctx.clip();
+                                ctx.drawImage(mobImg, mob.px - sz / 2, mob.py - 6 - sz / 2, sz, sz);
+                                ctx.restore();
+                                ctx.strokeStyle = mob.isBoss ? '#fbbf24' : '#ef4444';
+                                ctx.lineWidth = 2;
+                                ctx.beginPath();
+                                ctx.arc(mob.px, mob.py - 6, sz / 2, 0, Math.PI * 2);
+                                ctx.stroke();
+                            } else {
+                                const frame = [0, 1, 2, 1][Math.floor(mob.stepPhase) % 4];
+                                renderSprite(ctx, mob.spriteUrl, mob.px, mob.py + 12, mob.dir, frame, mob.regionKey, mob.genderKey);
+                            }
+
+                            const mLabel = `🚨 ${mob.name}`;
+                            ctx.font = 'bold 10px sans-serif';
+                            ctx.textAlign = 'center';
+                            const mw = ctx.measureText(mLabel).width + 10;
+                            ctx.fillStyle = 'rgba(127, 29, 29, 0.92)';
+                            ctx.beginPath();
+                            ctx.roundRect(mob.px - mw / 2, mob.py - 48, mw, 16, 4);
+                            ctx.fill();
+                            ctx.fillStyle = '#fecaca';
+                            ctx.fillText(mLabel, mob.px, mob.py - 36);
+                        }
+                    });
+                });
+
+                // 파티 동료 + 호송 대상 팔로워 트레일 추가
                 followers.forEach((f, idx) => {
                     const trailIdx = Math.min(trailRef.current.length - 1, (idx + 1) * 10);
                     const pt = trailRef.current[trailIdx];
@@ -1323,19 +1722,20 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                                 f.regionKey,
                                 f.genderKey
                             );
-                            // 동료 이름표 (에메랄드 테두리)
+                            // 동료 / 호위 대상 이름표
                             ctx.font = 'bold 10px sans-serif';
                             ctx.textAlign = 'center';
-                            const fw = ctx.measureText(f.name).width + 10;
-                            ctx.fillStyle = 'rgba(6, 46, 38, 0.84)';
+                            const fLabel = (f as any).isEscort ? `🛡️ ${f.name}` : f.name;
+                            const fw = ctx.measureText(fLabel).width + 10;
+                            ctx.fillStyle = (f as any).isEscort ? 'rgba(30, 58, 138, 0.9)' : 'rgba(6, 46, 38, 0.84)';
                             ctx.beginPath();
                             ctx.roundRect(pt.x - fw / 2, pt.y - 44, fw, 15, 4);
                             ctx.fill();
-                            ctx.strokeStyle = 'rgba(52, 211, 153, 0.75)';
+                            ctx.strokeStyle = (f as any).isEscort ? 'rgba(96, 165, 250, 0.9)' : 'rgba(52, 211, 153, 0.75)';
                             ctx.lineWidth = 1;
                             ctx.stroke();
-                            ctx.fillStyle = '#a7f3d0';
-                            ctx.fillText(f.name, pt.x, pt.y - 33);
+                            ctx.fillStyle = (f as any).isEscort ? '#bfdbfe' : '#a7f3d0';
+                            ctx.fillText(fLabel, pt.x, pt.y - 33);
                         }
                     });
                 });
@@ -1560,11 +1960,14 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
         timePeriod,
         currentTime,
         backgroundImageUrl,
+        questEntities.portalBadges,
+        triggerEmergencyBattle,
+        openQuestNpcDialogue,
         findNearbyInteractable,
         triggerPortalAction
     ]);
 
-    const currentDialogueText = dialogue ? (dialogue.lines[dialogue.lineIndex] || '').slice(0, typedChars) : '';
+    const currentDialogueText = dialogue ? (dialogue.lines?.[dialogue.lineIndex] || '').slice(0, typedChars) : '';
 
     return (
         <div
@@ -1580,7 +1983,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             />
 
             {/* 조작 안내 및 도시 규모 뱃지 (좌상단) */}
-            <div className="pointer-events-none absolute top-2.5 left-2.5 hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-700/70 text-[10px] text-slate-300 backdrop-blur-sm">
+            <div className="pointer-events-none absolute top-2.5 left-2.5 hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-700/70 text-[10px] text-slate-300 backdrop-blur-sm z-20">
                 <Compass size={12} className="text-amber-400" />
                 <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-black">
                     {tier === 'Capital' ? '수도' : tier === 'City' ? '대도시' : '소도시'}
@@ -1590,7 +1993,243 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 <span><strong className="text-white">Shift</strong> 달리기</span>
                 <span className="text-slate-600">|</span>
                 <span><strong className="text-amber-300">Space / E</strong> 상호작용</span>
-            </div>
+        </div>
+
+            {/* 우측 상단 군사 작전 버튼 + 접이식 진행 중 퀘스트 / 전선 / 알림 HUD */}
+            {(character.militaryRank ||
+                classifiedQuests.allActiveQuests.length > 0 ||
+                classifiedQuests.isWarState ||
+                classifiedQuests.expiredMessages.length > 0) && (
+                <div className="absolute top-2.5 right-2.5 z-20 flex flex-col items-end max-w-[85%] sm:max-w-xs">
+                    <div className="flex items-center gap-1.5">
+                        {character.militaryRank && (
+                            <button
+                                type="button"
+                                onClick={() => setShowMilitaryOpsModal(true)}
+                                className="px-2.5 py-1.5 rounded-xl border border-emerald-500/70 bg-emerald-950/90 hover:bg-emerald-900/90 text-emerald-200 text-[11px] font-black shadow-lg flex items-center gap-1 cursor-pointer backdrop-blur-md transition-all"
+                            >
+                                <span>🎖️ 군사 작전</span>
+                            </button>
+                        )}
+                        {(classifiedQuests.allActiveQuests.length > 0 ||
+                            classifiedQuests.isWarState ||
+                            classifiedQuests.expiredMessages.length > 0) && (
+                            <button
+                                type="button"
+                                onClick={() => setShowQuestHud(v => !v)}
+                                className={`px-3 py-1.5 rounded-xl border text-[11px] font-black shadow-lg flex items-center gap-1.5 cursor-pointer backdrop-blur-md transition-all ${
+                                    classifiedQuests.emergencyQuests.length > 0
+                                        ? 'bg-red-950/95 border-red-400 text-red-100 animate-pulse'
+                                        : classifiedQuests.isWarState
+                                        ? 'bg-amber-950/95 border-amber-400 text-amber-100'
+                                        : 'bg-slate-950/90 border-indigo-500/70 text-indigo-100 hover:border-indigo-400'
+                                }`}
+                            >
+                                {classifiedQuests.emergencyQuests.length > 0 ? (
+                                    <ShieldAlert size={13} className="text-red-400" />
+                                ) : (
+                                    <ScrollText size={13} className="text-amber-400" />
+                                )}
+                                <span>
+                                    {classifiedQuests.emergencyQuests.length > 0
+                                        ? `🚨 긴급 ${classifiedQuests.emergencyQuests.length} · 퀘스트 ${classifiedQuests.allActiveQuests.length}`
+                                        : `📜 퀘스트 ${classifiedQuests.allActiveQuests.length}`}
+                                </span>
+                                {classifiedQuests.isWarState && (
+                                    <span className="px-1.5 py-0.5 rounded bg-red-600 text-[9px] text-white">교전</span>
+                                )}
+                                {showQuestHud ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            </button>
+                        )}
+                    </div>
+
+                    {showQuestHud && (
+                        <div className="mt-1.5 w-72 sm:w-80 max-h-[60vh] overflow-y-auto custom-scrollbar rounded-2xl bg-slate-950/95 border border-slate-700/90 p-2.5 shadow-2xl backdrop-blur-md space-y-2">
+                            <div className="flex items-center justify-between px-1 pb-1 border-b border-slate-800">
+                                <span className="text-[11px] font-black text-amber-300 flex items-center gap-1">
+                                    <ScrollText size={12} /> 용병단·군대 퀘스트 연동
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowQuestHud(false)}
+                                    className="text-slate-400 hover:text-white cursor-pointer"
+                                >
+                                    <X size={13} />
+                                </button>
+        </div>
+
+                            {classifiedQuests.expiredMessages.length > 0 && (
+                                <div className="p-2 rounded-xl bg-red-950/75 border border-red-700/70 space-y-1">
+                                    <div className="text-[10.5px] font-bold text-red-200 flex items-center gap-1">
+                                        <AlertTriangle size={12} className="text-red-400" /> 만료된 퀘스트 알림
+        </div>
+                                    {classifiedQuests.expiredMessages.map((msg, i) => (
+                                        <div key={i} className="text-[10px] text-red-300 leading-snug">
+                                            • {msg}
+        </div>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={handleClearExpiredQuests}
+                                        className="text-[10px] font-bold text-red-300 underline hover:text-white cursor-pointer"
+                                    >
+                                        알림 모두 지우기
+                                    </button>
+        </div>
+                            )}
+
+                            {classifiedQuests.emergencyQuests.map(q => (
+                                <button
+                                    key={q.id}
+                                    type="button"
+                                    onClick={() => triggerEmergencyBattle(q)}
+                                    className="w-full text-left p-2.5 rounded-xl bg-gradient-to-br from-red-950 to-slate-950 border border-red-500 hover:border-red-300 transition-all cursor-pointer"
+                                >
+                                    <div className="flex items-center justify-between text-[10px] text-red-300 font-black mb-0.5">
+                                        <span>🚨 긴급 출격 (도시 내 몬스터 출몰)</span>
+                                        <span>즉시 교전</span>
+        </div>
+                                    <div className="text-xs font-black text-white">{q.title}</div>
+                                    <div className="text-[10px] text-red-200/80 mt-0.5 truncate">{q.goal}</div>
+                                </button>
+                            ))}
+
+                            {classifiedQuests.isWarState && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsFrontlineOpen(true)}
+                                    className="w-full text-left p-2.5 rounded-xl bg-gradient-to-br from-rose-950/90 to-slate-950 border border-rose-500/80 hover:border-rose-300 transition-all cursor-pointer"
+                                >
+                                    <div className="flex items-center justify-between text-[10px] text-rose-300 font-black mb-0.5">
+                                        <span className="flex items-center gap-1"><Flame size={11} /> 전선 상황실</span>
+                                        <span>점유율 {classifiedQuests.occupation}%</span>
+        </div>
+                                    <div className="text-xs font-black text-white">{nation} 교전 구역 작전</div>
+                                </button>
+                            )}
+
+                            {classifiedQuests.escortQuests.map(q => (
+                                <div
+                                    key={q.id}
+                                    className="p-2.5 rounded-xl bg-blue-950/50 border border-blue-500/60 space-y-1.5"
+                                >
+                                    <div className="flex items-center justify-between text-[10px] text-blue-300 font-bold">
+                                        <span className="flex items-center gap-1"><Truck size={11} /> {q.isEscortStarted ? '호송 동행 중' : '호송 대기'}</span>
+                                        <span>→ {q.destination?.city || '목적지'}</span>
+        </div>
+                                    <div className="text-xs font-black text-white">{q.title}</div>
+                                    {!q.isEscortStarted ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleStartEscortQuest(q)}
+                                            className="w-full py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black cursor-pointer"
+                                        >
+                                            🛡️ 호송/호위 출발 (대열 합류)
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={onOpenMap}
+                                            className="w-full py-1.5 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-black cursor-pointer"
+                                        >
+                                            🗺️ 세계 지도 열기 ({q.destination?.city || '목적지'})
+                                        </button>
+                                    )}
+        </div>
+                            ))}
+
+                            {classifiedQuests.instructorQuests.map(q => (
+                                <button
+                                    key={q.id}
+                                    type="button"
+                                    onClick={() => onEnterCity('Academic')}
+                                    className="w-full text-left p-2.5 rounded-xl bg-cyan-950/50 border border-cyan-500/60 hover:border-cyan-300 transition-all cursor-pointer"
+                                >
+                                    <div className="flex items-center justify-between text-[10px] text-cyan-300 font-bold mb-0.5">
+                                        <span className="flex items-center gap-1"><BookOpen size={11} /> 학교 파견 교관</span>
+                                        <span>학교 이동</span>
+        </div>
+                                    <div className="text-xs font-black text-white">{q.title}</div>
+                                </button>
+                            ))}
+
+                            {classifiedQuests.combatAndHuntQuests.map(q => {
+                                const cur = q.currentAmount || 0;
+                                const tgt = q.targetAmount || 1;
+                                const pct = Math.min(100, Math.round((cur / Math.max(1, tgt)) * 100));
+                                return (
+                                    <div key={q.id} className="p-2.5 rounded-xl bg-slate-900/90 border border-amber-500/40 space-y-1.5">
+                                        <div className="flex items-center justify-between text-[10px] text-amber-300 font-bold">
+                                            <span className="flex items-center gap-1"><Swords size={11} /> {q.type === 'Collection' ? '수집' : q.type === 'BountyHunt' ? '현상수배' : '토벌'}</span>
+                                            <span>{cur} / {tgt} ({pct}%)</span>
+        </div>
+                                        <div className="text-xs font-bold text-white truncate">{q.title}</div>
+                                        <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                                            <div className="h-full bg-amber-400" style={{ width: `${pct}%` }} />
+        </div>
+                                        <div className="flex gap-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => onEnterCity('Gate', true)}
+                                                className="flex-1 py-1 rounded-lg bg-amber-700/80 hover:bg-amber-600 text-white text-[10px] font-bold cursor-pointer"
+                                            >
+                                                외곽 사냥터
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={onOpenDungeon}
+                                                className="flex-1 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold cursor-pointer"
+                                            >
+                                                던전 입장
+                                            </button>
+        </div>
+        </div>
+                                );
+                            })}
+
+                            {classifiedQuests.dungeonQuests.map(q => (
+                                <button
+                                    key={q.id}
+                                    type="button"
+                                    onClick={onOpenDungeon}
+                                    className="w-full text-left p-2.5 rounded-xl bg-violet-950/50 border border-violet-500/50 hover:border-violet-300 transition-all cursor-pointer"
+                                >
+                                    <div className="flex items-center justify-between text-[10px] text-violet-300 font-bold mb-0.5">
+                                        <span>🧭 {q.type === 'Rescue' ? '실종자 구출' : '던전 수색'}</span>
+                                        <span>던전 입장</span>
+        </div>
+                                    <div className="text-xs font-bold text-white truncate">{q.title}</div>
+                                </button>
+                            ))}
+
+                            {classifiedQuests.factionOpsQuests.map(q => {
+                                const isMil = q.type.startsWith('Military');
+                                return (
+                                    <button
+                                        key={q.id}
+                                        type="button"
+                                        onClick={() =>
+                                            q.type === 'MilitaryAttackShare' && classifiedQuests.isWarState
+                                                ? setIsFrontlineOpen(true)
+                                                : isMil
+                                                ? setShowMilitaryOpsModal(true)
+                                                : onEnterCity('Mercenary')
+                                        }
+                                        className="w-full text-left p-2.5 rounded-xl bg-slate-900/90 border border-slate-700 hover:border-indigo-400 transition-all cursor-pointer"
+                                    >
+                                        <div className="flex items-center justify-between text-[10px] text-indigo-300 font-bold mb-0.5">
+                                            <span>{isMil ? '🎖️ 군사 작전' : '📜 용병 의뢰'}</span>
+                                            <span>{isMil ? '군 사령부' : '용병 길드'}</span>
+        </div>
+                                        <div className="text-xs font-bold text-white truncate">{q.title}</div>
+                                        <div className="text-[10px] text-slate-400 truncate mt-0.5">{q.goal}</div>
+                                    </button>
+                                );
+                            })}
+        </div>
+                    )}
+        </div>
+            )}
 
             {/* 근접 상호작용 플로팅 프롬프트 (모바일은 상단 중앙 고정으로 하단 패드/퀵바와 겹침 0%) */}
             {nearbyLabel && !dialogue && (
@@ -1632,21 +2271,40 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">
                                         {dialogue.npcRole}
                                     </span>
-                                </div>
+        </div>
                                 <span className="text-[10px] text-slate-400 font-mono">
                                     {dialogue.lineIndex + 1} / {dialogue.lines.length}
                                 </span>
-                            </div>
+        </div>
                             <p className="text-xs sm:text-sm text-slate-100 leading-relaxed min-h-[2.4rem] font-medium">
                                 {currentDialogueText}
                             </p>
-                            <div className="flex justify-end items-center gap-1 mt-1 text-[10px] text-amber-300/90 font-bold animate-pulse">
-                                <CornerDownLeft size={11} />
-                                <span>클릭 또는 Space / Enter 계속</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                            <div className="flex justify-between items-center gap-2 mt-1">
+                                {dialogue.actionLabel && dialogue.onActionAfter ? (
+                                    <button
+                                        type="button"
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            const cb = dialogue.onActionAfter;
+                                            setDialogue(null);
+                                            setTypedChars(0);
+                                            cb?.();
+                                        }}
+                                        className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-black shadow cursor-pointer"
+                                    >
+                                        {dialogue.actionLabel}
+                                    </button>
+                                ) : (
+                                    <span />
+                                )}
+                                <div className="flex items-center gap-1 text-[10px] text-amber-300/90 font-bold animate-pulse">
+                                    <CornerDownLeft size={11} />
+                                    <span>클릭 또는 Space / Enter 계속</span>
+        </div>
+        </div>
+        </div>
+        </div>
+        </div>
             )}
 
             {/* 모바일 컴팩트 가상 D-Pad (좌하단) + 확인 버튼 (우하단) — 퀵바 펼침 시 자동으로 위로 이동해 겹침 방지 */}
@@ -1694,7 +2352,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                             <ArrowDown size={14} />
                         </button>
                         <div />
-                    </div>
+        </div>
 
                     <button
                         type="button"
@@ -1731,9 +2389,95 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                                     <span>{pt.label}</span>
                                 </button>
                             ))}
-                        </div>
+        </div>
                     )}
+        </div>
+            )}
+            {isFrontlineOpen && nation && onUpdateCharacter && (
+                <FrontlineModal
+                    character={character}
+                    targetNation={nation}
+                    onClose={() => setIsFrontlineOpen(false)}
+                    onAttack={() => {
+                        setIsFrontlineOpen(false);
+                        onUpdateCharacter(character, `[군사 작전] ${nation} 전선 돌파 작전을 개시합니다.`);
+                    }}
+                    onUpdateCharacter={onUpdateCharacter}
+                />
+            )}
+
+            {showMilitaryOpsModal && onUpdateCharacter && (
+                <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+                    <div className="w-full max-w-3xl max-h-[88vh] overflow-y-auto custom-scrollbar bg-slate-950 border border-emerald-500/50 rounded-2xl p-4 shadow-2xl space-y-3">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <span className="text-sm font-black text-emerald-300 flex items-center gap-1.5">
+                                🎖️ {city} 군사 작전 수행 패널
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setShowMilitaryOpsModal(false)}
+                                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer"
+                            >
+                                닫기
+                            </button>
+                        </div>
+                        <MilitaryCityActionPanel
+                            character={character}
+                            onUpdateCharacter={onUpdateCharacter}
+                            onStartBattle={onStartBattle}
+                            onOpenInfiltrationModal={() => {
+                                setShowMilitaryOpsModal(false);
+                                setIsInfiltrationModalOpen(true);
+                            }}
+                        />
+                    </div>
                 </div>
+            )}
+
+            {(() => {
+                const infilQuest = (character.militaryData?.activeMissions || []).find(
+                    m => m.type === 'MilitaryInfiltration' && (m.currentAmount || 0) < (m.targetAmount || 1)
+                );
+                if (!infilQuest || !isInfiltrationModalOpen || !onUpdateCharacter) return null;
+                return (
+                    <MilitaryInfiltrationModal
+                        isOpen={isInfiltrationModalOpen}
+                        onClose={() => setIsInfiltrationModalOpen(false)}
+                        character={character}
+                        quest={infilQuest}
+                        onUpdateCharacter={onUpdateCharacter}
+                        onStartBattle={onStartBattle}
+                    />
+                );
+            })()}
+
+            {showRegionalAdmin && onUpdateCharacter && (
+                <RegionalAdminCanvas
+                    character={character}
+                    region={region}
+                    nation={nation}
+                    city={city}
+                    isCapital={tier === 'Capital'}
+                    onUpdateCharacter={onUpdateCharacter}
+                    onClose={() => setShowRegionalAdmin(false)}
+                />
+            )}
+
+            {resultData && (
+                <ActionResultModal
+                    data={resultData}
+                    onClose={() => setResultData(null)}
+                />
+            )}
+
+            {isHuntInfoOpen && (
+                <HuntMapModal
+                    isOpen={isHuntInfoOpen}
+                    onClose={() => setIsHuntInfoOpen(false)}
+                    character={character}
+                    onEnterField={() => {}}
+                    readOnlyInfoOnly={true}
+                />
             )}
         </div>
     );

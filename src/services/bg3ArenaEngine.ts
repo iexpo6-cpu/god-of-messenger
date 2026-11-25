@@ -11,7 +11,7 @@
 import { Character, Companion, Enemy, Skill, SkillType } from '../types';
 import { PRESET_ENEMIES } from '../constants';
 import { calculateDamage, calculateFinalStats, getEntityAllCombatSkills } from '../utils';
-import { resolveEffectiveSkillZone, resolveWeaponBasicAttackZone } from './skillZoneService';
+import { resolveEffectiveSkillZone, resolveWeaponBasicAttackZone, getTeleportRangeByTier, getEffectiveTeleportRange, getSummonLevelStatMultiplier } from './skillZoneService';
 import { MountCombatService } from './mountCombatService';
 import { getAllyMaxBreakGauge, getEnemyMaxBreakGauge } from './shinryokuBreakService';
 import { CityCultureKey, resolveCityCultureKey } from './cityAssetManifest';
@@ -182,6 +182,7 @@ export interface Bg3SkillTargeting {
     isSupport: boolean;
     isSummon: boolean;
     isDebuff: boolean;
+    isTeleport?: boolean;
     isRanged: boolean;
     shinryokuType: string;
     vfxColor: string;
@@ -719,6 +720,26 @@ export const getBg3SkillTargeting = (unit: Bg3Unit, skill: Skill | null): Bg3Ski
         };
     }
 
+    // 순수 이동(텔레포트) 스킬 -> 장애물·기회공격 무시하고 지정 위치로 즉시 순간이동
+    if (skill.type === SkillType.TELEPORT) {
+        const maxRange = getEffectiveTeleportRange(skill);
+        return {
+            shape: 'circle',
+            rangeMeters: maxRange,
+            aoeRadiusMeters: 0.9,
+            coneAngleDeg: 60,
+            squareWidthMeters: 0,
+            squareLengthMeters: 0,
+            isSupport: false,
+            isSummon: false,
+            isDebuff: false,
+            isTeleport: true,
+            isRanged: true,
+            shinryokuType,
+            vfxColor: skill.vfxColor || '#c084fc'
+        };
+    }
+
     // [FIX] 물리/마법/버프/디버프/회복 스킬 설명에 '소환' 단어가 들어있어도 소환 스킬로 오인하지 않도록 명시적 타입/플래그만 판정!
     const isExplicitNonSummon =
         skill.type === SkillType.PHYSICAL ||
@@ -938,9 +959,10 @@ export const createBg3SummonUnits = (
     const tierStr = String(skill.tier || '').toUpperCase();
     const maxClones = isNinjaClone ? (tierStr.includes('FINAL') ? 5 : tierStr.includes('LAST') ? 3 : 2) : 3;
     const count = Math.max(1, Math.min(maxClones, sData?.summonCount || (isNinjaClone ? 2 : 1)));
-    const statMult = isNinjaClone
+    const baseStatMult = isNinjaClone
         ? (tierStr.includes('FINAL') ? 0.65 : tierStr.includes('LAST') ? 0.5 : 0.35)
         : (sData?.powerLevel === 'high' ? 0.75 : sData?.powerLevel === 'medium' ? 0.55 : 0.4);
+    const statMult = baseStatMult * getSummonLevelStatMultiplier(skill);
     const duration = Math.max(2, Math.min(6, sData?.durationTurns || 3));
     const baseName = sData?.summonName || (isNinjaClone ? `${caster.name}의 분신` : `${caster.name}의 소환수`);
 

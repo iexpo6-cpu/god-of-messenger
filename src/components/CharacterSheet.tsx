@@ -642,6 +642,7 @@ const CharacterSheet: React.FC<Props> = ({
 }) => {
   // Dedicated Modal State: 'stats' | 'equip' | 'inventory' | 'companion' | null
   const [activeModal, setActiveModal] = useState<'stats' | 'equip' | 'inventory' | 'companion' | null>(null);
+  const [hubTab, setHubTab] = useState<'summary' | 'stats' | 'gear' | 'social' | 'skills'>('summary');
 
   // 독립 멀티 윈도우 모달 활성화 상태 (스탯, 장착장비, 인벤토리, 동료 관리)
   const [showStats, setShowStats] = useState(false);
@@ -1574,13 +1575,39 @@ const CharacterSheet: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Main Hub Body - Fills the CharacterSheet completely */}
-      <div className="flex-1 overflow-y-auto p-3.5 sm:p-4 custom-scrollbar bg-slate-900/90 space-y-3.5">
+      {/* 5대 카테고리 퀵 허브 탭 바 */}
+      <div className="grid grid-cols-5 border-y border-slate-800 bg-slate-950/95 shrink-0 px-1.5 py-1 gap-1">
+        {([
+          { id: 'summary', label: '요약/신분' },
+          { id: 'stats', label: '능력치' },
+          { id: 'gear', label: '장비/가방' },
+          { id: 'social', label: '동료/인맥' },
+          { id: 'skills', label: '스킬/숙련' }
+        ] as const).map(t => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setHubTab(t.id)}
+            className={`py-2 px-1 rounded-xl text-[11px] sm:text-xs font-black transition-all truncate ${
+              hubTab === t.id
+                ? 'bg-amber-500 text-slate-950 shadow'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Main Hub Body - Tabbed Mobile-First Layout */}
+      <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 custom-scrollbar bg-slate-900/90 space-y-3.5">
         
-        {/* 10 Major Interactive Hub Tile Grid (2-Column) */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+        {/* Major Interactive Hub Tile Grid */}
+        {hubTab !== 'summary' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
           
           {/* 1. 스탯 */}
+          {hubTab === 'stats' && (
           <button
             type="button"
             onClick={() => setActiveModal('stats')}
@@ -1622,8 +1649,11 @@ const CharacterSheet: React.FC<Props> = ({
               </div>
             </div>
           </button>
+          )}
 
           {/* 2. 장비 */}
+          {hubTab === 'gear' && (
+          <>
           <button
             type="button"
             onClick={() => setActiveModal('equip')}
@@ -1668,9 +1698,11 @@ const CharacterSheet: React.FC<Props> = ({
               </div>
             </div>
           </button>
+          </>
+          )}
 
           {/* 4. 동료 */}
-          {(() => {
+          {hubTab === 'social' && (() => {
             const companionsWithPoints = character.companions.filter(c => (c.statPoints || 0) > 0);
             const totalCompanionPoints = companionsWithPoints.reduce((sum, c) => sum + (c.statPoints || 0), 0);
             return (
@@ -1709,6 +1741,7 @@ const CharacterSheet: React.FC<Props> = ({
           })()}
 
           {/* 5. 잠재력 */}
+          {hubTab === 'stats' && (
           <button
             type="button"
             onClick={() => setShowPotentialModal(true)}
@@ -1729,8 +1762,11 @@ const CharacterSheet: React.FC<Props> = ({
               </div>
             </div>
           </button>
+          )}
 
           {/* 6. 관계망 */}
+          {hubTab === 'social' && (
+          <>
           <button
             type="button"
             onClick={onOpenSocial}
@@ -1775,8 +1811,12 @@ const CharacterSheet: React.FC<Props> = ({
               </div>
             </div>
           </button>
+          </>
+          )}
 
           {/* 8. 스킬북 */}
+          {hubTab === 'skills' && (
+          <>
           <button
             type="button"
             onClick={onOpenSkillBook}
@@ -1841,8 +1881,12 @@ const CharacterSheet: React.FC<Props> = ({
               </div>
             </div>
           </button>
+          </>
+          )}
 
         </div>
+        )}
+        {hubTab === 'summary' && (
         <div className="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 space-y-2.5">
           <div className="flex items-center justify-between text-xs font-bold text-slate-400">
             <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
@@ -1897,6 +1941,7 @@ const CharacterSheet: React.FC<Props> = ({
             </div>
           </div>
         </div>
+        )}
 
       </div>
     </div>

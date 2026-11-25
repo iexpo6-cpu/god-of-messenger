@@ -51,6 +51,7 @@ import { InnModal } from './InnModal';
 import { Companion } from '../types';
 import FacilityClosedModal from './FacilityClosedModal';
 import { getFacilityOperatingState, StandardFacilityType } from '../services/facilityOperatingService';
+import { buildRegionalDefenseEnemies, clearExpiredQuestNotificationsState, startEscortQuestState } from '../services/cityQuestService';
 import EternalRivalModal from './EternalRivalModal';
 import { createRivalEnemies } from '../services/npcLifeEngine';
 import { getValidRivalLocation, hasFoughtRivalThisMonth, recordRivalDuel } from '../services/rivalLocationService';
@@ -174,14 +175,7 @@ const CityInterface: React.FC<Props> = ({
     }, [initialOpenHuntMap, initialOpenInstantDungeonId]);
 
     const clearExpiredNotifications = () => {
-        const newChar = { ...character };
-        if (newChar.mercenaryData) {
-            newChar.mercenaryData.expiredQuestNotifications = [];
-        }
-        if (newChar.militaryData) {
-            newChar.militaryData.expiredMissionNotifications = [];
-        }
-        onUpdateCharacter(newChar, "만료된 퀘스트 알림을 확인했습니다.");
+        onUpdateCharacter(clearExpiredQuestNotificationsState(character), "만료된 퀘스트 알림을 확인했습니다.");
     };
 
     const handleOpenFacilityWithCheck = (facilityType: StandardFacilityType, onOpen: () => void) => {
@@ -464,45 +458,18 @@ const CityInterface: React.FC<Props> = ({
     };
 
     const handleStartEscortQuest = (quest: Quest) => {
-        const newChar = { ...character };
-        let updated = false;
-
-        if (newChar.militaryData?.activeMissions) {
-            const missionIdx = newChar.militaryData.activeMissions.findIndex(q => q.id === quest.id);
-            if (missionIdx !== -1) {
-                newChar.militaryData.activeMissions[missionIdx] = { 
-                    ...newChar.militaryData.activeMissions[missionIdx], 
-                    isEscortStarted: true 
-                };
-                updated = true;
-            }
-        }
-        
-        if (!updated && newChar.mercenaryData?.activeQuests) {
-            const questIdx = newChar.mercenaryData.activeQuests.findIndex(q => q.id === quest.id);
-            if (questIdx !== -1) {
-                newChar.mercenaryData.activeQuests[questIdx] = { 
-                    ...newChar.mercenaryData.activeQuests[questIdx], 
-                    isEscortStarted: true 
-                };
-                updated = true;
-            }
-        }
-        
-        if (updated) {
-            const targetName = quest.type === 'EscortKing' ? '국왕 폐하' :
-                               quest.type === 'EscortNoble' ? '귀족' :
-                               quest.type === 'MercenaryEscort' ? '상단 및 호송 대열' : '군사 호송 물류대';
-            const logMsg = `[호송/호위 시작] ${quest.title} - 목적지 ${quest.destination?.city || '지정 도시'}까지 이동 시작`;
-            onUpdateCharacter(newChar, logMsg);
+        const res = startEscortQuestState(character, quest.id);
+        if (res) {
+            const logMsg = `[호송/호위 시작] ${res.quest.title} - 목적지 ${res.quest.destination?.city || '지정 도시'}까지 이동 시작`;
+            onUpdateCharacter(res.updatedChar, logMsg);
             setResultData({
                 type: 'success',
-                title: `🛡️ ${quest.title} 출발`,
-                message: `${targetName}이(가) 호위 대열에 합류했습니다. 지도(M)를 열어 목적지 [${quest.destination?.city || '목적지'}]로 이동하십시오!\n이동 중 몬스터 및 습격자의 기습에 주의하십시오.`,
+                title: `🛡️ ${res.quest.title} 출발`,
+                message: `${res.targetName}이(가) 호위 대열에 합류했습니다. 지도(M)를 열어 목적지 [${res.quest.destination?.city || '목적지'}]로 이동하십시오!\n이동 중 몬스터 및 습격자의 기습에 주의하십시오.`,
                 items: [
-                    { label: '목적지 도시', after: quest.destination?.city || '알 수 없음' },
-                    { label: '목적지 국가', after: quest.destination?.nation || '자국' },
-                    { label: '예상 보상', after: `${(quest.rewardGold || 0).toLocaleString()}G / ${(quest.rewardExp || 0).toLocaleString()}EXP` }
+                    { label: '목적지 도시', after: res.quest.destination?.city || '알 수 없음' },
+                    { label: '목적지 국가', after: res.quest.destination?.nation || '자국' },
+                    { label: '예상 보상', after: `${(res.quest.rewardGold || 0).toLocaleString()}G / ${(res.quest.rewardExp || 0).toLocaleString()}EXP` }
                 ]
             });
         } else {
@@ -548,54 +515,7 @@ const CityInterface: React.FC<Props> = ({
 
     const handleRegionalDefenseBattle = (quest: any) => {
         if (!onBattle) return;
-        
-        const avgLevel = quest.level || character.level;
-        const enemies: Enemy[] = [];
-        const enemyCount = 3 + Math.floor(Math.random() * 3);
-        
-        const questNation = quest.location?.nation || quest.destination?.nation || loc.nation;
-        const theme = NATION_THEMES[questNation] || NATION_THEMES[loc.nation] || NATION_THEMES["default"];
-        const band = HUNT_LEVEL_BANDS.find(b => avgLevel >= b.levelRange[0] && avgLevel <= b.levelRange[1]) || HUNT_LEVEL_BANDS[0];
-        const monsterPool = theme.monsters[band.id] || theme.monsters["beginner"];
-
-        const defaultMonsterNameOrInfo = monsterPool[Math.floor(Math.random() * monsterPool.length)];
-        const baseMonsterName = quest.targetName || (typeof defaultMonsterNameOrInfo === 'string' ? defaultMonsterNameOrInfo : defaultMonsterNameOrInfo.name);
-        const monsterInfo = getMonsterInfo(baseMonsterName);
-
-        for (let i = 0; i < enemyCount; i++) {
-            const stats = generateEnemyStats(avgLevel, 'normal');
-            enemies.push({
-                name: `${baseMonsterName} ${String.fromCharCode(65 + i)}`,
-                level: avgLevel,
-                hp: stats.maxHp,
-                maxHp: stats.maxHp,
-                stats: stats,
-                statusEffects: [],
-                visualUrl: monsterInfo.visualUrl,
-                shinryokuType: "무속성"
-            });
-        }
-        
-        const eliteBandIdx = Math.min(HUNT_LEVEL_BANDS.indexOf(band) + 1, HUNT_LEVEL_BANDS.length - 1);
-        const eliteBand = HUNT_LEVEL_BANDS[eliteBandIdx];
-        const elitePool = theme.monsters[eliteBand.id] || monsterPool;
-        const defaultBossNameOrInfo = elitePool[Math.floor(Math.random() * elitePool.length)];
-        const bossName = quest.targetName ? `${quest.targetName} 우두머리` : (typeof defaultBossNameOrInfo === 'string' ? defaultBossNameOrInfo : defaultBossNameOrInfo.name);
-        const bossInfo = getMonsterInfo(bossName);
-
-        const bossStats = generateEnemyStats(avgLevel + 5, 'elite');
-        enemies.push({
-            name: `${bossName} (대장)`,
-            level: avgLevel + 5,
-            hp: bossStats.maxHp,
-            maxHp: bossStats.maxHp,
-            stats: bossStats,
-            statusEffects: [],
-            visualUrl: bossInfo.visualUrl,
-            shinryokuType: "무기강화계"
-        });
-
-        const battleType = quest.type === 'MilitaryRegionalDefense' ? 'military_regional_defense' : 'emergency_rescue';
+        const { enemies, battleType } = buildRegionalDefenseEnemies(quest, character, loc);
         onBattle(enemies, battleType, quest.id);
         onClose();
     };

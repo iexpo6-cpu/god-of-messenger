@@ -26,10 +26,14 @@ const GENERAL_RANK_COEF: Partial<Record<JobType, number>> = {
     [JobType.MAGYE_GENERAL_1]: 6.0,
     [JobType.DEMON_GOD]: 10.0,
 };
+export type MagyeDominionTab = 'overview' | 'extraction' | 'decree' | 'facility' | 'personnel' | 'beast' | 'equipment' | 'monsterTransform';
+
 interface Props {
     character: Character;
     onClose: () => void;
     onUpdateCharacter: (newChar: Character, logMsg: string) => void;
+    initialTab?: MagyeDominionTab;
+    singleTabOnly?: boolean;
 }
 
 const DECREE_CONFIG = [
@@ -39,14 +43,21 @@ const DECREE_CONFIG = [
     { id: 'mass_enslavement', label: '대규모 강제징용', costFear: 150, materialGain: 20, infamyGain: 80, desc: '백성들을 노역에 동원하여 대량의 식량, 목재, 석재, 약초 및 마정석을 생산합니다.' },
 ];
 
-const MagyeDominionModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter }) => {
-    const [activeTab, setActiveTab] = useState<'overview' | 'extraction' | 'decree' | 'facility' | 'personnel'| 'beast' | 'equipment' | 'monsterTransform'>('overview');
+const MagyeDominionModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, initialTab, singleTabOnly }) => {
+    const [activeTab, setActiveTab] = useState<MagyeDominionTab>(initialTab || 'overview');
     const [resultData, setResultData] = useState<ResultData | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [isPersonnelOpen, setIsPersonnelOpen] = useState(false);
-    const [isBeastModalOpen, setIsBeastModalOpen] = useState(false);
+    const [isPersonnelOpen, setIsPersonnelOpen] = useState(initialTab === 'personnel');
+    const [isBeastModalOpen, setIsBeastModalOpen] = useState(initialTab === 'beast');
     const [isRebellionOpen, setIsRebellionOpen] = useState(false);
-    const [isEquipmentOpen, setIsEquipmentOpen] = useState(false);
+    const [isEquipmentOpen, setIsEquipmentOpen] = useState(initialTab === 'equipment');
+    useEffect(() => {
+        if (!initialTab) return;
+        setActiveTab(initialTab);
+        if (initialTab === 'personnel') setIsPersonnelOpen(true);
+        else if (initialTab === 'beast') setIsBeastModalOpen(true);
+        else if (initialTab === 'equipment') setIsEquipmentOpen(true);
+    }, [initialTab]);
 
 
     const loc = character.currentLocation || { region: '마계', nation: '임페리얼 제국', city: '임페리얼' };
@@ -385,10 +396,10 @@ const MagyeDominionModal: React.FC<Props> = ({ character, onClose, onUpdateChara
 return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in">
             {resultData && <ActionResultModal data={resultData} onClose={() => { setResultData(null); }} />}
-            {isPersonnelOpen && <MagyePersonnelModal character={character} city={city} onClose={() => setIsPersonnelOpen(false)} onUpdateCharacter={onUpdateCharacter} />}
-            {isBeastModalOpen && <MagyeBeastManagementModal character={character} city={city} onClose={() => setIsBeastModalOpen(false)} onUpdateCharacter={onUpdateCharacter} />}
+            {isPersonnelOpen && <MagyePersonnelModal character={character} city={city} onClose={() => { setIsPersonnelOpen(false); if (singleTabOnly) onClose(); }} onUpdateCharacter={onUpdateCharacter} />}
+            {isBeastModalOpen && <MagyeBeastManagementModal character={character} city={city} onClose={() => { setIsBeastModalOpen(false); if (singleTabOnly) onClose(); }} onUpdateCharacter={onUpdateCharacter} />}
             {isRebellionOpen && <MagyeRebellionModal character={character} onClose={() => setIsRebellionOpen(false)} onUpdateCharacter={onUpdateCharacter} />}
-            {isEquipmentOpen && <MagyeEquipmentModal character={character} onClose={() => setIsEquipmentOpen(false)} onUpdateCharacter={onUpdateCharacter} />}
+            {isEquipmentOpen && <MagyeEquipmentModal character={character} onClose={() => { setIsEquipmentOpen(false); if (singleTabOnly) onClose(); }} onUpdateCharacter={onUpdateCharacter} />}
 
             <div className="bg-slate-900 border-2 border-purple-600 w-full max-w-4xl h-[85vh] rounded-[2.5rem] shadow-[0_0_80px_rgba(168,85,247,0.3)] flex flex-col overflow-hidden relative">
                 
@@ -413,6 +424,7 @@ return (
                     <button onClick={onClose} className="text-slate-500 hover:text-white p-2 rounded-full hover:bg-slate-800 transition-colors"><X size={28}/></button>
                 </div>
 
+                {!singleTabOnly && (
                 <div className="flex border-b border-slate-800 bg-slate-950 shrink-0 overflow-x-auto no-scrollbar z-10">
                     <button onClick={() => setActiveTab('overview')} className={`flex-1 py-4 px-6 text-xs font-bold flex items-center justify-center transition-all border-b-2 whitespace-nowrap ${activeTab === 'overview' ? 'text-purple-400 border-purple-500 bg-slate-900' : 'text-slate-500 border-transparent hover:text-slate-300'}`}>
                         <TrendingUp size={16} className="mr-2"/> 통치 지표
@@ -439,6 +451,7 @@ return (
                         <Sword size={16} className="mr-2"/> 마계 장비 강화
                     </button>
                 </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto p-8 bg-slate-900 custom-scrollbar z-10 space-y-8">
                     

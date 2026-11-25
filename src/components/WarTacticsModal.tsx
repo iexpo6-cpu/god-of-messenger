@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
     Character, Companion, Enemy, Skill, Stats, DiplomaticStatus, 
     MilitaryRank, SkillType, ClassTier, JobType, CombatState, ActiveStatus 
