@@ -19,7 +19,7 @@ import {
 import { CITY_TILE_SIZE } from '../services/cityTilemapEngine';
 import { getFacilityOperatingState, isNightMarketActive, parseHour } from '../services/facilityOperatingService';
 import { NATION_LEADERS } from '../worldData';
-import { generateDefaultVisualUrl, generateName } from '../utils';
+import { generateName } from '../utils';
 import ShopModal from './ShopModal';
 import AuctionModal from './AuctionModal';
 import BackAlleyModal from './BackAlleyModal';
@@ -1843,7 +1843,7 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
             )}
 
             {/* Mobile D-Pad */}
-            <div className="absolute bottom-4 right-4 z-20 md:hidden grid grid-cols-3 gap-1 w-28 h-28 opacity-85">
+            <div className="absolute bottom-4 right-4 z-20 xl:hidden grid grid-cols-3 gap-1 w-28 h-28 opacity-85">
                 <div />
                 <button type="button" onTouchStart={() => (dpadRef.current = 'up')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white">
                     <ArrowUp size={16} />
@@ -1869,13 +1869,9 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                             {(() => {
-                                const sn = character.socialNetwork?.find(s => s.id === selectedNpc.id || s.name === selectedNpc.name);
-                                const cp = character.companions?.find(c => c.id === selectedNpc.id || c.name === selectedNpc.name)
-                                    || character.inactiveCompanions?.find(c => c.id === selectedNpc.id || c.name === selectedNpc.name);
-                                const cm = character.schoolData?.classmates?.find(c => c.id === selectedNpc.id || c.name === selectedNpc.name)
-                                    || character.clubData?.clubMembers?.find(c => c.id === selectedNpc.id || c.name === selectedNpc.name);
-                                const teacher = character.schoolData?.homeroomTeacher?.name === selectedNpc.name ? character.schoolData.homeroomTeacher : undefined;
-                                const vUrl = (selectedNpc as any).visualUrl || sn?.visualUrl || cp?.visualUrl || cm?.visualUrl || teacher?.visualUrl || generateDefaultVisualUrl(selectedNpc.name, nation, '인간', '남성');
+                                const sn = character.socialNetwork?.find(s => s.name === selectedNpc.name);
+                                const cp = character.companions?.find(c => c.name === selectedNpc.name);
+                                const vUrl = (selectedNpc as any).visualUrl || sn?.visualUrl || cp?.visualUrl;
                                 return vUrl ? (
                                     <img src={vUrl} alt={selectedNpc.name} className="w-12 h-12 rounded-xl object-cover border border-indigo-400/60 bg-slate-900 shrink-0" />
                                 ) : selectedNpc.spriteUrl ? (

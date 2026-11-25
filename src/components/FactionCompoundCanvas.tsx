@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, JobType, MilitaryRank } from '../types';
 import { MILITARY_RANK_ORDER } from '../constants';
-import { generateDefaultVisualUrl, generateName } from '../utils';
+import { generateName } from '../utils';
 import { REGIONAL_MERCENARY_GROUPS, DEFAULT_MERCENARY_GROUPS } from '../worldguild.ts';
 import {
     getCachedCityAssetImage,
@@ -24,13 +24,10 @@ import MercenaryGroupModal from './MercenaryGroupModal';
 import MilitaryModal from './MilitaryModal';
 import MilitaryTrainingModal from './MilitaryTrainingModal';
 import MilitaryFacilityModal from './MilitaryFacilityModal';
-import MilitarySpecialDispatchModal from './MilitarySpecialDispatchModal';
-import FrontlineModal from './FrontlineModal';
-import WarTacticsModal from './WarTacticsModal';
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, DoorOpen, MessageSquare, Shield, Sparkles, X } from 'lucide-react';
 
 export type FactionCompoundKind = 'Mercenary' | 'Military';
-type SubRoomKind = null | 'joined_faction' | 'own_group' | 'military_command' | 'general_hq';
+type SubRoomKind = null | 'joined_faction' | 'own_group' | 'military_command';
 
 type MercTab = 'register' | 'board' | 'blacklist' | 'recruit' | 'promotion' | 'group' | 'join';
 type MilTab = 'enlist' | 'duty' | 'war' | 'promotion' | 'recruit' | 'command';
@@ -48,13 +45,9 @@ interface CompoundNpcNode {
     openFactionModal?: boolean;
     openGroupModal?: boolean;
     openMilFacility?: boolean;
-    openSpecialDispatch?: boolean;
-    openWarTactics?: boolean;
-    openFrontline?: boolean;
     enterSubRoom?: Exclude<SubRoomKind, null>;
     requiresEnlisted?: boolean;
     requiresMilitaryCommand?: boolean;
-    requiresGeneralRank?: boolean;
     badgeColor: string;
     spriteUrl: string;
     px: number;
@@ -114,9 +107,6 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
     const [isFactionModalOpen, setIsFactionModalOpen] = useState(false);
     const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
     const [isMilFacilityOpen, setIsMilFacilityOpen] = useState(false);
-    const [isSpecialDispatchOpen, setIsSpecialDispatchOpen] = useState(false);
-    const [isFrontlineOpen, setIsFrontlineOpen] = useState(false);
-    const [isWarTacticsOpen, setIsWarTacticsOpen] = useState(false);
     const [selectedNpc, setSelectedNpc] = useState<CompoundNpcNode | null>(null);
     const [lockedNotice, setLockedNotice] = useState<string | null>(null);
     const [nearbyLabel, setNearbyLabel] = useState<string | null>(null);
@@ -140,30 +130,24 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
         [character.job, character.nation, nation, allComps]
     );
     const effectiveCommander = useMemo(() => {
-        const candidates: Array<{ id: string; name: string; rank: MilitaryRank; rankIdx: number }> = [];
         if (character.job === JobType.SOLDIER && character.nation === nation) {
             const rank = character.militaryRank || MilitaryRank.PVT;
-            candidates.push({
+            return {
                 id: 'player',
                 name: character.name,
                 rank,
                 rankIdx: Math.max(0, MILITARY_RANK_ORDER.indexOf(rank))
-            });
+            };
         }
-        allComps
-            .filter(c => !c.isDead && c.job === JobType.SOLDIER && c.nation === nation)
-            .forEach(comp => {
-                const rank = comp.militaryRank || MilitaryRank.PVT;
-                candidates.push({
-                    id: comp.id,
-                    name: comp.name,
-                    rank,
-                    rankIdx: Math.max(0, MILITARY_RANK_ORDER.indexOf(rank))
-                });
-            });
-        if (candidates.length > 0) {
-            candidates.sort((a, b) => b.rankIdx - a.rankIdx);
-            return candidates[0];
+        const comp = allComps.find(c => c.job === JobType.SOLDIER && c.nation === nation);
+        if (comp) {
+            const rank = comp.militaryRank || MilitaryRank.PVT;
+            return {
+                id: comp.id,
+                name: comp.name,
+                rank,
+                rankIdx: Math.max(0, MILITARY_RANK_ORDER.indexOf(rank))
+            };
         }
         return { id: 'player', name: character.name, rank: MilitaryRank.PVT, rankIdx: 0 };
     }, [character, nation, allComps]);
@@ -176,12 +160,6 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
             character.militaryData?.regionalViceAppointments?.[city] === 'player';
         return effectiveCommander.rankIdx >= officerIdx || isRegionalCmdr;
     }, [isEnlistedInParty, effectiveCommander.rankIdx, character.militaryData, city]);
-
-    const isGeneralOfficer = useMemo(() => {
-        if (!isEnlistedInParty) return false;
-        const bgIdx = MILITARY_RANK_ORDER.indexOf(MilitaryRank.BG);
-        return effectiveCommander.rankIdx >= bgIdx;
-    }, [isEnlistedInParty, effectiveCommander.rankIdx]);
 
     const joinedGroup = useMemo(() => {
         const joinedGroupId = character.mercenaryData?.joinedGroupId;
@@ -259,11 +237,7 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
                     8.5,
                     3.2,
                     capBond?.gender === '여성' ? 'female' : 'male',
-                    {
-                        openFactionModal: true,
-                        badgeColor: '#e11d48',
-                        visualUrl: capBond?.visualUrl || generateDefaultVisualUrl(capName, joinedGroup.nation || nation, '인간', capBond?.gender || '남성')
-                    } as any
+                    { openFactionModal: true, badgeColor: '#e11d48' }
                 ),
                 make(
                     'jf_vice',
@@ -274,11 +248,7 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
                     4.0,
                     5.8,
                     viceBond?.gender === '여성' ? 'female' : 'male',
-                    {
-                        openFactionModal: true,
-                        badgeColor: '#4f46e5',
-                        visualUrl: viceBond?.visualUrl || generateDefaultVisualUrl(viceName, joinedGroup.nation || nation, '인간', viceBond?.gender || '여성')
-                    } as any
+                    { openFactionModal: true, badgeColor: '#4f46e5' }
                 ),
                 make(
                     'jf_trainer',
@@ -375,55 +345,6 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
                 );
             });
             return list;
-        }
-
-        if (subRoom === 'general_hq') {
-            return [
-                make(
-                    'ghq_frontline',
-                    `최고 작전참모 ${npcNames.n2}`,
-                    '전선 총괄 지휘 (장성급)',
-                    `${effectiveCommander.name} (${effectiveCommander.rank}) 장군님! 대륙 전선 현황과 공세 작전을 지휘해 주십시오.`,
-                    '🔥 전선 상황실 열기',
-                    8.5,
-                    3.0,
-                    'male',
-                    { openFrontline: true, badgeColor: '#dc2626' }
-                ),
-                make(
-                    'ghq_tactics',
-                    `전략전술관 ${npcNames.n6}`,
-                    '군단 전략·전술 지휘',
-                    '최고 사령부 전술 시뮬레이션 및 대규모 공성·방어 전술을 집행합니다.',
-                    '⚔️ 전쟁 전술 지휘 열기',
-                    4.2,
-                    5.8,
-                    'female',
-                    { openWarTactics: true, badgeColor: '#d97706' }
-                ),
-                make(
-                    'ghq_special',
-                    `특수작전관 ${npcNames.n7}`,
-                    '장성 전용 특수 파견',
-                    '정예·왕실 근위대원을 극비 특수 임무에 파견할 수 있습니다.',
-                    '⚡ 특수 전략 파견 열기',
-                    13.8,
-                    5.8,
-                    'male',
-                    { openSpecialDispatch: true, badgeColor: '#7c3aed' }
-                ),
-                make(
-                    'ghq_staff',
-                    `총참모 인사관 ${npcNames.n1}`,
-                    '장교단 인사 · 지휘 통제',
-                    '예하 장교 임명 및 지역 지휘권 배치를 보좌하겠습니다.',
-                    '🎖️ 지휘 통제 열기',
-                    8.5,
-                    8.2,
-                    'female',
-                    { milTab: 'command', badgeColor: '#2563eb' }
-                )
-            ];
         }
 
         if (subRoom === 'military_command') {
@@ -621,19 +542,6 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
                 7.6,
                 'male',
                 { enterSubRoom: 'military_command', requiresMilitaryCommand: true, badgeColor: '#7c3aed' }
-            ),
-            make(
-                'mil_gen_guard',
-                `근위 헌병대장 ${npcNames.n7}`,
-                '장성 지휘본부 출입구 (준장 이상)',
-                isGeneralOfficer
-                    ? `${effectiveCommander.name} (${effectiveCommander.rank}) 장군님! 장성 전용 최고 지휘본부로 안내하겠습니다.`
-                    : '준장 이상의 장성급 장교만 입장할 수 있는 최고 지휘본부입니다.',
-                '⭐ 장성 지휘본부 입장',
-                3.2,
-                7.6,
-                'male',
-                { enterSubRoom: 'general_hq', requiresGeneralRank: true, badgeColor: '#f59e0b' }
             )
         ];
     }, [
@@ -650,8 +558,7 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
         region,
         npcNames,
         isEnlistedInParty,
-        hasMilitaryCommand,
-        isGeneralOfficer
+        hasMilitaryCommand
     ]);
 
     const propsList = useMemo<CompoundPropNode[]>(() => {
@@ -673,16 +580,6 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
                 { key: 'merc_brazier', tx: 13.6, ty: 2.2, w: 1.6, h: 1.6, bg: '#7c2d12', border: '#f59e0b', icon: '🔥' }
             ];
         }
-        if (subRoom === 'general_hq') {
-            return [
-                { key: 'mil_strategy_table', tx: 7.0, ty: 2.0, w: 4.0, h: 1.8, bg: '#450a0a', border: '#f59e0b', icon: '🗺️', label: '대륙 최고 작전 지도' },
-                { key: 'mil_war_board', tx: 2.2, ty: 5.0, w: 2.4, h: 1.8, bg: '#451a03', border: '#fbbf24', icon: '⚔️', label: '전략 전술 탁자' },
-                { key: 'mil_dispatch_desk', tx: 13.6, ty: 5.0, w: 2.4, h: 1.8, bg: '#3b0764', border: '#a855f7', icon: '⚡', label: '특수 전략 단말' },
-                { key: 'mil_brazier', tx: 2.4, ty: 2.2, w: 1.6, h: 1.6, bg: '#7c2d12', border: '#fbbf24', icon: '🔥' },
-                { key: 'mil_brazier', tx: 13.8, ty: 2.2, w: 1.6, h: 1.6, bg: '#7c2d12', border: '#fbbf24', icon: '🔥' }
-            ];
-        }
-
         if (subRoom === 'military_command') {
             return [
                 { key: 'mil_command_podium', tx: 7.2, ty: 2.0, w: 3.6, h: 1.8, bg: '#3b0764', border: '#a855f7', icon: '👑', label: '지휘관 단상' },
@@ -755,22 +652,9 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
                 label: hasMilitaryCommand ? '🚪 지휘통제실 입장' : '🔒 지휘통제실 (장교 전용)',
                 enterSubRoom: 'military_command',
                 lockedReason: hasMilitaryCommand ? undefined : '소위 이상 장교 임관 또는 지역 지휘권을 보유해야 입장할 수 있습니다.'
-            },
-            {
-                key: 'mil_strategy_table',
-                tx: 2.0,
-                ty: 4.4,
-                w: 3.0,
-                h: 2.2,
-                bg: '#451a03',
-                border: isGeneralOfficer ? '#f59e0b' : '#64748b',
-                icon: '⭐',
-                label: isGeneralOfficer ? '🚪 장성 지휘본부 입장' : '🔒 장성 지휘본부 (준장 이상)',
-                enterSubRoom: 'general_hq',
-                lockedReason: isGeneralOfficer ? undefined : '준장 이상의 장성급 장교만 입장할 수 있습니다.'
             }
         ];
-    }, [subRoom, joinedGroup, ownGroupName, isGroupLeader, kind, hasMilitaryCommand, isGeneralOfficer]);
+    }, [subRoom, joinedGroup, ownGroupName, isGroupLeader, kind, hasMilitaryCommand]);
 
     const solidSet = useMemo(() => {
         const set = new Set<string>();
@@ -895,10 +779,6 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
                     setLockedNotice('소위 이상 장교 임관 또는 지역 지휘권을 보유해야 군사 지휘통제실에 입장할 수 있습니다.');
                     return;
                 }
-                if (npc.requiresGeneralRank && !isGeneralOfficer) {
-                    setLockedNotice('준장 이상의 장성급 장교만 장성 지휘본부에 입장할 수 있습니다.');
-                    return;
-                }
                 enterSubRoom(npc.enterSubRoom);
                 return;
             }
@@ -909,11 +789,8 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
             else if (npc.openFactionModal) setIsFactionModalOpen(true);
             else if (npc.openGroupModal) setIsGroupModalOpen(true);
             else if (npc.openMilFacility) setIsMilFacilityOpen(true);
-            else if (npc.openSpecialDispatch) setIsSpecialDispatchOpen(true);
-            else if (npc.openFrontline) setIsFrontlineOpen(true);
-            else if (npc.openWarTactics) setIsWarTacticsOpen(true);
         },
-        [hasMilitaryCommand, isGeneralOfficer, enterSubRoom]
+        [hasMilitaryCommand, enterSubRoom]
     );
 
     const findNearestInteractable = useCallback(() => {
@@ -1277,20 +1154,17 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
 
     const blockedByEnlist = Boolean(selectedNpc?.requiresEnlisted && !isEnlistedInParty);
     const blockedByCommand = Boolean(selectedNpc?.requiresMilitaryCommand && !hasMilitaryCommand);
-    const blockedByGeneral = Boolean(selectedNpc?.requiresGeneralRank && !isGeneralOfficer);
 
     const headerTitle =
         subRoom === 'joined_faction' && joinedGroup
             ? `${joinedGroup.name} 본부`
             : subRoom === 'own_group'
                 ? `${ownGroupName} 전용 본부`
-                : subRoom === 'general_hq'
-                    ? `${nation} ⭐ 장성 지휘본부 (최고 사령부)`
-                    : subRoom === 'military_command'
-                        ? `${nation} 군사 지휘통제실`
-                        : kind === 'Mercenary'
-                            ? `${city} · 용병 길드 복합 본부`
-                            : `${city} · ${nation} 군사 사령부`;
+                : subRoom === 'military_command'
+                    ? `${nation} 군사 지휘통제실`
+                    : kind === 'Mercenary'
+                        ? `${city} · 용병 길드 복합 본부`
+                        : `${city} · ${nation} 군사 사령부`;
 
     return (
         <div ref={containerRef} className="relative w-full h-full flex-1 min-h-0 bg-slate-950 overflow-hidden select-none">
@@ -1350,7 +1224,7 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
             )}
 
             {/* Mobile D-Pad */}
-            <div className="absolute bottom-4 right-4 z-20 md:hidden grid grid-cols-3 gap-1 w-28 h-28 opacity-85">
+            <div className="absolute bottom-4 right-4 z-20 xl:hidden grid grid-cols-3 gap-1 w-28 h-28 opacity-85">
                 <div />
                 <button type="button" onTouchStart={() => (dpadRef.current = 'up')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white">
                     <ArrowUp size={16} />
@@ -1393,10 +1267,9 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                             {(() => {
-                                const sn = character.socialNetwork?.find(s => s.id === selectedNpc.id || s.name === selectedNpc.name);
-                                const cp = character.companions?.find(c => c.id === selectedNpc.id || c.name === selectedNpc.name)
-                                    || character.inactiveCompanions?.find(c => c.id === selectedNpc.id || c.name === selectedNpc.name);
-                                const vUrl = (selectedNpc as any).visualUrl || sn?.visualUrl || cp?.visualUrl || generateDefaultVisualUrl(selectedNpc.name, nation, '인간', '남성');
+                                const sn = character.socialNetwork?.find(s => s.name === selectedNpc.name);
+                                const cp = character.companions?.find(c => c.name === selectedNpc.name);
+                                const vUrl = (selectedNpc as any).visualUrl || sn?.visualUrl || cp?.visualUrl;
                                 return vUrl ? (
                                     <img src={vUrl} alt={selectedNpc.name} className="w-12 h-12 rounded-xl object-cover border border-indigo-400/60 bg-slate-900 shrink-0" />
                                 ) : selectedNpc.spriteUrl ? (
@@ -1437,13 +1310,13 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
                             >
                                 입대 안내 열기
                             </button>
-                        ) : blockedByCommand || blockedByGeneral ? (
+                        ) : blockedByCommand ? (
                             <button
                                 type="button"
                                 onClick={() => setSelectedNpc(null)}
                                 className="flex-1 py-2 rounded-lg bg-slate-700 text-slate-300 text-xs font-bold"
                             >
-                                {blockedByGeneral ? '준장 이상 장성급 계급 필요' : '장교 임관 / 지휘권 필요'}
+                                장교 임관 / 지휘권 필요
                             </button>
                         ) : (
                             <button
@@ -1521,35 +1394,6 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
                     effectiveCommander={effectiveCommander}
                     onClose={() => setIsMilFacilityOpen(false)}
                     onUpdateCharacter={onUpdateCharacter}
-                />
-            )}
-            {isSpecialDispatchOpen && (
-                <MilitarySpecialDispatchModal
-                    character={character}
-                    onClose={() => setIsSpecialDispatchOpen(false)}
-                    onUpdateCharacter={onUpdateCharacter}
-                />
-            )}
-            {isFrontlineOpen && (
-                <FrontlineModal
-                    character={character}
-                    targetNation={nation}
-                    onClose={() => setIsFrontlineOpen(false)}
-                    onAttack={() => {
-                        setIsFrontlineOpen(false);
-                        onUpdateCharacter(character, `[장성 사령부] ${nation} 전선 돌파 작전을 개시합니다.`);
-                    }}
-                    onUpdateCharacter={onUpdateCharacter}
-                />
-            )}
-            {isWarTacticsOpen && (
-                <WarTacticsModal
-                    isOpen={isWarTacticsOpen}
-                    mode="invasion"
-                    targetNation={nation}
-                    character={character}
-                    onClose={() => setIsWarTacticsOpen(false)}
-                    onUpdateCharacter={(nc, log) => onUpdateCharacter(nc, log || '[장성 사령부] 전략 전술 작전을 수행했습니다.')}
                 />
             )}
         </div>

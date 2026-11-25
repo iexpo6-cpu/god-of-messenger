@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Character, ClubType, CombatStyle, JobType, SchoolTier, SimpleStudent, TournamentState, WeaponType } from '../types';
+import { Character, ClubType, CombatStyle, JobType, SchoolTier, SimpleStudent, WeaponType } from '../types';
 import { SCHOOL_CONFIG, WEAPON_TYPE_KOREAN } from '../constants';
-import { addMasteryExp, generateClassmates, generateDefaultVisualUrl, generateName, generateTournamentBracket, getWeaponTypeFromItem } from '../utils';
+import { addMasteryExp, generateDefaultVisualUrl, generateName, getWeaponTypeFromItem } from '../utils';
 import { processTimeSkip } from '../services/timeEngine';
 import {
     getBuildingSpriteUrl,
@@ -24,8 +24,6 @@ import {
 import { CITY_TILE_SIZE } from '../services/cityTilemapEngine';
 import SchoolModal, { SchoolZone } from './SchoolModal';
 import ClubModal from './ClubModal';
-import TournamentModal from './TournamentModal';
-import ChallengeLobbyCanvas, { ChallengeLobbyNpc } from './ChallengeLobbyCanvas';
 import { ArrowLeft, BookOpen, DoorOpen, GraduationCap, MessageCircle, Swords, UserPlus, X } from 'lucide-react';
 
 const resolveAcademyTileCulture = (cultureKey: string): string => {
@@ -147,7 +145,7 @@ const CLASSROOM_SUBJECT_ROOMS: Array<{
     { type: 'Magic', title: '마법학실', statLabel: 'INT', mpCost: 20, tx: 8.2, ty: 2.6 },
     { type: 'Divine', title: '신력학실', statLabel: 'CTRL', mpCost: 20, tx: 13.8, ty: 2.6 },
     { type: 'Strategy', title: '전략학실', statLabel: 'WIS', mpCost: 15, tx: 2.5, ty: 6.8 },
-    { type: 'Physical', title: '체력학실', statLabel: 'MAX HP / DEF', mpCost: 15, tx: 8.2, ty: 6.8 },
+    { type: 'Physical', title: '체력학실', statLabel: 'DEF / HP', mpCost: 15, tx: 8.2, ty: 6.8 },
     { type: 'Weapon', title: '무기학실', statLabel: '무기 숙련', mpCost: 15, tx: 13.8, ty: 6.8 },
 ];
 
@@ -198,10 +196,8 @@ interface SchoolBuildingSlot {
     th: number;
 }
 
-type CampusRoomZone = SchoolZone | 'Annex' | 'TournamentPortal';
-
 interface CampusBuildingGate {
-    zone: CampusRoomZone;
+    zone: SchoolZone;
     label: string;
     subLabel: string;
     icon: string;
@@ -226,42 +222,7 @@ interface SchoolNpcActor {
     isTeacher?: boolean;
     npcLevel?: number;
     combatStyle?: CombatStyle;
-    age?: number;
-    birthYear?: number;
-    isRival?: boolean;
 }
-
-const resolveSchoolNpcAgeAndBirthYear = (
-    npc: Pick<SchoolNpcActor, 'id' | 'role' | 'isTeacher' | 'age' | 'birthYear'>,
-    tier: SchoolTier | null,
-    currentDate: string | undefined,
-    playerGrade?: number,
-    dormGrade?: number
-): { ageNum: number; birthYear: number } => {
-    const curYear = parseInt((currentDate || '1026-01-01').split('-')[0], 10) || 1026;
-    if (typeof npc.age === 'number' && npc.age > 0) {
-        return { ageNum: npc.age, birthYear: npc.birthYear || (curYear - npc.age) };
-    }
-    const role = npc.role || '';
-    if (npc.isTeacher || role.includes('교사') || role.includes('사서') || role.includes('교관') || role.includes('사감')) {
-        const adultAge = role.includes('사감') ? 38 : role.includes('교관') ? 35 : role.includes('사서') ? 29 : 32;
-        return { ageNum: adultAge, birthYear: curYear - adultAge };
-    }
-    let effectiveTier: SchoolTier = tier || 'Elementary';
-    if (role.includes('초급') || npc.id.startsWith('stu_elem_')) effectiveTier = 'Elementary';
-    else if (role.includes('중급') || npc.id.startsWith('stu_mid_')) effectiveTier = 'Middle';
-    else if (role.includes('고급') || npc.id.startsWith('stu_high_')) effectiveTier = 'High';
-
-    const baseAge = effectiveTier === 'High' ? 17 : effectiveTier === 'Middle' ? 14 : 11;
-    let gradeOffset = (dormGrade || playerGrade || 1) - 1;
-    if (role.includes('1학년')) gradeOffset = 0;
-    else if (role.includes('2학년')) gradeOffset = 1;
-    else if (role.includes('3학년') || role.includes('선배') || role.includes('회장') || role.includes('부장')) gradeOffset = 2;
-    else if (role.includes('후배')) gradeOffset = 0;
-
-    const ageNum = Math.max(11, Math.min(19, baseAge + Math.max(0, Math.min(2, gradeOffset))));
-    return { ageNum, birthYear: curYear - ageNum };
-};
 
 interface RoomProp {
     key: string;
@@ -308,7 +269,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     }, [character.id]);
     const [viewport, setViewport] = useState({ w: 960, h: 580 });
     const [activeSchoolTier, setActiveSchoolTier] = useState<SchoolTier | null>(() => savedCampusState?.tier || null);
-    const [activeRoom, setActiveRoom] = useState<CampusRoomZone | null>(() => (savedCampusState?.room as CampusRoomZone | null) || null);
+    const [activeRoom, setActiveRoom] = useState<SchoolZone | null>(() => savedCampusState?.room || null);
     const [activeDormRoom, setActiveDormRoom] = useState<{ gender: '남성' | '여성'; grade: 1 | 2 | 3; label: string } | null>(() => savedCampusState?.dormRoom || null);
     const [activeClubRoom, setActiveClubRoom] = useState<ClubType | null>(() => savedCampusState?.clubRoom || null);
     useEffect(() => {
@@ -326,42 +287,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         } catch {}
     }, [character.id, activeSchoolTier, activeRoom, activeDormRoom, activeClubRoom]);
     const [openModalZone, setOpenModalZone] = useState<SchoolZone | null>(null);
-    const [isTournamentLobbyOpen, setIsTournamentLobbyOpen] = useState(false);
-    const [showTournamentBracketModal, setShowTournamentBracketModal] = useState(false);
     const [nearbyLabel, setNearbyLabel] = useState<string | null>(null);
-
-    const activeTournamentInfo = useMemo(() => {
-        const school = character.schoolData;
-        if (!school || !activeSchoolTier || school.tier !== activeSchoolTier) return null;
-        const dateParts = (character.currentDate || '1026-03-01').split('-');
-        const currentMonth = parseInt(dateParts[1] || '3', 10);
-        const currentYearMonth = `${dateParts[0]}-${dateParts[1]}`;
-        const isTaken = school.lastTournamentDate === currentYearMonth;
-        if (isTaken && !school.currentTournament?.isActive) return null;
-
-        const configs = {
-            elementary: { label: '학교 1:1 토너먼트', rounds: 32, exp: 2000, gold: 5000, scope: 'School' as const },
-            middle: { label: '학교 1:1 토너먼트', rounds: 32, exp: 5000, gold: 10000, scope: 'School' as const },
-            high_school: { label: '교내 토너먼트', rounds: 32, exp: 10000, gold: 15000, scope: 'School' as const },
-            high_national: { label: '국가 대항전', rounds: 64, exp: 20000, gold: 30000, scope: 'National' as const },
-            high_world: { label: '세계 토너먼트 (월드컵)', rounds: 64, exp: 30000, gold: 50000, scope: 'World' as const },
-        };
-
-        let key: keyof typeof configs | '' = '';
-        if (school.tier === 'Elementary' && school.grade === 3 && currentMonth === 11) key = 'elementary';
-        else if (school.tier === 'Middle' && school.grade === 3 && currentMonth === 11) key = 'middle';
-        else if (school.tier === 'High' && school.grade === 3) {
-            if (currentMonth === 5) key = 'high_school';
-            else if (currentMonth === 8) key = 'high_national';
-            else if (currentMonth === 12) key = 'high_world';
-        }
-        if (!key && school.currentTournament?.isActive) {
-            const k = school.currentTournament.key as keyof typeof configs;
-            if (k && configs[k]) key = k;
-        }
-        if (!key) return null;
-        return { key, def: configs[key] };
-    }, [character.schoolData, character.currentDate, activeSchoolTier]);
     const [accessDeniedMsg, setAccessDeniedMsg] = useState<string | null>(null);
     const [activeDialogue, setActiveDialogue] = useState<{
         id?: string;
@@ -374,7 +300,6 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         isTeacher?: boolean;
         npcLevel?: number;
         combatStyle?: CombatStyle;
-        isRival?: boolean;
     } | null>(null);
     const [showAttendanceDirect, setShowAttendanceDirect] = useState(false);
     const [showReportDirect, setShowReportDirect] = useState(false);
@@ -391,17 +316,15 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             if (isTeacher && character.schoolData?.homeroomTeacher?.visualUrl) {
                 return character.schoolData.homeroomTeacher.visualUrl;
             }
-            const cm = character.schoolData?.classmates?.find(c => (id && c.id === id) || c.name === name)
-                || character.clubData?.clubMembers?.find(c => (id && c.id === id) || c.name === name);
+            const cm = character.schoolData?.classmates?.find(c => (id && c.id === id) || c.name === name);
             if (cm?.visualUrl) return cm.visualUrl;
             const sn = character.socialNetwork?.find(s => (id && s.id === id) || s.name === name);
             if (sn?.visualUrl) return sn.visualUrl;
-            const cp = character.companions?.find(c => (id && c.id === id) || c.name === name)
-                || character.inactiveCompanions?.find(c => (id && c.id === id) || c.name === name);
+            const cp = character.companions?.find(c => (id && c.id === id) || c.name === name);
             if (cp?.visualUrl) return cp.visualUrl;
-            return generateDefaultVisualUrl(name, nation, '인간', gender === 'male' ? '남성' : '여성');
+            return generateDefaultVisualUrl(nation, gender === 'male' ? '남성' : '여성', isTeacher ? '교사' : '학생');
         },
-        [character.schoolData?.homeroomTeacher, character.schoolData?.classmates, character.clubData?.clubMembers, character.socialNetwork, character.companions, character.inactiveCompanions, nation]
+        [character.schoolData?.homeroomTeacher, character.schoolData?.classmates, character.socialNetwork, character.companions, nation]
     );
 
     const cultureKey = useMemo(() => resolveCityCultureKey(region, nation, city), [region, nation, city]);
@@ -561,97 +484,12 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         return { cols: 34, rows: 22 };
     }, [activeSchoolTier, activeRoom]);
 
-    const isInstructorDispatchOnly = Boolean(instructorQuest && enrolledTier !== activeSchoolTier);
-
-    const campusStudents = useMemo<SchoolNpcActor[]>(() => {
-        if (!activeSchoolTier || activeRoom) return [];
-        const c = campusDims.cols;
-        const r = campusDims.rows;
-        const classmates = character.schoolData?.classmates || [];
-        const isKorean = !nation || nation.includes('한국') || nation.includes('대한') || nation.includes('조선') || nation.includes('고려');
-        const tierLabel = activeSchoolTier === 'Elementary' ? '초급' : activeSchoolTier === 'Middle' ? '중급' : '고급';
-        const baseAge = activeSchoolTier === 'High' ? 17 : activeSchoolTier === 'Middle' ? 14 : 11;
-        const curYear = parseInt((character.currentDate || '1026-01-01').split('-')[0], 10) || 1026;
-
-        const slots: Array<{ tx: number; ty: number }> = [
-            { tx: Math.floor(c * 0.25), ty: Math.floor(r * 0.43) },
-            { tx: Math.floor(c * 0.37), ty: Math.floor(r * 0.43) },
-            { tx: Math.floor(c * 0.63), ty: Math.floor(r * 0.43) },
-            { tx: Math.floor(c * 0.75), ty: Math.floor(r * 0.43) },
-            { tx: Math.floor(c * 0.20), ty: Math.floor(r * 0.54) },
-            { tx: Math.floor(c * 0.34), ty: Math.floor(r * 0.54) },
-            { tx: Math.floor(c * 0.66), ty: Math.floor(r * 0.54) },
-            { tx: Math.floor(c * 0.80), ty: Math.floor(r * 0.54) },
-            { tx: Math.floor(c * 0.30), ty: Math.floor(r * 0.78) },
-            { tx: Math.floor(c * 0.42), ty: Math.floor(r * 0.78) },
-            { tx: Math.floor(c * 0.58), ty: Math.floor(r * 0.78) },
-            { tx: Math.floor(c * 0.70), ty: Math.floor(r * 0.78) },
-        ];
-
-        const classActors: SchoolNpcActor[] = classmates.slice(0, 12).map((cm, idx) => {
-            const slot = slots[idx % slots.length];
-            const cmAge = typeof cm.age === 'number' ? cm.age : parseInt(String(cm.age || ''), 10) || undefined;
-            const isRival = Boolean((cm as any).isRival);
-            return {
-                id: cm.id || `campus_cm_${idx}`,
-                name: cm.name,
-                role: `${character.schoolData?.grade || 1}학년 ${character.schoolData?.classNumber || 1}반 반친구`,
-                tx: slot.tx,
-                ty: slot.ty,
-                gender: cm.gender === '남성' ? 'male' : 'female',
-                dialogue: isInstructorDispatchOnly
-                    ? `교관님! 오늘 [별관]에서 진행되는 특강 정말 기대하고 있습니다!`
-                    : isRival
-                    ? `흥, 마침 잘 만났군! 다음 실기 평가에서는 절대 너한테 지지 않을 거야!`
-                    : `같은 반이라 교정에서도 자주 보네! 오늘 수업 끝나고 같이 대련이나 할래?`,
-                canBondAndSpar: true,
-                npcLevel: cm.level || Math.max(3, character.level || 5),
-                combatStyle: cm.combatStyle || CombatStyle.SWORDSMAN,
-                age: cmAge,
-                birthYear: cm.birthYear,
-                isRival,
-            };
-        });
-
-        const extraSpecs = [
-            { ko: '윤하늘', gender: 'female' as const, gradeOff: 0, role: `${tierLabel} 1학년 다른 반`, tx: Math.floor(c * 0.16), ty: Math.floor(r * 0.34), line: '교무실 옆 화단이 정말 예쁘지 않나요? 잠깐 쉬어가기 좋아요!' },
-            { ko: '서준혁', gender: 'male' as const, gradeOff: 1, role: `${tierLabel} 2학년 검술부`, tx: Math.floor(c * 0.84), ty: Math.floor(r * 0.34), line: '실전 연무장에서 다들 열심히 훈련하고 있어! 너도 참가해볼래?' },
-            { ko: '강민지', gender: 'female' as const, gradeOff: 2, role: `${tierLabel} 3학년 도서부`, tx: Math.floor(c * 0.84), ty: Math.floor(r * 0.68), line: '대도서관에 신력 이론 서적이 많이 들어왔으니 꼭 들러보세요.' },
-            { ko: '박시우', gender: 'male' as const, gradeOff: 1, role: `${tierLabel} 2학년 학생회`, tx: Math.floor(c * 0.16), ty: Math.floor(r * 0.68), line: '동아리동에서 신규 부원을 모집하고 있어요. 관심 있으면 들러보세요!' },
-            { ko: '조예은', gender: 'female' as const, gradeOff: 0, role: `${tierLabel} 1학년 기숙사생`, tx: Math.floor(c * 0.47), ty: Math.floor(r * 0.34), line: '강의실 수업 듣고 나면 기숙사에서 푹 쉬는 게 최고예요!' },
-            { ko: '한도윤', gender: 'male' as const, gradeOff: 2, role: `${tierLabel} 3학년 선배`, tx: Math.floor(c * 0.53), ty: Math.floor(r * 0.72), line: '후배님, 학교 생활은 잘 적응하고 있나? 궁금한 게 있으면 언제든 물어봐.' },
-        ];
-
-        const extraActors: SchoolNpcActor[] = extraSpecs
-            .filter(sp => !classActors.some(ca => ca.name === sp.ko))
-            .map((sp, idx) => {
-                const ageNum = baseAge + sp.gradeOff;
-                return {
-                    id: `campus_stu_${activeSchoolTier}_${idx}`,
-                    name: isKorean ? sp.ko : generateName(nation),
-                    role: sp.role,
-                    tx: sp.tx,
-                    ty: sp.ty,
-                    gender: sp.gender,
-                    dialogue: isInstructorDispatchOnly
-                        ? `교관님! [별관]에서 뵙겠습니다. 잘 부탁드립니다!`
-                        : sp.line,
-                    canBondAndSpar: true,
-                    npcLevel: Math.max(3, (character.level || 5) + sp.gradeOff - 1),
-                    age: ageNum,
-                    birthYear: curYear - ageNum,
-                };
-            });
-
-        return [...classActors, ...extraActors];
-    }, [activeSchoolTier, activeRoom, campusDims.cols, campusDims.rows, character.schoolData?.classmates, character.schoolData?.grade, character.schoolData?.classNumber, character.currentDate, character.level, nation, isInstructorDispatchOnly]);
-
-    // Level 2: 6 separate campus building gates (+ 별관 when instructor quest is active)
+    // Level 2: 6 separate campus building gates
     const campusBuildings = useMemo<CampusBuildingGate[]>(() => {
         if (!activeSchoolTier || activeRoom) return [];
         const c = campusDims.cols;
         const r = campusDims.rows;
-        const base: CampusBuildingGate[] = [
+        return [
             { zone: 'Office', label: '교무실', subLabel: '담임 면담·시험·진급', icon: '📋', roofColor: '#4338ca', accentColor: '#818cf8', tx: 3, ty: 2.5, tw: 4.5, th: 3.5 },
             { zone: 'Classroom', label: '강의실', subLabel: '정규 수업·특강', icon: '🏫', roofColor: '#0369a1', accentColor: '#38bdf8', tx: Math.floor(c / 2) - 2, ty: 2.5, tw: 4.5, th: 3.5 },
             { zone: 'Library', label: '대도서관', subLabel: '고대 서적·지식 습득', icon: '📚', roofColor: '#6d28d9', accentColor: '#c084fc', tx: c - 7.5, ty: 2.5, tw: 4.5, th: 3.5 },
@@ -659,36 +497,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             { zone: 'Club', label: '동아리동', subLabel: '동아리 활동·학우 교류', icon: '🎭', roofColor: '#047857', accentColor: '#34d399', tx: Math.floor(c / 2) - 2, ty: Math.floor(r * 0.56), tw: 4.5, th: 3.5 },
             { zone: 'Dormitory', label: '학생 기숙사', subLabel: '기숙사 휴식·생활', icon: '🛏️', roofColor: '#b45309', accentColor: '#fbbf24', tx: c - 7.5, ty: Math.floor(r * 0.56), tw: 4.5, th: 3.5 }
         ];
-        if (isInstructorDispatchOnly) {
-            base.push({
-                zone: 'Annex',
-                label: '별관 (파견 특강실)',
-                subLabel: '임시 교관 파견 강의·학생 면담',
-                icon: '🎓',
-                roofColor: '#0e7490',
-                accentColor: '#22d3ee',
-                tx: Math.floor(c / 2) + 3.5,
-                ty: Math.floor(r * 0.32),
-                tw: 4.2,
-                th: 3.2
-            });
-        }
-        if (activeTournamentInfo) {
-            base.push({
-                zone: 'TournamentPortal',
-                label: '토너먼트장 포털',
-                subLabel: `${activeTournamentInfo.def.label} 대기실 이동`,
-                icon: '🏆',
-                roofColor: '#b45309',
-                accentColor: '#fbbf24',
-                tx: Math.floor(c / 2) - 1.5,
-                ty: Math.floor(r * 0.34),
-                tw: 3.2,
-                th: 2.6
-            });
-        }
-        return base;
-    }, [activeSchoolTier, activeRoom, campusDims, isInstructorDispatchOnly, activeTournamentInfo]);
+    }, [activeSchoolTier, activeRoom, campusDims]);
 
     // Level 3: Room interior props & NPCs
     const roomContent = useMemo<{ props: RoomProp[]; npcs: SchoolNpcActor[] }>(() => {
@@ -704,64 +513,6 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         const baseAge = curTier === 'Elementary' ? 11 : curTier === 'Middle' ? 14 : 17;
 
         switch (activeRoom) {
-            case 'Annex': {
-                const teachStudents = instructorQuest?.studentsToTeach || [];
-                const slots = [
-                    { tx: 4.0, ty: 5.0 },
-                    { tx: 7.0, ty: 5.0 },
-                    { tx: 10.5, ty: 5.0 },
-                    { tx: 13.5, ty: 5.0 },
-                    { tx: 5.5, ty: 7.8 },
-                    { tx: 12.0, ty: 7.8 },
-                ];
-                const annexStudents: SchoolNpcActor[] = (
-                    teachStudents.length > 0
-                        ? teachStudents
-                        : [
-                              { id: 'annex_stu_1', name: isKorean ? '김수빈' : generateName(nation), gender: '여성', age: `${baseAge}세`, level: Math.max(4, character.level || 5) },
-                              { id: 'annex_stu_2', name: isKorean ? '박지호' : generateName(nation), gender: '남성', age: `${baseAge}세`, level: Math.max(4, character.level || 5) },
-                              { id: 'annex_stu_3', name: isKorean ? '이하윤' : generateName(nation), gender: '여성', age: `${baseAge + 1}세`, level: Math.max(5, character.level || 5) },
-                              { id: 'annex_stu_4', name: isKorean ? '정우진' : generateName(nation), gender: '남성', age: `${baseAge + 1}세`, level: Math.max(5, character.level || 5) },
-                          ]
-                ).map((st: any, idx: number) => {
-                    const slot = slots[idx % slots.length];
-                    return {
-                        id: st.id || `annex_stu_${idx}`,
-                        name: st.name,
-                        role: `${tierLabel} 파견 특강 수강생`,
-                        tx: slot.tx,
-                        ty: slot.ty,
-                        gender: st.gender === '남성' ? 'male' : 'female',
-                        dialogue: `교관님! ${instructorQuest?.schoolName || '저희 학교'}까지 직접 오셔서 가르쳐 주시다니 정말 영광입니다!`,
-                        canBondAndSpar: true,
-                        npcLevel: st.level || Math.max(4, character.level || 5),
-                        combatStyle: st.combatStyle || CombatStyle.SWORDSMAN,
-                        age: typeof st.age === 'number' ? st.age : parseInt(String(st.age || ''), 10) || baseAge,
-                        birthYear: st.birthYear,
-                    };
-                });
-                return {
-                    props: [
-                        { key: 'bookshelf', tx: 2, ty: 1.8, w: 2, h: 2 },
-                        { key: 'bookshelf', tx: 14, ty: 1.8, w: 2, h: 2 },
-                        { key: 'student_desk', tx: 8, ty: 2.8, w: 2.2, h: 1.8 }
-                    ],
-                    npcs: [
-                        {
-                            id: 'npc_lect',
-                            name: isKorean ? '담당 교사' : generateName(nation),
-                            role: '별관 특강 진행 교사',
-                            tx: 9.0,
-                            ty: 3.4,
-                            gender: 'female',
-                            dialogue: '교관님, 학생들이 별관에서 기다리고 있습니다. 준비되시면 특강을 시작해 주십시오!',
-                            opensZone: 'Classroom',
-                            isTeacher: true
-                        },
-                        ...annexStudents
-                    ]
-                };
-            }
             case 'Office':
                 return {
                     props: [
@@ -872,40 +623,6 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             { id: 'npc_club_disc_2', name: isKorean ? '차예린' : generateName(nation), role: '선도부원', tx: 12.5, ty: 5.5, gender: 'female', dialogue: '야간 순찰 준비 완료! 교칙 위반자는 용납하지 않아요.', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.SPEARMAN },
                         ],
                     };
-                    const baseClubNpcs = clubNpcs[activeClubRoom] || [];
-                    const joinedMembers = activeClubRoom === joinedClub ? (character.clubData?.clubMembers || []) : [];
-                    const clubMemberSlots: Array<{ tx: number; ty: number }> = [
-                        { tx: 4.5, ty: 4.5 },
-                        { tx: 12.5, ty: 5.5 },
-                        { tx: 6.5, ty: 6.2 },
-                        { tx: 10.5, ty: 6.2 },
-                        { tx: 3.5, ty: 9.2 },
-                        { tx: 7.0, ty: 9.2 },
-                        { tx: 10.5, ty: 9.2 },
-                        { tx: 14.0, ty: 9.2 },
-                        { tx: 5.5, ty: 10.6 },
-                        { tx: 12.0, ty: 10.6 },
-                    ];
-                    const mergedClubNpcs: SchoolNpcActor[] = [...baseClubNpcs];
-                    joinedMembers.forEach((m, idx) => {
-                        if (mergedClubNpcs.some(existing => existing.id === m.id || existing.name === m.name)) return;
-                        const slot = clubMemberSlots[(baseClubNpcs.length + idx) % clubMemberSlots.length];
-                        mergedClubNpcs.push({
-                            id: m.id,
-                            name: m.name,
-                            role: `${activeClubRoom} 부원`,
-                            tx: slot.tx,
-                            ty: slot.ty,
-                            gender: m.gender === '남성' ? 'male' : 'female',
-                            dialogue: `우리 ${activeClubRoom} 활동 열심히 해보자! 대련이나 교류도 언제든 환영이야.`,
-                            canBondAndSpar: true,
-                            npcLevel: m.level || Math.max(4, character.level || 5),
-                            combatStyle: m.combatStyle || CombatStyle.SWORDSMAN,
-                            age: typeof m.age === 'number' ? m.age : parseInt(String(m.age || ''), 10) || undefined,
-                            birthYear: m.birthYear,
-                            isRival: Boolean((m as any).isRival),
-                        });
-                    });
                     return {
                         props: [
                             { key: 'bookshelf', tx: 2.2, ty: 1.8, w: 2, h: 2 },
@@ -914,7 +631,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             { key: activeClubRoom === ClubType.MELEE || activeClubRoom === ClubType.DISCIPLINARY ? 'dummy_wood' : 'dummy_arcane', tx: 3.5, ty: 7.5, w: 1.8, h: 1.8 },
                             { key: 'student_desk', tx: 12.5, ty: 7.5, w: 1.8, h: 1.6 }
                         ],
-                        npcs: mergedClubNpcs
+                        npcs: clubNpcs[activeClubRoom] || []
                     };
                 }
                 return {
@@ -961,27 +678,21 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     };
                 }
                 const roomGenderKey: RpgSpriteGenderKey = activeDormRoom.gender === '남성' ? 'male' : 'female';
-                const roomClassmates = classmates
-                    .filter(cm => (cm.gender === '남성' ? 'male' : 'female') === roomGenderKey)
-                    .slice(0, 4)
-                    .map((cm, idx) => ({
-                        id: cm.id || `dorm_mate_${idx}`,
-                        name: cm.name,
-                        role: `${activeDormRoom.label} (${character.schoolData?.classNumber || 1}반) 동기`,
-                        tx: 3.0 + (idx % 2) * 5.0,
-                        ty: 4.8 + Math.floor(idx / 2) * 3.2,
-                        gender: roomGenderKey,
-                        dialogue: `기숙사 ${activeDormRoom.label}에서 쉬니까 컨디션이 확 살아나네! 친선 대련 한 판 어때?`,
-                        canBondAndSpar: true,
-                        npcLevel: Math.max(3, character.level || 5),
-                        age: typeof cm.age === 'number' ? cm.age : parseInt(String(cm.age || ''), 10) || undefined,
-                        birthYear: cm.birthYear,
-                        isRival: Boolean((cm as any).isRival),
-                    }));
+                const roomClassmates = classmates.slice(0, 4).map((cm, idx) => ({
+                    id: cm.id || `dorm_mate_${idx}`,
+                    name: cm.name,
+                    role: `${activeDormRoom.label} (${character.schoolData?.classNumber || 1}반) 동기`,
+                    tx: 3.0 + (idx % 2) * 5.0,
+                    ty: 4.8 + Math.floor(idx / 2) * 3.2,
+                    gender: roomGenderKey,
+                    dialogue: `기숙사 ${activeDormRoom.label}에서 쉬니까 컨디션이 확 살아나네! 친선 대련 한 판 어때?`,
+                    canBondAndSpar: true,
+                    npcLevel: Math.max(3, character.level || 5)
+                }));
                 if (roomClassmates.length === 0) {
                     roomClassmates.push(
                         {
-                            id: `dorm_mate_default_${roomGenderKey}_1`,
+                            id: 'dorm_mate_default_1',
                             name: isKorean ? (roomGenderKey === 'male' ? '이도현' : '김채린') : generateName(nation),
                             role: `${activeDormRoom.label} 동기`,
                             tx: 3.5,
@@ -992,7 +703,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             npcLevel: Math.max(3, character.level || 5)
                         },
                         {
-                            id: `dorm_mate_default_${roomGenderKey}_2`,
+                            id: 'dorm_mate_default_2',
                             name: isKorean ? (roomGenderKey === 'male' ? '정태윤' : '송지아') : generateName(nation),
                             role: `${activeDormRoom.label} 다른 반 동기`,
                             tx: 8.5,
@@ -1004,19 +715,16 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         }
                     );
                 }
-                // Only include same-gender campus plaza friends/seniors/juniors visiting the dorm room
-                const plazaVisitors = plazaStudents
-                    .filter(ps => ps.gender === roomGenderKey)
-                    .slice(0, 2)
-                    .map((ps, idx) => ({
-                        ...ps,
-                        id: `dorm_plaza_${ps.id}`,
-                        role: `교정 학우 · ${ps.role}`,
-                        tx: 13.0,
-                        ty: 4.8 + idx * 3.2,
-                        canBondAndSpar: true,
-                        npcLevel: Math.max(4, (character.level || 5) + idx * 2)
-                    }));
+                // Randomly include campus plaza friends/seniors/juniors visiting the dorm room
+                const plazaVisitors = plazaStudents.slice(0, 2).map((ps, idx) => ({
+                    ...ps,
+                    id: `dorm_plaza_${ps.id}`,
+                    role: `교정 학우 · ${ps.role}`,
+                    tx: 13.0,
+                    ty: 4.8 + idx * 3.2,
+                    canBondAndSpar: true,
+                    npcLevel: Math.max(4, (character.level || 5) + idx * 2)
+                }));
                 return {
                     props: [
                         { key: 'dorm_bed', tx: 2.5, ty: 2.0, w: 1.9, h: 1.9 },
@@ -1032,7 +740,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 };
             }
         }
-    }, [activeRoom, activeDormRoom, activeClubRoom, activeSchoolTier, nation, character.schoolData?.homeroomTeacher?.name, character.schoolData?.classmates, character.schoolData?.classNumber, character.schoolData?.grade, character.level, character.clubData?.joinedClub, character.clubData?.clubMembers, plazaStudents, instructorQuest]);
+    }, [activeRoom, activeDormRoom, activeClubRoom, activeSchoolTier, nation, character.schoolData?.homeroomTeacher?.name, character.schoolData?.classmates, character.schoolData?.classNumber, character.schoolData?.grade, character.level, character.clubData?.joinedClub, plazaStudents]);
 
     useEffect(() => {
         loadRpgSpriteImage(playerSpriteUrl);
@@ -1046,7 +754,6 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         ['tile_ground', 'tile_road', 'tile_floor', 'tile_carpet', 'tile_wall', 'tile_door', 'prop_tree', 'prop_lamp'].forEach(
             part => loadCityAssetImage(getAcademyAssetUrl(`${academyTileCulture}/${part}.png`))
         );
-        loadCityAssetImage(getAcademyAssetUrl(`${academyBuildingFolder}/ext_Annex.png`));
         if (['shingye', 'magye', 'sylvanar', 'feraldia'].includes(academyBuildingFolder)) {
             loadCityAssetImage(getAcademyAssetUrl(`${academyBuildingFolder}/ext_campus.png`));
         } else {
@@ -1156,51 +863,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         [canEnterTier]
     );
 
-    const enterRoom = useCallback((zone: CampusRoomZone) => {
-        if (zone === 'TournamentPortal') {
-            if (!activeTournamentInfo || !character.schoolData) return;
-            const school = character.schoolData;
-            if (activeTournamentInfo.key === 'high_national') {
-                const schoolBest = school.tournamentHistory?.schoolPlacement || 32;
-                if (schoolBest > 4) {
-                    setAccessDeniedMsg(`국가 대항전 참가 자격 미달입니다. (조건: 교내 토너먼트 4강 이상 / 현재: ${schoolBest === 32 ? '기록 없음' : `${schoolBest}강`})`);
-                    setTimeout(() => setAccessDeniedMsg(null), 3500);
-                    return;
-                }
-            }
-            if (activeTournamentInfo.key === 'high_world') {
-                const nationalBest = school.tournamentHistory?.nationalPlacement || 64;
-                if (nationalBest > 2) {
-                    setAccessDeniedMsg(`세계 토너먼트 참가 자격 미달입니다. (조건: 국가 대항전 결승 진출 / 현재: ${nationalBest === 64 ? '기록 없음' : `${nationalBest}강`})`);
-                    setTimeout(() => setAccessDeniedMsg(null), 3500);
-                    return;
-                }
-            }
-            if (!school.currentTournament || school.currentTournament.key !== activeTournamentInfo.key) {
-                const newChar = { ...character };
-                const schoolNation = school.schoolLocation?.nation || character.currentLocation?.nation || character.nation || '대한민국';
-                const bracketData = generateTournamentBracket(schoolNation, activeTournamentInfo.def.rounds, character.name, activeTournamentInfo.def.scope);
-                const newTournament: TournamentState = {
-                    isActive: true,
-                    name: activeTournamentInfo.def.label,
-                    key: activeTournamentInfo.key,
-                    currentRound: activeTournamentInfo.def.rounds,
-                    maxRound: activeTournamentInfo.def.rounds,
-                    reward: { exp: activeTournamentInfo.def.exp, gold: activeTournamentInfo.def.gold },
-                    bracket: bracketData.matches,
-                    opponentName: bracketData.opponentName
-                };
-                if (newChar.schoolData) newChar.schoolData.currentTournament = newTournament;
-                onUpdateCharacter(newChar, `[학교 토너먼트] ${activeTournamentInfo.def.label} 토너먼트장에 입장했습니다!`);
-            }
-            setIsTournamentLobbyOpen(true);
-            return;
-        }
-        if (isInstructorDispatchOnly && zone !== 'Annex') {
-            setAccessDeniedMsg('파견 교관 임무 중에는 지정된 [별관 (파견 특강실)] 외 다른 건물에는 출입할 수 없습니다.');
-            setTimeout(() => setAccessDeniedMsg(null), 3200);
-            return;
-        }
+    const enterRoom = useCallback((zone: SchoolZone) => {
         setActiveDialogue(null);
         setActiveDormRoom(null);
         setActiveClubRoom(null);
@@ -1211,7 +874,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         playerRef.current.targetY = null;
         exitCooldownRef.current = Date.now() + 700;
         setActiveRoom(zone);
-    }, [isInstructorDispatchOnly, activeTournamentInfo, character, onUpdateCharacter]);
+    }, []);
 
     const exitRoomToCampus = useCallback(() => {
         if (activeRoom === 'Dormitory' && activeDormRoom) {
@@ -1287,25 +950,6 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             return;
         }
         if (!activeRoom) {
-            for (const stu of campusStudents) {
-                const off = npcOffsetsRef.current[stu.id] || { dx: 0, dy: 0 };
-                const sx = (stu.tx + 0.5) * CITY_TILE_SIZE + off.dx;
-                const sy = (stu.ty + 0.5) * CITY_TILE_SIZE + off.dy;
-                if (Math.hypot(sx - p.x, sy - p.y) <= CITY_TILE_SIZE * 1.6) {
-                    setActiveDialogue({
-                        id: stu.id,
-                        name: stu.name,
-                        role: stu.role,
-                        text: stu.dialogue,
-                        gender: stu.gender,
-                        canBondAndSpar: true,
-                        npcLevel: stu.npcLevel,
-                        combatStyle: stu.combatStyle,
-                        isRival: stu.isRival
-                    });
-                    return;
-                }
-            }
             for (const b of campusBuildings) {
                 const doorX = (b.tx + b.tw / 2) * CITY_TILE_SIZE;
                 const doorY = (b.ty + b.th + 0.4) * CITY_TILE_SIZE;
@@ -1379,7 +1023,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 return;
             }
         }
-    }, [activeSchoolTier, activeRoom, plazaStudents, campusStudents, buildingSlots, campusBuildings, roomContent.npcs, roomContent.props, enterSchoolCampus, enterRoom, character.gender, character.schoolData?.grade, character.clubData?.joinedClub]);
+    }, [activeSchoolTier, activeRoom, plazaStudents, buildingSlots, campusBuildings, roomContent.npcs, roomContent.props, enterSchoolCampus, enterRoom, character.gender, character.schoolData?.grade, character.clubData?.joinedClub]);
 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
@@ -1501,23 +1145,12 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             }
                         }
                     } else if (!activeRoom) {
-                        for (const stu of campusStudents) {
-                            const off = npcOffsetsRef.current[stu.id] || { dx: 0, dy: 0 };
-                            const sx = (stu.tx + 0.5) * ts + off.dx;
-                            const sy = (stu.ty + 0.5) * ts + off.dy;
-                            if (Math.hypot(sx - p.x, sy - p.y) <= ts * 1.6) {
-                                found = `💬 ${stu.isRival ? '[라이벌] ' : ''}${stu.name} 대화 (Space)`;
+                        for (const b of campusBuildings) {
+                            const dx = (b.tx + b.tw / 2) * ts;
+                            const dy = (b.ty + b.th + 0.4) * ts;
+                            if (Math.hypot(dx - p.x, dy - p.y) <= ts * 2.0) {
+                                found = `${b.icon} ${b.label} 입장 (Space)`;
                                 break;
-                            }
-                        }
-                        if (!found) {
-                            for (const b of campusBuildings) {
-                                const dx = (b.tx + b.tw / 2) * ts;
-                                const dy = (b.ty + b.th + 0.4) * ts;
-                                if (Math.hypot(dx - p.x, dy - p.y) <= ts * 2.0) {
-                                    found = `${b.icon} ${b.label} 입장 (Space)`;
-                                    break;
-                                }
                             }
                         }
                     } else {
@@ -1701,27 +1334,15 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     } else {
                         drawFallbackChibiSprite(ctx, nx, ny + 8, region as RpgSpriteRegionKey, npc.gender, off.dir, frame);
                     }
-                    const npcIsRival = Boolean(
-                        npc.isRival ||
-                        character.schoolData?.classmates?.some(c => (c.id === npc.id || c.name === npc.name) && (c as any).isRival) ||
-                        character.clubData?.clubMembers?.some(c => (c.id === npc.id || c.name === npc.name) && (c as any).isRival) ||
-                        character.socialNetwork?.some(s => (s.id === npc.id || s.name === npc.name) && (s as any).isRival)
-                    );
-                    const displayLabel = npcIsRival ? `🔥[라이벌] ${npc.name}` : npc.name;
                     ctx.font = 'bold 10px sans-serif';
-                    const tw = Math.max(58, ctx.measureText(displayLabel).width + 12);
-                    ctx.fillStyle = npcIsRival ? 'rgba(127, 29, 29, 0.92)' : 'rgba(15, 23, 42, 0.88)';
+                    const tw = Math.max(58, ctx.measureText(npc.name).width + 12);
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
                     ctx.beginPath();
                     ctx.roundRect(nx - tw / 2, ny - 48, tw, 17, 4);
                     ctx.fill();
-                    if (npcIsRival) {
-                        ctx.strokeStyle = '#f97316';
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
-                    }
-                    ctx.fillStyle = npcIsRival ? '#fed7aa' : npc.opensZone ? '#fde047' : '#e0f2fe';
+                    ctx.fillStyle = npc.opensZone ? '#fde047' : '#e0f2fe';
                     ctx.textAlign = 'center';
-                    ctx.fillText(displayLabel, nx, ny - 36);
+                    ctx.fillText(npc.name, nx, ny - 36);
                 };
 
                 if (!activeSchoolTier) {
@@ -1793,45 +1414,8 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         const by = b.ty * ts;
                         const bw = b.tw * ts;
                         const bh = b.th * ts;
-                        if (b.zone === 'TournamentPortal') {
-                            const cxP = bx + bw / 2;
-                            const cyP = by + bh / 2;
-                            const pulse = 0.85 + Math.sin(Date.now() / 260) * 0.15;
-                            const grad = ctx.createRadialGradient(cxP, cyP, 6, cxP, cyP, bw * 0.62 * pulse);
-                            grad.addColorStop(0, 'rgba(253, 224, 71, 0.95)');
-                            grad.addColorStop(0.5, 'rgba(245, 158, 11, 0.55)');
-                            grad.addColorStop(1, 'rgba(245, 158, 11, 0)');
-                            ctx.fillStyle = grad;
-                            ctx.beginPath();
-                            ctx.arc(cxP, cyP, bw * 0.62 * pulse, 0, Math.PI * 2);
-                            ctx.fill();
-
-                            ctx.strokeStyle = '#fbbf24';
-                            ctx.lineWidth = 3;
-                            ctx.beginPath();
-                            ctx.ellipse(cxP, cyP, bw * 0.34, bh * 0.42, 0, 0, Math.PI * 2);
-                            ctx.stroke();
-
-                            ctx.font = '28px sans-serif';
-                            ctx.textAlign = 'center';
-                            ctx.fillText('🏆', cxP, cyP + 10);
-
-                            const title = `${b.icon} ${b.label}`;
-                            ctx.font = 'bold 11px sans-serif';
-                            const tw = Math.max(116, ctx.measureText(title).width + 16);
-                            ctx.fillStyle = 'rgba(120, 53, 15, 0.95)';
-                            ctx.beginPath();
-                            ctx.roundRect(bx + bw / 2 - tw / 2, by - 26, tw, 24, 5);
-                            ctx.fill();
-                            ctx.strokeStyle = '#fbbf24';
-                            ctx.lineWidth = 1.5;
-                            ctx.stroke();
-                            ctx.fillStyle = '#fef08a';
-                            ctx.fillText(title, bx + bw / 2, by - 10);
-                            return;
-                        }
                         const isSpecialCulture = ['shingye', 'magye', 'sylvanar', 'feraldia'].includes(academyBuildingFolder);
-                        const bImg = isSpecialCulture && b.zone !== 'Annex'
+                        const bImg = isSpecialCulture
                             ? getCachedCityAssetImage(getAcademyAssetUrl(`${academyBuildingFolder}/ext_campus.png`))
                             : getCachedCityAssetImage(getAcademyAssetUrl(`${academyBuildingFolder}/ext_${b.zone}.png`));
 
@@ -1881,8 +1465,6 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         ctx.textAlign = 'center';
                         ctx.fillText(title, bx + bw / 2, by - 10);
                     });
-
-                    campusStudents.forEach(drawNpcActor);
                 } else {
                     if (activeRoom === 'Club' && !activeClubRoom) {
                         CLUB_DESK_SPECS.forEach(spec => {
@@ -1995,7 +1577,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         };
         rafId = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(rafId);
-    }, [viewport, cultureKey, playerSpriteUrl, spriteInfo, activeSchoolTier, activeRoom, campusDims, buildingSlots, plazaStudents, campusStudents, campusBuildings, roomContent, enrolledTier, canEnterTier, openModalZone, activeDialogue, region, nation, character.name, exitRoomToCampus, exitCampusToPlaza, onExitToCity]);
+    }, [viewport, cultureKey, playerSpriteUrl, spriteInfo, activeSchoolTier, activeRoom, campusDims, buildingSlots, plazaStudents, campusBuildings, roomContent, enrolledTier, canEnterTier, openModalZone, activeDialogue, region, nation, character.name, exitRoomToCampus, exitCampusToPlaza, onExitToCity]);
 
     const roomTitleMap: Record<SchoolZone, string> = {
         Office: '교무실',
@@ -2112,18 +1694,10 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                                 />
                                 <div>
-                                    <div className="flex items-center gap-2 flex-wrap">
+                                    <div className="flex items-center gap-2">
                                         <MessageCircle size={14} className="text-cyan-400" />
                                         <span className="text-xs font-black text-white">{activeDialogue.name}</span>
                                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300">{activeDialogue.role}</span>
-                                        {(activeDialogue.isRival ||
-                                            character.schoolData?.classmates?.some(c => (c.id === activeDialogue.id || c.name === activeDialogue.name) && (c as any).isRival) ||
-                                            character.clubData?.clubMembers?.some(c => (c.id === activeDialogue.id || c.name === activeDialogue.name) && (c as any).isRival) ||
-                                            character.socialNetwork?.some(s => (s.id === activeDialogue.id || s.name === activeDialogue.name) && (s as any).isRival)) && (
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-950/90 border border-orange-500/70 text-orange-300 font-black">
-                                                🔥 라이벌
-                                            </span>
-                                        )}
                                     </div>
                                     <p className="text-xs text-slate-200 leading-relaxed mt-1">&ldquo;{activeDialogue.text}&rdquo;</p>
                                 </div>
@@ -2151,92 +1725,53 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                 }
                                                 const newChar = JSON.parse(JSON.stringify(character)) as Character;
                                                 if (!newChar.socialNetwork) newChar.socialNetwork = [];
-                                                const matchEntity = (e: { id?: string; name?: string }) =>
-                                                    (e.id && e.id === npcId) || e.name === activeDialogue.name;
-
-                                                const ht = activeDialogue.isTeacher ? newChar.schoolData?.homeroomTeacher : undefined;
-                                                const cmIdx = newChar.schoolData?.classmates?.findIndex(matchEntity) ?? -1;
-                                                const cm = cmIdx !== -1 ? newChar.schoolData!.classmates![cmIdx] : undefined;
-                                                const cbIdx = newChar.clubData?.clubMembers?.findIndex(matchEntity) ?? -1;
-                                                const cb = cbIdx !== -1 ? newChar.clubData!.clubMembers![cbIdx] : undefined;
-                                                const cpIdx = newChar.companions?.findIndex(matchEntity) ?? -1;
-                                                const cp = cpIdx !== -1 ? newChar.companions![cpIdx] : undefined;
-                                                const snIdx = newChar.socialNetwork.findIndex(matchEntity);
-                                                const sn = snIdx !== -1 ? newChar.socialNetwork[snIdx] : undefined;
-
-                                                const existingAffs = [
-                                                    ht?.affection,
-                                                    cm?.affection,
-                                                    cb?.affection,
-                                                    (cp as any)?.affection,
-                                                    sn?.affection
-                                                ].filter((v): v is number => typeof v === 'number');
-                                                const curAff = existingAffs.length > 0 ? Math.max(...existingAffs) : 0;
-                                                const finalAff = Math.min(100, curAff + 5);
-
-                                                const sourceEntity = cb || cm || sn || ht || cp;
-                                                const resolvedAgeStr = (sourceEntity as any)?.age;
-                                                const resolvedAgeNum = typeof resolvedAgeStr === 'number'
-                                                    ? resolvedAgeStr
-                                                    : parseInt(String(resolvedAgeStr || ''), 10);
-                                                const fallbackAgeData = resolveSchoolNpcAgeAndBirthYear(
-                                                    activeDialogue,
-                                                    activeSchoolTier,
-                                                    character.currentDate,
-                                                    character.schoolData?.grade,
-                                                    activeDormRoom?.grade
-                                                );
-                                                const finalAgeNum = Number.isFinite(resolvedAgeNum) && resolvedAgeNum > 0
-                                                    ? resolvedAgeNum
-                                                    : fallbackAgeData.ageNum;
-                                                const finalBirthYear = (sourceEntity as any)?.birthYear || fallbackAgeData.birthYear;
-                                                const finalIsRival = Boolean(
-                                                    activeDialogue.isRival ||
-                                                    (cm as any)?.isRival ||
-                                                    (cb as any)?.isRival ||
-                                                    (sn as any)?.isRival
-                                                );
-
-                                                if (ht) ht.affection = finalAff;
-                                                if (cmIdx !== -1 && newChar.schoolData?.classmates) {
-                                                    newChar.schoolData.classmates[cmIdx].affection = finalAff;
+                                                let baseAff = 14;
+                                                if (activeDialogue.isTeacher && newChar.schoolData?.homeroomTeacher) {
+                                                    const ht = newChar.schoolData.homeroomTeacher;
+                                                    baseAff = ht.affection || 0;
+                                                    ht.affection = Math.min(100, baseAff + 5);
                                                 }
-                                                if (cbIdx !== -1 && newChar.clubData?.clubMembers) {
-                                                    newChar.clubData.clubMembers[cbIdx].affection = finalAff;
+                                                if (newChar.schoolData?.classmates) {
+                                                    const cmIdx = newChar.schoolData.classmates.findIndex(c => c.id === npcId || c.name === activeDialogue.name);
+                                                    if (cmIdx !== -1) {
+                                                        baseAff = newChar.schoolData.classmates[cmIdx].affection || 0;
+                                                        newChar.schoolData.classmates[cmIdx].affection = Math.min(100, baseAff + 5);
+                                                    }
                                                 }
-                                                if (cpIdx !== -1 && newChar.companions) {
-                                                    (newChar.companions[cpIdx] as any).affection = finalAff;
+                                                if (newChar.companions) {
+                                                    const cpIdx = newChar.companions.findIndex(c => c.id === npcId || c.name === activeDialogue.name);
+                                                    if (cpIdx !== -1) {
+                                                        baseAff = (newChar.companions[cpIdx] as any).affection || baseAff;
+                                                        (newChar.companions[cpIdx] as any).affection = Math.min(100, baseAff + 5);
+                                                    }
                                                 }
-
-                                                if (snIdx === -1) {
+                                                const idx = newChar.socialNetwork.findIndex(n => n.id === npcId || n.name === activeDialogue.name);
+                                                let finalAff = Math.min(100, baseAff + 5);
+                                                if (idx === -1) {
                                                     const newNpc: SimpleStudent = {
                                                         id: npcId,
                                                         name: activeDialogue.name,
-                                                        age: `${finalAgeNum}세`,
-                                                        birthYear: finalBirthYear,
+                                                        age: activeDialogue.isTeacher ? '32세' : '18세',
                                                         gender: activeDialogue.gender === 'male' ? '남성' : '여성',
-                                                        race: (sourceEntity as any)?.race || '인간',
-                                                        nation: (sourceEntity as any)?.nation || nation,
-                                                        level: (sourceEntity as any)?.level || activeDialogue.npcLevel || Math.max(3, character.level || 5),
-                                                        personality: (sourceEntity as any)?.personality || '성실함',
-                                                        appearance: (sourceEntity as any)?.appearance || (activeDialogue.isTeacher ? '단정한 교사 복장' : '단정한 교복'),
-                                                        visualUrl: (sourceEntity as any)?.visualUrl || resolveNpcVisual(npcId, activeDialogue.name, activeDialogue.gender || 'female', activeDialogue.isTeacher),
-                                                        stats: (sourceEntity as any)?.stats || { str: 18, int: 18, wis: 15, agi: 16, con: 18 },
+                                                        race: '인간',
+                                                        nation,
+                                                        level: activeDialogue.npcLevel || Math.max(3, character.level || 5),
+                                                        personality: '성실함',
+                                                        appearance: activeDialogue.isTeacher ? '단정한 교사 복장' : '단정한 교복',
+                                                        visualUrl: resolveNpcVisual(npcId, activeDialogue.name, activeDialogue.gender || 'female', activeDialogue.isTeacher),
+                                                        stats: { str: 18, int: 18, wis: 15, agi: 16, con: 18 },
                                                         affection: finalAff,
                                                         isPastConnection: true,
-                                                        isRival: finalIsRival || undefined,
-                                                        classType: (sourceEntity as any)?.classType || activeDialogue.role,
-                                                        combatStyle: (sourceEntity as any)?.combatStyle || activeDialogue.combatStyle || CombatStyle.SWORDSMAN,
+                                                        classType: activeDialogue.role,
+                                                        combatStyle: activeDialogue.combatStyle || CombatStyle.SWORDSMAN,
                                                     };
                                                     newChar.socialNetwork.push(newNpc);
                                                 } else {
-                                                    const ex = { ...newChar.socialNetwork[snIdx] };
+                                                    const ex = { ...newChar.socialNetwork[idx] };
+                                                    finalAff = Math.min(100, (ex.affection || 0) + 5);
                                                     ex.affection = finalAff;
-                                                    ex.age = `${finalAgeNum}세`;
-                                                    ex.birthYear = finalBirthYear;
                                                     ex.isPastConnection = true;
-                                                    if (finalIsRival) ex.isRival = true;
-                                                    newChar.socialNetwork[snIdx] = ex;
+                                                    newChar.socialNetwork[idx] = ex;
                                                 }
                                                 if (newChar.schoolData) {
                                                     (newChar.schoolData as any).weeklyBondDates = {
@@ -2543,12 +2078,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                     else if (subjSnap.type === 'Magic') { entity.stats.int += 2 * val; }
                                                     else if (subjSnap.type === 'Divine') { entity.stats.ctrl = (entity.stats.ctrl || 10) + 2 * val; }
                                                     else if (subjSnap.type === 'Strategy') { entity.stats.wis += 2 * val; }
-                                                    else if (subjSnap.type === 'Physical') {
-                                                        const hpGain = 10 * val;
-                                                        entity.stats.maxHp = (entity.stats.maxHp || 100) + hpGain;
-                                                        entity.stats.hp = Math.min(entity.stats.maxHp, (entity.stats.hp || 0) + hpGain);
-                                                        entity.stats.def += 2 * val;
-                                                    }
+                                                    else if (subjSnap.type === 'Physical') { entity.stats.def += 2 * val; }
                                                     else if (subjSnap.type === 'Weapon') {
                                                         const wt = ('id' in entity) ? (entity.equipment?.weapon ? getWeaponTypeFromItem(entity.equipment.weapon) : null) : wepSnap;
                                                         if (wt) {
@@ -2570,18 +2100,10 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                         return nc;
                                                     });
                                                 }
-                                                const gainText = subjSnap.type === 'Combat'
-                                                    ? `STR +${val}, AGI +${val}, EXP +20`
-                                                    : subjSnap.type === 'Magic'
-                                                    ? `INT +${2 * val}, EXP +20`
-                                                    : subjSnap.type === 'Divine'
-                                                    ? `CTRL +${2 * val}, EXP +20`
-                                                    : subjSnap.type === 'Strategy'
-                                                    ? `WIS +${2 * val}, EXP +20`
-                                                    : subjSnap.type === 'Physical'
-                                                    ? `MAX HP +${10 * val}, DEF +${2 * val}, EXP +20`
-                                                    : `${WEAPON_TYPE_KOREAN[wepSnap]} 숙련도 +${5 + repBonus}, EXP +20`;
-                                                onUpdateCharacter(newChar, `[학교 생활] ${subjSnap.title} 수강 완료 (${gainText}, 7일 경과)`);
+                                                const gainText = subjSnap.type === 'Weapon'
+                                                    ? `${WEAPON_TYPE_KOREAN[wepSnap]} 숙련도 +${5 + repBonus}`
+                                                    : subjSnap.statLabel;
+                                                onUpdateCharacter(newChar, `[학교 생활] ${subjSnap.title} 수강 완료 (${gainText}, EXP +20, 7일 경과)`);
                                                 setActivityProgress(null);
                                                 setCampusToast(`${subjSnap.title} 수강 완료! (${gainText})`);
                                                 setTimeout(() => setCampusToast(null), 2800);
@@ -2614,7 +2136,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 )}
 
                 {/* Mobile D-Pad */}
-                <div className="md:hidden absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1 w-28 h-28 opacity-90 select-none">
+                <div className="xl:hidden absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1 w-28 h-28 opacity-90 select-none">
                     <div />
                     <button
                         type="button"
@@ -2711,14 +2233,10 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                         }
                                         if (cur !== ClubType.NONE && !window.confirm(`현재 '${cur}' 소속입니다. '${activeClubApply.club}'로 변경하시겠습니까?`)) return;
                                         const newChar = JSON.parse(JSON.stringify(character)) as Character;
-                                        const curYear = parseInt((character.currentDate || '1026-01-01').split('-')[0], 10) || 1026;
-                                        const clubTier = enrolledTier || activeSchoolTier || 'Elementary';
-                                        const newMembers = generateClassmates(nation, 8, clubTier, undefined, [], 1, undefined, true, curYear);
                                         newChar.clubData = {
                                             joinedClub: activeClubApply.club,
                                             activityCount: 0,
                                             contribution: 0,
-                                            clubMembers: newMembers,
                                         };
                                         onUpdateCharacter(newChar, `[동아리동] '${activeClubApply.club}'에 정식 가입했습니다!`);
                                         setCampusToast(`'${activeClubApply.club}' 가입 완료!`);
@@ -2734,128 +2252,11 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     </div>
                 )}
 
-                {isTournamentLobbyOpen && character.schoolData?.currentTournament && (
-                    <div className="absolute inset-0 z-[60] bg-slate-950 flex flex-col animate-in fade-in">
-                        <div className="w-full h-full flex-1 flex flex-col">
-                            <ChallengeLobbyCanvas
-                                character={character}
-                                mode="school_tournament"
-                                title={character.schoolData.currentTournament.name}
-                                subtitle={
-                                    character.schoolData.currentTournament.currentRound === 0
-                                        ? '최종 우승 달성!'
-                                        : !character.schoolData.currentTournament.isActive
-                                            ? '토너먼트 탈락'
-                                            : `${character.schoolData.currentTournament.currentRound === 2 ? '결승전' : `${character.schoolData.currentTournament.currentRound}강전`} 대기실 · 상대: ${character.schoolData.currentTournament.opponentName || '미정'}`
-                                }
-                                cheerText="학생들과 관중들이 토너먼트장의 열기에 환호하고 있습니다!"
-                                onClose={() => setIsTournamentLobbyOpen(false)}
-                                heightClassName="h-[460px] sm:h-[540px]"
-                                headerExtra={
-                                    <button
-                                        onClick={() => setShowTournamentBracketModal(true)}
-                                        className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 text-xs font-bold cursor-pointer"
-                                    >
-                                        대진표 보기
-                                    </button>
-                                }
-                                npcs={(() => {
-                                    const tState = character.schoolData!.currentTournament!;
-                                    const roundTitle = tState.currentRound === 2 ? '결승전' : `${tState.currentRound}강전`;
-                                    const oppName = tState.opponentName || `토너먼트 ${roundTitle} 상대`;
-                                    const handleStartSchoolMatch = () => {
-                                        setIsTournamentLobbyOpen(false);
-                                        setShowTournamentBracketModal(false);
-                                        onAction?.(`[토너먼트] ${tState.name} ${roundTitle} (ID: ${tState.key}) 상대: ${oppName}`);
-                                    };
-                                    const list: ChallengeLobbyNpc[] = [
-                                        {
-                                            id: 'school_tourn_official',
-                                            name: '토너먼트 대회 진행관',
-                                            role: '대진표 관리 · 심판',
-                                            tx: 7,
-                                            ty: 7,
-                                            dir: 'down',
-                                            gender: 'male',
-                                            kind: 'official',
-                                            dialogue: `${tState.name} 경기장 대기실에 오신 것을 환영합니다!\n현재 라운드: ${tState.currentRound === 0 ? '최종 우승' : roundTitle}\n우승 보상: EXP +${tState.reward?.exp || 0}, GOLD +${tState.reward?.gold || 0}`,
-                                            actionLabel: '대진표 자세히 보기',
-                                            onAction: () => setShowTournamentBracketModal(true)
-                                        }
-                                    ];
-
-                                    if (tState.isActive && tState.currentRound > 0) {
-                                        list.push({
-                                            id: 'school_tourn_opponent',
-                                            name: oppName,
-                                            role: `${roundTitle} 대진 상대`,
-                                            tx: 12,
-                                            ty: 5,
-                                            dir: 'down',
-                                            gender: 'male',
-                                            auraColor: 'rgba(245, 158, 11, 0.45)',
-                                            kind: 'challenger',
-                                            dialogue: `드디어 ${roundTitle}에서 만났군, ${character.name}!\n지금까지 갈고닦은 실력을 이 토너먼트장에서 전부 겨뤄보자!`,
-                                            actionLabel: `${roundTitle} 경기 시작`,
-                                            onAction: handleStartSchoolMatch,
-                                            secondaryActionLabel: '대진표 보기',
-                                            onSecondaryAction: () => setShowTournamentBracketModal(true)
-                                        });
-                                    }
-
-                                    const studentCheers = [
-                                        '와아! 우리 학교 대표 파이팅!!',
-                                        '이번 결승전은 정말 손에 땀을 쥐게 해!',
-                                        '저 선수의 기세가 대단한데?!',
-                                        '끝까지 포기하지 말고 승리해!',
-                                        '토너먼트 우승자는 학교의 전설이 될 거야!'
-                                    ];
-                                    const standCoords: Array<[number, number, 'left' | 'right']> = [
-                                        [1, 3, 'right'], [2, 5, 'right'], [1, 7, 'right'], [2, 9, 'right'], [1, 11, 'right'], [2, 13, 'right'],
-                                        [21, 3, 'left'], [22, 5, 'left'], [21, 7, 'left'], [22, 9, 'left'], [21, 11, 'left'], [22, 13, 'left']
-                                    ];
-                                    standCoords.forEach(([tx, ty, dir], idx) => {
-                                        list.push({
-                                            id: `school_tourn_spec_${idx}`,
-                                            name: `학생 관중 ${idx + 1}`,
-                                            role: '토너먼트 관중',
-                                            tx,
-                                            ty,
-                                            dir,
-                                            gender: idx % 2 === 0 ? 'female' : 'male',
-                                            kind: 'spectator',
-                                            dialogue: studentCheers[idx % studentCheers.length]
-                                        });
-                                    });
-
-                                    return list;
-                                })()}
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {showTournamentBracketModal && character.schoolData?.currentTournament && (
-                    <TournamentModal
-                        tournament={character.schoolData.currentTournament}
-                        onClose={() => setShowTournamentBracketModal(false)}
-                        onStartMatch={() => {
-                            const tState = character.schoolData?.currentTournament;
-                            if (!tState) return;
-                            setShowTournamentBracketModal(false);
-                            setIsTournamentLobbyOpen(false);
-                            const roundTitle = tState.currentRound === 2 ? '결승전' : `${tState.currentRound}강전`;
-                            const oppName = tState.opponentName || `토너먼트 ${roundTitle} 상대`;
-                            onAction?.(`[토너먼트] ${tState.name} ${roundTitle} (ID: ${tState.key}) 상대: ${oppName}`);
-                        }}
-                    />
-                )}
-
                 {openModalZone && activeSchoolTier && (
                     <SchoolModal
                         character={character}
                         initialZone={openModalZone}
-                        lockedZone={openModalZone === 'Office' || openModalZone === 'Classroom' || openModalZone === 'Training' || openModalZone === 'Dormitory' ? openModalZone : undefined}
+                        lockedZone={openModalZone === 'Office' || openModalZone === 'Classroom' || openModalZone === 'Training' ? openModalZone : undefined}
                         targetSchoolTier={activeSchoolTier}
                         onClose={() => setOpenModalZone(null)}
                         onUpdateCharacter={(newChar, log) => onUpdateCharacter(newChar, log)}
