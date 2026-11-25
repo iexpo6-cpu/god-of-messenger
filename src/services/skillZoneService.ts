@@ -102,14 +102,20 @@ export const getTeleportRangeByTier = (tier?: ClassTier | string): number => {
 export const getEffectiveTeleportRange = (skill: Skill): number => {
     const baseRange = skill.zoneConfig?.targetRadius || getTeleportRangeByTier(skill.tier);
     const lv = Math.max(1, skill.level || 1);
-    const levelBonus = normalizeSkillTierKey(skill.tier) === ClassTier.FINAL ? Number((lv * 0.1).toFixed(1)) : 0;
+    const tierKey = normalizeSkillTierKey(skill.tier);
+    let levelSteps = 0;
+    if (tierKey === ClassTier.FINAL) levelSteps = lv;
+    else if (tierKey === ClassTier.LAST) levelSteps = Math.floor(lv / 2);
+    else if (tierKey === ClassTier.SECOND) levelSteps = Math.floor(lv / 3);
+    else if (tierKey === ClassTier.FIRST) levelSteps = Math.floor(lv / 5);
+    const levelBonus = Number((levelSteps * 0.1).toFixed(1));
     const enhBonus = skill.finalEnhanceData?.teleportRangeBonus ?? skill.finalEnhanceData?.targetRadiusBonus ?? 0;
     return Number((baseRange + levelBonus + enhBonus).toFixed(1));
 };
 
 export const getSummonLevelStatMultiplier = (skill: Skill): number => {
     const lv = Math.max(1, skill.level || 1);
-    const levelBoost = (lv - 1) * 0.05;
+    const levelBoost = lv * 0.01;
     const enhanceBoost = (skill.finalEnhanceData?.summonStatBoostPct || 0) / 100;
     return 1 + levelBoost + enhanceBoost;
 };

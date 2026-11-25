@@ -679,7 +679,7 @@ const CombatInterface: React.FC<Props> = ({ combatState, player, onAction: rawOn
         else if (skill.tier === ClassTier.LAST) statPct = 75;
         else if (skill.tier === ClassTier.FINAL) statPct = 100;
         
-        const ratio = (statPct / 100) * (1 + ((Math.max(1, skill.level || 1) - 1) * 0.05) + ((skill.finalEnhanceData?.summonStatBoostPct || 0) / 100));
+        const ratio = (statPct / 100) * (1 + (Math.max(1, skill.level || 1) * 0.01) + ((skill.finalEnhanceData?.summonStatBoostPct || 0) / 100));
         const powerLevel: 'low' | 'medium' | 'high' = sData?.powerLevel || (statPct <= 50 ? 'low' : statPct <= 75 ? 'medium' : 'high');
 
         const count = Math.max(1, Number(sData?.summonCount) || 1);
