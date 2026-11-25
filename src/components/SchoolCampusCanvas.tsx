@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, ClubType, CombatStyle, JobType, SchoolTier, SimpleStudent } from '../types';
 import { SCHOOL_CONFIG } from '../constants';
+import { generateName } from '../utils';
+import { processTimeSkip } from '../services/timeEngine';
 import {
     getBuildingSpriteUrl,
     getCachedCityAssetImage,
@@ -21,6 +23,7 @@ import {
 } from '../services/rpgSpriteManifest';
 import { CITY_TILE_SIZE } from '../services/cityTilemapEngine';
 import SchoolModal, { SchoolZone } from './SchoolModal';
+import ClubModal from './ClubModal';
 import { ArrowLeft, BookOpen, DoorOpen, GraduationCap, MessageCircle, Swords, UserPlus, X } from 'lucide-react';
 
 const resolveAcademyTileCulture = (cultureKey: string): string => {
@@ -56,48 +59,110 @@ interface DivineBookDef {
     title: string;
     category: string;
     desc: string;
-    divineGain: number;
+    ctrlGain: number;
     statKey: 'wis' | 'int' | 'str';
     statGain: number;
     expGain: number;
     hpCost?: number;
+    daysElapsed: number;
 }
 
 const ACADEMY_DIVINE_BOOKS: DivineBookDef[] = [
     {
-        id: 'book_sun',
-        propKey: 'book_sun',
-        title: '태양과 광휘의 신력서',
-        category: '태양·광휘 신학',
-        desc: '태양신의 빛이 영혼과 신력을 정화하고 증폭시키는 원리를 담은 성전입니다.',
-        divineGain: 2,
+        id: 'book_magic_theory',
+        propKey: 'bookshelf',
+        title: '기초 마법 이론서',
+        category: '정규 마법 이론',
+        desc: '마력 회로의 구조와 정밀한 마법 제어를 위한 필수 이론서입니다. (3일 경과)',
+        ctrlGain: 1,
+        statKey: 'int',
+        statGain: 2,
+        expGain: 50,
+        daysElapsed: 3,
+    },
+    {
+        id: 'book_history',
+        propKey: 'bookshelf',
+        title: '대륙 및 신계 역사서',
+        category: '역사 · 전략 연구',
+        desc: '과거 신계와 인간 제국의 흥망성쇠를 기록한 고전 역사서입니다. (3일 경과)',
+        ctrlGain: 1,
         statKey: 'wis',
         statGain: 2,
         expGain: 50,
+        daysElapsed: 3,
+    },
+    {
+        id: 'book_sun',
+        propKey: 'book_sun',
+        title: '태양과 광휘의 신력서',
+        category: '신력 제어 · 광휘',
+        desc: '태양신의 빛처럼 신력을 흔들림 없이 제어(CTRL)하는 원리를 담은 성전입니다. (3일 경과)',
+        ctrlGain: 2,
+        statKey: 'wis',
+        statGain: 1,
+        expGain: 55,
+        daysElapsed: 3,
     },
     {
         id: 'book_element',
         propKey: 'book_element',
         title: '심해·성화의 신력 비전',
-        category: '원소·성화 계통',
-        desc: '물과 불의 상반된 신력을 조화롭게 순환시켜 마력을 극대화하는 비법이 기록되어 있습니다.',
-        divineGain: 2,
+        category: '신력 제어 · 원소',
+        desc: '물과 불의 상반된 기운을 정교하게 제어(CTRL)하는 비법이 기록되어 있습니다. (3일 경과)',
+        ctrlGain: 2,
         statKey: 'str',
-        statGain: 2,
-        expGain: 50,
+        statGain: 1,
+        expGain: 55,
+        daysElapsed: 3,
     },
     {
         id: 'book_abyss',
         propKey: 'book_abyss',
         title: '금서: 심연과 공허의 신력론',
         category: '금지된 서고',
-        desc: '금기시된 공허와 심연의 신력을 다루는 위험한 고서. 체력이 소모되지만 깊은 깨달음을 줍니다.',
-        divineGain: 4,
+        desc: '금기시된 공허의 신력을 다루는 위험한 고서. 체력이 소모되지만 제어력(CTRL)이 크게 상승합니다. (3일 경과)',
+        ctrlGain: 4,
         statKey: 'int',
-        statGain: 3,
+        statGain: 2,
         expGain: 90,
         hpCost: 15,
+        daysElapsed: 3,
     },
+];
+
+type ClassroomSubjectType = 'Combat' | 'Magic' | 'Divine' | 'Strategy' | 'Physical' | 'Weapon';
+
+const CLASSROOM_SUBJECT_ROOMS: Array<{
+    type: ClassroomSubjectType;
+    title: string;
+    statLabel: string;
+    mpCost: number;
+    tx: number;
+    ty: number;
+}> = [
+    { type: 'Combat', title: '전투학실', statLabel: 'STR / AGI', mpCost: 15, tx: 2.5, ty: 2.6 },
+    { type: 'Magic', title: '마법학실', statLabel: 'INT', mpCost: 20, tx: 8.2, ty: 2.6 },
+    { type: 'Divine', title: '신력학실', statLabel: 'CTRL', mpCost: 20, tx: 13.8, ty: 2.6 },
+    { type: 'Strategy', title: '전략학실', statLabel: 'WIS', mpCost: 15, tx: 2.5, ty: 6.8 },
+    { type: 'Physical', title: '체력학실', statLabel: 'DEF / HP', mpCost: 15, tx: 8.2, ty: 6.8 },
+    { type: 'Weapon', title: '무기학실', statLabel: '무기 숙련', mpCost: 15, tx: 13.8, ty: 6.8 },
+];
+
+const DORM_ROOM_DOORS: Array<{
+    id: string;
+    gender: '남성' | '여성';
+    grade: 1 | 2 | 3;
+    label: string;
+    tx: number;
+    ty: number;
+}> = [
+    { id: 'dorm_m_1', gender: '남성', grade: 1, label: '남자 1학년실', tx: 2.5, ty: 2.4 },
+    { id: 'dorm_m_2', gender: '남성', grade: 2, label: '남자 2학년실', tx: 8.2, ty: 2.4 },
+    { id: 'dorm_m_3', gender: '남성', grade: 3, label: '남자 3학년실', tx: 13.8, ty: 2.4 },
+    { id: 'dorm_f_1', gender: '여성', grade: 1, label: '여자 1학년실', tx: 2.5, ty: 6.6 },
+    { id: 'dorm_f_2', gender: '여성', grade: 2, label: '여자 2학년실', tx: 8.2, ty: 6.6 },
+    { id: 'dorm_f_3', gender: '여성', grade: 3, label: '여자 3학년실', tx: 13.8, ty: 6.6 },
 ];
 
 const CLUB_DESK_SPECS: Array<{ club: ClubType; title: string; desc: string; benefits: string[]; tx: number; ty: number }> = [
@@ -154,6 +219,7 @@ interface SchoolNpcActor {
     dialogue: string;
     opensZone?: SchoolZone;
     canBondAndSpar?: boolean;
+    isTeacher?: boolean;
     npcLevel?: number;
     combatStyle?: CombatStyle;
 }
@@ -164,9 +230,11 @@ interface RoomProp {
     ty: number;
     w: number;
     h: number;
-    interactKind?: 'attendance' | 'report' | 'divine_book' | 'club_desk';
+    interactKind?: 'attendance' | 'report' | 'divine_book' | 'club_desk' | 'subject_room' | 'dorm_door';
     bookDef?: DivineBookDef;
     clubType?: ClubType;
+    subjectType?: ClassroomSubjectType;
+    dormDoor?: typeof DORM_ROOM_DOORS[number];
     label?: string;
 }
 
@@ -190,6 +258,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     const [viewport, setViewport] = useState({ w: 960, h: 580 });
     const [activeSchoolTier, setActiveSchoolTier] = useState<SchoolTier | null>(null);
     const [activeRoom, setActiveRoom] = useState<SchoolZone | null>(null);
+    const [activeDormRoom, setActiveDormRoom] = useState<{ gender: '남성' | '여성'; grade: 1 | 2 | 3; label: string } | null>(null);
     const [openModalZone, setOpenModalZone] = useState<SchoolZone | null>(null);
     const [nearbyLabel, setNearbyLabel] = useState<string | null>(null);
     const [accessDeniedMsg, setAccessDeniedMsg] = useState<string | null>(null);
@@ -200,6 +269,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         text: string;
         zone?: SchoolZone;
         canBondAndSpar?: boolean;
+        isTeacher?: boolean;
         npcLevel?: number;
         combatStyle?: CombatStyle;
     } | null>(null);
@@ -207,6 +277,8 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     const [showReportDirect, setShowReportDirect] = useState(false);
     const [activeDivineBook, setActiveDivineBook] = useState<DivineBookDef | null>(null);
     const [activeClubApply, setActiveClubApply] = useState<typeof CLUB_DESK_SPECS[number] | null>(null);
+    const [showClubVisualModal, setShowClubVisualModal] = useState(false);
+    const [activeSubjectRoom, setActiveSubjectRoom] = useState<typeof CLASSROOM_SUBJECT_ROOMS[number] | null>(null);
     const [campusToast, setCampusToast] = useState<string | null>(null);
 
     const cultureKey = useMemo(() => resolveCityCultureKey(region, nation, city), [region, nation, city]);
@@ -297,10 +369,13 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     // Diverse student NPCs outside in the School Plaza!
     const plazaStudents = useMemo<SchoolNpcActor[]>(() => {
         const classmates = character.schoolData?.classmates || [];
-        const baseStudents: SchoolNpcActor[] = [
+        const isKorean = !nation || nation.includes('한국') || nation.includes('대한') || nation.includes('조선') || nation.includes('고려');
+        const pickName = (idx: number, koFallback: string) =>
+            classmates[idx]?.name || (isKorean ? koFallback : generateName(nation));
+        return [
             {
                 id: 'stu_elem_1',
-                name: classmates[0]?.name || '초급부 한소희',
+                name: pickName(0, '한소희'),
                 role: '초급 레귤러스 1학년',
                 tx: 5.5,
                 ty: 11.5,
@@ -309,7 +384,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_elem_2',
-                name: '초급부 김민준',
+                name: isKorean ? '김민준' : generateName(nation),
                 role: '초급 레귤러스 3학년',
                 tx: 8.5,
                 ty: 13.5,
@@ -318,7 +393,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_mid_1',
-                name: classmates[1]?.name || '중급부 박지훈',
+                name: pickName(1, '박지훈'),
                 role: '중급 검술부 에이스',
                 tx: 12.2,
                 ty: 10.5,
@@ -327,7 +402,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_mid_2',
-                name: '중급부 최유진',
+                name: isKorean ? '최유진' : generateName(nation),
                 role: '중급 도서부원',
                 tx: 16.5,
                 ty: 12.8,
@@ -336,7 +411,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_high_1',
-                name: classmates[2]?.name || '고급부 이서연',
+                name: pickName(2, '이서연'),
                 role: '고급 아카데미 수석',
                 tx: 20.5,
                 ty: 11.2,
@@ -345,7 +420,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_high_2',
-                name: '고급부 강태오',
+                name: isKorean ? '강태오' : generateName(nation),
                 role: '고급부 학생회장',
                 tx: 22.8,
                 ty: 14.0,
@@ -353,8 +428,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 dialogue: `${city} 레귤러스 학교 지구에 오신 걸 환영합니다. 각 학부 건물은 재학생과 파견 교관만 출입할 수 있습니다.`
             }
         ];
-        return baseStudents;
-    }, [character.schoolData?.classmates, city]);
+    }, [character.schoolData?.classmates, city, nation]);
 
     const campusDims = useMemo(() => {
         if (activeRoom) return { cols: ROOM_COLS, rows: ROOM_ROWS };
@@ -382,9 +456,16 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     // Level 3: Room interior props & NPCs
     const roomContent = useMemo<{ props: RoomProp[]; npcs: SchoolNpcActor[] }>(() => {
         if (!activeRoom) return { props: [], npcs: [] };
-        const teacherName = character.schoolData?.homeroomTeacher?.name || '담임 교사';
-        const c1 = character.schoolData?.classmates?.[0]?.name || '모범생 하은';
-        const c2 = character.schoolData?.classmates?.[1]?.name || '동기 준혁';
+        const isKorean = !nation || nation.includes('한국') || nation.includes('대한') || nation.includes('조선') || nation.includes('고려');
+        const teacherName = character.schoolData?.homeroomTeacher?.name || (isKorean ? '김서연' : generateName(nation));
+        const classmates = character.schoolData?.classmates || [];
+        const c1 = classmates[0]?.name || (isKorean ? '이하은' : generateName(nation));
+        const c2 = classmates[1]?.name || (isKorean ? '박준혁' : generateName(nation));
+        const playerGrade = character.schoolData?.grade || 1;
+        const curTier = activeSchoolTier || 'Elementary';
+        const tierLabel = curTier === 'Elementary' ? '초급부' : curTier === 'Middle' ? '중급부' : '고급부';
+        const baseAge = curTier === 'Elementary' ? 11 : curTier === 'Middle' ? 14 : 17;
+
         switch (activeRoom) {
             case 'Office':
                 return {
@@ -396,43 +477,66 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         { key: 'student_desk', tx: 8, ty: 3.2, w: 2, h: 1.8 }
                     ],
                     npcs: [
-                        { id: 'npc_teacher', name: teacherName, role: '담임 교사', tx: 9, ty: 2.7, gender: 'female', dialogue: '학업·승급 시험 및 학사 관리는 언제든 문의하세요.', opensZone: 'Office' },
-                        { id: 'npc_vice', name: '학사 행정관', role: '교무처', tx: 5.5, ty: 6.5, gender: 'male', dialogue: '양옆의 출석부 열람대와 성적표 보관함에서 바로 서류를 확인하실 수 있습니다.' }
+                        { id: 'npc_teacher', name: teacherName, role: '담임 교사', tx: 9, ty: 2.7, gender: 'female', dialogue: '학업 성적, 진로 상담, 승급 시험까지 무엇이든 편하게 이야기해보세요.', opensZone: 'Office', canBondAndSpar: true, isTeacher: true },
+                        { id: 'npc_vice', name: isKorean ? '정우성' : generateName(nation), role: '교무처 학사 행정관', tx: 5.5, ty: 6.5, gender: 'male', dialogue: '양옆의 출석부 열람대와 성적표 보관함에서 바로 서류를 확인하실 수 있습니다.' }
                     ]
                 };
             case 'Classroom':
                 return {
                     props: [
-                        { key: 'blackboard', tx: 8, ty: 1.8, w: 2.6, h: 1.8 },
-                        { key: 'student_desk', tx: 4, ty: 5.5, w: 1.6, h: 1.6 },
-                        { key: 'student_desk', tx: 8, ty: 5.5, w: 1.6, h: 1.6 },
-                        { key: 'student_desk', tx: 12, ty: 5.5, w: 1.6, h: 1.6 },
-                        { key: 'student_desk', tx: 4, ty: 8.2, w: 1.6, h: 1.6 },
-                        { key: 'student_desk', tx: 8, ty: 8.2, w: 1.6, h: 1.6 },
-                        { key: 'student_desk', tx: 12, ty: 8.2, w: 1.6, h: 1.6 }
+                        ...CLASSROOM_SUBJECT_ROOMS.map((sr) => ({
+                            key: 'blackboard',
+                            tx: sr.tx,
+                            ty: sr.ty,
+                            w: 2.4,
+                            h: 1.8,
+                            interactKind: 'subject_room' as const,
+                            subjectType: sr.type,
+                            label: `🏫 ${sr.title} (${sr.statLabel})`
+                        })),
+                        { key: 'student_desk', tx: 4, ty: 9.2, w: 1.6, h: 1.5 },
+                        { key: 'student_desk', tx: 12, ty: 9.2, w: 1.6, h: 1.5 }
                     ],
                     npcs: [
-                        { id: 'npc_lect', name: teacherName, role: '강의 교관', tx: 9, ty: 3.4, gender: 'female', dialogue: '수업을 시작할 준비가 되었나요? 자리에 앉아 수업을 들으세요.', opensZone: 'Classroom' },
-                        { id: 'npc_stu1', name: c1, role: '같은 반 학우', tx: 5, ty: 5.0, gender: 'female', dialogue: '오늘 필기 엄청 중요하대요! 집중해서 같이 들어요.', canBondAndSpar: true, npcLevel: Math.max(3, character.level || 5) },
-                        { id: 'npc_stu2', name: c2, role: '같은 반 학우', tx: 13, ty: 7.8, gender: 'male', dialogue: '수업 끝나고 연무장에서 한 판 붙어볼래?', canBondAndSpar: true, npcLevel: Math.max(3, character.level || 5) }
+                        { id: 'npc_lect', name: teacherName, role: '담당 교관', tx: 9, ty: 5.0, gender: 'female', dialogue: '원하는 과목 강의실 칠판 앞으로 이동해 수업을 수강하세요!', opensZone: 'Classroom' },
+                        { id: 'npc_stu1', name: c1, role: '같은 반 학우', tx: 5.2, ty: 8.8, gender: 'female', dialogue: '오늘 필기 엄청 중요하대요! 어느 과목 강의실부터 들어갈래요?', canBondAndSpar: true, npcLevel: Math.max(3, character.level || 5) },
+                        { id: 'npc_stu2', name: c2, role: '같은 반 학우', tx: 13.2, ty: 8.8, gender: 'male', dialogue: '수업 끝나고 연무장에서 한 판 붙어볼래?', canBondAndSpar: true, npcLevel: Math.max(3, character.level || 5) }
                     ]
                 };
-            case 'Library':
+            case 'Library': {
+                const isSenior = playerGrade < 3;
+                const readerGrade = isSenior ? Math.min(3, playerGrade + 1) : Math.max(1, playerGrade - 1);
+                const readerAge = baseAge + readerGrade - 1;
+                const relLabel = isSenior ? '선배' : '후배';
+                const readerName = isKorean ? (isSenior ? '서지민' : '윤하늘') : generateName(nation);
                 return {
                     props: [
-                        { key: 'bookshelf', tx: 2.5, ty: 2, w: 2, h: 2 },
-                        { key: 'bookshelf', tx: 6, ty: 2, w: 2, h: 2 },
-                        { key: 'bookshelf', tx: 10, ty: 2, w: 2, h: 2 },
-                        { key: 'bookshelf', tx: 13.5, ty: 2, w: 2, h: 2 },
-                        { key: 'book_sun', tx: 3.5, ty: 6.2, w: 1.8, h: 1.8, interactKind: 'divine_book', bookDef: ACADEMY_DIVINE_BOOKS[0], label: '☀️ 태양 신력서 열람' },
-                        { key: 'book_element', tx: 8.2, ty: 6.2, w: 1.8, h: 1.8, interactKind: 'divine_book', bookDef: ACADEMY_DIVINE_BOOKS[1], label: '🔥 원소 신력 비전 열람' },
-                        { key: 'book_abyss', tx: 13, ty: 6.2, w: 1.8, h: 1.8, interactKind: 'divine_book', bookDef: ACADEMY_DIVINE_BOOKS[2], label: '🔮 금서: 심연 신력론 열람' }
+                        { key: 'bookshelf', tx: 2.2, ty: 2.0, w: 2, h: 2, interactKind: 'divine_book', bookDef: ACADEMY_DIVINE_BOOKS[0], label: '📘 기초 마법 이론서 열람' },
+                        { key: 'bookshelf', tx: 6.2, ty: 2.0, w: 2, h: 2, interactKind: 'divine_book', bookDef: ACADEMY_DIVINE_BOOKS[1], label: '📜 대륙 및 신계 역사서 열람' },
+                        { key: 'bookshelf', tx: 10.2, ty: 2.0, w: 2, h: 2 },
+                        { key: 'bookshelf', tx: 13.8, ty: 2.0, w: 2, h: 2 },
+                        { key: 'book_sun', tx: 3.2, ty: 6.2, w: 1.8, h: 1.8, interactKind: 'divine_book', bookDef: ACADEMY_DIVINE_BOOKS[2], label: '☀️ 태양 신력서 열람' },
+                        { key: 'book_element', tx: 8.2, ty: 6.2, w: 1.8, h: 1.8, interactKind: 'divine_book', bookDef: ACADEMY_DIVINE_BOOKS[3], label: '🔥 원소 신력 비전 열람' },
+                        { key: 'book_abyss', tx: 13.2, ty: 6.2, w: 1.8, h: 1.8, interactKind: 'divine_book', bookDef: ACADEMY_DIVINE_BOOKS[4], label: '🔮 금서: 심연 신력론 열람' }
                     ],
                     npcs: [
-                        { id: 'npc_lib', name: '수석 사서', role: '대도서관 관리자', tx: 9, ty: 4.2, gender: 'female', dialogue: '열람하고 싶은 마법·역사·신력 서적이 있다면 아래쪽 독서대에서 바로 읽어보세요.', opensZone: 'Library' },
-                        { id: 'npc_reader', name: '독서 중인 선배', role: '도서부 선배', tx: 6, ty: 8.4, gender: 'male', dialogue: '신력 도서들을 읽으면 신력과 지혜가 눈에 띄게 자랍니다.', canBondAndSpar: true, npcLevel: Math.max(5, (character.level || 5) + 3) }
+                        { id: 'npc_lib', name: isKorean ? '한수진' : generateName(nation), role: '대도서관 수석 사서', tx: 9, ty: 4.2, gender: 'female', dialogue: '마법 이론·역사서부터 신력 제어 비전까지, 원하는 서적을 직접 정독해보세요. (1회 정독 시 3일 경과)' },
+                        {
+                            id: 'npc_reader',
+                            name: readerName,
+                            role: `${tierLabel} ${readerGrade}학년 ${relLabel} (${readerAge}세)`,
+                            tx: 6,
+                            ty: 8.4,
+                            gender: isSenior ? 'male' : 'female',
+                            dialogue: isSenior
+                                ? `안녕 후배! ${tierLabel} 도서관 서적들은 신력 제어력(CTRL)을 기르는 데 정말 큰 도움이 돼.`
+                                : `선배님 안녕하세요! 저도 ${tierLabel} 마법 이론서를 보면서 열심히 공부하고 있어요!`,
+                            canBondAndSpar: true,
+                            npcLevel: Math.max(4, (character.level || 5) + (isSenior ? 2 : -1))
+                        }
                     ]
                 };
+            }
             case 'Training':
                 return {
                     props: [
@@ -443,11 +547,12 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         { key: 'dummy_wood', tx: 13, ty: 7, w: 1.8, h: 1.8 }
                     ],
                     npcs: [
-                        { id: 'npc_trainer', name: '수석 무술 교관', role: '연무장 교관', tx: 9, ty: 5.5, gender: 'male', dialogue: '실전 수련과 대련을 시작하려면 말을 걸어라!', opensZone: 'Training' },
-                        { id: 'npc_spar', name: '수련 중인 생도', role: '무술부', tx: 5, ty: 6.5, gender: 'female', dialogue: '오늘도 기초 체력과 무기 숙련도를 100회씩 단련하는 중이에요!', canBondAndSpar: true, npcLevel: Math.max(4, character.level || 5) }
+                        { id: 'npc_trainer', name: isKorean ? '백무진' : generateName(nation), role: '수석 무술 교관', tx: 9, ty: 5.5, gender: 'male', dialogue: '실전 수련과 대련을 시작하려면 말을 걸어라!', opensZone: 'Training' },
+                        { id: 'npc_spar', name: isKorean ? '송아린' : generateName(nation), role: '무술부 생도', tx: 5, ty: 6.5, gender: 'female', dialogue: '오늘도 기초 체력과 무기 숙련도를 100회씩 단련하는 중이에요!', canBondAndSpar: true, npcLevel: Math.max(4, character.level || 5) }
                     ]
                 };
-            case 'Club':
+            case 'Club': {
+                const joinedClub = character.clubData?.joinedClub || ClubType.NONE;
                 return {
                     props: [
                         ...CLUB_DESK_SPECS.map((spec) => ({
@@ -458,19 +563,87 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             h: 1.6,
                             interactKind: 'club_desk' as const,
                             clubType: spec.club,
-                            label: `📌 ${spec.title} 가입`
+                            label: joinedClub === spec.club ? `🎭 ${spec.title} 입장 (동아리실)` : `📌 ${spec.title} 가입 신청`
                         })),
                         { key: 'bookshelf', tx: 1, ty: 1.2, w: 1.6, h: 1.6 }
                     ],
                     npcs: [
-                        { id: 'npc_club_melee', name: '근접무기부 태오', role: '근접 무기부', tx: 3.8, ty: 4.0, gender: 'male', dialogue: '검과 창의 극의를 함께 수련하지 않을래? 대련도 언제든 환영이야!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.SWORDSMAN },
-                        { id: 'npc_club_ranged', name: '원거리부 유나', role: '원거리 무기부', tx: 9.5, ty: 4.0, gender: 'female', dialogue: '백발백중의 정밀 사격을 배우고 싶다면 원거리 무기부로 들어와!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.ARCHER },
-                        { id: 'npc_club_magic', name: '마법공학부 민혁', role: '마법 공학부', tx: 15.0, ty: 4.0, gender: 'male', dialogue: '신력과 마도 공학의 결합은 무궁무진해. 한 번 겨뤄볼래?', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 2), combatStyle: CombatStyle.MAGE },
-                        { id: 'npc_club_council', name: '학생회장 서현', role: '학생회', tx: 5.5, ty: 8.6, gender: 'female', dialogue: '학교의 질서와 축제를 함께 기획할 유능한 학우를 찾고 있어.', canBondAndSpar: true, npcLevel: Math.max(5, (character.level || 5) + 2), opensZone: 'Club' },
-                        { id: 'npc_club_disc', name: '선도부장 현우', role: '선도부', tx: 14.0, ty: 8.6, gender: 'male', dialogue: '교내 치안을 지키는 선도부다. 실력 검증 대련을 해볼 텐가?', canBondAndSpar: true, npcLevel: Math.max(5, (character.level || 5) + 2), combatStyle: CombatStyle.SPEARMAN }
+                        { id: 'npc_club_melee', name: isKorean ? '강태오' : generateName(nation), role: '근접 무기부', tx: 3.8, ty: 4.0, gender: 'male', dialogue: '검과 창의 극의를 함께 수련하지 않을래? 대련도 언제든 환영이야!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.SWORDSMAN },
+                        { id: 'npc_club_ranged', name: isKorean ? '신유나' : generateName(nation), role: '원거리 무기부', tx: 9.5, ty: 4.0, gender: 'female', dialogue: '백발백중의 정밀 사격을 배우고 싶다면 원거리 무기부로 들어와!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.ARCHER },
+                        { id: 'npc_club_magic', name: isKorean ? '최민혁' : generateName(nation), role: '마법 공학부', tx: 15.0, ty: 4.0, gender: 'male', dialogue: '신력과 마도 공학의 결합은 무궁무진해. 한 번 겨뤄볼래?', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 2), combatStyle: CombatStyle.MAGE },
+                        { id: 'npc_club_council', name: isKorean ? '오서현' : generateName(nation), role: '학생회', tx: 5.5, ty: 8.6, gender: 'female', dialogue: '학교의 질서와 축제를 함께 기획할 유능한 학우를 찾고 있어.', canBondAndSpar: true, npcLevel: Math.max(5, (character.level || 5) + 2), opensZone: 'Club' },
+                        { id: 'npc_club_disc', name: isKorean ? '장현우' : generateName(nation), role: '선도부', tx: 14.0, ty: 8.6, gender: 'male', dialogue: '교내 치안을 지키는 선도부다. 실력 검증 대련을 해볼 텐가?', canBondAndSpar: true, npcLevel: Math.max(5, (character.level || 5) + 2), combatStyle: CombatStyle.SPEARMAN }
                     ]
                 };
-            case 'Dormitory':
+            }
+            case 'Dormitory': {
+                if (!activeDormRoom) {
+                    return {
+                        props: [
+                            ...DORM_ROOM_DOORS.map((door) => ({
+                                key: 'dorm_bed',
+                                tx: door.tx,
+                                ty: door.ty,
+                                w: 2.2,
+                                h: 1.9,
+                                interactKind: 'dorm_door' as const,
+                                dormDoor: door,
+                                label: `🚪 ${door.label} 입장`
+                            }))
+                        ],
+                        npcs: [
+                            { id: 'npc_dorm', name: isKorean ? '박성호' : generateName(nation), role: '기숙사 사감', tx: 9, ty: 5.0, gender: 'male', dialogue: '본인 성별과 학년에 맞는 기숙사 방으로만 입장할 수 있습니다. 타 호실 무단 출입 시 퇴실 조치됩니다.', opensZone: 'Dormitory' }
+                        ]
+                    };
+                }
+                const roomGenderKey: RpgSpriteGenderKey = activeDormRoom.gender === '남성' ? 'male' : 'female';
+                const roomClassmates = classmates.slice(0, 4).map((cm, idx) => ({
+                    id: cm.id || `dorm_mate_${idx}`,
+                    name: cm.name,
+                    role: `${activeDormRoom.label} (${character.schoolData?.classNumber || 1}반) 동기`,
+                    tx: 3.0 + (idx % 2) * 5.0,
+                    ty: 4.8 + Math.floor(idx / 2) * 3.2,
+                    gender: roomGenderKey,
+                    dialogue: `기숙사 ${activeDormRoom.label}에서 쉬니까 컨디션이 확 살아나네! 친선 대련 한 판 어때?`,
+                    canBondAndSpar: true,
+                    npcLevel: Math.max(3, character.level || 5)
+                }));
+                if (roomClassmates.length === 0) {
+                    roomClassmates.push(
+                        {
+                            id: 'dorm_mate_default_1',
+                            name: isKorean ? (roomGenderKey === 'male' ? '이도현' : '김채린') : generateName(nation),
+                            role: `${activeDormRoom.label} 동기`,
+                            tx: 3.5,
+                            ty: 5.0,
+                            gender: roomGenderKey,
+                            dialogue: '같은 학년 기숙사 동기끼리 친하게 지내자! 대련도 언제든 환영이야.',
+                            canBondAndSpar: true,
+                            npcLevel: Math.max(3, character.level || 5)
+                        },
+                        {
+                            id: 'dorm_mate_default_2',
+                            name: isKorean ? (roomGenderKey === 'male' ? '정태윤' : '송지아') : generateName(nation),
+                            role: `${activeDormRoom.label} 다른 반 동기`,
+                            tx: 8.5,
+                            ty: 5.0,
+                            gender: roomGenderKey,
+                            dialogue: '반은 달라도 같은 학년 기숙사잖아! 오늘 수업 어땠어?',
+                            canBondAndSpar: true,
+                            npcLevel: Math.max(4, (character.level || 5) + 1)
+                        }
+                    );
+                }
+                // Randomly include campus plaza friends/seniors/juniors visiting the dorm room
+                const plazaVisitors = plazaStudents.slice(0, 2).map((ps, idx) => ({
+                    ...ps,
+                    id: `dorm_plaza_${ps.id}`,
+                    role: `교정 학우 · ${ps.role}`,
+                    tx: 13.0,
+                    ty: 4.8 + idx * 3.2,
+                    canBondAndSpar: true,
+                    npcLevel: Math.max(4, (character.level || 5) + idx * 2)
+                }));
                 return {
                     props: [
                         { key: 'dorm_bed', tx: 2.5, ty: 2.0, w: 1.9, h: 1.9 },
@@ -479,14 +652,14 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         { key: 'student_desk', tx: 8, ty: 6.5, w: 2.0, h: 1.7 }
                     ],
                     npcs: [
-                        { id: 'npc_dorm', name: '기숙사 사감', role: '기숙사 관리', tx: 9, ty: 4.8, gender: 'male', dialogue: '피곤할 땐 기숙사에서 충분히 휴식을 취하고 체력을 회복하세요.', opensZone: 'Dormitory' },
-                        { id: 'npc_roommate', name: c1, role: `같은 반 (${character.schoolData?.classNumber || 1}반) 동기`, tx: 3.5, ty: 5.0, gender: 'female', dialogue: '기숙사 침대가 꽤 포근해서 컨디션이 확 좋아져요! 친선 대련도 할래요?', canBondAndSpar: true, npcLevel: Math.max(3, character.level || 5) },
-                        { id: 'npc_other_cls', name: '타반 학생 도현', role: `다른 반 (${((character.schoolData?.classNumber || 1) % 3) + 1}반)`, tx: 13.5, ty: 5.0, gender: 'male', dialogue: '반은 다르지만 같은 기숙사 동기잖아! 친하게 지내자. 대련도 환영이야!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1) },
-                        { id: 'npc_senior', name: '상급반 선배 채린', role: '3학년 선배', tx: 11.5, ty: 8.2, gender: 'female', dialogue: '후배님, 기숙사 생활은 어때? 내 실력을 시험해보고 싶다면 언제든 대련 신청해.', canBondAndSpar: true, npcLevel: Math.max(6, (character.level || 5) + 4) }
+                        { id: 'npc_dorm_rest', name: isKorean ? '박성호' : generateName(nation), role: '기숙사 사감', tx: 9, ty: 3.6, gender: 'male', dialogue: `${activeDormRoom.label}에서 충분히 휴식을 취하세요.`, opensZone: 'Dormitory' },
+                        ...roomClassmates,
+                        ...plazaVisitors
                     ]
                 };
+            }
         }
-    }, [activeRoom, character.schoolData?.homeroomTeacher?.name, character.schoolData?.classmates, character.schoolData?.classNumber, character.level]);
+    }, [activeRoom, activeDormRoom, activeSchoolTier, nation, character.schoolData?.homeroomTeacher?.name, character.schoolData?.classmates, character.schoolData?.classNumber, character.schoolData?.grade, character.level, character.clubData?.joinedClub, plazaStudents]);
 
     useEffect(() => {
         loadRpgSpriteImage(playerSpriteUrl);
@@ -611,6 +784,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
 
     const enterRoom = useCallback((zone: SchoolZone) => {
         setActiveDialogue(null);
+        setActiveDormRoom(null);
         playerRef.current.x = Math.floor(ROOM_COLS / 2) * CITY_TILE_SIZE;
         playerRef.current.y = (ROOM_ROWS - 2.2) * CITY_TILE_SIZE;
         playerRef.current.dir = 'up';
@@ -621,10 +795,20 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     }, []);
 
     const exitRoomToCampus = useCallback(() => {
+        if (activeRoom === 'Dormitory' && activeDormRoom) {
+            setActiveDialogue(null);
+            setActiveDormRoom(null);
+            playerRef.current.x = Math.floor(ROOM_COLS / 2) * CITY_TILE_SIZE;
+            playerRef.current.y = (ROOM_ROWS - 2.2) * CITY_TILE_SIZE;
+            playerRef.current.dir = 'up';
+            exitCooldownRef.current = Date.now() + 700;
+            return;
+        }
         if (!activeSchoolTier) return;
         const nextCols = activeSchoolTier === 'Elementary' ? 26 : activeSchoolTier === 'Middle' ? 30 : 34;
         const nextRows = activeSchoolTier === 'Elementary' ? 18 : activeSchoolTier === 'Middle' ? 20 : 22;
         setActiveDialogue(null);
+        setActiveDormRoom(null);
         setActiveRoom(null);
         playerRef.current.x = Math.floor(nextCols / 2) * CITY_TILE_SIZE;
         playerRef.current.y = (nextRows - 2.5) * CITY_TILE_SIZE;
@@ -632,10 +816,11 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         playerRef.current.targetX = null;
         playerRef.current.targetY = null;
         exitCooldownRef.current = Date.now() + 700;
-    }, [activeSchoolTier]);
+    }, [activeSchoolTier, activeRoom, activeDormRoom]);
 
     const exitCampusToPlaza = useCallback(() => {
         setActiveDialogue(null);
+        setActiveDormRoom(null);
         setActiveRoom(null);
         setActiveSchoolTier(null);
         playerRef.current.x = Math.floor(PLAZA_COLS / 2) * CITY_TILE_SIZE;
@@ -687,7 +872,27 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 if (pr.interactKind === 'attendance') setShowAttendanceDirect(true);
                 else if (pr.interactKind === 'report') setShowReportDirect(true);
                 else if (pr.interactKind === 'divine_book' && pr.bookDef) setActiveDivineBook(pr.bookDef);
-                else if (pr.interactKind === 'club_desk' && pr.clubType) setActiveClubApply(CLUB_DESK_SPECS.find(c => c.club === pr.clubType) || null);
+                else if (pr.interactKind === 'subject_room' && pr.subjectType) {
+                    setActiveSubjectRoom(CLASSROOM_SUBJECT_ROOMS.find(s => s.type === pr.subjectType) || null);
+                } else if (pr.interactKind === 'dorm_door' && pr.dormDoor) {
+                    const myGender: '남성' | '여성' = character.gender === '남성' ? '남성' : '여성';
+                    const myGrade = character.schoolData?.grade || 1;
+                    if (pr.dormDoor.gender !== myGender || pr.dormDoor.grade !== myGrade) {
+                        setActiveDormRoom(null);
+                        setAccessDeniedMsg(`출입 금지! 본인(${myGender} ${myGrade}학년) 기숙사 방만 입장할 수 있어 퇴실 조치되었습니다.`);
+                        setTimeout(() => setAccessDeniedMsg(null), 3200);
+                    } else {
+                        setActiveDormRoom(pr.dormDoor);
+                        setCampusToast(`${pr.dormDoor.label}에 입장했습니다.`);
+                        setTimeout(() => setCampusToast(null), 2200);
+                    }
+                } else if (pr.interactKind === 'club_desk' && pr.clubType) {
+                    if (character.clubData?.joinedClub === pr.clubType) {
+                        setShowClubVisualModal(true);
+                    } else {
+                        setActiveClubApply(CLUB_DESK_SPECS.find(c => c.club === pr.clubType) || null);
+                    }
+                }
                 return;
             }
         }
@@ -705,6 +910,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         text: npc.dialogue,
                         zone: npc.opensZone,
                         canBondAndSpar: npc.canBondAndSpar,
+                        isTeacher: npc.isTeacher,
                         npcLevel: npc.npcLevel,
                         combatStyle: npc.combatStyle
                     });
@@ -712,11 +918,11 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 return;
             }
         }
-    }, [activeSchoolTier, activeRoom, plazaStudents, buildingSlots, campusBuildings, roomContent.npcs, roomContent.props, enterSchoolCampus, enterRoom]);
+    }, [activeSchoolTier, activeRoom, plazaStudents, buildingSlots, campusBuildings, roomContent.npcs, roomContent.props, enterSchoolCampus, enterRoom, character.gender, character.schoolData?.grade, character.clubData?.joinedClub]);
 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
-            if (openModalZone || showAttendanceDirect || showReportDirect || activeDivineBook || activeClubApply) return;
+            if (openModalZone || showAttendanceDirect || showReportDirect || activeDivineBook || activeClubApply || showClubVisualModal || activeSubjectRoom) return;
             const k = e.key.toLowerCase();
             if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) {
                 keysRef.current.add(k);
@@ -738,7 +944,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             window.removeEventListener('keydown', onKeyDown);
             window.removeEventListener('keyup', onKeyUp);
         };
-    }, [openModalZone, activeDialogue, activeRoom, activeSchoolTier, handleInteract, exitRoomToCampus, exitCampusToPlaza, onExitToCity]);
+    }, [openModalZone, showAttendanceDirect, showReportDirect, activeDivineBook, activeClubApply, showClubVisualModal, activeSubjectRoom, activeDialogue, activeRoom, activeSchoolTier, handleInteract, exitRoomToCampus, exitCampusToPlaza, onExitToCity]);
 
     useEffect(() => {
         let rafId = 0;
@@ -1346,13 +1552,13 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                     const newNpc: SimpleStudent = {
                                                         id: npcId,
                                                         name: activeDialogue.name,
-                                                        age: '18세',
+                                                        age: activeDialogue.isTeacher ? '32세' : '18세',
                                                         gender: '여성',
                                                         race: '인간',
                                                         nation,
                                                         level: activeDialogue.npcLevel || Math.max(3, character.level || 5),
                                                         personality: '성실함',
-                                                        appearance: '단정한 교복',
+                                                        appearance: activeDialogue.isTeacher ? '단정한 교사 복장' : '단정한 교복',
                                                         stats: { str: 18, int: 18, wis: 15, agi: 16, con: 18 },
                                                         affection: 19,
                                                         isPastConnection: true,
@@ -1374,30 +1580,63 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                         >
                                             <UserPlus size={13} /> 교류 & 과거 인연 등록
                                         </button>
+                                        {!activeDialogue.isTeacher && (
+                                            <button
+                                                onClick={() => {
+                                                    const lv = activeDialogue.npcLevel || Math.max(4, character.level || 5);
+                                                    const maxHp = Math.max(140, lv * 45);
+                                                    const enemy = {
+                                                        id: `spar_${activeDialogue.id || activeDialogue.name}`,
+                                                        name: `${activeDialogue.name} (${activeDialogue.role})`,
+                                                        level: lv,
+                                                        hp: maxHp,
+                                                        maxHp,
+                                                        atk: Math.max(20, lv * 6),
+                                                        def: Math.max(10, lv * 3),
+                                                        spd: Math.max(12, lv * 3),
+                                                        expReward: lv * 22,
+                                                        goldReward: lv * 15,
+                                                        combatStyle: activeDialogue.combatStyle || CombatStyle.SWORDSMAN,
+                                                        isBoss: false,
+                                                    };
+                                                    setActiveDialogue(null);
+                                                    onStartBattle?.([enemy], 'sparring_arena', `[학원 대련] ${activeDialogue.name}`);
+                                                }}
+                                                className="px-3 py-1.5 rounded-lg bg-rose-900/70 hover:bg-rose-800 border border-rose-500/60 text-rose-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                            >
+                                                <Swords size={13} /> 친선 대련 신청
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+                                {activeDialogue.isTeacher && (
+                                    <>
                                         <button
                                             onClick={() => {
-                                                const lv = activeDialogue.npcLevel || Math.max(4, character.level || 5);
-                                                const maxHp = Math.max(140, lv * 45);
-                                                const enemy = {
-                                                    id: `spar_${activeDialogue.id || activeDialogue.name}`,
-                                                    name: `${activeDialogue.name} (${activeDialogue.role})`,
-                                                    level: lv,
-                                                    hp: maxHp,
-                                                    maxHp,
-                                                    atk: Math.max(20, lv * 6),
-                                                    def: Math.max(10, lv * 3),
-                                                    spd: Math.max(12, lv * 3),
-                                                    expReward: lv * 22,
-                                                    goldReward: lv * 15,
-                                                    combatStyle: activeDialogue.combatStyle || CombatStyle.SWORDSMAN,
-                                                    isBoss: false,
-                                                };
-                                                setActiveDialogue(null);
-                                                onStartBattle?.([enemy], 'sparring_arena', `[학원 대련] ${activeDialogue.name}`);
+                                                const rank = character.schoolData?.rank || 30;
+                                                const advice = rank <= 10
+                                                    ? `현재 교내 석차 ${rank}위로 최상위권이네요! 이 페이스를 유지하면 승급 시험도 무난히 통과할 수 있을 거예요.`
+                                                    : rank <= 30
+                                                        ? `현재 교내 석차 ${rank}위입니다. 강의실에서 부족한 능력치 수업을 듣고 도서관에서 제어력(CTRL)을 보강해보세요.`
+                                                        : `현재 교내 석차 ${rank}위라 조금 더 분발이 필요해요. 강의실 수업과 도서관 독서를 병행하면 성적이 빠르게 오를 거예요!`;
+                                                setActiveDialogue(prev => prev ? { ...prev, text: advice } : null);
                                             }}
-                                            className="px-3 py-1.5 rounded-lg bg-rose-900/70 hover:bg-rose-800 border border-rose-500/60 text-rose-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                            className="px-3 py-1.5 rounded-lg bg-indigo-900/70 hover:bg-indigo-800 border border-indigo-500/60 text-indigo-200 text-[11px] font-bold cursor-pointer"
                                         >
-                                            <Swords size={13} /> 친선 대련 신청
+                                            💡 성적 조언 듣기
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const newChar = JSON.parse(JSON.stringify(character)) as Character;
+                                                newChar.stats.wis = (newChar.stats.wis || 10) + 1;
+                                                onUpdateCharacter(newChar, `[교무실 상담] ${activeDialogue.name} 선생님과 진로·학업 상담을 진행했습니다. (WIS +1)`);
+                                                setActiveDialogue(prev => prev ? { ...prev, text: '조급해하지 말고 자신의 신력과 적성에 맞는 길을 차근차근 걸어가세요. 언제든 응원하고 있습니다.' } : null);
+                                                setCampusToast('담임 선생님과 진로 상담 완료! (WIS +1)');
+                                                setTimeout(() => setCampusToast(null), 2500);
+                                            }}
+                                            className="px-3 py-1.5 rounded-lg bg-emerald-900/70 hover:bg-emerald-800 border border-emerald-500/60 text-emerald-200 text-[11px] font-bold cursor-pointer"
+                                        >
+                                            🗨️ 진로 상담
                                         </button>
                                     </>
                                 )}
@@ -1410,7 +1649,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                         }}
                                         className="px-3 py-1.5 rounded-lg bg-amber-700/70 hover:bg-amber-600 text-white text-[11px] font-bold cursor-pointer"
                                     >
-                                        📋 시설 메뉴 열기
+                                        {activeDialogue.isTeacher ? '📝 교무실 열기 (시험/행정)' : '📋 시설 메뉴 열기'}
                                     </button>
                                 )}
                             </div>
@@ -1490,7 +1729,8 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             <p className="text-xs text-slate-300 leading-relaxed">{activeDivineBook.desc}</p>
                             <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
                                 <div className="flex justify-between"><span className="text-slate-400">분류</span><span className="text-white font-bold">{activeDivineBook.category}</span></div>
-                                <div className="flex justify-between"><span className="text-slate-400">획득 효과</span><span className="text-amber-300 font-bold">신력 +{activeDivineBook.divineGain}, {activeDivineBook.statKey.toUpperCase()} +{activeDivineBook.statGain}, EXP +{activeDivineBook.expGain}</span></div>
+                                <div className="flex justify-between"><span className="text-slate-400">소요 시간</span><span className="text-cyan-300 font-bold">{activeDivineBook.daysElapsed || 3}일 경과</span></div>
+                                <div className="flex justify-between"><span className="text-slate-400">획득 효과</span><span className="text-amber-300 font-bold">CTRL +{activeDivineBook.ctrlGain}, {activeDivineBook.statKey.toUpperCase()} +{activeDivineBook.statGain}, EXP +{activeDivineBook.expGain}</span></div>
                             </div>
                             <div className="flex gap-2">
                                 <button onClick={() => setActiveDivineBook(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer">닫기</button>
@@ -1505,19 +1745,96 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                             }
                                             newChar.stats.hp = Math.max(1, (newChar.stats.hp || 10) - activeDivineBook.hpCost);
                                         }
-                                        newChar.divinePower = (newChar.divinePower || 0) + activeDivineBook.divineGain;
+                                        newChar.stats.ctrl = (newChar.stats.ctrl || 10) + activeDivineBook.ctrlGain;
                                         newChar.stats[activeDivineBook.statKey] = (newChar.stats[activeDivineBook.statKey] || 10) + activeDivineBook.statGain;
                                         newChar.exp = (newChar.exp || 0) + activeDivineBook.expGain;
-                                        onUpdateCharacter(newChar, `[도서관] '${activeDivineBook.title}' 정독! (신력 +${activeDivineBook.divineGain}, ${activeDivineBook.statKey.toUpperCase()} +${activeDivineBook.statGain})`);
-                                        setCampusToast(`신력 +${activeDivineBook.divineGain}, ${activeDivineBook.statKey.toUpperCase()} +${activeDivineBook.statGain} 획득!`);
+                                        const timeRes = processTimeSkip(newChar, activeDivineBook.daysElapsed || 3);
+                                        onUpdateCharacter(timeRes.updatedCharacter, `[도서관] '${activeDivineBook.title}' 정독 (${activeDivineBook.daysElapsed || 3}일 경과)! (CTRL +${activeDivineBook.ctrlGain}, ${activeDivineBook.statKey.toUpperCase()} +${activeDivineBook.statGain})`);
+                                        setCampusToast(`CTRL +${activeDivineBook.ctrlGain}, ${activeDivineBook.statKey.toUpperCase()} +${activeDivineBook.statGain} (${activeDivineBook.daysElapsed || 3}일 경과)`);
                                         setTimeout(() => setCampusToast(null), 2800);
                                         setActiveDivineBook(null);
                                     }}
                                     className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold cursor-pointer"
                                 >
-                                    정독하기
+                                    정독하기 (3일 소요)
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeSubjectRoom && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+                        <div className="bg-slate-900 border border-sky-600/70 p-5 rounded-2xl max-w-md w-full space-y-3 shadow-2xl">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                <h3 className="text-base font-bold text-sky-300">🏫 {activeSubjectRoom.title} 수강</h3>
+                                <button onClick={() => setActiveSubjectRoom(null)} className="text-slate-400 hover:text-white cursor-pointer"><X size={18} /></button>
+                            </div>
+                            <p className="text-xs text-slate-300 leading-relaxed">
+                                {activeSubjectRoom.title}에서 정규 강의를 수강합니다. 수강 시 {activeSubjectRoom.statLabel} 능력치와 경험치를 획득하며 7일이 경과합니다.
+                            </p>
+                            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
+                                <div className="flex justify-between"><span className="text-slate-400">소모 MP</span><span className="text-cyan-300 font-bold">MP {activeSubjectRoom.mpCost}</span></div>
+                                <div className="flex justify-between"><span className="text-slate-400">성장 분야</span><span className="text-amber-300 font-bold">{activeSubjectRoom.statLabel} (+7일 경과)</span></div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={() => setActiveSubjectRoom(null)} className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold cursor-pointer">닫기</button>
+                                <button
+                                    onClick={() => {
+                                        if ((character.stats.mp || 0) < activeSubjectRoom.mpCost) {
+                                            setCampusToast(`MP가 부족합니다! (필요 MP: ${activeSubjectRoom.mpCost})`);
+                                            setTimeout(() => setCampusToast(null), 2500);
+                                            return;
+                                        }
+                                        const newChar = JSON.parse(JSON.stringify(character)) as Character;
+                                        newChar.stats.mp = Math.max(0, (newChar.stats.mp || 0) - activeSubjectRoom.mpCost);
+                                        if (activeSubjectRoom.type === 'Combat') {
+                                            newChar.stats.str += 2;
+                                            newChar.stats.agi += 1;
+                                        } else if (activeSubjectRoom.type === 'Magic') {
+                                            newChar.stats.int += 3;
+                                        } else if (activeSubjectRoom.type === 'Divine') {
+                                            newChar.stats.ctrl = (newChar.stats.ctrl || 10) + 3;
+                                        } else if (activeSubjectRoom.type === 'Strategy') {
+                                            newChar.stats.wis += 3;
+                                        } else if (activeSubjectRoom.type === 'Physical') {
+                                            newChar.stats.def += 2;
+                                            newChar.stats.maxHp += 10;
+                                            newChar.stats.hp = Math.min(newChar.stats.maxHp, newChar.stats.hp + 10);
+                                        } else if (activeSubjectRoom.type === 'Weapon') {
+                                            newChar.stats.str += 1;
+                                            newChar.stats.agi += 2;
+                                        }
+                                        newChar.exp = (newChar.exp || 0) + 80;
+                                        if (newChar.schoolData) {
+                                            newChar.schoolData.reputation = (newChar.schoolData.reputation || 0) + 5;
+                                        }
+                                        const timeRes = processTimeSkip(newChar, 7);
+                                        onUpdateCharacter(timeRes.updatedCharacter, `[강의실] '${activeSubjectRoom.title}' 수강 완료! (${activeSubjectRoom.statLabel} 상승, 7일 경과)`);
+                                        setCampusToast(`${activeSubjectRoom.title} 수강 완료! (${activeSubjectRoom.statLabel} 상승)`);
+                                        setTimeout(() => setCampusToast(null), 2800);
+                                        setActiveSubjectRoom(null);
+                                    }}
+                                    className="flex-1 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold cursor-pointer"
+                                >
+                                    수강하기 (MP {activeSubjectRoom.mpCost})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showClubVisualModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85">
+                        <div className="bg-slate-900 border border-emerald-600/70 rounded-2xl max-w-3xl w-full max-h-[88vh] overflow-y-auto p-4 shadow-2xl space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                <h3 className="text-base font-bold text-emerald-300">🎭 {character.clubData?.joinedClub} 동아리실</h3>
+                                <button onClick={() => setShowClubVisualModal(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={18} /></button>
+                            </div>
+                            <ClubModal
+                                character={character}
+                                onUpdateCharacter={(newChar, log) => onUpdateCharacter(newChar, log)}
+                            />
                         </div>
                     </div>
                 )}
@@ -1569,6 +1886,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     <SchoolModal
                         character={character}
                         initialZone={openModalZone}
+                        lockedZone={openModalZone === 'Office' ? 'Office' : undefined}
                         targetSchoolTier={activeSchoolTier}
                         onClose={() => setOpenModalZone(null)}
                         onUpdateCharacter={(newChar, log) => onUpdateCharacter(newChar, log)}

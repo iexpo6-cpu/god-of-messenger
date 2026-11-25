@@ -31,12 +31,13 @@ interface Props {
     onBattle?: (enemy: any, type?: string, source?: string, targetCity?: string, targetNation?: string) => void;
     initialZone?: SchoolZone;
     targetSchoolTier?: SchoolTier;
+    lockedZone?: SchoolZone;
 }
 
 export type SchoolZone = 'Office' | 'Training' | 'Classroom' | 'Library' | 'Dormitory' | 'Club';
 
-const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onAction, onBattle, initialZone, targetSchoolTier }) => {
-    const [currentZone, setCurrentZone] = useState<SchoolZone>(initialZone || (character.job === JobType.STUDENT ? 'Office' : 'Classroom'));
+const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, onAction, onBattle, initialZone, targetSchoolTier, lockedZone }) => {
+    const [currentZone, setCurrentZone] = useState<SchoolZone>(lockedZone || initialZone || (character.job === JobType.STUDENT ? 'Office' : 'Classroom'));
     const [resultData, setResultData] = useState<ResultData | null>(null);
     const [selectedWeapon, setSelectedWeapon] = useState<WeaponType>('Sword');
     
@@ -2857,13 +2858,13 @@ const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, o
                 </div>
 
                 {/* Mobile Horizontal Navigation Tabs */}
+                {!lockedZone && (
                 <div className="flex sm:hidden overflow-x-auto gap-1 p-1.5 bg-slate-950 border-b border-slate-800 shrink-0 custom-scrollbar">
                     {[
                         { id: 'Office', label: '교무실', icon: Building2 },
                         { id: 'Classroom', label: '강의실', icon: BookOpen },
                         { id: 'Training', label: '훈련장', icon: Sword },
                         { id: 'Club', label: '동아리', icon: LayoutGrid },
-                        { id: 'Library', label: '도서관', icon: Scroll },
                         { id: 'Dormitory', label: '기숙사', icon: BedDouble },
                     ].filter(zone => character.job === JobType.STUDENT || zone.id === 'Classroom').map((zone) => (
                         <button
@@ -2880,16 +2881,17 @@ const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, o
                         </button>
                     ))}
                 </div>
+                )}
 
                 <div className="flex flex-1 overflow-hidden">
                     {/* Desktop Sidebar Navigation */}
+                    {!lockedZone && (
                     <div className="hidden sm:flex w-48 bg-slate-950 border-r border-slate-800 flex-col shrink-0">
                         {[
                             { id: 'Office', label: '교무/행정', icon: Building2 },
                             { id: 'Classroom', label: '강의실', icon: BookOpen },
                             { id: 'Training', label: '훈련장', icon: Sword },
                             { id: 'Club', label: '방과 후 동아리', icon: LayoutGrid },
-                            { id: 'Library', label: '도서관', icon: Scroll },
                             { id: 'Dormitory', label: '기숙사', icon: BedDouble },
                         ].filter(zone => character.job === JobType.STUDENT || zone.id === 'Classroom').map((zone) => (
                             <button
@@ -2906,6 +2908,7 @@ const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, o
                             </button>
                         ))}
                     </div>
+                    )}
 
                     <div className="flex-1 bg-slate-900 p-3 md:p-6 overflow-y-auto custom-scrollbar relative">
                         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/notebook.png')] opacity-5 pointer-events-none"></div>
