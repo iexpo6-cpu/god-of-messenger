@@ -1671,7 +1671,28 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                 }
                                                 const newChar = JSON.parse(JSON.stringify(character)) as Character;
                                                 if (!newChar.socialNetwork) newChar.socialNetwork = [];
+                                                let baseAff = 14;
+                                                if (activeDialogue.isTeacher && newChar.schoolData?.homeroomTeacher) {
+                                                    const ht = newChar.schoolData.homeroomTeacher;
+                                                    baseAff = ht.affection || 0;
+                                                    ht.affection = Math.min(100, baseAff + 5);
+                                                }
+                                                if (newChar.schoolData?.classmates) {
+                                                    const cmIdx = newChar.schoolData.classmates.findIndex(c => c.id === npcId || c.name === activeDialogue.name);
+                                                    if (cmIdx !== -1) {
+                                                        baseAff = newChar.schoolData.classmates[cmIdx].affection || 0;
+                                                        newChar.schoolData.classmates[cmIdx].affection = Math.min(100, baseAff + 5);
+                                                    }
+                                                }
+                                                if (newChar.companions) {
+                                                    const cpIdx = newChar.companions.findIndex(c => c.id === npcId || c.name === activeDialogue.name);
+                                                    if (cpIdx !== -1) {
+                                                        baseAff = (newChar.companions[cpIdx] as any).affection || baseAff;
+                                                        (newChar.companions[cpIdx] as any).affection = Math.min(100, baseAff + 5);
+                                                    }
+                                                }
                                                 const idx = newChar.socialNetwork.findIndex(n => n.id === npcId || n.name === activeDialogue.name);
+                                                let finalAff = Math.min(100, baseAff + 5);
                                                 if (idx === -1) {
                                                     const newNpc: SimpleStudent = {
                                                         id: npcId,
@@ -1684,7 +1705,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                         personality: '성실함',
                                                         appearance: activeDialogue.isTeacher ? '단정한 교사 복장' : '단정한 교복',
                                                         stats: { str: 18, int: 18, wis: 15, agi: 16, con: 18 },
-                                                        affection: 19,
+                                                        affection: finalAff,
                                                         isPastConnection: true,
                                                         classType: activeDialogue.role,
                                                         combatStyle: activeDialogue.combatStyle || CombatStyle.SWORDSMAN,
@@ -1692,7 +1713,8 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                     newChar.socialNetwork.push(newNpc);
                                                 } else {
                                                     const ex = { ...newChar.socialNetwork[idx] };
-                                                    ex.affection = Math.min(100, (ex.affection || 0) + 5);
+                                                    finalAff = Math.min(100, (ex.affection || 0) + 5);
+                                                    ex.affection = finalAff;
                                                     ex.isPastConnection = true;
                                                     newChar.socialNetwork[idx] = ex;
                                                 }
@@ -1702,8 +1724,8 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                         [npcId]: curDate
                                                     };
                                                 }
-                                                onUpdateCharacter(newChar, `[학원 교류] ${activeDialogue.name}(${activeDialogue.role})와(과) 교류했습니다. (호감도 +5)`);
-                                                setCampusToast(`${activeDialogue.name}와(과) 교류 완료! (호감도 +5)`);
+                                                onUpdateCharacter(newChar, `[학원 교류] ${activeDialogue.name}(${activeDialogue.role})와(과) 교류했습니다. (호감도 ${finalAff})`);
+                                                setCampusToast(`${activeDialogue.name}와(과) 교류 완료! (호감도 ${finalAff})`);
                                                 setTimeout(() => setCampusToast(null), 2800);
                                             }}
                                             className="px-3 py-1.5 rounded-lg bg-cyan-900/70 hover:bg-cyan-800 border border-cyan-500/60 text-cyan-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
