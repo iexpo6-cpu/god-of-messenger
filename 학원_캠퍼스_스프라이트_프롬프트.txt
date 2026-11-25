@@ -1,0 +1,101 @@
+====================================================================
+[신의 사자 RPG] 학원 캠퍼스 (6대 건물 외관 · 내관 타일 · 오브젝트)
+Gemini 이미지 생성 전용 스프라이트 시트 프롬프트 (지역 · 문화권별)
+====================================================================
+
+📌 공통 규칙 (자동 격자 크롭 & 마젠타 #FF00FF 투명화 스크립트 100% 호환)
+1. 배경은 반드시 순수 단색 마젠타(#FF00FF, solid flat magenta background)로 지정
+2. 텍스트, 글자, 숫자, 워터마크, 그리드 선(border/grid lines) 절대 금지
+3. 시점: 2D 탑다운 3/4 쿼터뷰 (16-bit / 32-bit RPG Maker MV/MZ / Octopath 픽셀·디지털 일러스트 스타일)
+4. 생성된 이미지를 `assets/visuals/` 폴더에 넣어주시면 자동 크롭 + 마젠타 투명화 + 3곳(public/assets, assets, dist/assets) 동기화를 한 번에 적용해 드립니다.
+
+--------------------------------------------------------------------
+[시트 1] 학원 6대 건물 외관 시트 (3x2 = 6개 건물) — 문화권별 변형 프롬프트
+포함 건물:
+  1행: (1) 교무실(Office)  (2) 강의실(Classroom)  (3) 도서관(Library)
+  2행: (4) 실전연무장(Training Arena)  (5) 동아리동(Club Hall)  (6) 기숙사(Dormitory)
+--------------------------------------------------------------------
+
+■ 1-A. 동방 서원·학당 양식 (한국·일본·중국 / east_asia)
+Prompt:
+2D top-down 3/4 RPG Maker style game sprite sheet of 6 East Asian academy buildings arranged in a clean 3 columns by 2 rows grid on a solid flat pure magenta (#FF00FF) background. No text, no labels, no grid lines, no shadows bleeding between cells.
+Top row:
+1. Faculty Office building (traditional Korean/East Asian wooden tiled-roof administration hall with wooden plaque and lantern).
+2. Lecture Classroom building (scholarly pavilion hall with wide sliding lattice doors and warm paper windows).
+3. Grand Library building (two-story traditional wooden archive pavilion with scroll-patterned eaves and warm glowing windows).
+Bottom row:
+4. Combat Training Arena (open-courtyard martial arts dojo with wooden pillars, weapon rack outside, and training banner).
+5. Student Club Hall (lively multi-wing traditional guild hall with colorful club banners hanging by the entrance).
+6. Student Dormitory (long cozy two-story traditional wooden lodging house with balconies and warm lanterns).
+Crisp pixel-art / painted RPG sprite style, consistent lighting from top-left, isolated on #FF00FF.
+
+■ 1-B. 왕립 아카데미 유럽 고딕·석조 양식 (유럽·북미 / europe)
+Prompt:
+2D top-down 3/4 RPG Maker style game sprite sheet of 6 European royal fantasy academy buildings arranged in a clean 3x2 grid on a solid flat pure magenta (#FF00FF) background. No text, no letters, no grid lines.
+Top row:
+1. Faculty Office (stately stone manor hall with royal blue slate roof, golden trim, and clock tower).
+2. Lecture Classroom (brick and limestone university hall with arched stained-glass windows).
+3. Grand Library (ornate gothic cathedral-style domed library with tall arched windows and golden spires).
+Bottom row:
+4. Combat Training Arena (stone colosseum-like martial training hall with crossed-sword crest and red banners).
+5. Student Club Hall (charming half-timbered guild hall with multi-colored club flags).
+6. Student Dormitory (tall cozy red-brick & stone boarding house with dormer windows and warm glowing lanterns).
+Crisp 2D RPG asset style, isolated on #FF00FF.
+
+■ 1-C. 사막 지혜의 전당 양식 (중동·이집트·사막 / desert)
+Prompt:
+2D top-down 3/4 RPG Maker style game sprite sheet of 6 desert sandstone academy buildings arranged in a clean 3x2 grid on a solid flat pure magenta (#FF00FF) background. No text, no grid lines.
+Top row:
+1. Faculty Office (sandstone palace hall with turquoise dome and golden arches).
+2. Lecture Classroom (sunlit colonnade academy hall with fabric awnings and carved pillars).
+3. Grand Library (grand House of Wisdom observatory library with star-patterned cobalt blue dome).
+Bottom row:
+4. Combat Training Arena (sandstone circular dueling courtyard with bronze braziers and shields).
+5. Student Club Hall (ornate bazaar-style guild pavilion with colorful tapestries).
+6. Student Dormitory (terraced sandstone lodging complex with rooftop lanterns and palm planters).
+Isolated on #FF00FF.
+
+■ 1-D. 신계 천상 신전 / 마계 흑마법 / 엘프 세계수 / 수인 투사 양식
+(원하시는 종족/세계관에 맞춰 아래 키워드를 교체하여 생성)
+- 신계 (shingye): "white marble and radiant gold celestial temple academy buildings, floating crystal halos, azure roofs"
+- 마계 (magye): "obsidian stone and dark crimson gothic demon magic academy buildings, glowing violet runes, gargoyle spires"
+- 엘프 (sylvanar): "living ancient treehouse elven academy buildings woven with emerald leaves, silver filigree, glowing dew lamps"
+- 수인 (feraldia): "rugged timber and stone beastkin warrior academy lodges, carved totems, fur banners, iron braziers"
+
+--------------------------------------------------------------------
+[시트 2] 건물 내관 바닥·벽 타일 시트 (4x2 = 8개 타일) — 문화권별
+--------------------------------------------------------------------
+Prompt (문화권에 따라 [STYLE] 부분 교체: East Asian wooden / European stone & oak / Desert sandstone / Celestial marble / Demon obsidian):
+2D top-down RPG Maker seamless tile sprite sheet arranged in a clean 4 columns by 2 rows grid on a solid flat pure magenta (#FF00FF) background. No text, no borders.
+Top row:
+1. Campus outdoor grass/courtyard ground tile ([STYLE]).
+2. Campus stone-paved walkway road tile ([STYLE]).
+3. Interior polished wooden/marble floor tile ([STYLE]).
+4. Interior ornate carpet/runner floor tile ([STYLE]).
+Bottom row:
+5. Interior wall top + front face tile ([STYLE]).
+6. Partition wall with wooden/stone doorframe ([STYLE]).
+7. Campus decorative tree / flowerbed prop ([STYLE]).
+8. Campus glowing streetlamp / brazier prop ([STYLE]).
+
+--------------------------------------------------------------------
+[시트 3] 학원 내부 전용 오브젝트 & 신력 도서 시트 (4x3 = 12개 오브젝트)
+--------------------------------------------------------------------
+Prompt:
+2D top-down 3/4 RPG Maker interior prop sprite sheet of 12 academy objects arranged in a clean 4 columns by 3 rows grid on a solid flat pure magenta (#FF00FF) background. No text, no labels, no grid lines.
+Row 1 (교무실 & 강의실):
+1. Faculty Attendance Ledger Desk (wooden desk with open ledger book, quill pen, and brass bell).
+2. Grade Report Archive Cabinet (tall wooden filing cabinet with neatly stacked scrolls and wax-sealed report folders).
+3. Classroom Blackboard & Teacher Lectern (green/slate chalkboard on wooden frame with chalk and podium).
+4. Student Wooden Desk & Chair set.
+Row 2 (도서관 신력 도서 & 서가):
+5. Tall Wooden Bookshelf packed with colorful ancient tomes.
+6. Radiant Sun & Light Divine Tome on ornate golden lectern (glowing warm gold aura).
+7. Abyssal / Void Forbidden Grimoire on dark pedestal (glowing purple runes).
+8. Ocean & Storm / Flame Divine Scripture open on reading stand (cyan & crimson glow).
+Row 3 (동아리동 · 연무장 · 기숙사):
+9. Club Recruitment Desk with colorful guild emblem flags and sign-up scroll.
+10. Wooden & Iron Martial Training Dummy with practice sword marks.
+11. Arcane Target Dummy with glowing blue mana bullseye.
+12. Cozy Dormitory Single Bed with neat blanket and pillow.
+Crisp 2D RPG sprite art, isolated on #FF00FF.
