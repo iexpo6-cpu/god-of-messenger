@@ -1064,6 +1064,18 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             const rows = campusDims.rows;
             const ts = CITY_TILE_SIZE;
 
+            const isBlockedByBuilding = (wx: number, wy: number) => {
+                const list = !activeSchoolTier ? buildingSlots : !activeRoom ? campusBuildings : [];
+                for (const b of list) {
+                    const x0 = (b.tx + 0.2) * ts;
+                    const x1 = (b.tx + b.tw - 0.2) * ts;
+                    const y0 = (b.ty + 0.4) * ts;
+                    const y1 = (b.ty + b.th - 0.1) * ts;
+                    if (wx >= x0 && wx <= x1 && wy >= y0 && wy <= y1) return true;
+                }
+                return false;
+            };
+
             if (!openModalZone && !activeDialogue && !activityProgress) {
                 let vx = 0;
                 let vy = 0;
@@ -1074,12 +1086,14 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 if (keys.has('arrowdown') || keys.has('s') || dpadRef.current === 'down') vy += 1;
 
                 let moving = false;
+                let stepX = 0;
+                let stepY = 0;
                 if (vx !== 0 || vy !== 0) {
                     p.targetX = null;
                     p.targetY = null;
                     const len = Math.hypot(vx, vy);
-                    p.x += (vx / len) * 200 * dt;
-                    p.y += (vy / len) * 200 * dt;
+                    stepX = (vx / len) * 200 * dt;
+                    stepY = (vy / len) * 200 * dt;
                     moving = true;
                     if (Math.abs(vx) >= Math.abs(vy)) p.dir = vx < 0 ? 'left' : 'right';
                     else p.dir = vy < 0 ? 'up' : 'down';
@@ -1091,13 +1105,16 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         p.targetX = null;
                         p.targetY = null;
                     } else {
-                        p.x += (dx / d) * 200 * dt;
-                        p.y += (dy / d) * 200 * dt;
+                        stepX = (dx / d) * 200 * dt;
+                        stepY = (dy / d) * 200 * dt;
                         moving = true;
                         if (Math.abs(dx) >= Math.abs(dy)) p.dir = dx < 0 ? 'left' : 'right';
                         else p.dir = dy < 0 ? 'up' : 'down';
                     }
                 }
+
+                if (stepX !== 0 && !isBlockedByBuilding(p.x + stepX, p.y)) p.x += stepX;
+                if (stepY !== 0 && !isBlockedByBuilding(p.x, p.y + stepY)) p.y += stepY;
 
                 if (moving) {
                     p.animTimer += dt;
@@ -1117,6 +1134,26 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     if (activeRoom) exitRoomToCampus();
                     else if (activeSchoolTier) exitCampusToPlaza();
                     else onExitToCity();
+                } else if (Date.now() > exitCooldownRef.current) {
+                    if (!activeSchoolTier) {
+                        for (const b of buildingSlots) {
+                            const doorX = (b.tx + b.tw / 2) * ts;
+                            const doorY = (b.ty + b.th + 0.4) * ts;
+                            if (Math.hypot(p.x - doorX, p.y - doorY) <= ts * 0.72) {
+                                enterSchoolCampus(b.tier);
+                                break;
+                            }
+                        }
+                    } else if (!activeRoom) {
+                        for (const b of campusBuildings) {
+                            const doorX = (b.tx + b.tw / 2) * ts;
+                            const doorY = (b.ty + b.th + 0.4) * ts;
+                            if (Math.hypot(p.x - doorX, p.y - doorY) <= ts * 0.72) {
+                                enterRoom(b.zone);
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 uiTick += dt;
@@ -1303,7 +1340,9 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         const maxR = ts * 1.15;
                         const ndx = off.dx + off.vx * dt;
                         const ndy = off.dy + off.vy * dt;
-                        if (Math.hypot(ndx, ndy) > maxR) {
+                        const candX = (npc.tx + 0.5) * ts + ndx;
+                        const candY = (npc.ty + 0.5) * ts + ndy;
+                        if (Math.hypot(ndx, ndy) > maxR || isBlockedByBuilding(candX, candY)) {
                             off.vx = -off.dx * 0.8;
                             off.vy = -off.dy * 0.8;
                         } else {
