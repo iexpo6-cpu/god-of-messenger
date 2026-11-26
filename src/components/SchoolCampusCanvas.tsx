@@ -751,6 +751,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         loadCityAssetImage(getBuildingSpriteUrl(cultureKey, 'school_middle'));
         loadCityAssetImage(getBuildingSpriteUrl(cultureKey, 'school_high'));
         // Preload newly extracted d1~d13 academy tiles, buildings, and props
+        loadCityAssetImage('./assets/visuals/escape_portal.png');
         ['tile_ground', 'tile_road', 'tile_floor', 'tile_carpet', 'tile_wall', 'tile_door', 'prop_tree', 'prop_lamp'].forEach(
             part => loadCityAssetImage(getAcademyAssetUrl(`${academyTileCulture}/${part}.png`))
         );
@@ -899,20 +900,29 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             return;
         }
         if (!activeSchoolTier) return;
-        const exitedBldg = campusBuildings.find(b => b.zone === activeRoom);
         const nextCols = activeSchoolTier === 'Elementary' ? 26 : activeSchoolTier === 'Middle' ? 30 : 34;
         const nextRows = activeSchoolTier === 'Elementary' ? 18 : activeSchoolTier === 'Middle' ? 20 : 22;
+        const exitBuildingCoords: Record<string, { tx: number; ty: number; tw: number; th: number }> = {
+            Office: { tx: 3, ty: 2.5, tw: 4.5, th: 3.5 },
+            Classroom: { tx: Math.floor(nextCols / 2) - 2, ty: 2.5, tw: 4.5, th: 3.5 },
+            Library: { tx: nextCols - 7.5, ty: 2.5, tw: 4.5, th: 3.5 },
+            Training: { tx: 3, ty: Math.floor(nextRows * 0.56), tw: 4.5, th: 3.5 },
+            Club: { tx: Math.floor(nextCols / 2) - 2, ty: Math.floor(nextRows * 0.56), tw: 4.5, th: 3.5 },
+            Dormitory: { tx: nextCols - 7.5, ty: Math.floor(nextRows * 0.56), tw: 4.5, th: 3.5 },
+            Annex: { tx: Math.floor(nextCols / 2) - 2, ty: Math.floor(nextRows * 0.34), tw: 4, th: 3 }
+        };
+        const exitedBldg = activeRoom ? exitBuildingCoords[activeRoom] : undefined;
         setActiveDialogue(null);
         setActiveDormRoom(null);
         setActiveClubRoom(null);
         setActiveRoom(null);
         playerRef.current.x = exitedBldg ? (exitedBldg.tx + exitedBldg.tw / 2) * CITY_TILE_SIZE : Math.floor(nextCols / 2) * CITY_TILE_SIZE;
-        playerRef.current.y = exitedBldg ? (exitedBldg.ty + exitedBldg.th + 1.0) * CITY_TILE_SIZE : (nextRows - 2.5) * CITY_TILE_SIZE;
+        playerRef.current.y = exitedBldg ? (exitedBldg.ty + exitedBldg.th + 1.35) * CITY_TILE_SIZE : (nextRows - 2.5) * CITY_TILE_SIZE;
         playerRef.current.dir = 'down';
         playerRef.current.targetX = null;
         playerRef.current.targetY = null;
         exitCooldownRef.current = Date.now() + 700;
-    }, [activeSchoolTier, activeRoom, activeDormRoom, activeClubRoom, campusBuildings]);
+    }, [activeSchoolTier, activeRoom, activeDormRoom, activeClubRoom]);
 
     const exitCampusToPlaza = useCallback(() => {
         const exitedSchool = buildingSlots.find(b => b.tier === activeSchoolTier);
@@ -1495,6 +1505,23 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             ctx.fillText(b.icon, bx + bw / 2, by + 56);
                         }
 
+                        const doorX = bx + bw / 2;
+                        const doorY = by + bh + 0.4 * ts;
+                        const portalImg = getCachedCityAssetImage('./assets/visuals/escape_portal.png');
+                        if (portalImg && portalImg.complete && portalImg.naturalWidth > 0) {
+                            const pw = ts * 0.95;
+                            const ph = ts * 0.72;
+                            ctx.drawImage(portalImg, doorX - pw / 2, doorY - ph / 2, pw, ph);
+                        } else {
+                            ctx.fillStyle = `${b.accentColor}44`;
+                            ctx.beginPath();
+                            ctx.arc(doorX, doorY, 16, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.strokeStyle = b.accentColor;
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                        }
+
                         const title = `${b.icon} ${b.label}`;
                         ctx.font = 'bold 11px sans-serif';
                         const tw = Math.max(100, ctx.measureText(title).width + 16);
@@ -1858,11 +1885,10 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                         visualUrl: npcVisual,
                                                         spriteUrl: npcSprite.url,
                                                         isNpc: true,
-                                                        isSparringPartner: true,
                                                         isBoss: false,
                                                     };
                                                     setActiveDialogue(null);
-                                                    onStartBattle?.(enemy, 'sparring_arena', `[학원 대련] ${activeDialogue.name}`);
+                                                    onStartBattle?.(enemy, 'school_demo', `[학원 대련] ${activeDialogue.name}`);
                                                 }}
                                                 className="px-3 py-1.5 rounded-lg bg-rose-900/70 hover:bg-rose-800 border border-rose-500/60 text-rose-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                                             >
