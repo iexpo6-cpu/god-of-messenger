@@ -10,6 +10,12 @@ import { FACILITIES_INFO } from '../constants';
 
 export type ShortcutId = 
     | 'character'
+    | 'skills'
+    | 'stats'
+    | 'items'
+    | 'equipment'
+    | 'relations'
+    | 'companions'
     | 'rest' 
     | 'mailbox' 
     | 'base' 
@@ -105,6 +111,12 @@ const ALL_FACILITY_SHORTCUTS: ShortcutDefinition[] = FACILITIES_INFO.map(fac => 
 const ALL_SHORTCUTS: ShortcutDefinition[] = [
     // 1. 주요 기능
     { id: 'character', label: '내 정보', icon: User, category: '기능', colorClass: 'text-amber-300 hover:border-amber-400' },
+    { id: 'skills', label: '스킬', icon: BookOpen, category: '기능', colorClass: 'text-violet-400 hover:border-violet-500' },
+    { id: 'stats', label: '스탯', icon: Activity, category: '기능', colorClass: 'text-emerald-400 hover:border-emerald-500' },
+    { id: 'items', label: '아이템', icon: Package, category: '기능', colorClass: 'text-amber-300 hover:border-amber-400' },
+    { id: 'equipment', label: '장비', icon: Sword, category: '기능', colorClass: 'text-sky-400 hover:border-sky-500' },
+    { id: 'relations', label: '관계', icon: Sparkles, category: '기능', colorClass: 'text-pink-400 hover:border-pink-500' },
+    { id: 'companions', label: '동료', icon: PawPrint, category: '기능', colorClass: 'text-cyan-400 hover:border-cyan-500' },
     { id: 'rest', label: '휴식', icon: Clock, category: '기능', colorClass: 'text-indigo-400 hover:border-indigo-500' },
     { id: 'mailbox', label: '서신함', icon: Mail, category: '기능', colorClass: 'text-amber-400 hover:border-amber-500' },
     { id: 'base', label: '기지', icon: Home, category: '기능', colorClass: 'text-emerald-400 hover:border-emerald-500' },

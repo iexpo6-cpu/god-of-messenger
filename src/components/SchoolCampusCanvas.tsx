@@ -3,6 +3,7 @@ import { Character, ClubType, CombatStyle, JobType, SchoolTier, SimpleStudent, W
 import { SCHOOL_CONFIG, WEAPON_TYPE_KOREAN } from '../constants';
 import { addMasteryExp, generateDefaultVisualUrl, generateName, getWeaponTypeFromItem } from '../utils';
 import { processTimeSkip } from '../services/timeEngine';
+import { chatWithStudent } from '../services/geminiService';
 import {
     getBuildingSpriteUrl,
     getCachedCityAssetImage,
@@ -310,6 +311,44 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     const [selectedWeapon, setSelectedWeapon] = useState<WeaponType>('Sword');
     const [activityProgress, setActivityProgress] = useState<{ title: string; subtitle: string; progress: number } | null>(null);
     const [campusToast, setCampusToast] = useState<string | null>(null);
+    const [aiChatMode, setAiChatMode] = useState(false);
+    const [aiChatMessages, setAiChatMessages] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
+    const [aiChatInput, setAiChatInput] = useState('');
+    const [isAiChatLoading, setIsAiChatLoading] = useState(false);
+
+    useEffect(() => {
+        setAiChatMode(false);
+        setAiChatMessages([]);
+        setAiChatInput('');
+        setIsAiChatLoading(false);
+    }, [activeDialogue?.id, activeDialogue?.name]);
+
+    const campusPeriodNotice = useMemo<{ kind: 'exam' | 'tournament'; badge: string; detail: string } | null>(() => {
+        const sc = character.schoolData;
+        if (!sc) return null;
+        const dateStr = character.currentDate || '1026-01-01';
+        const parts = dateStr.split('-');
+        const currentMonth = parseInt(parts[1] || '1', 10) || 1;
+        const currentYearMonth = `${parts[0] || '1026'}-${parts[1] || '01'}`;
+        if (sc.tier === 'Elementary' && sc.grade === 3 && currentMonth === 11 && sc.lastTournamentDate !== currentYearMonth) {
+            return { kind: 'tournament', badge: '⚔️ 초급부 학교 1:1 토너먼트 기간', detail: '교무실 또는 학교 메뉴에서 토너먼트에 참가하세요!' };
+        }
+        if (sc.tier === 'Middle' && sc.grade === 3 && currentMonth === 11 && sc.lastTournamentDate !== currentYearMonth) {
+            return { kind: 'tournament', badge: '⚔️ 중급부 학교 1:1 토너먼트 기간', detail: '교무실 또는 학교 메뉴에서 토너먼트에 참가하세요!' };
+        }
+        if (sc.tier === 'High' && sc.grade === 3 && sc.lastTournamentDate !== currentYearMonth) {
+            if (currentMonth === 5) return { kind: 'tournament', badge: '⚔️ 고급부 교내 토너먼트 기간', detail: '교무실에서 교내 토너먼트에 참가할 수 있습니다!' };
+            if (currentMonth === 8) return { kind: 'tournament', badge: '🌏 고급부 국가 대항전 기간', detail: '고급부 3학년 국가 대항전 토너먼트가 열렸습니다!' };
+            if (currentMonth === 12) return { kind: 'tournament', badge: '👑 세계 토너먼트 (월드컵) 기간', detail: '세계 토너먼트(월드컵)가 개막했습니다!' };
+        }
+        if (currentMonth === 6 && !sc.midtermPassed) {
+            return { kind: 'exam', badge: '📝 중간고사 기간', detail: '교무실에서 중간고사에 응시하세요!' };
+        }
+        if (currentMonth === 12 && !sc.finalPassed) {
+            return { kind: 'exam', badge: '🏆 기말·진급시험 기간', detail: '교무실에서 기말·진급시험에 응시하세요!' };
+        }
+        return null;
+    }, [character.schoolData, character.currentDate]);
 
     const resolveNpcVisual = useCallback(
         (id: string | undefined, name: string, gender: RpgSpriteGenderKey = 'female', isTeacher?: boolean): string => {
@@ -1713,6 +1752,15 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 </div>
             </div>
 
+            {campusPeriodNotice && (
+                <div className="w-full px-3 py-1.5 flex items-center justify-center gap-2 border-b border-amber-500/40 bg-gradient-to-r from-amber-950/90 via-rose-950/80 to-amber-950/90 text-xs z-20 shrink-0">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/60 text-amber-300 font-black animate-pulse">
+                        {campusPeriodNotice.badge}
+                    </span>
+                    <span className="text-amber-100 font-semibold">{campusPeriodNotice.detail}</span>
+                </div>
+            )}
+
             <div ref={containerRef} className="relative flex-1 w-full min-h-[360px]">
                 <canvas
                     ref={canvasRef}
@@ -1949,6 +1997,126 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                         {activeDialogue.isTeacher ? '📝 교무실 열기 (시험/행정)' : '📋 시설 메뉴 열기'}
                                     </button>
                                 )}
+                                <button
+                                    onClick={() => setAiChatMode(v => !v)}
+                                    className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold cursor-pointer ${aiChatMode ? 'bg-fuchsia-700 border-fuchsia-400 text-white' : 'bg-fuchsia-950/70 hover:bg-fuchsia-900 border-fuchsia-500/60 text-fuchsia-200'}`}
+                                >
+                                    🤖 AI 대화
+                                </button>
+                            </div>
+                        )}
+                        {!activeDialogue.zone && !activeDialogue.canBondAndSpar && (
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                <button
+                                    onClick={() => setAiChatMode(v => !v)}
+                                    className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold cursor-pointer ${aiChatMode ? 'bg-fuchsia-700 border-fuchsia-400 text-white' : 'bg-fuchsia-950/70 hover:bg-fuchsia-900 border-fuchsia-500/60 text-fuchsia-200'}`}
+                                >
+                                    🤖 AI 대화
+                                </button>
+                            </div>
+                        )}
+
+                        {/* 일반 대화 주제 선택지 (시험/토너먼트/일상) */}
+                        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-800/80">
+                            {(campusPeriodNotice?.kind === 'exam'
+                                ? [
+                                    { label: '📝 시험 준비 잘 돼가?', reply: `이번 시험은 실기랑 이론 비중이 다 높아서 긴장돼! 넌 어떻게 준비하고 있어? 교무실에서 언제든 응시할 수 있대.` },
+                                    { label: '📚 시험 팁 좀 알려줘!', reply: `강의실에서 부족한 스탯 수업을 듣고, 도서관에서 신력 제어(CTRL)를 올려두면 시험 평가가 훨씬 수월할 거야!` },
+                                    { label: '💪 같이 시험 통과하자!', reply: `응! 우리 둘 다 좋은 성적으로 꼭 통과해서 다음 학년으로 올라가자!` }
+                                ]
+                                : campusPeriodNotice?.kind === 'tournament'
+                                    ? [
+                                        { label: '⚔️ 토너먼트 우승 목표야?', reply: `당연하지! 이번 토너먼트 대진표가 꽤 쟁쟁하던데, 너랑 결승에서 만나면 정말 재밌겠다!` },
+                                        { label: '🔥 컨디션은 어때?', reply: `최고조야! 연무장에서 감각을 끌어올리고 왔거든. 너도 기숙사에서 충분히 쉬고 출전해!` },
+                                        { label: '🤝 서로 끝까지 힘내자!', reply: `고마워! 서로 부상 없이 최고의 경기를 치르자고!` }
+                                    ]
+                                    : [
+                                        { label: '💬 요즘 학교 생활 어때?', reply: `매일 수업 듣고 친구들이랑 대련하다 보면 하루가 금방 가더라. 그래도 실력이 느는 게 느껴져서 뿌듯해!` },
+                                        { label: '📖 추천할 만한 활동 있어?', reply: `시간 될 때 대도서관 신력 서적도 읽어보고, 동아리동에서 활동도 해봐. 의외로 보너스 효과가 쏠쏠해!` },
+                                        { label: '✨ 오늘 컨디션 좋아 보이네!', reply: `하하, 고마워! 너도 얼굴빛이 좋아 보이는데, 오늘 하루도 화이팅하자!` }
+                                    ]
+                            ).map((choice, cIdx) => (
+                                <button
+                                    key={cIdx}
+                                    onClick={() => setActiveDialogue(prev => prev ? { ...prev, text: choice.reply } : null)}
+                                    className="px-2.5 py-1 rounded-lg bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-medium cursor-pointer transition-colors"
+                                >
+                                    {choice.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* AI 자유 대화 패널 */}
+                        {aiChatMode && (
+                            <div className="mt-2 pt-2 border-t border-fuchsia-500/30 space-y-2">
+                                <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1 text-xs">
+                                    {aiChatMessages.length === 0 && (
+                                        <div className="text-[11px] text-slate-400 italic">
+                                            {activeDialogue.name}에게 자유롭게 말을 걸어보세요. (AI가 성격과 현재 학사 상황을 반영해 답변합니다)
+                                        </div>
+                                    )}
+                                    {aiChatMessages.map((m, idx) => (
+                                        <div key={idx} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[85%] px-2.5 py-1.5 rounded-xl text-[11px] leading-relaxed ${m.role === 'user' ? 'bg-indigo-600/80 text-white' : 'bg-slate-800 text-slate-200 border border-slate-700'}`}>
+                                                <span className="font-bold mr-1">{m.role === 'user' ? character.name : activeDialogue.name}:</span>
+                                                {m.text}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <form
+                                    onSubmit={async (e) => {
+                                        e.preventDefault();
+                                        const msg = aiChatInput.trim();
+                                        if (!msg || isAiChatLoading) return;
+                                        setAiChatInput('');
+                                        const nextHist = [...aiChatMessages, { role: 'user' as const, text: msg }];
+                                        setAiChatMessages(nextHist);
+                                        setIsAiChatLoading(true);
+                                        try {
+                                            const studentObj: SimpleStudent = {
+                                                id: activeDialogue.id || `campus_${activeDialogue.name}`,
+                                                name: activeDialogue.name,
+                                                age: activeDialogue.isTeacher ? '32세' : '18세',
+                                                gender: activeDialogue.gender === 'male' ? '남성' : '여성',
+                                                race: '인간',
+                                                nation,
+                                                level: activeDialogue.npcLevel || Math.max(3, character.level || 5),
+                                                personality: '성실함',
+                                                appearance: activeDialogue.isTeacher ? '단정한 교사 복장' : '단정한 교복',
+                                                stats: { str: 18, int: 18, wis: 15, agi: 16, con: 18 },
+                                                affection: 30,
+                                                classType: activeDialogue.role,
+                                                chatHistory: nextHist,
+                                            };
+                                            const periodCtx = campusPeriodNotice ? ` [현재 학사 일정: ${campusPeriodNotice.badge}]` : '';
+                                            const reply = await chatWithStudent(studentObj, msg + periodCtx, character);
+                                            setAiChatMessages(prev => [...prev, { role: 'model', text: reply }]);
+                                            setActiveDialogue(prev => prev ? { ...prev, text: reply } : null);
+                                        } catch {
+                                            setAiChatMessages(prev => [...prev, { role: 'model', text: '음, 잠시 생각이 딴 데로 샜네. 다시 한 번 말해줄래?' }]);
+                                        } finally {
+                                            setIsAiChatLoading(false);
+                                        }
+                                    }}
+                                    className="flex gap-1.5"
+                                >
+                                    <input
+                                        type="text"
+                                        value={aiChatInput}
+                                        onChange={e => setAiChatInput(e.target.value)}
+                                        placeholder={`${activeDialogue.name}에게 할 말을 입력하세요...`}
+                                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-fuchsia-400"
+                                        disabled={isAiChatLoading}
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={isAiChatLoading || !aiChatInput.trim()}
+                                        className="px-3 py-1.5 rounded-lg bg-fuchsia-600 hover:bg-fuchsia-500 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+                                    >
+                                        {isAiChatLoading ? '답변 중...' : '전송'}
+                                    </button>
+                                </form>
                             </div>
                         )}
                     </div>

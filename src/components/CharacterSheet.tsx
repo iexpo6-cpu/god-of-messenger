@@ -45,6 +45,7 @@ interface Props {
   onUpdateCharacter?: (character: Character) => void;
   onOpenSocial?: () => void;
   onOpenChronicles?: () => void;
+  requestedPanel?: { panel: 'stats' | 'equip' | 'inventory' | 'companion'; nonce: number } | null;
 }
 
 const RARITY_COLORS: Record<string, string> = {
@@ -638,7 +639,8 @@ const CharacterSheet: React.FC<Props> = ({
   onPartWaysCompanion,
   onUpdateCharacter,
   onOpenSocial,
-  onOpenChronicles
+  onOpenChronicles,
+  requestedPanel
 }) => {
   // Dedicated Modal State: 'stats' | 'equip' | 'inventory' | 'companion' | null
   const [activeModal, setActiveModal] = useState<'stats' | 'equip' | 'inventory' | 'companion' | null>(null);
@@ -649,6 +651,14 @@ const CharacterSheet: React.FC<Props> = ({
   const [showEquip, setShowEquip] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
   const [showCompanion, setShowCompanion] = useState(false);
+
+  useEffect(() => {
+    if (!requestedPanel) return;
+    setShowStats(requestedPanel.panel === 'stats');
+    setShowEquip(requestedPanel.panel === 'equip');
+    setShowInventory(requestedPanel.panel === 'inventory');
+    setShowCompanion(requestedPanel.panel === 'companion');
+  }, [requestedPanel]);
 
   useEffect(() => {
     if (activeModal === 'stats') {

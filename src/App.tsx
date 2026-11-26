@@ -141,6 +141,7 @@ const App: React.FC = () => {
   const [isBeastCityOpen, setIsBeastCityOpen] = useState(false);
   const [isDemonCityOpen, setIsDemonCityOpen] = useState(false);
   const [isSocialOpen, setIsSocialOpen] = useState(false);
+  const [requestedCharPanel, setRequestedCharPanel] = useState<{ panel: 'stats' | 'equip' | 'inventory' | 'companion'; nonce: number } | null>(null);
   const [socialInitialSelectedId, setSocialInitialSelectedId] = useState<string | undefined>(undefined);
   const [mapInitialTargetLocationName, setMapInitialTargetLocationName] = useState<string | undefined>(undefined);
   const [isTrainingModalOpen, setIsTrainingModalOpen] = useState(false); // [NEW]
@@ -6042,6 +6043,30 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
   const handleShortcutAction = (id: ShortcutId) => {
     switch (id) {
       case 'character':
+        setRequestedCharPanel(null);
+        setIsMobileMenuOpen(true);
+        break;
+      case 'skills':
+        setSkillBookTarget(null);
+        setIsSkillBookOpen(true);
+        break;
+      case 'stats':
+        setRequestedCharPanel({ panel: 'stats', nonce: Date.now() });
+        setIsMobileMenuOpen(true);
+        break;
+      case 'items':
+        setRequestedCharPanel({ panel: 'inventory', nonce: Date.now() });
+        setIsMobileMenuOpen(true);
+        break;
+      case 'equipment':
+        setRequestedCharPanel({ panel: 'equip', nonce: Date.now() });
+        setIsMobileMenuOpen(true);
+        break;
+      case 'relations':
+        setIsSocialOpen(true);
+        break;
+      case 'companions':
+        setRequestedCharPanel({ panel: 'companion', nonce: Date.now() });
         setIsMobileMenuOpen(true);
         break;
       case 'rest':
@@ -6990,7 +7015,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                      if (comp) {
                                          handleSelectCompanion(comp.id);
                                      }
-                                  }} inactiveCompanions={character.inactiveCompanions} onRejoinCompanion={(idx) => { const c = character.inactiveCompanions![idx]; const ni = [...character.inactiveCompanions!]; ni.splice(idx, 1); let updatedChar: Character = {...character, companions: [...character.companions, c], inactiveCompanions: ni}; updatedChar = unassignFromTraining(updatedChar, c.id); setCharacter(updatedChar); addToLog(`[시스템] ${c.name} 동료가 재합류했습니다.`); }} onPermanentlyDismissCompanion={(idx) => { const c = character.inactiveCompanions![idx]; const ni = [...character.inactiveCompanions!]; ni.splice(idx, 1); let updatedChar: Character = {...character, inactiveCompanions: ni}; updatedChar = unassignFromTraining(updatedChar, c.id); setCharacter(updatedChar); addToLog(`[시스템] ${c.name} 동료를 영구적으로 삭제했습니다.`); }} onEquipItem={handleEquipItem} onToggleFavoriteCompanion={handleToggleFavoriteCompanion} onDismissCompanion={(idx) => { const comp = character.companions[idx]; if (!comp) return; if (!character.base) { setResultModalData({ type: 'failure', title: '대기명단 이동 불가', message: '기지가 아직 건설되지 않았습니다.\n기지가 없는 상태에서는 동료를 대기명단(숙소)으로 보낼 수 없습니다. 먼저 기지를 건설해야 잠시 이별이 가능합니다.', items: [] }); return; } const newChar = { ...character }; newChar.companions = newChar.companions.filter((_, i) => i !== idx); if (!newChar.inactiveCompanions) newChar.inactiveCompanions = []; newChar.inactiveCompanions = newChar.inactiveCompanions.filter(c => c.id !== comp.id); newChar.inactiveCompanions.push(comp); setCharacter(newChar); addToLog("[시스템] " + comp.name + "와(과) 잠시 이별했습니다. 기지(숙소)에서 다시 만날 수 있습니다."); }} onUpdateCharacter={setCharacter} onOpenSocial={() => setIsSocialOpen(true)} onOpenChronicles={() => setIsChroniclesOpen(true)} />
+                                  }} inactiveCompanions={character.inactiveCompanions} onRejoinCompanion={(idx) => { const c = character.inactiveCompanions![idx]; const ni = [...character.inactiveCompanions!]; ni.splice(idx, 1); let updatedChar: Character = {...character, companions: [...character.companions, c], inactiveCompanions: ni}; updatedChar = unassignFromTraining(updatedChar, c.id); setCharacter(updatedChar); addToLog(`[시스템] ${c.name} 동료가 재합류했습니다.`); }} onPermanentlyDismissCompanion={(idx) => { const c = character.inactiveCompanions![idx]; const ni = [...character.inactiveCompanions!]; ni.splice(idx, 1); let updatedChar: Character = {...character, inactiveCompanions: ni}; updatedChar = unassignFromTraining(updatedChar, c.id); setCharacter(updatedChar); addToLog(`[시스템] ${c.name} 동료를 영구적으로 삭제했습니다.`); }} onEquipItem={handleEquipItem} onToggleFavoriteCompanion={handleToggleFavoriteCompanion} onDismissCompanion={(idx) => { const comp = character.companions[idx]; if (!comp) return; if (!character.base) { setResultModalData({ type: 'failure', title: '대기명단 이동 불가', message: '기지가 아직 건설되지 않았습니다.\n기지가 없는 상태에서는 동료를 대기명단(숙소)으로 보낼 수 없습니다. 먼저 기지를 건설해야 잠시 이별이 가능합니다.', items: [] }); return; } const newChar = { ...character }; newChar.companions = newChar.companions.filter((_, i) => i !== idx); if (!newChar.inactiveCompanions) newChar.inactiveCompanions = []; newChar.inactiveCompanions = newChar.inactiveCompanions.filter(c => c.id !== comp.id); newChar.inactiveCompanions.push(comp); setCharacter(newChar); addToLog("[시스템] " + comp.name + "와(과) 잠시 이별했습니다. 기지(숙소)에서 다시 만날 수 있습니다."); }} onUpdateCharacter={setCharacter} onOpenSocial={() => setIsSocialOpen(true)} onOpenChronicles={() => setIsChroniclesOpen(true)} requestedPanel={requestedCharPanel} />
                             </div>
                         </div>
                     </div>
@@ -7043,14 +7068,52 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                                 </div>
 
                                                 {/* 캐릭터 정보(시트) 드로어 열기 버튼 */}
-                                                <div className="mb-2">
+                                                <div className="mb-2 space-y-1.5">
                                                     <button 
-                                                        onClick={() => { setIsMobileMenuOpen(true); setIsMobileFunctionsOpen(false); }} 
+                                                        onClick={() => { setRequestedCharPanel(null); setIsMobileMenuOpen(true); setIsMobileFunctionsOpen(false); }} 
                                                         className="w-full p-2.5 text-amber-300 hover:text-amber-200 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-800/60 rounded-xl flex items-center gap-2 transition-all active:scale-95 text-xs font-bold cursor-pointer shadow-sm"
                                                     >
                                                         <UserIcon size={14} className="text-amber-400 shrink-0" />
                                                         <span>내 정보</span>
                                                     </button>
+                                                    <div className="grid grid-cols-3 gap-1.5">
+                                                        <button
+                                                            onClick={() => { setSkillBookTarget(null); setIsSkillBookOpen(true); setIsMobileFunctionsOpen(false); }}
+                                                            className="py-1.5 px-2 text-violet-300 hover:text-violet-200 bg-slate-900/70 hover:bg-violet-950/50 border border-slate-800 hover:border-violet-500/50 rounded-lg text-[11px] font-bold cursor-pointer"
+                                                        >
+                                                            스킬
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setRequestedCharPanel({ panel: 'stats', nonce: Date.now() }); setIsMobileMenuOpen(true); setIsMobileFunctionsOpen(false); }}
+                                                            className="py-1.5 px-2 text-emerald-300 hover:text-emerald-200 bg-slate-900/70 hover:bg-emerald-950/50 border border-slate-800 hover:border-emerald-500/50 rounded-lg text-[11px] font-bold cursor-pointer"
+                                                        >
+                                                            스탯
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setRequestedCharPanel({ panel: 'inventory', nonce: Date.now() }); setIsMobileMenuOpen(false || true); setIsMobileFunctionsOpen(false); }}
+                                                            className="py-1.5 px-2 text-amber-300 hover:text-amber-200 bg-slate-900/70 hover:bg-amber-950/50 border border-slate-800 hover:border-amber-500/50 rounded-lg text-[11px] font-bold cursor-pointer"
+                                                        >
+                                                            아이템
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setRequestedCharPanel({ panel: 'equip', nonce: Date.now() }); setIsMobileMenuOpen(true); setIsMobileFunctionsOpen(false); }}
+                                                            className="py-1.5 px-2 text-sky-300 hover:text-sky-200 bg-slate-900/70 hover:bg-sky-950/50 border border-slate-800 hover:border-sky-500/50 rounded-lg text-[11px] font-bold cursor-pointer"
+                                                        >
+                                                            장비
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setIsSocialOpen(true); setIsMobileFunctionsOpen(false); }}
+                                                            className="py-1.5 px-2 text-pink-300 hover:text-pink-200 bg-slate-900/70 hover:bg-pink-950/50 border border-slate-800 hover:border-pink-500/50 rounded-lg text-[11px] font-bold cursor-pointer"
+                                                        >
+                                                            관계
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setRequestedCharPanel({ panel: 'companion', nonce: Date.now() }); setIsMobileMenuOpen(true); setIsMobileFunctionsOpen(false); }}
+                                                            className="py-1.5 px-2 text-cyan-300 hover:text-cyan-200 bg-slate-900/70 hover:bg-cyan-950/50 border border-slate-800 hover:border-cyan-500/50 rounded-lg text-[11px] font-bold cursor-pointer"
+                                                        >
+                                                            동료
+                                                        </button>
+                                                    </div>
                                                 </div>
 
                                                 <div className="grid grid-cols-2 gap-2">

@@ -390,9 +390,9 @@ export const buildBg3AllyUnits = (
     const makeUnit = (entity: Character | Companion, isPlayer: boolean, x: number, y: number): Bg3Unit => {
         const calc = calculateFinalStats(entity as any);
         const finalStats = calc?.finalStats || entity.stats || ({} as any);
-        const maxHp = Math.max(100, Math.floor(finalStats.maxHp || entity.stats?.maxHp || 500));
+        const maxHp = Math.max(1, Math.floor(finalStats.maxHp || entity.stats?.maxHp || 1));
         const hp = Math.max(1, Math.min(maxHp, Math.floor(entity.stats?.hp || maxHp)));
-        const maxMp = Math.max(50, Math.floor(finalStats.maxMp || entity.stats?.maxMp || 200));
+        const maxMp = Math.max(0, Math.floor(finalStats.maxMp || entity.stats?.maxMp || 0));
         const mp = Math.max(0, Math.min(maxMp, Math.floor(entity.stats?.mp || maxMp)));
         const atk = Math.max(20, Math.floor(Math.max(finalStats.str || 0, finalStats.int || 0) * 1.4 + (entity.level || 1) * 4));
         const def = Math.max(10, Math.floor((finalStats.def || 10) * 0.9 + (entity.level || 1) * 1.5));

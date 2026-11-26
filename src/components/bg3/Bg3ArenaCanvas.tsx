@@ -382,7 +382,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         // (sourceEntity.stats.maxHp는 원본 유지하여 calculateFinalStats 이중 배율 방지!)
         return afterPassives.map(u => {
             if (u.team !== 'enemy') return u;
-            const fullHp = Math.max(u.maxHp, u.hp, 100);
+            const fullHp = Math.max(u.maxHp, u.hp, 1);
             if (u.sourceEntity) {
                 (u.sourceEntity as any).hp = fullHp;
                 (u.sourceEntity as any).maxHp = fullHp;
