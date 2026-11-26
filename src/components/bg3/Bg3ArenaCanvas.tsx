@@ -1615,34 +1615,6 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     );
                 }
 
-                // BG3 Reaction: Ally Parry + Counter when enemy attacks!
-                if (curTargetObj.team === 'ally' && curTargetObj.hasReaction && !res.isMiss) {
-                    const parry = await askReactionParry(curTargetObj, curCasterObj, finalDmg);
-                    setReactionPrompt(null);
-                    if (parry) {
-                        finalDmg = Math.max(1, Math.round(finalDmg * 0.45));
-                        const counterDmg = Math.max(40, Math.round(curTargetObj.atk * 0.9));
-                        addFloatText(curTargetObj.x, curTargetObj.y - 34, '🟣 신력 패링! (-55%)', '#c084fc', 1.15);
-                        addFloatText(curCasterObj.x, curCasterObj.y - 30, `⚡ 반격 -${formatCompactKorean(counterDmg)}`, '#38bdf8', 1.15);
-                        slashArcsRef.current.push({
-                            id: `ctr_${Date.now()}`,
-                            x: curCasterObj.x,
-                            y: curCasterObj.y,
-                            angle: Math.atan2(curCasterObj.y - curTargetObj.y, curCasterObj.x - curTargetObj.x),
-                            color: '#c084fc',
-                            startTime: performance.now(),
-                            duration: 300,
-                            scale: 1.2
-                        });
-                        const counterApplied = applyBg3DamageWithShieldAndRevival(curCasterObj, counterDmg);
-                        updatedUnits = updatedUnits.map(u => {
-                            if (u.id === curTargetObj.id) return { ...u, hasReaction: false };
-                            if (u.id === curCasterObj.id) return counterApplied.unit;
-                            return u;
-                        });
-                    }
-                }
-
                 if (res.isMiss) {
                     addFloatText(target.x, target.y - 24, 'MISS', '#94a3b8', 1.0);
                     continue;
@@ -5148,38 +5120,6 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 shortcuts={activeShortcuts}
             />
 
-            {/* BG3 리액션: 신력 패링 + 반격 인터랙티브 팝업 */}
-            {reactionPrompt && (
-                <div className="fixed inset-0 z-[330] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="max-w-md w-full rounded-2xl border-2 border-purple-400 bg-slate-950 p-5 shadow-2xl shadow-purple-900/40 space-y-4">
-                        <div className="flex items-center gap-2 text-purple-300 font-black text-base">
-                            <Shield size={20} className="text-purple-400" />
-                            🟣 BG3 리액션 발동 기회!
-                        </div>
-                        <p className="text-sm text-slate-200 leading-relaxed">
-                            <strong className="text-rose-300">{reactionPrompt.attacker.name}</strong>이(가){' '}
-                            <strong className="text-sky-300">{reactionPrompt.defender.name}</strong>에게{' '}
-                            <span className="text-rose-400 font-bold">{formatCompactKorean(reactionPrompt.incomingDamage)}</span> 피해를 가하려 합니다!
-                        </p>
-                        <div className="grid grid-cols-2 gap-2.5">
-                            <button
-                                type="button"
-                                onClick={() => reactionPrompt.resolve(true)}
-                                className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs border border-purple-300"
-                            >
-                                ⚡ 신력 패링(-55%) + 반격!
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => reactionPrompt.resolve(false)}
-                                className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-600"
-                            >
-                                리액션 아끼기
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

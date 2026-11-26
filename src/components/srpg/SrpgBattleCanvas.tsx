@@ -1484,40 +1484,6 @@ const SrpgBattleCanvas: React.FC<SrpgBattleCanvasProps> = ({
                     </div>
                 )}
 
-                {/* 🟣 BG3 리액션 개입 팝업 (신력 패링 + 반격) */}
-                {pendingReaction && (
-                    <div className="absolute inset-0 z-40 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-3">
-                        <div className="w-full max-w-[400px] rounded-2xl border-2 border-purple-400 bg-slate-950 p-4 shadow-[0_0_40px_rgba(168,85,247,0.45)] space-y-3 text-center">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-950 border border-purple-400 text-purple-200 text-xs font-black animate-pulse">
-                                <Zap size={14} className="text-purple-300" /> BG3 리액션 개입!
-                            </div>
-                            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
-                                <strong className="text-rose-400">{pendingReaction.attacker.name}</strong>이(가){' '}
-                                <strong className="text-sky-300">{pendingReaction.defender.name}</strong>에게{' '}
-                                <strong className="text-amber-300">{pendingReaction.rawDamage.toLocaleString()}</strong> 피해의 공격을 시전합니다!
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    type="button"
-                                    onClick={pendingReaction.onParry}
-                                    className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black shadow-lg"
-                                >
-                                    ⚡ 신력 패링 + 반격<br />
-                                    <span className="text-[10px] font-normal text-purple-200">피해 55% 경감</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={pendingReaction.onTakeHit}
-                                    className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700"
-                                >
-                                    그냥 맞기<br />
-                                    <span className="text-[10px] font-normal text-slate-400">리액션 보존</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* 파이어 엠블렘 2D 교전 컷인 오버레이 */}
                 {clash && (
                     <div className="absolute inset-0 z-40 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3">
