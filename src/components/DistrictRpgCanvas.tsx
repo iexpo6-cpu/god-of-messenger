@@ -1476,22 +1476,6 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
                                 : r === rows - 1 && c >= 7 && c <= 10;
                             const isWall = r <= 1 || c === 0 || c === cols - 1 || (r === rows - 1 && !isExit);
                             if (isWall) {
-                                if (!isRoyal) {
-                                    if (floorTileImg?.complete && floorTileImg.naturalWidth > 0) {
-                                        ctx.drawImage(floorTileImg, x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
-                                    } else {
-                                        ctx.fillStyle = (r + c) % 2 === 0 ? floorA : floorB;
-                                        ctx.fillRect(x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
-                                    }
-                                    const isCorner = (r <= 1 || r === rows - 1) && (c === 0 || c === cols - 1);
-                                    const isVertEdge = c === 0 || c === cols - 1;
-                                    const wKey = isCorner ? 'district_wall_corner' : isVertEdge ? 'district_wall_v' : 'district_wall_h';
-                                    const dWallImg = getCachedCityAssetImage(`./assets/visuals/district/props/${wKey}.png`);
-                                    if (dWallImg?.complete && dWallImg.naturalWidth > 0) {
-                                        ctx.drawImage(dWallImg, x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
-                                        continue;
-                                    }
-                                }
                                 if (wallTileImg?.complete && wallTileImg.naturalWidth > 0) {
                                     ctx.drawImage(wallTileImg, x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
                                 } else {
