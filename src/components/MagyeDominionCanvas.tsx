@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, DominionData, Enemy, JobType } from '../types';
+import { drawCanvasNightOverlay } from '../utils/canvasNightOverlay';
 import { MAGYE_DOMINION_MAP, MAGYE_LEADERS } from '../constants';
 import { BASE_TILE_SIZE, resolveDecorationSpriteUrl } from '../services/baseTilemapEngine';
 import {
@@ -943,6 +944,9 @@ const MagyeDominionCanvas: React.FC<MagyeDominionCanvasProps> = ({
                         }
                     });
 
+                    drawCanvasNightOverlay(ctx, camX, camY, canvas.width, canvas.height, character.currentTime, {
+                        playerLight: { x: p.x, y: p.y - 6, radius: 100 }
+                    });
                     ctx.restore();
 
                     const mm = minimapRef.current;

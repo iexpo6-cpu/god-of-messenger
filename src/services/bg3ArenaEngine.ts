@@ -1050,25 +1050,6 @@ export const isPointWalkable = (
 };
 
 /**
- * BG3 기회 공격(Opportunity Attack) 위협자 판별:
- * 시작점 (sx, sy)에서 적의 근접 위협 원 안에 있었는데, 목표점 (tx, ty)에서 그 원을 벗어나면 기회 공격 발동!
- */
-export const findOpportunityAttackers = (
-    mover: Bg3Unit,
-    targetX: number,
-    targetY: number,
-    units: Bg3Unit[]
-): Bg3Unit[] => {
-    return units.filter(enemy => {
-        if (enemy.hp <= 0 || enemy.team === mover.team || !enemy.hasReaction) return false;
-        const threatPx = metersToPx(enemy.meleeThreatMeters);
-        const wasInside = distPx(mover.x, mover.y, enemy.x, enemy.y) <= threatPx + 10;
-        const willBeOutside = distPx(targetX, targetY, enemy.x, enemy.y) > threatPx + 12;
-        return wasInside && willBeOutside;
-    });
-};
-
-/**
  * CombatInterface.tsx와 100% 동일한 calculateDamage 기반 BG3 데미지 산정
  */
 export const calculateBg3Damage = (

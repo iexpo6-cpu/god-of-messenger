@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Character } from '../types';
+import { drawCanvasNightOverlay } from '../utils/canvasNightOverlay';
 import { GridDungeonState, GridTile } from '../services/gridDungeonEngine';
 import {
     DIRECTION_ROW_MAP,
@@ -1156,6 +1157,9 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
             vig.addColorStop(1, 'rgba(2, 6, 23, 0.56)');
             ctx.fillStyle = vig;
             ctx.fillRect(0, 0, viewportSize.width, viewportSize.height);
+            drawCanvasNightOverlay(ctx, 0, 0, viewportSize.width, viewportSize.height, character.currentTime, {
+                isIndoor: true
+            });
 
             ctx.restore();
             rafId = requestAnimationFrame(render);

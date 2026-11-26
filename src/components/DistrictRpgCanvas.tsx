@@ -994,6 +994,9 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
             'royal_tile_wall',
             'royal_tile_asia_wall'
         ].forEach(k => loadCityAssetImage(getInteriorPropSpriteUrl(k)));
+        ['district_wall_h', 'district_wall_v', 'district_wall_corner', 'district_wall_door'].forEach(k =>
+            loadCityAssetImage(`./assets/visuals/district/props/${k}.png`)
+        );
     }, [playerSpriteUrl, currentNpcs, cultureKey, buildings]);
 
     useEffect(() => {
@@ -1473,6 +1476,22 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
                                 : r === rows - 1 && c >= 7 && c <= 10;
                             const isWall = r <= 1 || c === 0 || c === cols - 1 || (r === rows - 1 && !isExit);
                             if (isWall) {
+                                if (!isRoyal) {
+                                    if (floorTileImg?.complete && floorTileImg.naturalWidth > 0) {
+                                        ctx.drawImage(floorTileImg, x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
+                                    } else {
+                                        ctx.fillStyle = (r + c) % 2 === 0 ? floorA : floorB;
+                                        ctx.fillRect(x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
+                                    }
+                                    const isCorner = (r <= 1 || r === rows - 1) && (c === 0 || c === cols - 1);
+                                    const isVertEdge = c === 0 || c === cols - 1;
+                                    const wKey = isCorner ? 'district_wall_corner' : isVertEdge ? 'district_wall_v' : 'district_wall_h';
+                                    const dWallImg = getCachedCityAssetImage(`./assets/visuals/district/props/${wKey}.png`);
+                                    if (dWallImg?.complete && dWallImg.naturalWidth > 0) {
+                                        ctx.drawImage(dWallImg, x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
+                                        continue;
+                                    }
+                                }
                                 if (wallTileImg?.complete && wallTileImg.naturalWidth > 0) {
                                     ctx.drawImage(wallTileImg, x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
                                 } else {
@@ -1491,8 +1510,13 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
                                 ctx.fillRect(x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
                             }
                             if (isExit) {
-                                ctx.fillStyle = 'rgba(251, 191, 36, 0.42)';
-                                ctx.fillRect(x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
+                                const dDoorImg = !isRoyal ? getCachedCityAssetImage('./assets/visuals/district/props/district_wall_door.png') : null;
+                                if (!isRoyal && (c === 8 || c === 9) && dDoorImg?.complete && dDoorImg.naturalWidth > 0) {
+                                    ctx.drawImage(dDoorImg, x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
+                                } else {
+                                    ctx.fillStyle = 'rgba(251, 191, 36, 0.42)';
+                                    ctx.fillRect(x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
+                                }
                             }
                         }
                     }
@@ -1843,22 +1867,22 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
             )}
 
             {/* Mobile D-Pad */}
-            <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-1 w-28 h-28 opacity-85">
+            <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-85">
                 <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'up')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white">
-                    <ArrowUp size={16} />
+                <button type="button" onTouchStart={() => (dpadRef.current = 'up')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                    <ArrowUp size={22} />
                 </button>
                 <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'left')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white">
-                    <ArrowLeft size={16} />
+                <button type="button" onTouchStart={() => (dpadRef.current = 'left')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                    <ArrowLeft size={22} />
                 </button>
                 <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'right')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white">
-                    <ArrowRight size={16} />
+                <button type="button" onTouchStart={() => (dpadRef.current = 'right')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                    <ArrowRight size={22} />
                 </button>
                 <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'down')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white">
-                    <ArrowDown size={16} />
+                <button type="button" onTouchStart={() => (dpadRef.current = 'down')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                    <ArrowDown size={22} />
                 </button>
                 <div />
             </div>

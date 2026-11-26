@@ -1269,7 +1269,7 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
 
       if (customSkillType === SkillType.TELEPORT) {
           const maxDist = customZoneConfig.targetRadius ?? getTeleportRangeByTier(activeTab);
-          return `TELEPORT: 최대 ${maxDist}m 자유 순간이동 (장애물·기회공격 무시)`;
+          return `TELEPORT: 최대 ${maxDist}m 자유 순간이동 (장애물 무시)`;
       }
       
       if (customSkillType === SkillType.DEBUFF) {
@@ -2931,7 +2931,7 @@ const SkillBook: React.FC<Props> = ({ isOpen, onClose, character, playerCharacte
                                                             <span>순간이동 사거리:</span>
                                                         </span>
                                                         <div className="font-mono font-bold text-purple-300">
-                                                            최대 {getEffectiveTeleportRange(skill)}m (기회공격 무시)
+                                                            최대 {getEffectiveTeleportRange(skill)}m (장애물 무시)
                                                         </div>
                                                     </div>
                                                 )}

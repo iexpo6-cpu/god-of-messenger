@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character } from '../types';
+import { drawCanvasNightOverlay } from '../utils/canvasNightOverlay';
 import { BASE_TILE_SIZE, resolveDecorationSpriteUrl } from '../services/baseTilemapEngine';
 import {
     BuildingSpriteKind,
@@ -546,6 +547,9 @@ const RaceHubCanvas: React.FC<RaceHubCanvasProps> = ({
                         ctx.fill();
                     });
 
+                    drawCanvasNightOverlay(ctx, camX, camY, canvas.width, canvas.height, character.currentTime, {
+                        playerLight: { x: p.x, y: p.y - 6, radius: 100 }
+                    });
                     ctx.restore();
                 }
             }

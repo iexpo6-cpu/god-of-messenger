@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, Enemy, JobType, TemplePersonnel } from '../types';
+import { drawCanvasNightOverlay } from '../utils/canvasNightOverlay';
 import { TEMPLE_MESSENGER_MAP, MAGYE_LEADERS } from '../constants';
 import { DIVINE_REALM_BOSSES, getBossByLocation } from '../bossMonsters';
 import { BASE_TILE_SIZE, resolveDecorationSpriteUrl } from '../services/baseTilemapEngine';
@@ -1107,6 +1108,9 @@ const TempleRpgCanvas: React.FC<TempleRpgCanvasProps> = ({
                         }
                     });
 
+                    drawCanvasNightOverlay(ctx, camX, camY, canvas.width, canvas.height, character.currentTime, {
+                        playerLight: { x: p.x, y: p.y - 6, radius: 105 }
+                    });
                     ctx.restore();
 
                     // 7. 우상단 미니맵 (배경 오프스크린 캐시로 무렉 처리)

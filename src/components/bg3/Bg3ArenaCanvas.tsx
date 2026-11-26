@@ -19,7 +19,6 @@ import {
     createBg3SurfaceFromSkill,
     distPx,
     extractStatusEffectsFromSkill,
-    findOpportunityAttackers,
     generateBg3Arena,
     getBg3SharedAllyGroup,
     getBg3SkillTargeting,
@@ -2380,7 +2379,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             }
             setIsBusy(true);
             await animateMove(activeUnit.id, pt.x, pt.y, true);
-            setBannerMsg(`🦘 ${activeUnit.name} 도약 착지! (기회 공격 회피)`);
+            setBannerMsg(`🦘 ${activeUnit.name} 도약 착지!`);
             setActionMode('move');
             setIsBusy(false);
             return;
@@ -2411,38 +2410,6 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         }
 
         setIsBusy(true);
-        // Check Opportunity Attacks before leaving melee threat circles!
-        const oppAttackers = findOpportunityAttackers(activeUnit, pt.x, pt.y, units);
-        if (oppAttackers.length > 0) {
-            let nextUnits = [...unitsRef.current];
-            for (const opp of oppAttackers) {
-                const dmg = Math.max(50, Math.round(opp.atk * 0.85));
-                addFloatText(activeUnit.x, activeUnit.y - 34, `⚠️ 기회 공격! -${formatCompactKorean(dmg)}`, '#f43f5e', 1.2);
-                slashArcsRef.current.push({
-                    id: `opp_${Date.now()}_${opp.id}`,
-                    x: activeUnit.x,
-                    y: activeUnit.y,
-                    angle: Math.atan2(activeUnit.y - opp.y, activeUnit.x - opp.x),
-                    color: '#f43f5e',
-                    startTime: performance.now(),
-                    duration: 300,
-                    scale: 1.15
-                });
-                triggerShake(8, 220);
-                nextUnits = nextUnits.map(u => {
-                    if (u.id === opp.id) return { ...u, hasReaction: false };
-                    if (u.id === activeUnit.id) return { ...u, hp: Math.max(0, u.hp - dmg) };
-                    return u;
-                });
-            }
-            setUnits(nextUnits);
-            if ((nextUnits.find(u => u.id === activeUnit.id)?.hp || 0) <= 0) {
-                setIsBusy(false);
-                checkBattleOutcome(nextUnits, roundNum);
-                return;
-            }
-        }
-
         await animateMove(activeUnit.id, pt.x, pt.y, false);
         setIsBusy(false);
     };
@@ -2971,10 +2938,9 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     const dM = pxToMeters(dPx);
                     const walkable = isPointWalkable(hover.x, hover.y, curActive.id, arena.obstacles, unitsRef.current, arenaW, arenaH);
                     const ok = dM <= curActive.remainingMeters + 0.1 && walkable;
-                    const oppCount = ok ? findOpportunityAttackers(curActive, hover.x, hover.y, unitsRef.current).length : 0;
 
                     ctx.save();
-                    ctx.strokeStyle = oppCount > 0 ? '#f43f5e' : ok ? '#38bdf8' : '#ef4444';
+                    ctx.strokeStyle = ok ? '#38bdf8' : '#ef4444';
                     ctx.lineWidth = 3;
                     ctx.setLineDash([8, 6]);
                     ctx.beginPath();
@@ -2990,17 +2956,17 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     ctx.stroke();
 
                     // Distance Pill
-                    const pillText = oppCount > 0 ? `${dM.toFixed(1)}m · ⚠️ 기회공격!` : `${dM.toFixed(1)}m / ${curActive.remainingMeters.toFixed(1)}m`;
+                    const pillText = `${dM.toFixed(1)}m / ${curActive.remainingMeters.toFixed(1)}m`;
                     ctx.font = 'bold 12px sans-serif';
                     const tw = ctx.measureText(pillText).width + 16;
                     ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
                     ctx.beginPath();
                     ctx.roundRect(hover.x - tw / 2, hover.y - 38, tw, 22, 8);
                     ctx.fill();
-                    ctx.strokeStyle = oppCount > 0 ? '#f43f5e' : ok ? '#38bdf8' : '#ef4444';
+                    ctx.strokeStyle = ok ? '#38bdf8' : '#ef4444';
                     ctx.lineWidth = 1.5;
                     ctx.stroke();
-                    ctx.fillStyle = oppCount > 0 ? '#fda4af' : ok ? '#e0f2fe' : '#fecaca';
+                    ctx.fillStyle = ok ? '#e0f2fe' : '#fecaca';
                     ctx.textAlign = 'center';
                     ctx.fillText(pillText, hover.x, hover.y - 23);
                     ctx.restore();

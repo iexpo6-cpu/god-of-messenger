@@ -1253,22 +1253,22 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
             )}
 
             {/* Mobile D-Pad */}
-            <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-1 w-28 h-28 opacity-85">
+            <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-85">
                 <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'up')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white">
-                    <ArrowUp size={16} />
+                <button type="button" onTouchStart={() => (dpadRef.current = 'up')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                    <ArrowUp size={22} />
                 </button>
                 <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'left')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white">
-                    <ArrowLeft size={16} />
+                <button type="button" onTouchStart={() => (dpadRef.current = 'left')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                    <ArrowLeft size={22} />
                 </button>
                 <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'right')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white">
-                    <ArrowRight size={16} />
+                <button type="button" onTouchStart={() => (dpadRef.current = 'right')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                    <ArrowRight size={22} />
                 </button>
                 <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'down')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white">
-                    <ArrowDown size={16} />
+                <button type="button" onTouchStart={() => (dpadRef.current = 'down')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                    <ArrowDown size={22} />
                 </button>
                 <div />
             </div>

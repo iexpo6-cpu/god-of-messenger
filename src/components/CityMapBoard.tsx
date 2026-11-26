@@ -132,6 +132,10 @@ const CityMapBoard: React.FC<Props> = ({
     }, [loc.city, Boolean(character.base)]);
 
     const handleEnterCityDistrict = (district?: DistrictType | 'Gate', openHuntMap?: boolean) => {
+        if (openHuntMap && !district) {
+            onEnterCity(undefined, true);
+            return;
+        }
         if (openHuntMap || district === 'Outskirts') {
             try {
                 const raw = sessionStorage.getItem('shinryoku_outskirts_resume');

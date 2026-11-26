@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character } from '../types';
+import { drawCanvasNightOverlay } from '../utils/canvasNightOverlay';
 import {
     DIRECTION_ROW_MAP,
     drawFallbackChibiSprite,
@@ -526,6 +527,10 @@ const RegionalAdminCanvas: React.FC<RegionalAdminCanvasProps> = ({
 
                 drawQueue.sort((a, b) => a.y - b.y);
                 drawQueue.forEach(item => item.draw());
+                drawCanvasNightOverlay(ctx, 0, 0, canvas.width, canvas.height, character.currentTime, {
+                    isIndoor: true,
+                    playerLight: { x: playerRef.current.x, y: playerRef.current.y - 6, radius: 95 }
+                });
             }
 
             rafId = requestAnimationFrame(loop);

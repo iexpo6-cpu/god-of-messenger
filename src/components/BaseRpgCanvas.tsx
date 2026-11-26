@@ -2174,7 +2174,7 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
 
             {/* Mobile D-Pad */}
             {mode === 'explore' && (
-                <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-1 w-28 h-28 opacity-85">
+                <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-85">
                     <div />
                     <button
                         type="button"
@@ -2182,9 +2182,9 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                         onTouchEnd={() => (dpadRef.current = null)}
                         onMouseDown={() => (dpadRef.current = 'up')}
                         onMouseUp={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white"
+                        className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white"
                     >
-                        <ArrowUp size={16} />
+                        <ArrowUp size={22} />
                     </button>
                     <div />
                     <button
@@ -2193,9 +2193,9 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                         onTouchEnd={() => (dpadRef.current = null)}
                         onMouseDown={() => (dpadRef.current = 'left')}
                         onMouseUp={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white"
+                        className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white"
                     >
-                        <ArrowLeft size={16} />
+                        <ArrowLeft size={22} />
                     </button>
                     <div />
                     <button
@@ -2204,9 +2204,9 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                         onTouchEnd={() => (dpadRef.current = null)}
                         onMouseDown={() => (dpadRef.current = 'right')}
                         onMouseUp={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white"
+                        className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white"
                     >
-                        <ArrowRight size={16} />
+                        <ArrowRight size={22} />
                     </button>
                     <div />
                     <button
@@ -2215,9 +2215,9 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                         onTouchEnd={() => (dpadRef.current = null)}
                         onMouseDown={() => (dpadRef.current = 'down')}
                         onMouseUp={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 border border-slate-600 rounded-lg flex items-center justify-center text-white"
+                        className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white"
                     >
-                        <ArrowDown size={16} />
+                        <ArrowDown size={22} />
                     </button>
                     <div />
                 </div>

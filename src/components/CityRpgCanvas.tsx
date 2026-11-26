@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Character, CityTier, DistrictType } from '../types';
+import { createRivalEnemies } from '../services/npcLifeEngine';
+import { getValidRivalLocation, hasFoughtRivalThisMonth, recordRivalDuel } from '../services/rivalLocationService';
 import {
     buildCityTilemap,
     CITY_TILE_SIZE,
@@ -67,6 +69,9 @@ export interface CityRpgCanvasProps {
     onOpenTranscendentArena?: () => void;
     onOpenAbyssTower?: () => void;
     onInspectCompanion?: (companionId: string) => void;
+    onUpdateCharacter?: (updatedChar: Character, logMessage: string) => void;
+    onStartBattle?: (enemies: any[], battleType: string, sourceId?: string) => void;
+    onAction?: (action: string) => void;
 }
 
 interface TrailPoint {
@@ -123,7 +128,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     onOpenBeastCity,
     onOpenTranscendentArena,
     onOpenAbyssTower,
-    onInspectCompanion
+    onInspectCompanion,
+    onUpdateCharacter,
+    onStartBattle
 }) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -136,33 +143,22 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     );
     const [, setSpriteTick] = useState(0);
 
-    // 1. 현재 도시 타일맵 생성
-    const mapData = useMemo(
+    const activeRival = useMemo(
         () =>
-            buildCityTilemap({
-                region,
-                nation,
-                city,
-                tier,
-                activeDistricts,
-                hasBaseInCurrentLocation,
-                isElfNation,
-                isBeastNation,
-                isDemonNation,
-                canOpenTranscendentArena,
-                canOpenAbyssTower,
-                timeLabel,
-                isMythicBoss,
-                bossName,
-                baseLevel: character.base?.level || 1,
-                playerAge: character.age
-            }),
-        [
+            [...(character.socialNetwork || []), ...(character.schoolData?.classmates || [])].find(
+                n => n && n.isEternalRival && !n.isPurged && !n.isDead
+            ) || null,
+        [character.socialNetwork, character.schoolData?.classmates]
+    );
+
+    // 1. 현재 도시 타일맵 생성 (+ 영원의 라이벌 현장 배치)
+    const mapData = useMemo(() => {
+        const base = buildCityTilemap({
             region,
             nation,
             city,
             tier,
-            activeDistricts.join(','),
+            activeDistricts,
             hasBaseInCurrentLocation,
             isElfNation,
             isBeastNation,
@@ -172,10 +168,53 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             timeLabel,
             isMythicBoss,
             bossName,
-            character.base?.level,
-            character.age
-        ]
-    );
+            baseLevel: character.base?.level || 1,
+            playerAge: character.age
+        });
+        if (activeRival) {
+            const validLoc = getValidRivalLocation(activeRival.rivalData?.currentLocation, activeRival.nation || nation);
+            const isHere =
+                (validLoc.nation === nation && validLoc.city === city) ||
+                (!activeRival.rivalData?.currentLocation && activeRival.nation === nation);
+            if (isHere) {
+                const rSprite = resolveEntityRpgSprite(activeRival as any, region, activeRival.nation || nation);
+                base.npcs.push({
+                    id: activeRival.id || 'eternal_rival_npc',
+                    name: activeRival.name,
+                    role: '🔥 영원의 라이벌',
+                    x: Math.min(base.cols - 3, Math.floor(base.cols / 2) + 3),
+                    y: Math.min(base.rows - 4, Math.floor(base.rows / 2) + 1),
+                    dir: 'down',
+                    regionKey: rSprite.regionKey,
+                    gender: activeRival.gender === '남성' ? 'male' : 'female',
+                    lines: [
+                        `오랜만이군, ${character.name}. 나 역시 이 ${city}에서 한층 더 강해졌다.`,
+                        `언제든 승부할 준비가 되어 있다. 한 번 겨뤄보겠나?`
+                    ]
+                });
+            }
+        }
+        return base;
+    }, [
+        region,
+        nation,
+        city,
+        tier,
+        activeDistricts.join(','),
+        hasBaseInCurrentLocation,
+        isElfNation,
+        isBeastNation,
+        isDemonNation,
+        canOpenTranscendentArena,
+        canOpenAbyssTower,
+        timeLabel,
+        isMythicBoss,
+        bossName,
+        character.base?.level,
+        character.age,
+        character.name,
+        activeRival
+    ]);
 
     const playerSprite = useMemo(
         () => resolveEntityRpgSprite(character, region, nation),
@@ -331,6 +370,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             switch (portal.actionType) {
                 case 'district':
                     onEnterCity(portal.district, portal.openHuntMap);
+                    break;
+                case 'hunt_info':
+                    onEnterCity(undefined, true);
                     break;
                 case 'dungeon':
                     onOpenDungeon();
@@ -1166,20 +1208,6 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                         ctx.fill();
                     }
 
-                    // 건물 간판 (지붕 중앙)
-                    ctx.font = 'bold 11px sans-serif';
-                    ctx.textAlign = 'center';
-                    const title = `${pt.iconText} ${pt.label}`;
-                    const tw = Math.min(bw + 24, ctx.measureText(title).width + 14);
-                    ctx.fillStyle = 'rgba(15, 23, 42, 0.86)';
-                    ctx.beginPath();
-                    ctx.roundRect(bx + bw / 2 - tw / 2, by + 4, tw, 20, 6);
-                    ctx.fill();
-                    ctx.strokeStyle = pt.accentColor;
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                    ctx.fillStyle = '#f8fafc';
-                    ctx.fillText(title, bx + bw / 2, by + 18);
                 });
 
                 // 바닥 위 통과 가능 소품 (화단, 마법진 등) 먼저 렌더링
@@ -1365,6 +1393,29 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 // Y-Sort 실행
                 ySortItems.sort((a, b) => a.y - b.y);
                 ySortItems.forEach(item => item.draw());
+
+                // 건물 & 표지판 간판 (나무/오브젝트에 가리지 않도록 Y-Sort 이후 렌더링, 텍스트 폭에 맞춰 여유 있게 확장)
+                mapData.portals.forEach(pt => {
+                    const bx = pt.buildingX * ts;
+                    const by = pt.buildingY * ts;
+                    const bw = pt.buildingW * ts;
+                    const isSignpost = pt.id === 'hunt_signpost' || pt.actionType === 'hunt_info';
+                    ctx.font = isSignpost ? 'bold 10px sans-serif' : 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    const title = `${pt.iconText} ${pt.label}`;
+                    const tw = Math.max(isSignpost ? 124 : bw + 10, ctx.measureText(title).width + 22);
+                    const bh = isSignpost ? 22 : 20;
+                    const labelY = isSignpost ? by - 2 : by + 4;
+                    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+                    ctx.beginPath();
+                    ctx.roundRect(bx + bw / 2 - tw / 2, labelY, tw, bh, 6);
+                    ctx.fill();
+                    ctx.strokeStyle = pt.accentColor;
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.fillText(title, bx + bw / 2, labelY + (isSignpost ? 15 : 14));
+                });
 
                 // 발자국 먼지 파티클
                 particlesRef.current.forEach(pt => {
@@ -1640,9 +1691,32 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                             <p className="text-xs sm:text-sm text-slate-100 leading-relaxed min-h-[2.4rem] font-medium">
                                 {currentDialogueText}
                             </p>
-                            <div className="flex justify-end items-center gap-1 mt-1 text-[10px] text-amber-300/90 font-bold animate-pulse">
-                                <CornerDownLeft size={11} />
-                                <span>클릭 또는 Space / Enter 계속</span>
+                            <div className="flex justify-between items-center gap-2 mt-1">
+                                {dialogue.npcRole === '🔥 영원의 라이벌' && activeRival && onStartBattle ? (
+                                    <button
+                                        type="button"
+                                        disabled={hasFoughtRivalThisMonth(activeRival.rivalData, character.currentDate)}
+                                        onClick={e => {
+                                            e.stopPropagation();
+                                            if (hasFoughtRivalThisMonth(activeRival.rivalData, character.currentDate)) return;
+                                            recordRivalDuel(activeRival, character.currentDate);
+                                            const enemies = createRivalEnemies(activeRival);
+                                            setDialogue(null);
+                                            onStartBattle(enemies, 'relation_battle', activeRival.id);
+                                        }}
+                                        className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-400 text-white text-[11px] font-black cursor-pointer"
+                                    >
+                                        {hasFoughtRivalThisMonth(activeRival.rivalData, character.currentDate)
+                                            ? '⚔️ 이번 달 결투 완료'
+                                            : '⚔️ 영원의 라이벌 결투 신청'}
+                                    </button>
+                                ) : (
+                                    <div />
+                                )}
+                                <div className="flex items-center gap-1 text-[10px] text-amber-300/90 font-bold animate-pulse">
+                                    <CornerDownLeft size={11} />
+                                    <span>클릭 또는 Space / Enter 계속</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1652,16 +1726,16 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             {/* 모바일 컴팩트 가상 D-Pad (좌하단) + 확인 버튼 (우하단) — 퀵바 펼침 시 자동으로 위로 이동해 겹침 방지 */}
             {!dialogue && (
                 <>
-                    <div className={`absolute left-2.5 z-20 grid grid-cols-3 gap-0.5 w-24 h-24 transition-all ${showQuickBar ? 'bottom-[74px]' : 'bottom-9'}`}>
+                    <div className={`absolute left-3 z-20 grid grid-cols-3 gap-1 w-36 h-36 sm:w-40 sm:h-40 transition-all ${showQuickBar ? 'bottom-[78px]' : 'bottom-9'}`}>
                         <div />
                         <button
                             type="button"
                             onPointerDown={() => { dpadDirRef.current = 'up'; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
+                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                         >
-                            <ArrowUp size={14} />
+                            <ArrowUp size={22} />
                         </button>
                         <div />
                         <button
@@ -1669,19 +1743,19 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                             onPointerDown={() => { dpadDirRef.current = 'left'; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
+                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                         >
-                            <ArrowLeft size={14} />
+                            <ArrowLeft size={22} />
                         </button>
-                        <div className="rounded-lg bg-slate-950/50 border border-slate-800/70" />
+                        <div className="rounded-xl bg-slate-950/50 border border-slate-800/70" />
                         <button
                             type="button"
                             onPointerDown={() => { dpadDirRef.current = 'right'; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
+                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                         >
-                            <ArrowRight size={14} />
+                            <ArrowRight size={22} />
                         </button>
                         <div />
                         <button
@@ -1689,9 +1763,9 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                             onPointerDown={() => { dpadDirRef.current = 'down'; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
+                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                         >
-                            <ArrowDown size={14} />
+                            <ArrowDown size={22} />
                         </button>
                         <div />
                     </div>

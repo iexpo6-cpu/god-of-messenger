@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character } from '../types';
+import { drawCanvasNightOverlay } from '../utils/canvasNightOverlay';
 import { BASE_TILE_SIZE } from '../services/baseTilemapEngine';
 import {
     getCachedCityAssetImage,
@@ -566,6 +567,9 @@ export const ChallengeLobbyCanvas: React.FC<ChallengeLobbyCanvasProps> = ({
                         }
                     }
 
+                    drawCanvasNightOverlay(ctx, camX, camY, canvas.width, canvas.height, character.currentTime, {
+                        playerLight: { x: playerRef.current.x, y: playerRef.current.y - 6, radius: 95 }
+                    });
                     ctx.restore();
                 }
             }
@@ -663,7 +667,7 @@ export const ChallengeLobbyCanvas: React.FC<ChallengeLobbyCanvasProps> = ({
                 </div>
 
                 {/* Mobile D-pad + Interact */}
-                <div className="absolute bottom-3 left-3 grid grid-cols-3 gap-1 w-24 sm:hidden">
+                <div className="absolute bottom-3 left-3 grid grid-cols-3 gap-1.5 w-36 sm:hidden">
                     <div />
                     <button
                         type="button"
@@ -671,9 +675,9 @@ export const ChallengeLobbyCanvas: React.FC<ChallengeLobbyCanvasProps> = ({
                         onTouchEnd={() => (dpadRef.current = null)}
                         onMouseDown={() => (dpadRef.current = 'up')}
                         onMouseUp={() => (dpadRef.current = null)}
-                        className="p-2 rounded-lg bg-slate-900/80 border border-slate-700 text-white flex justify-center"
+                        className="p-3 rounded-xl bg-slate-900/80 border border-slate-700 text-white flex justify-center"
                     >
-                        <ArrowUp size={14} />
+                        <ArrowUp size={22} />
                     </button>
                     <div />
                     <button
@@ -682,9 +686,9 @@ export const ChallengeLobbyCanvas: React.FC<ChallengeLobbyCanvasProps> = ({
                         onTouchEnd={() => (dpadRef.current = null)}
                         onMouseDown={() => (dpadRef.current = 'left')}
                         onMouseUp={() => (dpadRef.current = null)}
-                        className="p-2 rounded-lg bg-slate-900/80 border border-slate-700 text-white flex justify-center"
+                        className="p-3 rounded-xl bg-slate-900/80 border border-slate-700 text-white flex justify-center"
                     >
-                        <ArrowLeft size={14} />
+                        <ArrowLeft size={22} />
                     </button>
                     <button
                         type="button"
@@ -692,9 +696,9 @@ export const ChallengeLobbyCanvas: React.FC<ChallengeLobbyCanvasProps> = ({
                         onTouchEnd={() => (dpadRef.current = null)}
                         onMouseDown={() => (dpadRef.current = 'down')}
                         onMouseUp={() => (dpadRef.current = null)}
-                        className="p-2 rounded-lg bg-slate-900/80 border border-slate-700 text-white flex justify-center"
+                        className="p-3 rounded-xl bg-slate-900/80 border border-slate-700 text-white flex justify-center"
                     >
-                        <ArrowDown size={14} />
+                        <ArrowDown size={22} />
                     </button>
                     <button
                         type="button"
@@ -702,9 +706,9 @@ export const ChallengeLobbyCanvas: React.FC<ChallengeLobbyCanvasProps> = ({
                         onTouchEnd={() => (dpadRef.current = null)}
                         onMouseDown={() => (dpadRef.current = 'right')}
                         onMouseUp={() => (dpadRef.current = null)}
-                        className="p-2 rounded-lg bg-slate-900/80 border border-slate-700 text-white flex justify-center"
+                        className="p-3 rounded-xl bg-slate-900/80 border border-slate-700 text-white flex justify-center"
                     >
-                        <ArrowRight size={14} />
+                        <ArrowRight size={22} />
                     </button>
                 </div>
 

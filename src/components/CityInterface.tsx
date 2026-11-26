@@ -717,6 +717,7 @@ const CityInterface: React.FC<Props> = ({
                     onClose={() => setIsHuntMapOpen(false)} 
                     onEnterField={handleEnterField} 
                     initialBandId={initialBandId || character.lastHuntingBandId}
+                    readOnlyInfoOnly={true}
                 />
             )}
             {isDungeonOpen && onBattle && (

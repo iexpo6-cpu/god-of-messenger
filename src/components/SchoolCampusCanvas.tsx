@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, ClubType, CombatStyle, JobType, SchoolTier, SimpleStudent, WeaponType } from '../types';
+import { drawCanvasNightOverlay, isNightTime } from '../utils/canvasNightOverlay';
 import { SCHOOL_CONFIG, WEAPON_TYPE_KOREAN } from '../constants';
 import { addMasteryExp, generateDefaultVisualUrl, generateName, getWeaponTypeFromItem } from '../utils';
 import { processTimeSkip } from '../services/timeEngine';
@@ -142,12 +143,12 @@ const CLASSROOM_SUBJECT_ROOMS: Array<{
     tx: number;
     ty: number;
 }> = [
-    { type: 'Combat', title: '전투학실', statLabel: 'STR / AGI', mpCost: 15, tx: 2.5, ty: 2.6 },
-    { type: 'Magic', title: '마법학실', statLabel: 'INT', mpCost: 20, tx: 8.2, ty: 2.6 },
-    { type: 'Divine', title: '신력학실', statLabel: 'CTRL', mpCost: 20, tx: 13.8, ty: 2.6 },
-    { type: 'Strategy', title: '전략학실', statLabel: 'WIS', mpCost: 15, tx: 2.5, ty: 6.8 },
-    { type: 'Physical', title: '체력학실', statLabel: 'DEF / HP', mpCost: 15, tx: 8.2, ty: 6.8 },
-    { type: 'Weapon', title: '무기학실', statLabel: '무기 숙련', mpCost: 15, tx: 13.8, ty: 6.8 },
+    { type: 'Combat', title: '전투학실', statLabel: 'STR / AGI', mpCost: 15, tx: 1.8, ty: 1.7 },
+    { type: 'Magic', title: '마법학실', statLabel: 'INT', mpCost: 20, tx: 7.3, ty: 1.7 },
+    { type: 'Divine', title: '신력학실', statLabel: 'CTRL', mpCost: 20, tx: 12.8, ty: 1.7 },
+    { type: 'Strategy', title: '전략학실', statLabel: 'WIS', mpCost: 15, tx: 1.8, ty: 6.7 },
+    { type: 'Physical', title: '체력학실', statLabel: 'DEF / HP', mpCost: 15, tx: 7.3, ty: 6.7 },
+    { type: 'Weapon', title: '무기학실', statLabel: '무기 숙련', mpCost: 15, tx: 12.8, ty: 6.7 },
 ];
 
 const DORM_ROOM_DOORS: Array<{
@@ -158,21 +159,63 @@ const DORM_ROOM_DOORS: Array<{
     tx: number;
     ty: number;
 }> = [
-    { id: 'dorm_m_1', gender: '남성', grade: 1, label: '남자 1학년실', tx: 2.5, ty: 2.4 },
-    { id: 'dorm_m_2', gender: '남성', grade: 2, label: '남자 2학년실', tx: 8.2, ty: 2.4 },
-    { id: 'dorm_m_3', gender: '남성', grade: 3, label: '남자 3학년실', tx: 13.8, ty: 2.4 },
-    { id: 'dorm_f_1', gender: '여성', grade: 1, label: '여자 1학년실', tx: 2.5, ty: 6.6 },
-    { id: 'dorm_f_2', gender: '여성', grade: 2, label: '여자 2학년실', tx: 8.2, ty: 6.6 },
-    { id: 'dorm_f_3', gender: '여성', grade: 3, label: '여자 3학년실', tx: 13.8, ty: 6.6 },
+    { id: 'dorm_m_1', gender: '남성', grade: 1, label: '남자 1학년실', tx: 2.1, ty: 2.0 },
+    { id: 'dorm_m_2', gender: '남성', grade: 2, label: '남자 2학년실', tx: 7.6, ty: 2.0 },
+    { id: 'dorm_m_3', gender: '남성', grade: 3, label: '남자 3학년실', tx: 13.1, ty: 2.0 },
+    { id: 'dorm_f_1', gender: '여성', grade: 1, label: '여자 1학년실', tx: 2.1, ty: 6.8 },
+    { id: 'dorm_f_2', gender: '여성', grade: 2, label: '여자 2학년실', tx: 7.6, ty: 6.8 },
+    { id: 'dorm_f_3', gender: '여성', grade: 3, label: '여자 3학년실', tx: 13.1, ty: 6.8 },
 ];
 
 const CLUB_DESK_SPECS: Array<{ club: ClubType; title: string; desc: string; benefits: string[]; tx: number; ty: number }> = [
-    { club: ClubType.MELEE, title: '근접 무기부실', desc: '도검·창·대검 등 근접 무기의 극의를 연마하는 동아리입니다.', benefits: ['STR +1', '근접 무기 숙련 보너스'], tx: 2.5, ty: 2.6 },
-    { club: ClubType.RANGED, title: '원거리 무기부실', desc: '활·석궁 등 정밀 사격과 민첩성을 단련하는 동아리입니다.', benefits: ['AGI +1', '원거리 무기 숙련 보너스'], tx: 8.5, ty: 2.6 },
-    { club: ClubType.MAGIC_ENG, title: '마법 공학부실', desc: '마법 도구와 신력 증폭 장치를 연구하는 지성의 산실입니다.', benefits: ['INT +1', '마법 무기 숙련 보너스'], tx: 14, ty: 2.6 },
-    { club: ClubType.COUNCIL, title: '학생회실', desc: '학원의 행정과 예산, 축제를 총괄하는 대표 기구입니다.', benefits: ['학교 평판 상승폭 증가', '학생회 물자 보급'], tx: 4, ty: 7.4 },
-    { club: ClubType.DISCIPLINARY, title: '선도부실', desc: '교내 질서와 치안을 유지하고 불량배를 단속하는 수호대입니다.', benefits: ['평판 하락 방지', '순찰 전리품 수급'], tx: 12.5, ty: 7.4 },
+    { club: ClubType.MELEE, title: '근접 무기부실', desc: '도검·창·대검 등 근접 무기의 극의를 연마하는 동아리입니다.', benefits: ['STR +1', '근접 무기 숙련 보너스'], tx: 2.0, ty: 1.8 },
+    { club: ClubType.RANGED, title: '원거리 무기부실', desc: '활·석궁 등 정밀 사격과 민첩성을 단련하는 동아리입니다.', benefits: ['AGI +1', '원거리 무기 숙련 보너스'], tx: 7.5, ty: 1.8 },
+    { club: ClubType.MAGIC_ENG, title: '마법 공학부실', desc: '마법 도구와 신력 증폭 장치를 연구하는 지성의 산실입니다.', benefits: ['INT +1', '마법 무기 숙련 보너스'], tx: 13.0, ty: 1.8 },
+    { club: ClubType.COUNCIL, title: '학생회실', desc: '학원의 행정과 예산, 축제를 총괄하는 대표 기구입니다.', benefits: ['학교 평판 상승폭 증가', '학생회 물자 보급'], tx: 3.0, ty: 6.8 },
+    { club: ClubType.DISCIPLINARY, title: '선도부실', desc: '교내 질서와 치안을 유지하고 불량배를 단속하는 수호대입니다.', benefits: ['평판 하락 방지', '순찰 전리품 수급'], tx: 12.2, ty: 6.8 },
 ];
+
+const getInteriorPartitionType = (
+    activeRoom: string | null,
+    activeClubRoom: ClubType | null,
+    activeDormRoom: { gender: '남성' | '여성'; grade: 1 | 2 | 3; label: string } | null,
+    c: number,
+    r: number
+): 'wall' | 'doorway' | null => {
+    if (c <= 0 || c >= 17 || r <= 0 || r >= 12) return null;
+
+    if (activeRoom === 'Classroom' || (activeRoom === 'Dormitory' && !activeDormRoom)) {
+        // 상단 3개 방 (c: 1..4, 6..10, 12..16 / r: 1..3, 전면 벽 r: 4)
+        if ((c === 5 || c === 11) && r >= 1 && r <= 4) return 'wall';
+        if (r === 4) {
+            if (c === 3 || c === 8 || c === 9 || c === 14) return 'doorway';
+            return 'wall';
+        }
+        // 하단 3개 방 (c: 1..4, 6..10, 12..16 / r: 7..8, 상단 벽 r: 6, 하단 벽 r: 9)
+        if ((c === 5 || c === 11) && r >= 6 && r <= 9) return 'wall';
+        if (r === 6 || r === 9) {
+            if (c === 3 || c === 8 || c === 9 || c === 14) return 'doorway';
+            return 'wall';
+        }
+    }
+
+    if (activeRoom === 'Club' && !activeClubRoom) {
+        // 상단 3개 동아리실
+        if ((c === 5 || c === 11) && r >= 1 && r <= 4) return 'wall';
+        if (r === 4) {
+            if (c === 3 || c === 8 || c === 9 || c === 14) return 'doorway';
+            return 'wall';
+        }
+        // 하단 2개 동아리실 (학생회실 c:1..6, 선도부실 c:11..16, 중앙 복도 c:8..9)
+        if ((c === 7 || c === 10) && r >= 6 && r <= 9) return 'wall';
+        if ((r === 6 || r === 9) && (c <= 7 || c >= 10)) {
+            if (c === 4 || c === 13) return 'doorway';
+            return 'wall';
+        }
+    }
+
+    return null;
+};
 
 interface SchoolCampusCanvasProps {
     character: Character;
@@ -231,7 +274,7 @@ interface RoomProp {
     ty: number;
     w: number;
     h: number;
-    interactKind?: 'attendance' | 'report' | 'divine_book' | 'club_desk' | 'club_activity' | 'subject_room' | 'dorm_door';
+    interactKind?: 'attendance' | 'report' | 'divine_book' | 'club_desk' | 'club_activity' | 'subject_room' | 'enter_subject_room' | 'dorm_door';
     bookDef?: DivineBookDef;
     clubType?: ClubType;
     subjectType?: ClassroomSubjectType;
@@ -273,6 +316,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     const [activeRoom, setActiveRoom] = useState<SchoolZone | null>(() => savedCampusState?.room || null);
     const [activeDormRoom, setActiveDormRoom] = useState<{ gender: '남성' | '여성'; grade: 1 | 2 | 3; label: string } | null>(() => savedCampusState?.dormRoom || null);
     const [activeClubRoom, setActiveClubRoom] = useState<ClubType | null>(() => savedCampusState?.clubRoom || null);
+    const [activeClassRoomSubject, setActiveClassRoomSubject] = useState<ClassroomSubjectType | null>(() => savedCampusState?.classRoomSubject || null);
     useEffect(() => {
         try {
             sessionStorage.setItem(
@@ -282,11 +326,12 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     tier: activeSchoolTier,
                     room: activeRoom,
                     dormRoom: activeDormRoom,
-                    clubRoom: activeClubRoom
+                    clubRoom: activeClubRoom,
+                    classRoomSubject: activeClassRoomSubject
                 })
             );
         } catch {}
-    }, [character.id, activeSchoolTier, activeRoom, activeDormRoom, activeClubRoom]);
+    }, [character.id, activeSchoolTier, activeRoom, activeDormRoom, activeClubRoom, activeClassRoomSubject]);
     const [openModalZone, setOpenModalZone] = useState<SchoolZone | null>(null);
     const [nearbyLabel, setNearbyLabel] = useState<string | null>(null);
     const [accessDeniedMsg, setAccessDeniedMsg] = useState<string | null>(null);
@@ -361,9 +406,9 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             if (sn?.visualUrl) return sn.visualUrl;
             const cp = character.companions?.find(c => (id && c.id === id) || c.name === name);
             if (cp?.visualUrl) return cp.visualUrl;
-            return generateDefaultVisualUrl(nation, gender === 'male' ? '남성' : '여성', isTeacher ? '교사' : '학생');
+            return generateDefaultVisualUrl(name, nation, character.race || '인간', gender === 'male' ? '남성' : '여성');
         },
-        [character.schoolData?.homeroomTeacher, character.schoolData?.classmates, character.socialNetwork, character.companions, nation]
+        [character.schoolData?.homeroomTeacher, character.schoolData?.classmates, character.socialNetwork, character.companions, character.race, nation]
     );
 
     const cultureKey = useMemo(() => resolveCityCultureKey(region, nation, city), [region, nation, city]);
@@ -451,16 +496,53 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         [getSchoolDisplayName]
     );
 
-    // Diverse student NPCs outside in the School Plaza!
+    const activeEternalRival = useMemo(
+        () =>
+            [...(character.socialNetwork || []), ...(character.schoolData?.classmates || [])].find(
+                n => n && n.isEternalRival && !n.isPurged && !n.isDead
+            ) || null,
+        [character.socialNetwork, character.schoolData?.classmates]
+    );
+
+    // Diverse student NPCs outside in the School Plaza (distinct from interior room NPCs; at night students return to dorms)
+    const isSchoolNight = isNightTime(character.currentTime);
     const plazaStudents = useMemo<SchoolNpcActor[]>(() => {
-        const classmates = character.schoolData?.classmates || [];
         const isKorean = !nation || nation.includes('한국') || nation.includes('대한') || nation.includes('조선') || nation.includes('고려');
-        const pickName = (idx: number, koFallback: string) =>
-            classmates[idx]?.name || (isKorean ? koFallback : generateName(nation));
+        const rivalPlazaActor: SchoolNpcActor[] = activeEternalRival
+            ? [
+                  {
+                      id: activeEternalRival.id || 'school_eternal_rival',
+                      name: activeEternalRival.name,
+                      role: '🔥 영원의 라이벌',
+                      tx: 16.5,
+                      ty: 10.2,
+                      gender: activeEternalRival.gender === '남성' ? 'male' : 'female',
+                      dialogue: `네가 이 레귤러스 학교에서 수련 중이라길래 나도 실력을 겨루러 왔다, ${character.name}!`,
+                      canBondAndSpar: true,
+                      npcLevel: activeEternalRival.level || Math.max(5, character.level || 5),
+                      combatStyle: activeEternalRival.combatStyle || CombatStyle.SWORDSMAN
+                  }
+              ]
+            : [];
+        if (isSchoolNight) {
+            return [
+                {
+                    id: 'stu_night_patrol',
+                    name: isKorean ? '차예린' : generateName(nation),
+                    role: '선도부 야간 순찰원',
+                    tx: 13.5,
+                    ty: 12.2,
+                    gender: 'female',
+                    dialogue: '밤이 깊어 모든 학우들은 기숙사로 복귀했습니다. 교무실·강의실·대도서관·연무장·동아리동은 야간 폐쇄 중이며 기숙사만 이용할 수 있습니다.'
+                },
+                ...rivalPlazaActor
+            ];
+        }
         return [
+            ...rivalPlazaActor,
             {
                 id: 'stu_elem_1',
-                name: pickName(0, '한소희'),
+                name: isKorean ? '한소희' : generateName(nation),
                 role: '초급 레귤러스 1학년',
                 tx: 5.5,
                 ty: 11.5,
@@ -478,7 +560,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_mid_1',
-                name: pickName(1, '박지훈'),
+                name: isKorean ? '박지훈' : generateName(nation),
                 role: '중급 검술부 에이스',
                 tx: 12.2,
                 ty: 10.5,
@@ -496,7 +578,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_high_1',
-                name: pickName(2, '이서연'),
+                name: isKorean ? '이서연' : generateName(nation),
                 role: '고급 아카데미 수석',
                 tx: 20.5,
                 ty: 11.2,
@@ -505,15 +587,15 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_high_2',
-                name: isKorean ? '강태오' : generateName(nation),
-                role: '고급부 학생회장',
+                name: isKorean ? '송시우' : generateName(nation),
+                role: '고급부 안내 위원',
                 tx: 22.8,
                 ty: 14.0,
                 gender: 'male',
                 dialogue: `${city} 레귤러스 학교 지구에 오신 걸 환영합니다. 각 학부 건물은 재학생과 파견 교관만 출입할 수 있습니다.`
             }
         ];
-    }, [character.schoolData?.classmates, city, nation]);
+    }, [city, nation, isSchoolNight, activeEternalRival, character.name, character.level]);
 
     const campusDims = useMemo(() => {
         if (activeRoom) return { cols: ROOM_COLS, rows: ROOM_ROWS };
@@ -522,6 +604,59 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         if (activeSchoolTier === 'Middle') return { cols: 30, rows: 20 };
         return { cols: 34, rows: 22 };
     }, [activeSchoolTier, activeRoom]);
+
+    const campusStudents = useMemo<SchoolNpcActor[]>(() => {
+        if (!activeSchoolTier || activeRoom) return [];
+        const c = campusDims.cols;
+        const r = campusDims.rows;
+        const isKorean = !nation || nation.includes('한국') || nation.includes('대한') || nation.includes('조선') || nation.includes('고려');
+        const tierLabel = activeSchoolTier === 'Elementary' ? '초급' : activeSchoolTier === 'Middle' ? '중급' : '고급';
+        const classmates = character.schoolData?.classmates || [];
+        const classNum = character.schoolData?.classNumber || 1;
+        const gradeNum = character.schoolData?.grade || 1;
+
+        const classActors: SchoolNpcActor[] = classmates.slice(0, 4).map((cm, idx) => {
+            const coords = [
+                { tx: Math.floor(c * 0.25), ty: Math.floor(r * 0.45) },
+                { tx: Math.floor(c * 0.75), ty: Math.floor(r * 0.45) },
+                { tx: Math.floor(c * 0.35), ty: Math.floor(r * 0.85) },
+                { tx: Math.floor(c * 0.65), ty: Math.floor(r * 0.85) }
+            ][idx];
+            return {
+                id: cm.id || `campus_mate_${idx}`,
+                name: cm.name,
+                role: `${tierLabel} ${gradeNum}학년 ${classNum}반 학우`,
+                tx: coords.tx,
+                ty: coords.ty,
+                gender: cm.gender === '여성' ? 'female' : 'male',
+                dialogue: `안녕 ${character.name}! 오늘 수업 끝나고 같이 대련이나 동아리 활동 어때?`,
+                canBondAndSpar: true,
+                npcLevel: Math.max(3, (character.level || 5) + (idx % 2))
+            };
+        });
+
+        const extraSpecs = [
+            { ko: '윤하늘', gender: 'female' as const, role: `${tierLabel} 1학년`, tx: Math.floor(c * 0.16), ty: Math.floor(r * 0.46), line: '교무실 앞 산책로가 정말 예쁘지 않나요? 잠깐 쉬어가기 좋아요!' },
+            { ko: '서준혁', gender: 'male' as const, role: `${tierLabel} 2학년 검술부`, tx: Math.floor(c * 0.84), ty: Math.floor(r * 0.46), line: '실전 연무장에서 다들 열심히 훈련하고 있어! 너도 참가해볼래?' },
+            { ko: '강민지', gender: 'female' as const, role: `${tierLabel} 3학년 도서부`, tx: Math.floor(c * 0.82), ty: Math.floor(r * 0.86), line: '대도서관에 신력 이론 서적이 많이 들어왔으니 꼭 들러보세요.' },
+            { ko: '박시우', gender: 'male' as const, role: `${tierLabel} 2학년 학생회`, tx: Math.floor(c * 0.18), ty: Math.floor(r * 0.86), line: '동아리동에서 신규 부원을 모집하고 있어요. 관심 있으면 들러보세요!' }
+        ];
+        const extraActors: SchoolNpcActor[] = extraSpecs
+            .filter(sp => !classActors.some(ca => ca.name === sp.ko))
+            .map((sp, idx) => ({
+                id: `campus_stu_${activeSchoolTier}_${idx}`,
+                name: isKorean ? sp.ko : generateName(nation),
+                role: sp.role,
+                tx: sp.tx,
+                ty: sp.ty,
+                gender: sp.gender,
+                dialogue: sp.line,
+                canBondAndSpar: true,
+                npcLevel: Math.max(3, (character.level || 5) + idx)
+            }));
+
+        return [...classActors, ...extraActors];
+    }, [activeSchoolTier, activeRoom, campusDims.cols, campusDims.rows, character.schoolData?.classmates, character.schoolData?.classNumber, character.schoolData?.grade, character.level, character.name, nation]);
 
     // Level 2: 6 separate campus building gates
     const campusBuildings = useMemo<CampusBuildingGate[]>(() => {
@@ -544,8 +679,12 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         const isKorean = !nation || nation.includes('한국') || nation.includes('대한') || nation.includes('조선') || nation.includes('고려');
         const teacherName = character.schoolData?.homeroomTeacher?.name || (isKorean ? '김서연' : generateName(nation));
         const classmates = character.schoolData?.classmates || [];
-        const c1 = classmates[0]?.name || (isKorean ? '이하은' : generateName(nation));
-        const c2 = classmates[1]?.name || (isKorean ? '박준혁' : generateName(nation));
+        const c1Obj = classmates[0];
+        const c2Obj = classmates[1];
+        const c1 = c1Obj?.name || (isKorean ? '이하은' : generateName(nation));
+        const c2 = c2Obj?.name || (isKorean ? '박준혁' : generateName(nation));
+        const c1Gender: RpgSpriteGenderKey = c1Obj ? (c1Obj.gender === '남성' ? 'male' : 'female') : 'female';
+        const c2Gender: RpgSpriteGenderKey = c2Obj ? (c2Obj.gender === '남성' ? 'male' : 'female') : 'male';
         const playerGrade = character.schoolData?.grade || 1;
         const curTier = activeSchoolTier || 'Elementary';
         const tierLabel = curTier === 'Elementary' ? '초급부' : curTier === 'Middle' ? '중급부' : '고급부';
@@ -566,28 +705,108 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         { id: 'npc_vice', name: isKorean ? '정우성' : generateName(nation), role: '교무처 학사 행정관', tx: 5.5, ty: 6.5, gender: 'male', dialogue: '양옆의 출석부 열람대와 성적표 보관함에서 바로 서류를 확인하실 수 있습니다.' }
                     ]
                 };
-            case 'Classroom':
+            case 'Classroom': {
+                if (activeClassRoomSubject) {
+                    const subj = CLASSROOM_SUBJECT_ROOMS.find(s => s.type === activeClassRoomSubject) || CLASSROOM_SUBJECT_ROOMS[0];
+                    const isMartial = subj.type === 'Combat' || subj.type === 'Physical' || subj.type === 'Weapon';
+                    const isArcane = subj.type === 'Magic' || subj.type === 'Strategy';
+                    const subjectInstructorMap: Record<string, { name: string; gender: 'male' | 'female' }> = {
+                        Combat: { name: isKorean ? '이현석' : generateName(nation), gender: 'male' },
+                        Magic: { name: isKorean ? '박세은' : generateName(nation), gender: 'female' },
+                        Control: { name: isKorean ? '조민재' : generateName(nation), gender: 'male' },
+                        Strategy: { name: isKorean ? '최다혜' : generateName(nation), gender: 'female' },
+                        Physical: { name: isKorean ? '김도윤' : generateName(nation), gender: 'male' },
+                        Weapon: { name: isKorean ? '윤정아' : generateName(nation), gender: 'female' },
+                    };
+                    const subjInst = subjectInstructorMap[subj.type] || { name: isKorean ? '이현석' : generateName(nation), gender: 'male' as const };
+                    return {
+                        props: [
+                            { key: 'blackboard', tx: 7.8, ty: 1.4, w: 2.6, h: 1.8 },
+                            {
+                                key: 'lectern_podium',
+                                tx: 8.1,
+                                ty: 3.1,
+                                w: 1.8,
+                                h: 1.8,
+                                interactKind: 'subject_room' as const,
+                                subjectType: subj.type,
+                                label: `🎓 ${subj.title} 수업 수강 (${subj.statLabel})`
+                            },
+                            ...(isMartial
+                                ? [
+                                      { key: 'weapon_rack', tx: 2.2, ty: 1.8, w: 2.0, h: 2.0 },
+                                      { key: 'dummy_wood', tx: 13.6, ty: 2.0, w: 1.8, h: 1.8 }
+                                  ]
+                                : isArcane
+                                  ? [
+                                        { key: 'arcane_table', tx: 2.2, ty: 2.0, w: 2.0, h: 2.0 },
+                                        { key: 'bookshelf', tx: 13.6, ty: 1.8, w: 2.0, h: 2.0 }
+                                    ]
+                                  : [
+                                        { key: 'book_sun', tx: 2.2, ty: 2.0, w: 1.8, h: 1.8 },
+                                        { key: 'arcane_table', tx: 13.6, ty: 2.0, w: 2.0, h: 2.0 }
+                                    ]),
+                            { key: 'student_desk', tx: 3.5, ty: 6.2, w: 1.6, h: 1.5 },
+                            { key: 'student_desk', tx: 8.2, ty: 6.2, w: 1.6, h: 1.5 },
+                            { key: 'student_desk', tx: 12.9, ty: 6.2, w: 1.6, h: 1.5 }
+                        ],
+                        npcs: [
+                            {
+                                id: `npc_subj_inst_${subj.type}`,
+                                name: subjInst.name,
+                                role: `${subj.title} 담당 교관`,
+                                tx: 6.4,
+                                ty: 3.3,
+                                gender: subjInst.gender,
+                                dialogue: `${subj.title}에 잘 왔어요! 앞의 교탁(${subj.statLabel})으로 다가가면 정규 수업을 수강할 수 있습니다.`,
+                                opensZone: 'Classroom'
+                            },
+                            {
+                                id: c1Obj?.id || 'npc_subj_stu1',
+                                name: c1,
+                                role: `${subj.title} 수강 학우`,
+                                tx: 4.5,
+                                ty: 8.2,
+                                gender: c1Gender,
+                                dialogue: `${subj.title} 수업은 ${subj.statLabel} 성장에 정말 도움이 많이 돼요!`,
+                                canBondAndSpar: true,
+                                npcLevel: c1Obj?.level || Math.max(3, character.level || 5)
+                            },
+                            {
+                                id: c2Obj?.id || 'npc_subj_stu2',
+                                name: c2,
+                                role: `${subj.title} 수강 학우`,
+                                tx: 13.5,
+                                ty: 8.2,
+                                gender: c2Gender,
+                                dialogue: `수업 전에 잠깐 실력 테스트로 대련 한 판 어때?`,
+                                canBondAndSpar: true,
+                                npcLevel: c2Obj?.level || Math.max(3, character.level || 5)
+                            }
+                        ]
+                    };
+                }
+                // 기숙사 복도 안내 교관은 교무실 담임과 겹치지 않는 전임 교관 배치
                 return {
                     props: [
-                        ...CLASSROOM_SUBJECT_ROOMS.map((sr) => ({
-                            key: 'blackboard',
-                            tx: sr.tx,
-                            ty: sr.ty,
-                            w: 2.4,
+                        ...CLASSROOM_SUBJECT_ROOMS.map((sr, idx) => ({
+                            key: 'hallway_door',
+                            tx: idx % 3 === 0 ? 2.1 : idx % 3 === 1 ? 7.6 : 13.1,
+                            ty: idx < 3 ? 2.6 : 7.4,
+                            w: 1.8,
                             h: 1.8,
-                            interactKind: 'subject_room' as const,
+                            interactKind: 'enter_subject_room' as const,
                             subjectType: sr.type,
-                            label: `🏫 ${sr.title} (${sr.statLabel})`
-                        })),
-                        { key: 'student_desk', tx: 4, ty: 9.2, w: 1.6, h: 1.5 },
-                        { key: 'student_desk', tx: 12, ty: 9.2, w: 1.6, h: 1.5 }
+                            label: `🚪 ${sr.title} (${sr.statLabel})`
+                        }))
                     ],
                     npcs: [
-                        { id: 'npc_lect', name: teacherName, role: '담당 교관', tx: 9, ty: 5.0, gender: 'female', dialogue: '원하는 과목 강의실 칠판 앞으로 이동해 수업을 수강하세요!', opensZone: 'Classroom' },
-                        { id: 'npc_stu1', name: c1, role: '같은 반 학우', tx: 5.2, ty: 8.8, gender: 'female', dialogue: '오늘 필기 엄청 중요하대요! 어느 과목 강의실부터 들어갈래요?', canBondAndSpar: true, npcLevel: Math.max(3, character.level || 5) },
-                        { id: 'npc_stu2', name: c2, role: '같은 반 학우', tx: 13.2, ty: 8.8, gender: 'male', dialogue: '수업 끝나고 연무장에서 한 판 붙어볼래?', canBondAndSpar: true, npcLevel: Math.max(3, character.level || 5) }
+                        { id: 'npc_lect', name: isKorean ? '강혜진' : generateName(nation), role: '강의실 안내 교관', tx: 9, ty: 5.0, gender: 'female', dialogue: '각 과목 강의실 문을 통해 입장한 뒤 교탁에서 수업을 수강하세요!', opensZone: 'Classroom' },
+                        { id: c1Obj?.id || 'npc_stu1', name: c1, role: '같은 반 학우', tx: 5.2, ty: 10.2, gender: c1Gender, dialogue: '어느 과목 강의실로 들어갈래요? 복도 문으로 들어가면 바로 수업할 수 있어요!', canBondAndSpar: true, npcLevel: c1Obj?.level || Math.max(3, character.level || 5) },
+                        { id: c2Obj?.id || 'npc_stu2', name: c2, role: '같은 반 학우', tx: 13.2, ty: 10.2, gender: c2Gender, dialogue: '강의실 복도가 깔끔하게 정리됐네. 난 전투학실부터 들어갈 거야!', canBondAndSpar: true, npcLevel: c2Obj?.level || Math.max(3, character.level || 5) }
                     ]
                 };
+            }
             case 'Library': {
                 const isSenior = playerGrade < 3;
                 const readerGrade = isSenior ? Math.min(3, playerGrade + 1) : Math.max(1, playerGrade - 1);
@@ -675,17 +894,16 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 }
                 return {
                     props: [
-                        ...CLUB_DESK_SPECS.map((spec) => ({
-                            key: 'club_desk',
-                            tx: spec.tx,
-                            ty: spec.ty,
+                        ...CLUB_DESK_SPECS.map((spec, idx) => ({
+                            key: 'hallway_door',
+                            tx: idx === 0 ? 2.1 : idx === 1 ? 7.6 : idx === 2 ? 13.1 : idx === 3 ? 3.1 : 12.1,
+                            ty: idx < 3 ? 2.6 : 7.4,
                             w: 1.8,
-                            h: 1.6,
+                            h: 1.8,
                             interactKind: 'club_desk' as const,
                             clubType: spec.club,
                             label: joinedClub === spec.club ? `🚪 ${spec.title} 입장` : `📌 ${spec.title} 가입 신청`
-                        })),
-                        { key: 'bookshelf', tx: 1, ty: 1.2, w: 1.6, h: 1.6 }
+                        }))
                     ],
                     npcs: [
                         { id: 'npc_club_melee', name: isKorean ? '강태오' : generateName(nation), role: '근접 무기부', tx: 3.8, ty: 4.0, gender: 'male', dialogue: '검과 창의 극의를 함께 수련하지 않을래? 대련도 언제든 환영이야!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.SWORDSMAN },
@@ -700,10 +918,10 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 if (!activeDormRoom) {
                     return {
                         props: [
-                            ...DORM_ROOM_DOORS.map((door) => ({
-                                key: 'tile_door',
-                                tx: door.tx,
-                                ty: door.ty,
+                            ...DORM_ROOM_DOORS.map((door, idx) => ({
+                                key: 'hallway_door',
+                                tx: idx % 3 === 0 ? 2.1 : idx % 3 === 1 ? 7.6 : 13.1,
+                                ty: idx < 3 ? 2.6 : 7.4,
                                 w: 1.8,
                                 h: 1.8,
                                 interactKind: 'dorm_door' as const,
@@ -717,7 +935,10 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     };
                 }
                 const roomGenderKey: RpgSpriteGenderKey = activeDormRoom.gender === '남성' ? 'male' : 'female';
-                const roomClassmates = classmates.slice(0, 4).map((cm, idx) => ({
+                const matchingClassmates = classmates.filter(
+                    cm => (cm.gender === '남성' ? 'male' : 'female') === roomGenderKey
+                );
+                const roomClassmates = matchingClassmates.slice(0, 4).map((cm, idx) => ({
                     id: cm.id || `dorm_mate_${idx}`,
                     name: cm.name,
                     role: `${activeDormRoom.label} (${character.schoolData?.classNumber || 1}반) 동기`,
@@ -726,7 +947,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     gender: roomGenderKey,
                     dialogue: `기숙사 ${activeDormRoom.label}에서 쉬니까 컨디션이 확 살아나네! 친선 대련 한 판 어때?`,
                     canBondAndSpar: true,
-                    npcLevel: Math.max(3, character.level || 5)
+                    npcLevel: cm.level || Math.max(3, character.level || 5)
                 }));
                 if (roomClassmates.length === 0) {
                     roomClassmates.push(
@@ -754,16 +975,59 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         }
                     );
                 }
-                // Randomly include campus plaza friends/seniors/juniors visiting the dorm room
-                const plazaVisitors = plazaStudents.slice(0, 2).map((ps, idx) => ({
-                    ...ps,
-                    id: `dorm_plaza_${ps.id}`,
-                    role: `교정 학우 · ${ps.role}`,
-                    tx: 13.0,
-                    ty: 4.8 + idx * 3.2,
-                    canBondAndSpar: true,
-                    npcLevel: Math.max(4, (character.level || 5) + idx * 2)
-                }));
+                // 기숙사 전용 사생들 (교정/강의실 NPC와 겹치지 않음) + 야간에는 교정 학생들도 기숙사로 복귀
+                const dormResidents: SchoolNpcActor[] = [
+                    {
+                        id: 'dorm_res_1',
+                        name: isKorean ? (roomGenderKey === 'male' ? '강민재' : '윤채원') : generateName(nation),
+                        role: `${activeDormRoom.label} 기숙사 사생`,
+                        tx: 13.0,
+                        ty: 4.8,
+                        gender: roomGenderKey,
+                        dialogue: isSchoolNight
+                            ? '밤이 늦어서 다들 기숙사로 들어왔어. 내일 수업을 위해 푹 쉬자!'
+                            : '기숙사 방이 조용해서 혼자 마력 명상하기 좋네.',
+                        canBondAndSpar: true,
+                        npcLevel: Math.max(4, character.level || 5)
+                    },
+                    {
+                        id: 'dorm_res_2',
+                        name: isKorean ? (roomGenderKey === 'male' ? '서준영' : '한예지') : generateName(nation),
+                        role: `${activeDormRoom.label} 룸메이트`,
+                        tx: 13.0,
+                        ty: 8.0,
+                        gender: roomGenderKey,
+                        dialogue: '필요하면 침대에서 바로 휴식해! 컨디션 회복이 최고야.',
+                        canBondAndSpar: true,
+                        npcLevel: Math.max(4, (character.level || 5) + 1)
+                    },
+                    ...(isSchoolNight
+                        ? [
+                              {
+                                  id: 'dorm_night_return_1',
+                                  name: isKorean ? (roomGenderKey === 'male' ? '김민준' : '한소희') : generateName(nation),
+                                  role: '야간 귀가 학우',
+                                  tx: 6.0,
+                                  ty: 8.4,
+                                  gender: roomGenderKey,
+                                  dialogue: '야간 통금 시간이라 교정에서 방금 기숙사로 돌아왔어. 오늘 하루도 수고했어!',
+                                  canBondAndSpar: true,
+                                  npcLevel: Math.max(4, character.level || 5)
+                              },
+                              {
+                                  id: 'dorm_night_return_2',
+                                  name: isKorean ? (roomGenderKey === 'male' ? '박지훈' : '최유진') : generateName(nation),
+                                  role: '야간 귀가 학우',
+                                  tx: 10.2,
+                                  ty: 8.4,
+                                  gender: roomGenderKey,
+                                  dialogue: '밤에는 다른 건물들이 전부 잠겨서 기숙사에서 내일을 준비하는 게 제일 좋아.',
+                                  canBondAndSpar: true,
+                                  npcLevel: Math.max(4, (character.level || 5) + 1)
+                              }
+                          ]
+                        : [])
+                ];
                 return {
                     props: [
                         { key: 'dorm_bed', tx: 2.5, ty: 2.0, w: 1.9, h: 1.9 },
@@ -774,12 +1038,12 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     npcs: [
                         { id: 'npc_dorm_rest', name: isKorean ? '박성호' : generateName(nation), role: '기숙사 사감', tx: 9, ty: 3.6, gender: 'male', dialogue: `${activeDormRoom.label}에서 충분히 휴식을 취하세요.`, opensZone: 'Dormitory' },
                         ...roomClassmates,
-                        ...plazaVisitors
+                        ...dormResidents
                     ]
                 };
             }
         }
-    }, [activeRoom, activeDormRoom, activeClubRoom, activeSchoolTier, nation, character.schoolData?.homeroomTeacher?.name, character.schoolData?.classmates, character.schoolData?.classNumber, character.schoolData?.grade, character.level, character.clubData?.joinedClub, plazaStudents]);
+    }, [activeRoom, activeDormRoom, activeClubRoom, activeClassRoomSubject, activeSchoolTier, nation, character.schoolData?.homeroomTeacher?.name, character.schoolData?.classmates, character.schoolData?.classNumber, character.schoolData?.grade, character.level, character.clubData?.joinedClub, isSchoolNight]);
 
     useEffect(() => {
         loadRpgSpriteImage(playerSpriteUrl);
@@ -807,7 +1071,9 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         [
             'attendance_desk', 'report_cabinet', 'blackboard', 'student_desk',
             'bookshelf', 'book_sun', 'book_abyss', 'book_element',
-            'club_desk', 'dummy_wood', 'dummy_arcane', 'dorm_bed'
+            'club_desk', 'dummy_wood', 'dummy_arcane', 'dorm_bed',
+            'hallway_door', 'lectern_podium', 'weapon_rack', 'arcane_table',
+            'partition_h', 'partition_v', 'partition_corner', 'partition_door'
         ].forEach(k => loadCityAssetImage(getAcademyAssetUrl(`props/${k}.png`)));
         ['desk', 'school_desk', 'bookshelf', 'training_dummy', 'table', 'bed', 'hunt_prop_tree', 'hunt_prop_spirit_tree'].forEach(
             k => loadCityAssetImage(getInteriorPropSpriteUrl(k))
@@ -907,6 +1173,12 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     );
 
     const enterRoom = useCallback((zone: SchoolZone) => {
+        if (isSchoolNight && zone !== 'Dormitory') {
+            setActiveDialogue(null);
+            setAccessDeniedMsg('🌙 야간 시간대(20:00~06:00)에는 교무실·강의실·대도서관·연무장·동아리동이 폐쇄되어 학생 기숙사만 이용할 수 있습니다.');
+            return;
+        }
+        setAccessDeniedMsg(null);
         setActiveDialogue(null);
         setActiveDormRoom(null);
         setActiveClubRoom(null);
@@ -917,9 +1189,18 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         playerRef.current.targetY = null;
         exitCooldownRef.current = Date.now() + 700;
         setActiveRoom(zone);
-    }, []);
+    }, [isSchoolNight]);
 
     const exitRoomToCampus = useCallback(() => {
+        if (activeRoom === 'Classroom' && activeClassRoomSubject) {
+            setActiveDialogue(null);
+            setActiveClassRoomSubject(null);
+            playerRef.current.x = Math.floor(ROOM_COLS / 2) * CITY_TILE_SIZE;
+            playerRef.current.y = (ROOM_ROWS - 2.2) * CITY_TILE_SIZE;
+            playerRef.current.dir = 'up';
+            exitCooldownRef.current = Date.now() + 700;
+            return;
+        }
         if (activeRoom === 'Dormitory' && activeDormRoom) {
             setActiveDialogue(null);
             setActiveDormRoom(null);
@@ -954,6 +1235,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         setActiveDialogue(null);
         setActiveDormRoom(null);
         setActiveClubRoom(null);
+        setActiveClassRoomSubject(null);
         setActiveRoom(null);
         playerRef.current.x = exitedBldg ? (exitedBldg.tx + exitedBldg.tw / 2) * CITY_TILE_SIZE : Math.floor(nextCols / 2) * CITY_TILE_SIZE;
         playerRef.current.y = exitedBldg ? (exitedBldg.ty + exitedBldg.th + 1.35) * CITY_TILE_SIZE : (nextRows - 2.5) * CITY_TILE_SIZE;
@@ -961,13 +1243,14 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         playerRef.current.targetX = null;
         playerRef.current.targetY = null;
         exitCooldownRef.current = Date.now() + 700;
-    }, [activeSchoolTier, activeRoom, activeDormRoom, activeClubRoom]);
+        }, [activeSchoolTier, activeRoom, activeDormRoom, activeClubRoom, activeClassRoomSubject]);
 
     const exitCampusToPlaza = useCallback(() => {
         const exitedSchool = buildingSlots.find(b => b.tier === activeSchoolTier);
         setActiveDialogue(null);
         setActiveDormRoom(null);
         setActiveClubRoom(null);
+        setActiveClassRoomSubject(null);
         setActiveRoom(null);
         setActiveSchoolTier(null);
         playerRef.current.x = exitedSchool ? (exitedSchool.tx + exitedSchool.tw / 2) * CITY_TILE_SIZE : Math.floor(PLAZA_COLS / 2) * CITY_TILE_SIZE;
@@ -1002,6 +1285,24 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             return;
         }
         if (!activeRoom) {
+            for (const stu of campusStudents) {
+                const off = npcOffsetsRef.current[stu.id] || { dx: 0, dy: 0 };
+                const sx = (stu.tx + 0.5) * CITY_TILE_SIZE + off.dx;
+                const sy = (stu.ty + 0.5) * CITY_TILE_SIZE + off.dy;
+                if (Math.hypot(sx - p.x, sy - p.y) <= CITY_TILE_SIZE * 1.6) {
+                    setActiveDialogue({
+                        id: stu.id,
+                        name: stu.name,
+                        role: stu.role,
+                        text: stu.dialogue,
+                        gender: stu.gender,
+                        canBondAndSpar: true,
+                        npcLevel: stu.npcLevel,
+                        combatStyle: stu.combatStyle
+                    });
+                    return;
+                }
+            }
             for (const b of campusBuildings) {
                 const doorX = (b.tx + b.tw / 2) * CITY_TILE_SIZE;
                 const doorY = (b.ty + b.th + 0.4) * CITY_TILE_SIZE;
@@ -1020,7 +1321,20 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 if (pr.interactKind === 'attendance') setShowAttendanceDirect(true);
                 else if (pr.interactKind === 'report') setShowReportDirect(true);
                 else if (pr.interactKind === 'divine_book' && pr.bookDef) setActiveDivineBook(pr.bookDef);
-                else if (pr.interactKind === 'subject_room' && pr.subjectType) {
+                else if (pr.interactKind === 'enter_subject_room' && pr.subjectType) {
+                    const subj = CLASSROOM_SUBJECT_ROOMS.find(s => s.type === pr.subjectType);
+                    setActiveClassRoomSubject(pr.subjectType);
+                    playerRef.current.x = Math.floor(ROOM_COLS / 2) * CITY_TILE_SIZE;
+                    playerRef.current.y = (ROOM_ROWS - 2.2) * CITY_TILE_SIZE;
+                    playerRef.current.dir = 'up';
+                    playerRef.current.targetX = null;
+                    playerRef.current.targetY = null;
+                    exitCooldownRef.current = Date.now() + 700;
+                    if (subj) {
+                        setCampusToast(`${subj.title}에 입장했습니다. 교탁에서 수업을 수강하세요!`);
+                        setTimeout(() => setCampusToast(null), 2400);
+                    }
+                } else if (pr.interactKind === 'subject_room' && pr.subjectType) {
                     setActiveSubjectRoom(CLASSROOM_SUBJECT_ROOMS.find(s => s.type === pr.subjectType) || null);
                 } else if (pr.interactKind === 'dorm_door' && pr.dormDoor) {
                     const myGender: '남성' | '여성' = character.gender === '남성' ? '남성' : '여성';
@@ -1117,6 +1431,13 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             const ts = CITY_TILE_SIZE;
 
             const isBlockedByBuilding = (wx: number, wy: number) => {
+                if (activeRoom && !activeClassRoomSubject) {
+                    const tc = Math.floor(wx / ts);
+                    const tr = Math.floor(wy / ts);
+                    if (getInteriorPartitionType(activeRoom, activeClubRoom, activeDormRoom, tc, tr) === 'wall') {
+                        return true;
+                    }
+                }
                 const list = !activeSchoolTier ? buildingSlots : !activeRoom ? campusBuildings : [];
                 for (const b of list) {
                     const x0 = (b.tx + 0.2) * ts;
@@ -1234,12 +1555,23 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             }
                         }
                     } else if (!activeRoom) {
-                        for (const b of campusBuildings) {
-                            const dx = (b.tx + b.tw / 2) * ts;
-                            const dy = (b.ty + b.th + 0.4) * ts;
-                            if (Math.hypot(dx - p.x, dy - p.y) <= ts * 2.0) {
-                                found = `${b.icon} ${b.label} 입장 (Space)`;
+                        for (const stu of campusStudents) {
+                            const off = npcOffsetsRef.current[stu.id] || { dx: 0, dy: 0 };
+                            const sx = (stu.tx + 0.5) * ts + off.dx;
+                            const sy = (stu.ty + 0.5) * ts + off.dy;
+                            if (Math.hypot(sx - p.x, sy - p.y) <= ts * 1.6) {
+                                found = `💬 ${stu.name} 대화 (Space)`;
                                 break;
+                            }
+                        }
+                        if (!found) {
+                            for (const b of campusBuildings) {
+                                const dx = (b.tx + b.tw / 2) * ts;
+                                const dy = (b.ty + b.th + 0.4) * ts;
+                                if (Math.hypot(dx - p.x, dy - p.y) <= ts * 2.0) {
+                                    found = `${b.icon} ${b.label} 입장 (Space)`;
+                                    break;
+                                }
                             }
                         }
                     } else {
@@ -1302,12 +1634,108 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         const x = c * ts;
                         const y = r * ts;
                         const isGate = r === rows - 1 && c >= exitMin && c <= exitMax;
+                        const partType =
+                            activeRoom && !activeClassRoomSubject
+                                ? getInteriorPartitionType(activeRoom, activeClubRoom, activeDormRoom, c, r)
+                                : null;
+                        if (partType === 'wall') {
+                            const hasLeft = getInteriorPartitionType(activeRoom, activeClubRoom, activeDormRoom, c - 1, r) === 'wall';
+                            const hasRight = getInteriorPartitionType(activeRoom, activeClubRoom, activeDormRoom, c + 1, r) === 'wall';
+                            const hasUp = getInteriorPartitionType(activeRoom, activeClubRoom, activeDormRoom, c, r - 1) === 'wall';
+                            const hasDown = getInteriorPartitionType(activeRoom, activeClubRoom, activeDormRoom, c, r + 1) === 'wall';
+                            const isHoriz = hasLeft || hasRight;
+                            const isVert = hasUp || hasDown;
+                            const isCornerOrJunction = (isHoriz && isVert) || (!isHoriz && !isVert);
+
+                            // 바닥 타일 먼저 깔고 그 위에 입체 격벽 렌더링
+                            if (floorImg?.complete && floorImg.naturalWidth > 0) ctx.drawImage(floorImg, x, y, ts, ts);
+                            else {
+                                ctx.fillStyle = (c + r) % 2 === 0 ? '#8a5a36' : '#7c4f2e';
+                                ctx.fillRect(x, y, ts, ts);
+                            }
+
+                            const partKey = isCornerOrJunction ? 'partition_corner' : isVert ? 'partition_v' : 'partition_h';
+                            const partImg = getCachedCityAssetImage(getAcademyAssetUrl(`props/${partKey}.png`));
+                            if (partImg?.complete && partImg.naturalWidth > 0) {
+                                ctx.drawImage(partImg, x, y, ts, ts);
+                            } else if (isCornerOrJunction) {
+                                // 교차점/모서리 기둥 (윗면 목재 캡 + 전면 벽체)
+                                ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+                                ctx.fillRect(x + 2, y + ts - 4, ts - 2, 7);
+                                ctx.fillStyle = '#3b2618';
+                                ctx.fillRect(x, y, ts, ts * 0.56);
+                                ctx.fillStyle = '#6b4c35';
+                                ctx.fillRect(x + 2, y + 2, ts - 4, ts * 0.48);
+                                ctx.fillStyle = '#d6c3a5';
+                                ctx.fillRect(x + 2, y + ts * 0.56, ts - 4, ts * 0.44);
+                                ctx.fillStyle = '#4a3222';
+                                ctx.fillRect(x, y + ts * 0.56, 4, ts * 0.44);
+                                ctx.fillRect(x + ts - 4, y + ts * 0.56, 4, ts * 0.44);
+                                ctx.fillRect(x, y + ts - 4, ts, 4);
+                                ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)';
+                                ctx.lineWidth = 1;
+                                ctx.strokeRect(x + 1.5, y + 1.5, ts - 3, ts * 0.52);
+                            } else if (isVert) {
+                                // 세로 방향 격벽 (측면 단면 + 얇은 목재 기둥)
+                                const wallW = Math.round(ts * 0.42);
+                                const wx = x + Math.round((ts - wallW) / 2);
+                                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+                                ctx.fillRect(wx + wallW, y + 2, 5, ts - 2);
+                                ctx.fillStyle = '#3b2618';
+                                ctx.fillRect(wx, y, wallW, ts);
+                                ctx.fillStyle = '#6b4c35';
+                                ctx.fillRect(wx + 3, y, wallW - 6, ts);
+                                ctx.fillStyle = '#8b6548';
+                                ctx.fillRect(wx + 4, y, 2, ts);
+                                ctx.fillStyle = '#4a3222';
+                                ctx.fillRect(wx + wallW - 4, y, 3, ts);
+                            } else {
+                                // 가로 방향 격벽 (상단 목재 들보 + 하단 회벽 + 바닥 그림자)
+                                ctx.fillStyle = 'rgba(0, 0, 0, 0.26)';
+                                ctx.fillRect(x, y + ts, ts, 6);
+                                ctx.fillStyle = '#3b2618';
+                                ctx.fillRect(x, y, ts, ts * 0.48);
+                                ctx.fillStyle = '#6b4c35';
+                                ctx.fillRect(x, y + 3, ts, ts * 0.4);
+                                ctx.fillStyle = '#d6c3a5';
+                                ctx.fillRect(x, y + ts * 0.48, ts, ts * 0.52);
+                                ctx.fillStyle = '#c4ae8c';
+                                ctx.fillRect(x, y + ts * 0.48, ts, 3);
+                                ctx.fillStyle = '#4a3222';
+                                ctx.fillRect(x, y + ts - 4, ts, 4);
+                                // 세로 목재 프레임 라인
+                                ctx.fillRect(x, y + ts * 0.48, 3, ts * 0.52);
+                                ctx.fillRect(x + ts - 3, y + ts * 0.48, 3, ts * 0.52);
+                            }
+                            continue;
+                        }
                         const isWall = r === 0 || c === 0 || c === cols - 1 || (r === rows - 1 && !isGate);
                         if (isWall) {
-                            if (wallImg?.complete && wallImg.naturalWidth > 0) ctx.drawImage(wallImg, x, y, ts, ts);
-                            else {
-                                ctx.fillStyle = activeRoom ? '#475569' : activeSchoolTier === 'High' ? '#312e81' : '#334155';
-                                ctx.fillRect(x, y, ts, ts);
+                            if (activeRoom) {
+                                // 모든 학교 실내 캔버스 외벽에 가로벽/세로벽/모서리 기둥 타일 일괄 적용
+                                if (floorImg?.complete && floorImg.naturalWidth > 0) ctx.drawImage(floorImg, x, y, ts, ts);
+                                else {
+                                    ctx.fillStyle = activeRoom === 'Training' ? '#44403c' : '#6b4c35';
+                                    ctx.fillRect(x, y, ts, ts);
+                                }
+                                const isCornerTile = (r === 0 || r === rows - 1) && (c === 0 || c === cols - 1);
+                                const isVertEdge = c === 0 || c === cols - 1;
+                                const outerKey = isCornerTile ? 'partition_corner' : isVertEdge ? 'partition_v' : 'partition_h';
+                                const outerImg = getCachedCityAssetImage(getAcademyAssetUrl(`props/${outerKey}.png`));
+                                if (outerImg?.complete && outerImg.naturalWidth > 0) {
+                                    ctx.drawImage(outerImg, x, y, ts, ts);
+                                } else if (wallImg?.complete && wallImg.naturalWidth > 0) {
+                                    ctx.drawImage(wallImg, x, y, ts, ts);
+                                } else {
+                                    ctx.fillStyle = '#475569';
+                                    ctx.fillRect(x, y, ts, ts);
+                                }
+                            } else {
+                                if (wallImg?.complete && wallImg.naturalWidth > 0) ctx.drawImage(wallImg, x, y, ts, ts);
+                                else {
+                                    ctx.fillStyle = activeSchoolTier === 'High' ? '#312e81' : '#334155';
+                                    ctx.fillRect(x, y, ts, ts);
+                                }
                             }
                             continue;
                         }
@@ -1323,11 +1751,23 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                     : ((r + c) % 2 === 0 ? '#6b4c35' : '#5e422d');
                                 ctx.fillRect(x, y, ts, ts);
                             }
+                            if (partType === 'doorway') {
+                                const partDoorImg = getCachedCityAssetImage(getAcademyAssetUrl('props/partition_door.png'));
+                                if (partDoorImg?.complete && partDoorImg.naturalWidth > 0) {
+                                    ctx.drawImage(partDoorImg, x, y, ts, ts);
+                                } else {
+                                    ctx.fillStyle = 'rgba(251, 191, 36, 0.22)';
+                                    ctx.fillRect(x, y, ts, ts);
+                                }
+                            }
                             if (isGate) {
-                                if (doorImg?.complete && doorImg.naturalWidth > 0) {
+                                const partDoorImg = getCachedCityAssetImage(getAcademyAssetUrl('props/partition_door.png'));
+                                if (c === Math.floor(cols / 2) && partDoorImg?.complete && partDoorImg.naturalWidth > 0) {
+                                    ctx.drawImage(partDoorImg, x, y, ts, ts);
+                                } else if (doorImg?.complete && doorImg.naturalWidth > 0) {
                                     ctx.drawImage(doorImg, x, y, ts, ts);
                                 } else {
-                                    ctx.fillStyle = 'rgba(251, 191, 36, 0.45)';
+                                    ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
                                     ctx.fillRect(x, y, ts, ts);
                                 }
                             }
@@ -1574,24 +2014,16 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         ctx.fillStyle = '#f8fafc';
                         ctx.textAlign = 'center';
                         ctx.fillText(title, bx + bw / 2, by - 10);
+                        if (isSchoolNight && b.zone !== 'Dormitory') {
+                            ctx.font = 'bold 9px sans-serif';
+                            ctx.fillStyle = '#fca5a5';
+                            ctx.fillText('🔒 야간 폐쇄 (기숙사만 이용 가능)', bx + bw / 2, by - 26);
+                        }
                     });
-                } else {
-                    if (activeRoom === 'Club' && !activeClubRoom) {
-                        CLUB_DESK_SPECS.forEach(spec => {
-                            ctx.save();
-                            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-                            ctx.beginPath();
-                            ctx.roundRect(spec.tx * ts - 18, (spec.ty - 0.75) * ts, 110, 18, 5);
-                            ctx.fill();
-                            ctx.strokeStyle = '#fbbf24';
-                            ctx.stroke();
-                            ctx.fillStyle = '#fef3c7';
-                            ctx.font = 'bold 10px sans-serif';
-                            ctx.textAlign = 'center';
-                            ctx.fillText(spec.title, spec.tx * ts + 37, (spec.ty - 0.75) * ts + 12);
-                            ctx.restore();
-                        });
+                    if (!isSchoolNight) {
+                        campusStudents.forEach(drawNpcActor);
                     }
+                } else {
                     roomContent.props.forEach(pr => {
                         const px = pr.tx * ts;
                         const py = pr.ty * ts;
@@ -1680,6 +2112,11 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 ctx.textAlign = 'center';
                 ctx.fillText(character.name, p.x, p.y + 14);
 
+                drawCanvasNightOverlay(ctx, 0, 0, mapW, mapH, character.currentTime, {
+                    isIndoor: Boolean(activeRoom),
+                    playerLight: { x: p.x, y: p.y - 6, radius: 110 }
+                });
+
                 ctx.restore();
             }
 
@@ -1687,7 +2124,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         };
         rafId = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(rafId);
-    }, [viewport, cultureKey, playerSpriteUrl, spriteInfo, activeSchoolTier, activeRoom, campusDims, buildingSlots, plazaStudents, campusBuildings, roomContent, enrolledTier, canEnterTier, openModalZone, activeDialogue, region, nation, character.name, exitRoomToCampus, exitCampusToPlaza, onExitToCity]);
+    }, [viewport, cultureKey, playerSpriteUrl, spriteInfo, activeSchoolTier, activeRoom, campusDims, buildingSlots, plazaStudents, campusBuildings, roomContent, enrolledTier, canEnterTier, openModalZone, activeDialogue, region, nation, character.name, character.currentTime, isSchoolNight, exitRoomToCampus, exitCampusToPlaza, onExitToCity]);
 
     const roomTitleMap: Record<SchoolZone, string> = {
         Office: '교무실',
@@ -1866,23 +2303,36 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                 }
                                                 const idx = newChar.socialNetwork.findIndex(n => n.id === npcId || n.name === activeDialogue.name);
                                                 let finalAff = Math.min(100, baseAff + 5);
+                                                const matchedCm = newChar.schoolData?.classmates?.find(c => c.id === npcId || c.name === activeDialogue.name);
+                                                const matchedHt = activeDialogue.isTeacher ? newChar.schoolData?.homeroomTeacher : undefined;
+                                                const sourcePerson = matchedCm || matchedHt;
+                                                const tierBaseAge = activeSchoolTier === 'Elementary' ? 10 : activeSchoolTier === 'Middle' ? 13 : 16;
+                                                const roleGradeMatch = activeDialogue.role?.match(/(\d)학년/);
+                                                const resolvedGrade = roleGradeMatch
+                                                    ? parseInt(roleGradeMatch[1], 10)
+                                                    : (activeDormRoom?.grade || newChar.schoolData?.grade || 1);
+                                                const expectedAge = sourcePerson?.age || (activeDialogue.isTeacher ? '32세' : `${tierBaseAge + resolvedGrade}세`);
+                                                const expectedGender = sourcePerson?.gender || (activeDialogue.gender === 'male' ? '남성' : '여성');
+                                                const expectedClassType = sourcePerson?.classType || (activeDialogue.isTeacher ? '교사' : JobType.STUDENT);
+                                                const expectedVisual = sourcePerson?.visualUrl || resolveNpcVisual(npcId, activeDialogue.name, expectedGender === '남성' ? 'male' : 'female', activeDialogue.isTeacher);
+
                                                 if (idx === -1) {
                                                     const newNpc: SimpleStudent = {
-                                                        id: npcId,
+                                                        id: sourcePerson?.id || npcId,
                                                         name: activeDialogue.name,
-                                                        age: activeDialogue.isTeacher ? '32세' : '18세',
-                                                        gender: activeDialogue.gender === 'male' ? '남성' : '여성',
-                                                        race: '인간',
-                                                        nation,
-                                                        level: activeDialogue.npcLevel || Math.max(3, character.level || 5),
-                                                        personality: '성실함',
-                                                        appearance: activeDialogue.isTeacher ? '단정한 교사 복장' : '단정한 교복',
-                                                        visualUrl: resolveNpcVisual(npcId, activeDialogue.name, activeDialogue.gender || 'female', activeDialogue.isTeacher),
-                                                        stats: { str: 18, int: 18, wis: 15, agi: 16, con: 18 },
+                                                        age: expectedAge,
+                                                        gender: expectedGender,
+                                                        race: sourcePerson?.race || character.race || '인간',
+                                                        nation: sourcePerson?.nation || nation,
+                                                        level: sourcePerson?.level || activeDialogue.npcLevel || Math.max(3, character.level || 5),
+                                                        personality: sourcePerson?.personality || '성실함',
+                                                        appearance: sourcePerson?.appearance || (activeDialogue.isTeacher ? '단정한 교사 복장' : '단정한 교복'),
+                                                        visualUrl: expectedVisual,
+                                                        stats: sourcePerson?.stats || { str: 18, int: 18, wis: 15, agi: 16, con: 18 },
                                                         affection: finalAff,
                                                         isPastConnection: true,
-                                                        classType: activeDialogue.role,
-                                                        combatStyle: activeDialogue.combatStyle || CombatStyle.SWORDSMAN,
+                                                        classType: expectedClassType,
+                                                        combatStyle: sourcePerson?.combatStyle || activeDialogue.combatStyle || CombatStyle.SWORDSMAN,
                                                     };
                                                     newChar.socialNetwork.push(newNpc);
                                                 } else {
@@ -1890,6 +2340,10 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                     finalAff = Math.min(100, (ex.affection || 0) + 5);
                                                     ex.affection = finalAff;
                                                     ex.isPastConnection = true;
+                                                    ex.age = expectedAge;
+                                                    ex.gender = expectedGender;
+                                                    ex.classType = expectedClassType;
+                                                    ex.visualUrl = expectedVisual;
                                                     newChar.socialNetwork[idx] = ex;
                                                 }
                                                 if (newChar.schoolData) {
@@ -2016,25 +2470,43 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             </div>
                         )}
 
-                        {/* 일반 대화 주제 선택지 (시험/토너먼트/일상) */}
+                        {/* 일반 대화 주제 선택지 (교사/교직원 vs 학우 구분, 시험/토너먼트/일상) */}
                         <div className="flex flex-wrap gap-1.5 pt-1 border-t border-slate-800/80">
-                            {(campusPeriodNotice?.kind === 'exam'
-                                ? [
-                                    { label: '📝 시험 준비 잘 돼가?', reply: `이번 시험은 실기랑 이론 비중이 다 높아서 긴장돼! 넌 어떻게 준비하고 있어? 교무실에서 언제든 응시할 수 있대.` },
-                                    { label: '📚 시험 팁 좀 알려줘!', reply: `강의실에서 부족한 스탯 수업을 듣고, 도서관에서 신력 제어(CTRL)를 올려두면 시험 평가가 훨씬 수월할 거야!` },
-                                    { label: '💪 같이 시험 통과하자!', reply: `응! 우리 둘 다 좋은 성적으로 꼭 통과해서 다음 학년으로 올라가자!` }
-                                ]
-                                : campusPeriodNotice?.kind === 'tournament'
+                            {((activeDialogue.isTeacher || /교사|교관|사감|사서/.test(activeDialogue.role || ''))
+                                ? (campusPeriodNotice?.kind === 'exam'
                                     ? [
-                                        { label: '⚔️ 토너먼트 우승 목표야?', reply: `당연하지! 이번 토너먼트 대진표가 꽤 쟁쟁하던데, 너랑 결승에서 만나면 정말 재밌겠다!` },
-                                        { label: '🔥 컨디션은 어때?', reply: `최고조야! 연무장에서 감각을 끌어올리고 왔거든. 너도 기숙사에서 충분히 쉬고 출전해!` },
-                                        { label: '🤝 서로 끝까지 힘내자!', reply: `고마워! 서로 부상 없이 최고의 경기를 치르자고!` }
+                                        { label: '📝 이번 시험 평가 기준이 궁금해요', reply: `필기(이론·제어)와 실전 대련 점수를 종합해 평가합니다. 기준 점수를 넘기면 다음 학년 또는 상급 과정으로 진급할 수 있어요.` },
+                                        { label: '📚 시험 대비 수련 조언 부탁드려요', reply: `강의실에서 부족한 스탯 수업을 보강하고, 대도서관에서 신력 제어(CTRL)를 다듬어 두세요. 준비가 되면 교무실에서 응시하면 됩니다.` },
+                                        { label: '🎓 열심히 준비해서 꼭 통과하겠습니다!', reply: `좋은 자세예요. 그동안 성실히 수련해 왔으니 본인의 실력을 믿고 차분히 시험에 임하세요.` }
                                     ]
-                                    : [
-                                        { label: '💬 요즘 학교 생활 어때?', reply: `매일 수업 듣고 친구들이랑 대련하다 보면 하루가 금방 가더라. 그래도 실력이 느는 게 느껴져서 뿌듯해!` },
-                                        { label: '📖 추천할 만한 활동 있어?', reply: `시간 될 때 대도서관 신력 서적도 읽어보고, 동아리동에서 활동도 해봐. 의외로 보너스 효과가 쏠쏠해!` },
-                                        { label: '✨ 오늘 컨디션 좋아 보이네!', reply: `하하, 고마워! 너도 얼굴빛이 좋아 보이는데, 오늘 하루도 화이팅하자!` }
+                                    : campusPeriodNotice?.kind === 'tournament'
+                                        ? [
+                                            { label: '🏆 토너먼트 출전 전 조언 부탁드려요', reply: `토너먼트에서는 순간 판단과 신력 배분이 승패를 가릅니다. 무리하게 몰아붙이기보다 상대의 틈을 노리세요.` },
+                                            { label: '⚔️ 실전 대비는 어떻게 할까요?', reply: `실전 연무장에서 무기 숙련도와 연계기를 점검하고, 기숙사에서 피로를 완전히 회복한 상태로 출전하는 것이 좋습니다.` },
+                                            { label: '🔥 좋은 성적 내고 오겠습니다!', reply: `부상 없이 후회 없는 경기를 펼치고 오길 바랍니다. 교사로서 끝까지 응원하겠습니다.` }
+                                        ]
+                                        : [
+                                            { label: '📚 어떤 수업을 우선 들으면 좋을까요?', reply: `본인의 전투 스타일에 맞춰 주력 스탯 강의부터 수강하되, 신력 제어(CTRL)와 체력(DEF/HP)도 균형 있게 챙기는 것을 권장합니다.` },
+                                            { label: '🎓 학교 생활에서 신경 쓸 점이 있을까요?', reply: `수업과 연무장 수련도 중요하지만, 동아리 활동과 학우들과의 교류 역시 실전 감각과 명성을 키우는 좋은 밑거름이 됩니다.` },
+                                            { label: '🙇 항상 지도해 주셔서 감사합니다!', reply: `별말씀을요. 궁금한 점이나 진로에 대한 고민이 생기면 언제든 편하게 찾아오세요.` }
+                                        ])
+                                : (campusPeriodNotice?.kind === 'exam'
+                                    ? [
+                                        { label: '📝 시험 준비 잘 돼가?', reply: `이번 시험은 실기랑 이론 비중이 다 높아서 긴장돼! 넌 어떻게 준비하고 있어? 교무실에서 언제든 응시할 수 있대.` },
+                                        { label: '📚 시험 팁 좀 알려줘!', reply: `강의실에서 부족한 스탯 수업을 듣고, 도서관에서 신력 제어(CTRL)를 올려두면 시험 평가가 훨씬 수월할 거야!` },
+                                        { label: '💪 같이 시험 통과하자!', reply: `응! 우리 둘 다 좋은 성적으로 꼭 통과해서 다음 학년으로 올라가자!` }
                                     ]
+                                    : campusPeriodNotice?.kind === 'tournament'
+                                        ? [
+                                            { label: '⚔️ 토너먼트 우승 목표야?', reply: `당연하지! 이번 토너먼트 대진표가 꽤 쟁쟁하던데, 너랑 결승에서 만나면 정말 재밌겠다!` },
+                                            { label: '🔥 컨디션은 어때?', reply: `최고조야! 연무장에서 감각을 끌어올리고 왔거든. 너도 기숙사에서 충분히 쉬고 출전해!` },
+                                            { label: '🤝 서로 끝까지 힘내자!', reply: `고마워! 서로 부상 없이 최고의 경기를 치르자고!` }
+                                        ]
+                                        : [
+                                            { label: '💬 요즘 학교 생활 어때?', reply: `매일 수업 듣고 친구들이랑 대련하다 보면 하루가 금방 가더라. 그래도 실력이 느는 게 느껴져서 뿌듯해!` },
+                                            { label: '📖 추천할 만한 활동 있어?', reply: `시간 될 때 대도서관 신력 서적도 읽어보고, 동아리동에서 활동도 해봐. 의외로 보너스 효과가 쏠쏠해!` },
+                                            { label: '✨ 오늘 컨디션 좋아 보이네!', reply: `하하, 고마워! 너도 얼굴빛이 좋아 보이는데, 오늘 하루도 화이팅하자!` }
+                                        ])
                             ).map((choice, cIdx) => (
                                 <button
                                     key={cIdx}
@@ -2412,7 +2884,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 )}
 
                 {/* Mobile D-Pad */}
-                <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1 w-28 h-28 opacity-90 select-none">
+                <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none">
                     <div />
                     <button
                         type="button"
@@ -2421,7 +2893,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         onMouseDown={() => (dpadRef.current = 'up')}
                         onMouseUp={() => (dpadRef.current = null)}
                         onMouseLeave={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-xl flex items-center justify-center text-white text-base font-bold"
                     >
                         ▲
                     </button>
@@ -2433,7 +2905,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         onMouseDown={() => (dpadRef.current = 'left')}
                         onMouseUp={() => (dpadRef.current = null)}
                         onMouseLeave={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-xl flex items-center justify-center text-white text-base font-bold"
                     >
                         ◀
                     </button>
@@ -2451,7 +2923,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         onMouseDown={() => (dpadRef.current = 'right')}
                         onMouseUp={() => (dpadRef.current = null)}
                         onMouseLeave={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-xl flex items-center justify-center text-white text-base font-bold"
                     >
                         ▶
                     </button>
@@ -2463,7 +2935,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         onMouseDown={() => (dpadRef.current = 'down')}
                         onMouseUp={() => (dpadRef.current = null)}
                         onMouseLeave={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-xl flex items-center justify-center text-white text-base font-bold"
                     >
                         ▼
                     </button>
@@ -2532,7 +3004,14 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     <SchoolModal
                         character={character}
                         initialZone={openModalZone}
-                        lockedZone={openModalZone === 'Office' || openModalZone === 'Classroom' || openModalZone === 'Training' ? openModalZone : undefined}
+                        lockedZone={
+                            openModalZone === 'Office' ||
+                            openModalZone === 'Classroom' ||
+                            openModalZone === 'Training' ||
+                            openModalZone === 'Dormitory'
+                                ? openModalZone
+                                : undefined
+                        }
                         targetSchoolTier={activeSchoolTier}
                         onClose={() => setOpenModalZone(null)}
                         onUpdateCharacter={(newChar, log) => onUpdateCharacter(newChar, log)}
