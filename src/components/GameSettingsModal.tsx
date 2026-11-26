@@ -106,6 +106,36 @@ const GameSettingsModalComponent: React.FC<Props> = ({
   });
   const [lastNonZeroVolume, setLastNonZeroVolume] = useState<number>(50);
 
+  // Canvas Controls (D-Pad & Touch/Click Move)
+  const [showDpad, setShowDpad] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('shinryoku_show_dpad') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const [touchMoveEnabled, setTouchMoveEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('shinryoku_touch_move') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const handleToggleDpad = (val: boolean) => {
+    setShowDpad(val);
+    try {
+      localStorage.setItem('shinryoku_show_dpad', String(val));
+    } catch {}
+    window.dispatchEvent(new CustomEvent('shinryoku-canvas-controls-change'));
+  };
+  const handleToggleTouchMove = (val: boolean) => {
+    setTouchMoveEnabled(val);
+    try {
+      localStorage.setItem('shinryoku_touch_move', String(val));
+    } catch {}
+    window.dispatchEvent(new CustomEvent('shinryoku-canvas-controls-change'));
+  };
+
   // Mailbox Filter Settings State
   const [mailboxSettings, setMailboxSettings] = useState<MailboxFilterSettings>(() => {
     try {
@@ -650,6 +680,84 @@ const GameSettingsModalComponent: React.FC<Props> = ({
                       }`}
                     >
                       기본
+                    </button>
+                  </div>
+                </div>
+
+                {/* 가상 D-Pad 표시 토글 */}
+                <div className="p-2.5 bg-slate-950 border border-slate-800/90 rounded-xl flex items-center justify-between gap-3 pt-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`p-1.5 rounded-lg border shrink-0 ${
+                      showDpad
+                        ? 'bg-cyan-950/60 border-cyan-500/30 text-cyan-400'
+                        : 'bg-slate-900 border-slate-700 text-slate-400'
+                    }`}>
+                      <Sliders size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-slate-200 block truncate">캔버스 가상 D-Pad 표시</span>
+                      <span className="text-[10px] text-slate-400 block truncate">
+                        {showDpad ? '모든 캔버스 맵에 방향키(D-Pad) 표시 중' : '가상 D-Pad 숨김 (키보드/터치 이동 사용)'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex bg-slate-900 rounded-lg p-0.5 border border-slate-800 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleDpad(true)}
+                      className={`px-3 py-1 text-[10px] font-bold rounded ${
+                        showDpad ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      켜기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleDpad(false)}
+                      className={`px-3 py-1 text-[10px] font-bold rounded ${
+                        !showDpad ? 'bg-slate-800 text-cyan-300' : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      끄기
+                    </button>
+                  </div>
+                </div>
+
+                {/* 캔버스 터치/클릭 이동 토글 */}
+                <div className="p-2.5 bg-slate-950 border border-slate-800/90 rounded-xl flex items-center justify-between gap-3 pt-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`p-1.5 rounded-lg border shrink-0 ${
+                      touchMoveEnabled
+                        ? 'bg-amber-950/60 border-amber-500/30 text-amber-400'
+                        : 'bg-slate-900 border-slate-700 text-slate-400'
+                    }`}>
+                      <Play size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-slate-200 block truncate">캔버스 터치·클릭 이동</span>
+                      <span className="text-[10px] text-slate-400 block truncate">
+                        {touchMoveEnabled ? '맵 바닥을 터치/클릭해 이동 가능' : '터치·클릭 이동 비활성화 (D-Pad/키보드만 사용)'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex bg-slate-900 rounded-lg p-0.5 border border-slate-800 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTouchMove(true)}
+                      className={`px-3 py-1 text-[10px] font-bold rounded ${
+                        touchMoveEnabled ? 'bg-amber-600 text-white' : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      켜기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTouchMove(false)}
+                      className={`px-3 py-1 text-[10px] font-bold rounded ${
+                        !touchMoveEnabled ? 'bg-slate-800 text-amber-300' : 'text-slate-500 hover:text-slate-300'
+                      }`}
+                    >
+                      끄기
                     </button>
                   </div>
                 </div>
