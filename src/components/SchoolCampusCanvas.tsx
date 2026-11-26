@@ -754,6 +754,9 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         ['tile_ground', 'tile_road', 'tile_floor', 'tile_carpet', 'tile_wall', 'tile_door', 'prop_tree', 'prop_lamp'].forEach(
             part => loadCityAssetImage(getAcademyAssetUrl(`${academyTileCulture}/${part}.png`))
         );
+        ['Elementary', 'Middle', 'High'].forEach(
+            t => loadCityAssetImage(getAcademyAssetUrl(`${academyBuildingFolder}/ext_${t}.png`))
+        );
         if (['shingye', 'magye', 'sylvanar', 'feraldia'].includes(academyBuildingFolder)) {
             loadCityAssetImage(getAcademyAssetUrl(`${academyBuildingFolder}/ext_campus.png`));
         } else {
@@ -1391,7 +1394,9 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         const bw = b.tw * ts;
                         const bh = b.th * ts;
                         const isSpecialCulture = ['shingye', 'magye', 'sylvanar', 'feraldia'].includes(academyBuildingFolder);
+                        const tierImg = getCachedCityAssetImage(getAcademyAssetUrl(`${academyBuildingFolder}/ext_${b.tier}.png`));
                         const img =
+                            (tierImg && tierImg.complete && tierImg.naturalWidth > 0 ? tierImg : null) ||
                             (isSpecialCulture
                                 ? getCachedCityAssetImage(getAcademyAssetUrl(`${academyBuildingFolder}/ext_campus.png`))
                                 : getCachedCityAssetImage(getAcademyAssetUrl(`${academyBuildingFolder}/ext_Classroom.png`))) ||
