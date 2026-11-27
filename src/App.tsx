@@ -20,6 +20,7 @@ import SceneLoadingFallback from './components/SceneLoadingFallback';
 import StartScreen from './components/StartScreen';
 import QuestTracker from './components/QuestTracker';
 import HeaderShortcuts, { ShortcutId } from './components/HeaderShortcuts';
+import { loadFeatureHotkeys, eventToHotkey } from './utils/featureHotkeys';
 import type { ResultData } from './components/ActionResultModal';
 import type { TrainingReportData } from './components/TrainingReportModal';
 import { SuddenEventData } from './services/suddenEventService';
@@ -6040,6 +6041,36 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
     setCharacter(newChar);
   };
 
+  const shortcutHandlerRef = useRef<(id: ShortcutId) => void>(() => {});
+  const [featureHotkeys, setFeatureHotkeys] = useState<Partial<Record<ShortcutId, string>>>(() => loadFeatureHotkeys());
+
+  useEffect(() => {
+    const syncHotkeys = () => setFeatureHotkeys(loadFeatureHotkeys());
+    window.addEventListener('shinryoku-hotkeys-updated', syncHotkeys);
+    return () => window.removeEventListener('shinryoku-hotkeys-updated', syncHotkeys);
+  }, []);
+
+  useEffect(() => {
+    const onGlobalKeyDown = (e: KeyboardEvent) => {
+      if (!character || combatState) return;
+      if (document.body.dataset.capturingHotkey === '1') return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)) {
+        return;
+      }
+      const key = eventToHotkey(e);
+      if (!key || key === 'process') return;
+      const matched = (Object.entries(featureHotkeys) as [ShortcutId, string | undefined][]).find(([, k]) => k && k === key);
+      if (matched) {
+        e.preventDefault();
+        shortcutHandlerRef.current(matched[0]);
+      }
+    };
+    window.addEventListener('keydown', onGlobalKeyDown, true);
+    return () => window.removeEventListener('keydown', onGlobalKeyDown, true);
+  }, [featureHotkeys, character, combatState]);
+
   const handleShortcutAction = (id: ShortcutId) => {
     switch (id) {
       case 'character':
@@ -6187,6 +6218,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
         break;
     }
   };
+  shortcutHandlerRef.current = handleShortcutAction;
 
   const handleActionDepsRef = useRef({ handleAction, character, triggerDayChangeToast, addToLog });
   handleActionDepsRef.current = { handleAction, character, triggerDayChangeToast, addToLog };

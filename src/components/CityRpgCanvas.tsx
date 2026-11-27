@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Character, CityTier, DistrictType } from '../types';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import {
     buildCityTilemap,
     CITY_TILE_SIZE,
@@ -1584,8 +1585,10 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 className="relative z-10 block w-full h-full cursor-pointer"
             />
 
-            {/* 조작 안내 및 도시 규모 뱃지 (좌상단) */}
-            <div className="pointer-events-none absolute top-2.5 left-2.5 hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-700/70 text-[10px] text-slate-300 backdrop-blur-sm">
+            {/* 좌상단 캐릭터 HUD + 도시 규모 뱃지 */}
+            <div className="pointer-events-none absolute top-2.5 left-2.5 z-20 flex flex-col gap-1.5">
+                <CanvasCharacterHud character={character} />
+                <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-950/80 border border-slate-700/70 text-[10px] text-slate-300 backdrop-blur-sm w-fit">
                 <Compass size={12} className="text-amber-400" />
                 <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-black">
                     {tier === 'Capital' ? '수도' : tier === 'City' ? '대도시' : '소도시'}
@@ -1595,6 +1598,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 <span><strong className="text-white">Shift</strong> 달리기</span>
                 <span className="text-slate-600">|</span>
                 <span><strong className="text-amber-300">Space / E</strong> 상호작용</span>
+            </div>
             </div>
 
             {/* 근접 상호작용 플로팅 프롬프트 (모바일은 상단 중앙 고정으로 하단 패드/퀵바와 겹침 0%) */}

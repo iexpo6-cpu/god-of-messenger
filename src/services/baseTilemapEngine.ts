@@ -730,7 +730,8 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
             BASE_TILE_SIZE * 2.5,
             Math.min((rows - 2.5) * BASE_TILE_SIZE, (anchor.y + Math.sin(jitterAngle) * jitterR) * BASE_TILE_SIZE)
         );
-        let activityBubble = timeOfDay === 'Night' ? '🌙 밤 산책 중' : '☀️ 영지 생활 중';
+        const isBaseNight = timeOfDay.period === 'night' || timeOfDay.period === 'dawn';
+        let activityBubble = isBaseNight ? '🌙 밤 산책 중' : '☀️ 영지 생활 중';
         let assignedFacilityLabel: string | undefined;
 
         if (assignedLoc) {
@@ -738,7 +739,7 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
             homePy = assignedLoc.py;
             activityBubble = assignedLoc.bubble;
             assignedFacilityLabel = assignedLoc.facLabel;
-        } else if (housingNodes.length > 0 && timeOfDay === 'Night') {
+        } else if (housingNodes.length > 0 && isBaseNight) {
             const hNode = housingNodes[idx % housingNodes.length];
             homePx = (hNode.doorX + ((idx % 3) - 1) * 0.65) * BASE_TILE_SIZE;
             homePy = (hNode.doorY + 0.45) * BASE_TILE_SIZE;

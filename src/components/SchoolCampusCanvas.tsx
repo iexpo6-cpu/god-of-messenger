@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, ClubType, CombatStyle, JobType, SchoolTier, SimpleStudent, WeaponType } from '../types';
 import { drawCanvasNightOverlay, isNightTime } from '../utils/canvasNightOverlay';
+import { SchoolVisualEvent, parseSchooltimeLogsToVisualEvents, drawSchoolCutsceneBubble } from '../utils/schoolEventVisualizer';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import { SCHOOL_CONFIG, WEAPON_TYPE_KOREAN } from '../constants';
 import { addMasteryExp, generateDefaultVisualUrl, generateName, getWeaponTypeFromItem } from '../utils';
 import { processTimeSkip } from '../services/timeEngine';
@@ -355,6 +357,14 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     const [activeSubjectRoom, setActiveSubjectRoom] = useState<typeof CLASSROOM_SUBJECT_ROOMS[number] | null>(null);
     const [selectedWeapon, setSelectedWeapon] = useState<WeaponType>('Sword');
     const [activityProgress, setActivityProgress] = useState<{ title: string; subtitle: string; progress: number } | null>(null);
+    const activeCutsceneRef = useRef<SchoolVisualEvent | null>(null);
+    const [activityEventReport, setActivityEventReport] = useState<{
+        title: string;
+        gainText: string;
+        events: SchoolVisualEvent[];
+        pendingChoice?: Character['pendingChoiceEvent'];
+        pendingAmbush?: any;
+    } | null>(null);
     const [campusToast, setCampusToast] = useState<string | null>(null);
     const [aiChatMode, setAiChatMode] = useState(false);
     const [aiChatMessages, setAiChatMessages] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
@@ -503,27 +513,47 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             ) || null,
         [character.socialNetwork, character.schoolData?.classmates]
     );
+    const schoolClassRival = useMemo(
+        () =>
+            (character.schoolData?.classmates || []).find(
+                n => n && n.isRival && !n.isEternalRival && !n.isPurged && !n.isDead
+            ) || null,
+        [character.schoolData?.classmates]
+    );
 
     // Diverse student NPCs outside in the School Plaza (distinct from interior room NPCs; at night students return to dorms)
     const isSchoolNight = isNightTime(character.currentTime);
     const plazaStudents = useMemo<SchoolNpcActor[]>(() => {
         const isKorean = !nation || nation.includes('한국') || nation.includes('대한') || nation.includes('조선') || nation.includes('고려');
-        const rivalPlazaActor: SchoolNpcActor[] = activeEternalRival
-            ? [
-                  {
-                      id: activeEternalRival.id || 'school_eternal_rival',
-                      name: activeEternalRival.name,
-                      role: '🔥 영원의 라이벌',
-                      tx: 16.5,
-                      ty: 10.2,
-                      gender: activeEternalRival.gender === '남성' ? 'male' : 'female',
-                      dialogue: `네가 이 레귤러스 학교에서 수련 중이라길래 나도 실력을 겨루러 왔다, ${character.name}!`,
-                      canBondAndSpar: true,
-                      npcLevel: activeEternalRival.level || Math.max(5, character.level || 5),
-                      combatStyle: activeEternalRival.combatStyle || CombatStyle.SWORDSMAN
-                  }
-              ]
-            : [];
+        const rivalPlazaActor: SchoolNpcActor[] = [];
+        if (activeEternalRival) {
+            rivalPlazaActor.push({
+                id: activeEternalRival.id || 'school_eternal_rival',
+                name: activeEternalRival.name,
+                role: '🔥 영원의 라이벌',
+                tx: 16.5,
+                ty: 10.2,
+                gender: activeEternalRival.gender === '남성' ? 'male' : 'female',
+                dialogue: `네가 이 레귤러스 학교에서 수련 중이라길래 나도 실력을 겨루러 왔다, ${character.name}!`,
+                canBondAndSpar: true,
+                npcLevel: activeEternalRival.level || Math.max(5, character.level || 5),
+                combatStyle: activeEternalRival.combatStyle || CombatStyle.SWORDSMAN
+            });
+        }
+        if (schoolClassRival) {
+            rivalPlazaActor.push({
+                id: schoolClassRival.id || 'school_class_rival',
+                name: schoolClassRival.name,
+                role: '⚔️ 학교 라이벌',
+                tx: 10.5,
+                ty: 11.8,
+                gender: schoolClassRival.gender === '남성' ? 'male' : 'female',
+                dialogue: `${character.name}, 요즘 실력이 제법 올랐다면서? 언제든 대련으로 확인해주지!`,
+                canBondAndSpar: true,
+                npcLevel: schoolClassRival.level || Math.max(4, character.level || 5),
+                combatStyle: schoolClassRival.combatStyle || CombatStyle.SWORDSMAN
+            });
+        }
         if (isSchoolNight) {
             return [
                 {
@@ -601,7 +631,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 dialogue: `${city} 레귤러스 학교 지구에 오신 걸 환영합니다. 각 학부 건물은 재학생과 파견 교관만 출입할 수 있습니다.`
             }
         ];
-    }, [city, nation, isSchoolNight, activeEternalRival, character.name, character.level]);
+    }, [city, nation, isSchoolNight, activeEternalRival, schoolClassRival, character.name, character.level]);
 
     const campusDims = useMemo(() => {
         if (activeRoom) return { cols: ROOM_COLS, rows: ROOM_ROWS };
@@ -661,8 +691,38 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 npcLevel: Math.max(3, (character.level || 5) + idx)
             }));
 
-        return [...classActors, ...extraActors];
-    }, [activeSchoolTier, activeRoom, campusDims.cols, campusDims.rows, character.schoolData?.classmates, character.schoolData?.classNumber, character.schoolData?.grade, character.level, character.name, nation]);
+        const campusRivals: SchoolNpcActor[] = [];
+        if (activeEternalRival && !classActors.some(ca => ca.name === activeEternalRival.name)) {
+            campusRivals.push({
+                id: activeEternalRival.id || 'campus_eternal_rival',
+                name: activeEternalRival.name,
+                role: '🔥 영원의 라이벌',
+                tx: Math.floor(c * 0.56),
+                ty: Math.floor(r * 0.62),
+                gender: activeEternalRival.gender === '남성' ? 'male' : 'female',
+                dialogue: `네가 이 레귤러스 교정에 있다길래 실력을 확인하러 왔다, ${character.name}!`,
+                canBondAndSpar: true,
+                npcLevel: activeEternalRival.level || Math.max(5, character.level || 5),
+                combatStyle: activeEternalRival.combatStyle || CombatStyle.SWORDSMAN
+            });
+        }
+        if (schoolClassRival && !classActors.some(ca => ca.name === schoolClassRival.name)) {
+            campusRivals.push({
+                id: schoolClassRival.id || 'campus_class_rival',
+                name: schoolClassRival.name,
+                role: '⚔️ 학교 라이벌',
+                tx: Math.floor(c * 0.44),
+                ty: Math.floor(r * 0.62),
+                gender: schoolClassRival.gender === '남성' ? 'male' : 'female',
+                dialogue: `교정에서 마주쳤군, ${character.name}. 나보다 성적이 높다고 방심하지 마라!`,
+                canBondAndSpar: true,
+                npcLevel: schoolClassRival.level || Math.max(4, character.level || 5),
+                combatStyle: schoolClassRival.combatStyle || CombatStyle.SWORDSMAN
+            });
+        }
+
+        return [...classActors, ...extraActors, ...campusRivals];
+    }, [activeSchoolTier, activeRoom, campusDims.cols, campusDims.rows, character.schoolData?.classmates, character.schoolData?.classNumber, character.schoolData?.grade, character.level, character.name, nation, activeEternalRival, schoolClassRival]);
 
     // Level 2: 6 separate campus building gates
     const campusBuildings = useMemo<CampusBuildingGate[]>(() => {
@@ -2183,6 +2243,32 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 ctx.textAlign = 'center';
                 ctx.fillText(character.name, p.x, p.y + 14);
 
+                // 10월 학교 축제 기간 야외 캔버스 꽃가루 연출
+                const curMonthNum = parseInt((character.currentDate || '1026-03-02').split('-')[1] || '3', 10);
+                if (curMonthNum === 10 && !activeRoom) {
+                    const colors = ['#f472b6', '#fbbf24', '#38bdf8', '#a78bfa', '#34d399'];
+                    const tSec = Date.now() / 1000;
+                    for (let fi = 0; fi < 22; fi++) {
+                        const fx = ((fi * 137 + tSec * (18 + (fi % 5) * 6)) % mapW);
+                        const fy = ((fi * 97 + tSec * (26 + (fi % 4) * 7)) % mapH);
+                        ctx.fillStyle = colors[fi % colors.length];
+                        ctx.fillRect(fx, fy, 4, 4);
+                    }
+                }
+
+                // 수업/학교 이벤트 컷신 말풍선 & 감정 이모티콘 오버레이
+                const activeCs = activeCutsceneRef.current;
+                if (activeCs && activeCs.bubbleText) {
+                    const matchedActor =
+                        [...roomContent.npcs, ...plazaStudents].find(
+                            n => activeCs.actorName && n.name === activeCs.actorName
+                        ) || roomContent.npcs[0];
+                    const off = matchedActor ? npcOffsetsRef.current[matchedActor.id] : null;
+                    const csX = matchedActor ? (matchedActor.tx + 0.5) * ts + (off?.dx || 0) : p.x;
+                    const csY = matchedActor ? (matchedActor.ty + 0.5) * ts + (off?.dy || 0) : p.y;
+                    drawSchoolCutsceneBubble(ctx, csX, csY, activeCs.emoji, activeCs.bubbleText, activeCs.tone);
+                }
+
                 drawCanvasNightOverlay(ctx, 0, 0, mapW, mapH, character.currentTime, {
                     isIndoor: Boolean(activeRoom),
                     playerLight: { x: p.x, y: p.y - 6, radius: 110 }
@@ -2286,6 +2372,46 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     }}
                 />
 
+                <div className="absolute top-3 left-3 z-20 pointer-events-none flex flex-col gap-1.5 max-w-[260px]">
+                    <CanvasCharacterHud character={character} />
+                    {character.job === JobType.STUDENT && character.schoolData && !character.schoolData.isGraduated && (
+                        <div className="px-3 py-2 rounded-xl bg-slate-950/88 border border-cyan-500/40 shadow-lg backdrop-blur-sm space-y-1">
+                            <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-black text-cyan-200">
+                                <span>
+                                    {character.schoolData.tier === 'Elementary' ? '초급부' : character.schoolData.tier === 'Middle' ? '중급부' : '고급부'}{' '}
+                                    {character.schoolData.grade}학년 {character.schoolData.classNumber}반
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-300 text-[10px]">
+                                    전교 {character.schoolData.rank ? `${character.schoolData.rank}등` : '집계중'}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] text-slate-300 font-semibold flex-wrap">
+                                <span>⭐ 평판 <strong className="text-emerald-300">{character.schoolData.reputation ?? 0}</strong></span>
+                                <span>·</span>
+                                <span>
+                                    📝 중간{' '}
+                                    <strong className={character.schoolData.midtermPassed ? 'text-emerald-300' : 'text-amber-300'}>
+                                        {character.schoolData.midtermPassed ? '합격' : '미응시'}
+                                    </strong>
+                                </span>
+                                <span>
+                                    / 기말{' '}
+                                    <strong className={character.schoolData.finalPassed ? 'text-emerald-300' : 'text-amber-300'}>
+                                        {character.schoolData.finalPassed ? '합격' : '미응시'}
+                                    </strong>
+                                </span>
+                            </div>
+                            {campusPeriodNotice && (
+                                <div className="pt-0.5">
+                                    <span className="inline-block px-2 py-0.5 rounded-md bg-rose-950/90 border border-rose-400/60 text-rose-200 text-[10px] font-black animate-pulse">
+                                        {campusPeriodNotice.kind === 'exam' ? '🔥 현재 시험 기간입니다! (교무실 응시)' : campusPeriodNotice.badge}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 {accessDeniedMsg && (
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 px-4 py-2.5 rounded-xl bg-rose-950/95 border border-rose-500/70 text-rose-100 text-xs font-bold shadow-2xl">
                         🔒 {accessDeniedMsg}
@@ -2321,10 +2447,40 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                                 />
                                 <div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <MessageCircle size={14} className="text-cyan-400" />
                                         <span className="text-xs font-black text-white">{activeDialogue.name}</span>
                                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-cyan-300">{activeDialogue.role}</span>
+                                        {(() => {
+                                            const npcMatch =
+                                                (activeDialogue.isTeacher && character.schoolData?.homeroomTeacher) ||
+                                                character.schoolData?.classmates?.find(c => c.id === activeDialogue.id || c.name === activeDialogue.name) ||
+                                                character.socialNetwork?.find(s => s.id === activeDialogue.id || s.name === activeDialogue.name) ||
+                                                character.companions?.find(c => c.id === activeDialogue.id || c.name === activeDialogue.name) ||
+                                                character.clubData?.clubMembers?.find(m => m.id === activeDialogue.id || m.name === activeDialogue.name);
+                                            const aff = (npcMatch as any)?.affection;
+                                            const lvl = (npcMatch as any)?.level || activeDialogue.npcLevel;
+                                            return (
+                                                <>
+                                                    {typeof aff === 'number' && (
+                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${
+                                                            aff >= 60
+                                                                ? 'bg-pink-950/80 border-pink-400/50 text-pink-200'
+                                                                : aff < 0
+                                                                  ? 'bg-rose-950/80 border-rose-400/50 text-rose-200'
+                                                                  : 'bg-slate-800/90 border-slate-600 text-emerald-300'
+                                                        }`}>
+                                                            ❤️ 호감도 {aff}
+                                                        </span>
+                                                    )}
+                                                    {typeof lvl === 'number' && (
+                                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/90 text-amber-300 font-bold">
+                                                            Lv.{lvl}
+                                                        </span>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                     <p className="text-xs text-slate-200 leading-relaxed mt-1">&ldquo;{activeDialogue.text}&rdquo;</p>
                                 </div>
@@ -2769,10 +2925,22 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                 newChar.currentExp = (newChar.currentExp || 0) + bookSnap.expGain;
                                                 newChar.exp = (newChar.exp || 0) + bookSnap.expGain;
                                                 const timeRes = processTimeSkip(newChar, bookSnap.daysElapsed || 3);
-                                                onUpdateCharacter(timeRes.updatedCharacter, `[도서관] '${bookSnap.title}' 정독 (${bookSnap.daysElapsed || 3}일 경과)! (CTRL +${bookSnap.ctrlGain}, ${bookSnap.statKey.toUpperCase()} +${bookSnap.statGain}, EXP +${bookSnap.expGain})`);
+                                                const libEvents = parseSchooltimeLogsToVisualEvents(timeRes.systemLogs || []);
+                                                const libGain = `CTRL +${bookSnap.ctrlGain}, ${bookSnap.statKey.toUpperCase()} +${bookSnap.statGain}, EXP +${bookSnap.expGain}`;
+                                                onUpdateCharacter(timeRes.updatedCharacter, `[도서관] '${bookSnap.title}' 정독 (${bookSnap.daysElapsed || 3}일 경과)! (${libGain})`);
                                                 setActivityProgress(null);
-                                                setCampusToast(`CTRL +${bookSnap.ctrlGain}, ${bookSnap.statKey.toUpperCase()} +${bookSnap.statGain}, EXP +${bookSnap.expGain} (${bookSnap.daysElapsed || 3}일 경과)`);
-                                                setTimeout(() => setCampusToast(null), 2800);
+                                                if (libEvents.length > 0) {
+                                                    setActivityEventReport({
+                                                        title: `📚 ${bookSnap.title} 정독 완료`,
+                                                        gainText: libGain,
+                                                        events: libEvents,
+                                                        pendingChoice: timeRes.updatedCharacter.pendingChoiceEvent,
+                                                        pendingAmbush: (timeRes.updatedCharacter as any).pendingAmbushes?.[0]
+                                                    });
+                                                } else {
+                                                    setCampusToast(`${libGain} (${bookSnap.daysElapsed || 3}일 경과)`);
+                                                    setTimeout(() => setCampusToast(null), 2800);
+                                                }
                                             }
                                         }, 240);
                                     }}
@@ -2842,92 +3010,149 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                         const subjSnap = activeSubjectRoom;
                                         const wepSnap = selectedWeapon;
                                         setActiveSubjectRoom(null);
-                                        setActivityProgress({ title: `🏫 ${subjSnap.title} 수업 진행 중...`, subtitle: '이론 강의와 실전 수련을 진행하고 있습니다. (7일 경과)', progress: 15 });
+
+                                        // 7일 수업 및 SchooltimeEngine 이벤트 사전 시뮬레이션 -> 캔버스 실시간 컷신 연출 후 최종 반영
+                                        const { updatedCharacter, systemLogs } = processTimeSkip(character, 7);
+                                        const newChar = JSON.parse(JSON.stringify(updatedCharacter)) as Character;
+                                        let multiplier = 1;
+                                        let expGain = 20;
+                                        let eventMsg = '';
+                                        const classExtraEvents: SchoolVisualEvent[] = [];
+                                        const repBonus = (newChar.schoolData?.reputation || 0) >= 10 ? 1 : 0;
+                                        if (repBonus > 0) eventMsg += ' (높은 평판으로 효율 증가)';
+                                        if (newChar.schoolData?.homeroomTeacher && Math.random() < 0.3) {
+                                            const teacher = newChar.schoolData.homeroomTeacher;
+                                            teacher.affection = (teacher.affection || 0) + 1;
+                                            if (newChar.socialNetwork) {
+                                                const st = newChar.socialNetwork.find(n => n.id === teacher.id);
+                                                if (st) st.affection = teacher.affection;
+                                            }
+                                            eventMsg += `\n(담임 교사 ${teacher.name}의 호감도가 상승했습니다.)`;
+                                            classExtraEvents.push({
+                                                id: `class_teacher_${Date.now()}`,
+                                                kind: 'teacher_praise',
+                                                badge: '담임 교사',
+                                                emoji: '💖',
+                                                title: `담임 교사 '${teacher.name}' 호감도 상승`,
+                                                description: `성실한 수업 태도로 담임 교사 ${teacher.name}의 호감도가 +1 상승했습니다.`,
+                                                actorName: teacher.name,
+                                                bubbleText: '수업 태도가 아주 훌륭해요!',
+                                                tone: 'positive'
+                                            });
+                                        }
+                                        const roll = Math.random();
+                                        if (roll < 0.1) {
+                                            multiplier = 2;
+                                            eventMsg += '\n(이벤트: 교관님께 칭찬을 들어 성취감이 2배가 되었습니다!)';
+                                            if (newChar.schoolData) newChar.schoolData.reputation += 2;
+                                            classExtraEvents.push({
+                                                id: `class_praise_${Date.now()}`,
+                                                kind: 'instructor_praise',
+                                                badge: '수업 대성공',
+                                                emoji: '🌟',
+                                                title: '교관 칭찬 · 성취감 2배!',
+                                                description: '수업 중 뛰어난 집중력을 보여 교관님께 칭찬을 들었습니다. (능력치 2배, 평판 +2)',
+                                                bubbleText: '대단한 실력이군! 성취감 2배!',
+                                                tone: 'special'
+                                            });
+                                        } else if (roll < 0.2) {
+                                            multiplier = 0;
+                                            expGain = 0;
+                                            eventMsg += '\n(이벤트: 수업 중에 졸다가 걸려 혼났습니다... 능력치 변동 없음)';
+                                            if (newChar.schoolData) newChar.schoolData.reputation -= 1;
+                                            classExtraEvents.push({
+                                                id: `class_sleep_${Date.now()}`,
+                                                kind: 'sleep_scold',
+                                                badge: '수업 주의',
+                                                emoji: '💤',
+                                                title: '수업 중 졸다 적발...',
+                                                description: '피곤해서 수업 중에 졸다가 교관님께 혼났습니다. (능력치 변동 없음, 평판 -1)',
+                                                bubbleText: '지금 수업 중에 조는 건가?!',
+                                                tone: 'negative'
+                                            });
+                                        }
+                                        const val = (multiplier === 2 ? 2 : 1) * multiplier + repBonus;
+                                        const applyToEntity = (entity: any) => {
+                                            if (expGain > 0) {
+                                                entity.currentExp = (entity.currentExp || 0) + expGain;
+                                                if (typeof entity.exp === 'number') entity.exp += expGain;
+                                            }
+                                            if (multiplier > 0) {
+                                                if (subjSnap.type === 'Combat') { entity.stats.str += val; entity.stats.agi += val; }
+                                                else if (subjSnap.type === 'Magic') { entity.stats.int += 2 * val; }
+                                                else if (subjSnap.type === 'Divine') { entity.stats.ctrl = (entity.stats.ctrl || 10) + 2 * val; }
+                                                else if (subjSnap.type === 'Strategy') { entity.stats.wis += 2 * val; }
+                                                else if (subjSnap.type === 'Physical') { entity.stats.def += 2 * val; }
+                                                else if (subjSnap.type === 'Weapon') {
+                                                    const wt = ('id' in entity) ? (entity.equipment?.weapon ? getWeaponTypeFromItem(entity.equipment.weapon) : null) : wepSnap;
+                                                    if (wt) {
+                                                        const res = addMasteryExp(entity, wt as WeaponType, 5 * multiplier + repBonus);
+                                                        entity.weaponMastery = (res.char as any).weaponMastery;
+                                                    }
+                                                }
+                                            }
+                                        };
+                                        applyToEntity(newChar);
+                                        newChar.companions = (newChar.companions || []).map(c => {
+                                            const nc = { ...c, stats: { ...c.stats }, weaponMastery: { ...(c.weaponMastery || {}) } };
+                                            applyToEntity(nc);
+                                            return nc;
+                                        });
+                                        if (newChar.inactiveCompanions) {
+                                            newChar.inactiveCompanions = newChar.inactiveCompanions.map(c => {
+                                                const nc = { ...c, stats: { ...c.stats }, weaponMastery: { ...(c.weaponMastery || {}) } };
+                                                applyToEntity(nc);
+                                                return nc;
+                                            });
+                                        }
+                                        let gainText = '변동 없음';
+                                        if (multiplier > 0) {
+                                            if (subjSnap.type === 'Combat') gainText = `STR +${val}, AGI +${val}`;
+                                            else if (subjSnap.type === 'Magic') gainText = `INT +${2 * val}`;
+                                            else if (subjSnap.type === 'Divine') gainText = `CTRL +${2 * val}`;
+                                            else if (subjSnap.type === 'Strategy') gainText = `WIS +${2 * val}`;
+                                            else if (subjSnap.type === 'Physical') gainText = `DEF +${2 * val}`;
+                                            else if (subjSnap.type === 'Weapon') gainText = `${WEAPON_TYPE_KOREAN[wepSnap]} 숙련도 +${5 * multiplier + repBonus}`;
+                                        }
+                                        if (expGain > 0) gainText += `, EXP +${expGain}`;
+                                        const sysMsg = systemLogs.length > 0 ? `\n[기간 중 소식]\n${systemLogs.slice(0, 3).join('\n')}` : '';
+                                        const visualEvents = parseSchooltimeLogsToVisualEvents(systemLogs || [], classExtraEvents);
+
+                                        if (visualEvents.length > 0) {
+                                            activeCutsceneRef.current = visualEvents[0];
+                                        }
+                                        setActivityProgress({
+                                            title: `🏫 ${subjSnap.title} 수업 진행 중...`,
+                                            subtitle: visualEvents[0]?.bubbleText || '이론 강의와 실전 수련을 진행하고 있습니다. (7일 경과)',
+                                            progress: 15
+                                        });
                                         let pct = 15;
+                                        let evStep = 0;
                                         const iv = setInterval(() => {
                                             pct += 25;
+                                            evStep += 1;
                                             if (pct < 100) {
-                                                setActivityProgress({ title: `🏫 ${subjSnap.title} 수업 진행 중...`, subtitle: '이론 강의와 실전 수련을 진행하고 있습니다. (7일 경과)', progress: pct });
+                                                const nextEv = visualEvents[evStep % Math.max(1, visualEvents.length)];
+                                                if (nextEv) activeCutsceneRef.current = nextEv;
+                                                setActivityProgress({
+                                                    title: `🏫 ${subjSnap.title} 수업 진행 중...`,
+                                                    subtitle: nextEv?.title || '이론 강의와 실전 수련을 진행하고 있습니다. (7일 경과)',
+                                                    progress: pct
+                                                });
                                             } else {
                                                 clearInterval(iv);
-                                                const { updatedCharacter, systemLogs } = processTimeSkip(character, 7);
-                                                const newChar = JSON.parse(JSON.stringify(updatedCharacter)) as Character;
-                                                let multiplier = 1;
-                                                let expGain = 20;
-                                                let eventMsg = '';
-                                                const repBonus = (newChar.schoolData?.reputation || 0) >= 10 ? 1 : 0;
-                                                if (repBonus > 0) eventMsg += ' (높은 평판으로 효율 증가)';
-                                                if (newChar.schoolData?.homeroomTeacher && Math.random() < 0.3) {
-                                                    const teacher = newChar.schoolData.homeroomTeacher;
-                                                    teacher.affection = (teacher.affection || 0) + 1;
-                                                    if (newChar.socialNetwork) {
-                                                        const st = newChar.socialNetwork.find(n => n.id === teacher.id);
-                                                        if (st) st.affection = teacher.affection;
-                                                    }
-                                                    eventMsg += `\n(담임 교사 ${teacher.name}의 호감도가 상승했습니다.)`;
-                                                }
-                                                const roll = Math.random();
-                                                if (roll < 0.1) {
-                                                    multiplier = 2;
-                                                    eventMsg += '\n(이벤트: 교관님께 칭찬을 들어 성취감이 2배가 되었습니다!)';
-                                                    if (newChar.schoolData) newChar.schoolData.reputation += 2;
-                                                } else if (roll < 0.2) {
-                                                    multiplier = 0;
-                                                    expGain = 0;
-                                                    eventMsg += '\n(이벤트: 수업 중에 졸다가 걸려 혼났습니다... 능력치 변동 없음)';
-                                                    if (newChar.schoolData) newChar.schoolData.reputation -= 1;
-                                                }
-                                                const val = (multiplier === 2 ? 2 : 1) * multiplier + repBonus;
-                                                const applyToEntity = (entity: any) => {
-                                                    if (expGain > 0) {
-                                                        entity.currentExp = (entity.currentExp || 0) + expGain;
-                                                        if (typeof entity.exp === 'number') entity.exp += expGain;
-                                                    }
-                                                    if (multiplier > 0) {
-                                                        if (subjSnap.type === 'Combat') { entity.stats.str += val; entity.stats.agi += val; }
-                                                        else if (subjSnap.type === 'Magic') { entity.stats.int += 2 * val; }
-                                                        else if (subjSnap.type === 'Divine') { entity.stats.ctrl = (entity.stats.ctrl || 10) + 2 * val; }
-                                                        else if (subjSnap.type === 'Strategy') { entity.stats.wis += 2 * val; }
-                                                        else if (subjSnap.type === 'Physical') { entity.stats.def += 2 * val; }
-                                                        else if (subjSnap.type === 'Weapon') {
-                                                            const wt = ('id' in entity) ? (entity.equipment?.weapon ? getWeaponTypeFromItem(entity.equipment.weapon) : null) : wepSnap;
-                                                            if (wt) {
-                                                                const res = addMasteryExp(entity, wt as WeaponType, 5 * multiplier + repBonus);
-                                                                entity.weaponMastery = (res.char as any).weaponMastery;
-                                                            }
-                                                        }
-                                                    }
-                                                };
-                                                applyToEntity(newChar);
-                                                newChar.companions = (newChar.companions || []).map(c => {
-                                                    const nc = { ...c, stats: { ...c.stats }, weaponMastery: { ...(c.weaponMastery || {}) } };
-                                                    applyToEntity(nc);
-                                                    return nc;
-                                                });
-                                                if (newChar.inactiveCompanions) {
-                                                    newChar.inactiveCompanions = newChar.inactiveCompanions.map(c => {
-                                                        const nc = { ...c, stats: { ...c.stats }, weaponMastery: { ...(c.weaponMastery || {}) } };
-                                                        applyToEntity(nc);
-                                                        return nc;
-                                                    });
-                                                }
-                                                let gainText = '변동 없음';
-                                                if (multiplier > 0) {
-                                                    if (subjSnap.type === 'Combat') gainText = `STR +${val}, AGI +${val}`;
-                                                    else if (subjSnap.type === 'Magic') gainText = `INT +${2 * val}`;
-                                                    else if (subjSnap.type === 'Divine') gainText = `CTRL +${2 * val}`;
-                                                    else if (subjSnap.type === 'Strategy') gainText = `WIS +${2 * val}`;
-                                                    else if (subjSnap.type === 'Physical') gainText = `DEF +${2 * val}`;
-                                                    else if (subjSnap.type === 'Weapon') gainText = `${WEAPON_TYPE_KOREAN[wepSnap]} 숙련도 +${5 * multiplier + repBonus}`;
-                                                }
-                                                if (expGain > 0) gainText += `, EXP +${expGain}`;
-                                                const sysMsg = systemLogs.length > 0 ? `\n[기간 중 소식]\n${systemLogs.slice(0, 3).join('\n')}` : '';
+                                                activeCutsceneRef.current = null;
                                                 onUpdateCharacter(newChar, `[학교 생활] ${subjSnap.title} 수업 완료. (${gainText}) (일행 전체 반영됨) (1주일 경과)${eventMsg}${sysMsg}`);
                                                 setActivityProgress(null);
-                                                setCampusToast(`${subjSnap.title} 수강 완료! (${gainText})`);
-                                                setTimeout(() => setCampusToast(null), 2800);
+                                                setActivityEventReport({
+                                                    title: `🏫 ${subjSnap.title} 수업 완료`,
+                                                    gainText,
+                                                    events: visualEvents,
+                                                    pendingChoice: newChar.pendingChoiceEvent,
+                                                    pendingAmbush: (newChar as any).pendingAmbushes?.[0]
+                                                });
                                             }
-                                        }, 240);
+                                        }, 280);
                                     }}
                                     className="flex-1 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold cursor-pointer"
                                 >
@@ -2954,6 +3179,82 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     </div>
                 )}
 
+                {activityEventReport && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                        <div className="bg-slate-900 border border-sky-500/70 p-5 rounded-2xl max-w-md w-full space-y-3.5 shadow-2xl">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-base font-black text-sky-300">{activityEventReport.title}</h3>
+                                <button
+                                    onClick={() => setActivityEventReport(null)}
+                                    className="text-slate-400 hover:text-white cursor-pointer"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                            <div className="px-3 py-2 rounded-xl bg-slate-950/90 border border-slate-800 flex items-center justify-between text-xs">
+                                <span className="text-slate-400 font-semibold">획득 성과 (일행 전체 반영)</span>
+                                <span className="text-amber-300 font-black">{activityEventReport.gainText}</span>
+                            </div>
+
+                            {activityEventReport.events.length > 0 ? (
+                                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                                    <div className="text-[11px] font-bold text-slate-400">📢 기간 중 발생한 학교 소식 & 이벤트</div>
+                                    {activityEventReport.events.map(ev => (
+                                        <div
+                                            key={ev.id}
+                                            className={`p-2.5 rounded-xl border text-xs space-y-1 ${
+                                                ev.tone === 'positive'
+                                                    ? 'bg-emerald-950/50 border-emerald-500/40'
+                                                    : ev.tone === 'negative'
+                                                      ? 'bg-rose-950/50 border-rose-500/40'
+                                                      : ev.tone === 'warning'
+                                                        ? 'bg-amber-950/50 border-amber-500/40'
+                                                        : ev.tone === 'special'
+                                                          ? 'bg-fuchsia-950/50 border-fuchsia-500/40'
+                                                          : 'bg-slate-950/70 border-slate-700'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-1.5 font-bold text-white">
+                                                <span>{ev.emoji}</span>
+                                                <span className="px-1.5 py-0.5 rounded bg-black/40 text-[10px] text-slate-200">
+                                                    {ev.badge}
+                                                </span>
+                                                <span className="truncate">{ev.title}</span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-200 leading-relaxed">{ev.description}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-slate-400 text-center py-2">
+                                    평온한 일주일이 지나며 성실히 학업을 마쳤습니다.
+                                </p>
+                            )}
+
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                {activityEventReport.pendingAmbush && onStartBattle && (
+                                    <button
+                                        onClick={() => {
+                                            const amb = activityEventReport.pendingAmbush;
+                                            setActivityEventReport(null);
+                                            onStartBattle(amb.enemies, 'relation_battle', amb.sourceId);
+                                        }}
+                                        className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black cursor-pointer"
+                                    >
+                                        ⚔️ 라이벌 결투 즉시 시작
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => setActivityEventReport(null)}
+                                    className="flex-1 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold cursor-pointer"
+                                >
+                                    {activityEventReport.pendingChoice ? '⚡ 돌발 선택 이벤트 진행' : '확인'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Mobile D-Pad */}
                 <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none">
                         <div />
@@ -2963,9 +3264,9 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             onPointerUp={() => { dpadRef.current = null; }}
                             onPointerLeave={() => { dpadRef.current = null; }}
                             onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white text-base font-bold"
                         >
-                            "▲"
+                            ▲
                         </button>
                         <div />
                         <button
@@ -2974,9 +3275,9 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             onPointerUp={() => { dpadRef.current = null; }}
                             onPointerLeave={() => { dpadRef.current = null; }}
                             onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white text-base font-bold"
                         >
-                            "◀"
+                            ◀
                         </button>
                         <button
                             type="button"
@@ -2991,9 +3292,9 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             onPointerUp={() => { dpadRef.current = null; }}
                             onPointerLeave={() => { dpadRef.current = null; }}
                             onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white text-base font-bold"
                         >
-                            "▶"
+                            ▶
                         </button>
                         <div />
                         <button
@@ -3002,9 +3303,9 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             onPointerUp={() => { dpadRef.current = null; }}
                             onPointerLeave={() => { dpadRef.current = null; }}
                             onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white text-base font-bold"
                         >
-                            "▼"
+                            ▼
                         </button>
                         <div />
                     </div>

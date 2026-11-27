@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Character } from '../types';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import { drawCanvasNightOverlay } from '../utils/canvasNightOverlay';
 import { GridDungeonState, GridTile } from '../services/gridDungeonEngine';
 import {
@@ -1183,8 +1184,10 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                 className="w-full h-full block cursor-pointer"
             />
 
-            {/* 좌측 상단: 줌 & 전체보기 컨트롤 */}
-            <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex items-center gap-0.5 sm:gap-1 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-lg sm:rounded-xl p-0.5 sm:p-1 shadow-lg">
+            {/* 좌측 상단: 캐릭터 HUD + 줌 & 전체보기 컨트롤 */}
+            <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 flex flex-col gap-1.5 pointer-events-none">
+                <CanvasCharacterHud character={character} />
+                <div className="pointer-events-auto w-fit flex items-center gap-0.5 sm:gap-1 bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-lg sm:rounded-xl p-0.5 sm:p-1 shadow-lg">
                 <button
                     onClick={() => setZoom(z => Math.max(0.55, Number((z - 0.15).toFixed(2))))}
                     className="p-1 sm:p-1.5 hover:bg-slate-800 rounded-lg text-slate-300 hover:text-white transition-colors"
@@ -1209,6 +1212,7 @@ const DungeonRpgCanvas: React.FC<DungeonRpgCanvasProps> = ({
                 >
                     <Maximize2 size={12} /> 전체
                 </button>
+            </div>
             </div>
 
             {/* 우측 상단: 실시간 미니맵 */}

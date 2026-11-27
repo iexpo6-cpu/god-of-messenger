@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character } from '../types';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import { drawCanvasNightOverlay } from '../utils/canvasNightOverlay';
 import {
     DIRECTION_ROW_MAP,
@@ -602,6 +603,7 @@ const RegionalAdminCanvas: React.FC<RegionalAdminCanvasProps> = ({
             </div>
 
             <div className="relative flex-1 flex items-center justify-center p-2 overflow-hidden">
+                <CanvasCharacterHud character={character} className="absolute top-3 left-3 z-20" />
                 <canvas
                     ref={canvasRef}
                     width={cols * CITY_TILE_SIZE}

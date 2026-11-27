@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character } from '../types';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import { drawCanvasNightOverlay } from '../utils/canvasNightOverlay';
 import { BASE_TILE_SIZE, resolveDecorationSpriteUrl } from '../services/baseTilemapEngine';
 import {
@@ -596,7 +597,9 @@ const RaceHubCanvas: React.FC<RaceHubCanvasProps> = ({
         <div className="relative w-full h-full bg-slate-950 overflow-hidden select-none">
             <canvas ref={canvasRef} onClick={handleCanvasClick} className="w-full h-full block cursor-pointer" />
 
-            <div className="absolute top-3 left-3 z-20 flex items-center gap-2">
+            <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none">
+                <CanvasCharacterHud character={character} />
+                <div className="flex items-center gap-2 pointer-events-auto">
                 <div className="bg-slate-950/90 border border-slate-700 rounded-xl px-3.5 py-2 shadow-xl">
                     <div className="text-xs font-black text-white">{theme.title}</div>
                     <div className="text-[10px] text-slate-400">{nation} · {city}</div>
@@ -607,6 +610,7 @@ const RaceHubCanvas: React.FC<RaceHubCanvasProps> = ({
                 >
                     <DoorOpen size={14} /> 광장으로
                 </button>
+                </div>
             </div>
 
             {(nearbyBuilding || nearbyNpc) && !hasOverlayOpen && (

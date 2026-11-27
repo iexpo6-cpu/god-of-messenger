@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Character } from '../types';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import {
     BASE_TILE_SIZE,
     BaseFacilityNode,
@@ -1123,7 +1124,7 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
                 const chHour = parseInt(chStr, 10) || 8;
                 if (chHour >= 20 || chHour < 5) {
                     ctx.fillStyle = 'rgba(10, 14, 38, 0.34)';
-                    ctx.fillRect(0, 0, interiorMap.cols * BASE_TILE_SIZE, interiorMap.rows * BASE_TILE_SIZE);
+                    ctx.fillRect(0, 0, mapData.cols * BASE_TILE_SIZE, mapData.rows * BASE_TILE_SIZE);
                     ctx.save();
                     ctx.globalCompositeOperation = 'lighter';
                     const g = ctx.createRadialGradient(p.x, p.y - 6, 4, p.x, p.y - 6, 95);
@@ -1136,7 +1137,7 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
                     ctx.restore();
                 } else if (chHour >= 17 && chHour < 20) {
                     ctx.fillStyle = 'rgba(190, 60, 40, 0.12)';
-                    ctx.fillRect(0, 0, interiorMap.cols * BASE_TILE_SIZE, interiorMap.rows * BASE_TILE_SIZE);
+                    ctx.fillRect(0, 0, mapData.cols * BASE_TILE_SIZE, mapData.rows * BASE_TILE_SIZE);
                 }
 
                 ctx.restore();
@@ -1161,7 +1162,8 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
 
             {/* Top HUD */}
             <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
-                <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl">
+                <div className="flex flex-col gap-1.5">
+                    <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl w-fit">
                     <Sparkles size={16} className="text-amber-400 shrink-0" />
                     <div className="leading-tight">
                         <div className="text-xs sm:text-sm font-black text-amber-200 flex items-center gap-1.5">
@@ -1177,6 +1179,8 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
                             <span>작업대를 클릭하거나 다가가서 [Space]를 누르세요</span>
                         </div>
                     </div>
+                </div>
+                <CanvasCharacterHud character={character} />
                 </div>
 
                 <div className="pointer-events-auto flex items-center gap-1.5">

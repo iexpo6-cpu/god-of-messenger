@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, Enemy, JobType, TemplePersonnel } from '../types';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import { drawCanvasNightOverlay } from '../utils/canvasNightOverlay';
 import { TEMPLE_MESSENGER_MAP, MAGYE_LEADERS } from '../constants';
 import { DIVINE_REALM_BOSSES, getBossByLocation } from '../bossMonsters';
@@ -1203,7 +1204,9 @@ const TempleRpgCanvas: React.FC<TempleRpgCanvasProps> = ({
             />
 
             {/* 상단 HUD */}
-            <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-2 pointer-events-auto">
+            <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 pointer-events-none">
+                <CanvasCharacterHud character={character} />
+                <div className="flex flex-wrap items-center gap-2 pointer-events-auto">
                 <div className="bg-slate-950/90 border border-amber-500/50 rounded-xl px-3.5 py-2 shadow-xl flex items-center gap-3">
                     <Crown size={18} className="text-amber-400" />
                     <div>
@@ -1226,6 +1229,7 @@ const TempleRpgCanvas: React.FC<TempleRpgCanvasProps> = ({
                 >
                     <DoorOpen size={14} /> 성전 밖으로
                 </button>
+                </div>
             </div>
 
             {/* 우상단 미니맵 */}

@@ -29,8 +29,20 @@ import {
   MessageSquare,
   Swords,
   Heart,
-  Info
+  Info,
+  Keyboard,
+  RotateCcw
 } from 'lucide-react';
+import type { ShortcutId } from './HeaderShortcuts';
+import {
+  FEATURE_HOTKEY_ITEMS,
+  loadFeatureHotkeys,
+  saveFeatureHotkeys,
+  resetFeatureHotkeys,
+  formatHotkeyLabel,
+  eventToHotkey,
+  RESERVED_MOVEMENT_KEYS,
+} from '../utils/featureHotkeys';
 
 interface Props {
   isOpen: boolean;
@@ -93,7 +105,56 @@ const GameSettingsModalComponent: React.FC<Props> = ({
   disableCommonCompanionInteraction = false,
   onChangeDisableCommonCompanionInteraction,
 }) => {
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'system' | 'mailbox'>('system');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'system' | 'mailbox' | 'hotkeys'>('system');
+  const [featureHotkeys, setFeatureHotkeys] = useState<Partial<Record<ShortcutId, string>>>(() => loadFeatureHotkeys());
+  const [capturingHotkeyId, setCapturingHotkeyId] = useState<ShortcutId | null>(null);
+  const [hotkeyNotice, setHotkeyNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!capturingHotkeyId) {
+      delete document.body.dataset.capturingHotkey;
+      return;
+    }
+    document.body.dataset.capturingHotkey = '1';
+    const onKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const rawKey = e.key;
+      if (rawKey === 'Escape') {
+        setCapturingHotkeyId(null);
+        setHotkeyNotice(null);
+        return;
+      }
+      if (rawKey === 'Backspace' || rawKey === 'Delete') {
+        const next = { ...featureHotkeys, [capturingHotkeyId]: '' };
+        setFeatureHotkeys(next);
+        saveFeatureHotkeys(next);
+        setCapturingHotkeyId(null);
+        setHotkeyNotice('단축키가 해제되었습니다.');
+        return;
+      }
+      const norm = eventToHotkey(e);
+      if (!norm || norm === 'process' || norm.length > 12 || ['shift', 'control', 'alt', 'meta', 'tab', 'capslock'].includes(norm)) return;
+      if (RESERVED_MOVEMENT_KEYS.has(norm)) {
+        setHotkeyNotice('WASD · 방향키 · Space · Enter는 이동/상호작용 키로 예약되어 지정할 수 없습니다.');
+        return;
+      }
+      const next: Partial<Record<ShortcutId, string>> = { ...featureHotkeys };
+      (Object.keys(next) as ShortcutId[]).forEach(k => {
+        if (next[k] === norm && k !== capturingHotkeyId) next[k] = '';
+      });
+      next[capturingHotkeyId] = norm;
+      setFeatureHotkeys(next);
+      saveFeatureHotkeys(next);
+      setCapturingHotkeyId(null);
+      setHotkeyNotice(`단축키 [${formatHotkeyLabel(norm)}] 저장 완료`);
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      delete document.body.dataset.capturingHotkey;
+      window.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [capturingHotkeyId, featureHotkeys]);
 
   // Sound (BGM Volume) State
   const [bgmVolume, setBgmVolume] = useState<number>(() => {
@@ -284,12 +345,93 @@ const GameSettingsModalComponent: React.FC<Props> = ({
             <Mail size={15} />
             <span>서신함 설정</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveSettingsTab('hotkeys')}
+            className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all border-b-2 ${
+              activeSettingsTab === 'hotkeys'
+                ? 'border-cyan-500 text-cyan-300 bg-cyan-950/40'
+                : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+            }`}
+          >
+            <Keyboard size={15} />
+            <span>단축키 설정</span>
+          </button>
         </div>
 
         {/* Scrollable Body */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-5 custom-scrollbar text-slate-200">
 
-          {activeSettingsTab === 'system' ? (
+          {activeSettingsTab === 'hotkeys' ? (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <section className="bg-cyan-950/20 border border-cyan-800/40 rounded-xl p-3.5 sm:p-4 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Keyboard size={16} className="text-cyan-400" />
+                    <span className="text-xs sm:text-sm font-bold text-cyan-200">기능 버튼 단축키 설정</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = resetFeatureHotkeys();
+                      setFeatureHotkeys(next);
+                      setCapturingHotkeyId(null);
+                      setHotkeyNotice('기본 단축키로 복원되었습니다.');
+                    }}
+                    className="px-2.5 py-1 text-[10px] font-bold bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 rounded-lg flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw size={12} /> 기본값 복원
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  단축키 버튼을 누른 뒤 원하는 키보드를 입력해 지정하세요. (<strong className="text-slate-200">Backspace/Delete</strong>: 해제 · <strong className="text-slate-200">ESC</strong>: 취소)
+                </p>
+                {hotkeyNotice && (
+                  <div className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-cyan-500/40 text-[11px] text-cyan-200 font-semibold">
+                    {hotkeyNotice}
+                  </div>
+                )}
+              </section>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {FEATURE_HOTKEY_ITEMS.map(item => {
+                  const isCapturing = capturingHotkeyId === item.id;
+                  const bound = featureHotkeys[item.id];
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${
+                        isCapturing
+                          ? 'bg-cyan-950/50 border-cyan-400'
+                          : 'bg-slate-900/70 border-slate-800'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-slate-400 mr-1.5">[{item.category}]</span>
+                        <span className="text-xs font-bold text-slate-100">{item.label}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setHotkeyNotice(null);
+                          setCapturingHotkeyId(isCapturing ? null : item.id);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-black border transition-all cursor-pointer shrink-0 ${
+                          isCapturing
+                            ? 'bg-cyan-500 text-slate-950 border-cyan-300 animate-pulse'
+                            : bound
+                              ? 'bg-slate-950 text-amber-300 border-amber-500/50 hover:border-amber-400'
+                              : 'bg-slate-950 text-slate-500 border-slate-700 hover:text-slate-300'
+                        }`}
+                      >
+                        {isCapturing ? '키 입력...' : formatHotkeyLabel(bound)}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : activeSettingsTab === 'system' ? (
             <>
               {/* 1. 사운드 설정 (BGM 볼륨) */}
               <section className="bg-slate-900/50 border border-slate-800/90 rounded-xl p-3.5 sm:p-4 space-y-3">

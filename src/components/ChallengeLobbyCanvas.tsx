@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character } from '../types';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import { drawCanvasNightOverlay } from '../utils/canvasNightOverlay';
 import { BASE_TILE_SIZE } from '../services/baseTilemapEngine';
 import {
@@ -568,7 +569,7 @@ export const ChallengeLobbyCanvas: React.FC<ChallengeLobbyCanvasProps> = ({
                     }
 
                     drawCanvasNightOverlay(ctx, camX, camY, canvas.width, canvas.height, character.currentTime, {
-                        playerLight: { x: playerRef.current.x, y: playerRef.current.y - 6, radius: 95 }
+                        playerLight: { x: playerPosRef.current.x, y: playerPosRef.current.y - 6, radius: 95 }
                     });
                     ctx.restore();
                 }
@@ -661,13 +662,16 @@ export const ChallengeLobbyCanvas: React.FC<ChallengeLobbyCanvasProps> = ({
                     className="w-full h-full block cursor-crosshair"
                 />
 
-                {/* Guide Hint */}
-                <div className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-black/70 border border-slate-700/80 text-[10px] sm:text-xs text-slate-300 pointer-events-none">
-                    WASD / 방향키 / 터치 이동 · NPC에게 다가가 <span className="text-amber-300 font-bold">E 또는 클릭</span>
+                {/* Left-Top Character HUD + Guide Hint */}
+                <div className="absolute top-2.5 left-2.5 z-20 flex flex-col gap-1.5 pointer-events-none">
+                    <CanvasCharacterHud character={character} />
+                    <div className="px-2.5 py-1 rounded-lg bg-black/70 border border-slate-700/80 text-[10px] sm:text-xs text-slate-300 w-fit">
+                        WASD / 방향키 / 터치 이동 · NPC에게 다가가 <span className="text-amber-300 font-bold">E 또는 클릭</span>
+                    </div>
                 </div>
 
                 {/* Mobile D-pad + Interact */}
-                <div className="absolute bottom-3 left-3 grid grid-cols-3 gap-1.5 w-36 sm:hidden">
+                <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none">
                     <div />
                     <button
                         type="button"

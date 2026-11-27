@@ -789,8 +789,8 @@ export const advanceCombatTrainingTime = (
                     const traineeMaxLv = Math.max(
                         trainee.level || 1,
                         ((trainee as any).isMonster || (trainee as any).monsterData || (trainee as any).race === '몬스터')
-                            ? getMonsterMaxLevel(trainee as any, char.base)
-                            : getCharacterMaxLevel(trainee as any, char.base)
+                            ? getMonsterMaxLevel(trainee as any, charCopy.base)
+                            : getCharacterMaxLevel(trainee as any, charCopy.base)
                     );
                     while (trainee.currentExp >= trainee.maxExp && trainee.level < traineeMaxLv) {
                         anyLeveledUp = true;

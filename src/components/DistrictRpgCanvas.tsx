@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, CityTier, Item } from '../types';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import { SHOP_INVENTORY, NATION_SPECIFIC_ITEMS, getCityScroll } from '../ItemData';
 import {
     getCachedCityAssetImage,
@@ -645,7 +646,7 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
                         makeNpc(
                             `in_ba_crim_${crim.id}`,
                             `🎯 [수배범] ${crim.name}`,
-                            `${crim.title || '현상수배범'} (현상금 ${crim.bounty.toLocaleString()}G)`,
+                            `${crim.title || '현상수배범'} (현상금 ${(crim.bounty ?? 0).toLocaleString()}G)`,
                             `"쳇, 여긴 어떻게 찾아낸 거지?! 순순히 잡힐 생각은 없다!" (뒷골목 모달에서 추적/교전 가능)`,
                             slot.tx,
                             slot.ty,
@@ -1837,8 +1838,9 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
             />
 
             {/* Top HUD */}
-            <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-                <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl">
+            <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
+                <div className="flex flex-col gap-1.5">
+                    <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl w-fit">
                     <Sparkles size={15} className="text-amber-400 shrink-0" />
                     <div className="leading-tight">
                         <div className="text-xs sm:text-sm font-black text-amber-200 flex items-center gap-1.5">
@@ -1857,6 +1859,8 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
                                 : '건물에 들어가거나 지역 주민과 대화해 보세요 [Space]'}
                         </div>
                     </div>
+                </div>
+                <CanvasCharacterHud character={character} />
                 </div>
                 <div className="pointer-events-auto flex items-center gap-1.5">
                     {activeBuilding && district !== 'RoyalCourt' && (

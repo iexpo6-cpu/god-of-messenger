@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { BaseDecorationItem, Character, FacilityInstance, JobType } from '../types';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import { FACILITIES_INFO, FACILITY_CONSTRUCTION_COSTS, FACILITY_UPGRADE_CONFIG } from '../constants';
 import {
     BASE_DECORATION_CATALOG,
@@ -188,6 +189,22 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             selectedFacility.isHq ? 'hq' : selectedFacility.instanceId || selectedFacility.facilityType
         ).ok;
     }, [character, selectedFacility]);
+
+    const playerLoverKeys = useMemo(() => {
+        const set = new Set<string>();
+        const all = [
+            ...(character.companions || []),
+            ...(character.inactiveCompanions || []),
+            ...(character.socialNetwork || [])
+        ];
+        all.forEach((t: any) => {
+            if (t && t.isLover && (t.partnerId === 'player' || (!t.partnerId && !t.partnerName))) {
+                if (t.id) set.add(t.id);
+                if (t.name) set.add(t.name);
+            }
+        });
+        return set;
+    }, [character.companions, character.inactiveCompanions, character.socialNetwork]);
 
     useEffect(() => {
         const prevById = new Map(residentsRef.current.map(r => [r.id, r]));
@@ -665,6 +682,14 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             if (!ok) return;
 
             const facInfo = FACILITIES_INFO.find(f => f.id === placingNewFacilityId);
+            if (facInfo && baseLevel < (facInfo.minLevel || 1)) return;
+            if (
+                facInfo?.isUnique &&
+                ((base.layout || []).some(inst => inst.type === placingNewFacilityId) ||
+                    (base.facilities || []).includes(placingNewFacilityId))
+            ) {
+                return;
+            }
             const costCfg = (FACILITY_CONSTRUCTION_COSTS as any)[placingNewFacilityId] || { gold: 20000, wood: 15, stone: 15 };
             const goldCost = costCfg.gold || 0;
             const foodCost = costCfg.food || 0;
@@ -1555,10 +1580,20 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                     frame: number,
                     name: string,
                     bubble?: string,
-                    isPlayer?: boolean
+                    isPlayer?: boolean,
+                    isLover?: boolean
                 ) => {
                     const px = Math.round(rawPx);
                     const py = Math.round(rawPy);
+                    if (isLover) {
+                        ctx.fillStyle = 'rgba(244, 114, 182, 0.32)';
+                        ctx.beginPath();
+                        ctx.ellipse(px, py + 4, 17, 8, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(244, 114, 182, 0.78)';
+                        ctx.lineWidth = 1.4;
+                        ctx.stroke();
+                    }
                     ctx.fillStyle = 'rgba(0,0,0,0.38)';
                     ctx.beginPath();
                     ctx.ellipse(px, py + 4, 13, 6, 0, 0, Math.PI * 2);
@@ -1572,24 +1607,37 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                         ctx.imageSmoothingEnabled = false;
                         ctx.drawImage(img, frame * fw, row * fh, fw, fh, px - 22, py - 42, 44, 48);
                     } else {
-                        ctx.fillStyle = isPlayer ? '#38bdf8' : '#a78bfa';
+                        ctx.fillStyle = isPlayer ? '#38bdf8' : isLover ? '#f472b6' : '#a78bfa';
                         ctx.beginPath();
                         ctx.arc(px, py - 16, 12, 0, Math.PI * 2);
                         ctx.fill();
                     }
 
+                    if (isLover) {
+                        ctx.font = '12px sans-serif';
+                        ctx.textAlign = 'center';
+                        const heartBob = Math.sin(Date.now() / 220) * 2.5;
+                        ctx.fillText('💕', px, py - (bubble ? 66 : 48) + heartBob);
+                    }
+
+                    const displayLabel = isLover ? `💕 ${name}` : name;
                     ctx.font = 'bold 10px sans-serif';
                     ctx.textAlign = 'center';
-                    let nMeas = textWidthCacheRef.current.get(`n:${name}`);
+                    let nMeas = textWidthCacheRef.current.get(`n:${displayLabel}`);
                     if (nMeas === undefined) {
-                        nMeas = ctx.measureText(name).width;
-                        textWidthCacheRef.current.set(`n:${name}`, nMeas);
+                        nMeas = ctx.measureText(displayLabel).width;
+                        textWidthCacheRef.current.set(`n:${displayLabel}`, nMeas);
                     }
                     const nw = Math.max(40, nMeas + 10);
-                    ctx.fillStyle = isPlayer ? 'rgba(30, 58, 138, 0.88)' : 'rgba(15, 23, 42, 0.82)';
+                    ctx.fillStyle = isPlayer ? 'rgba(30, 58, 138, 0.88)' : isLover ? 'rgba(131, 24, 67, 0.92)' : 'rgba(15, 23, 42, 0.82)';
                     ctx.fillRect(px - nw / 2, py + 7, nw, 15);
-                    ctx.fillStyle = isPlayer ? '#fde047' : '#e2e8f0';
-                    ctx.fillText(name, px, py + 18);
+                    if (isLover) {
+                        ctx.strokeStyle = 'rgba(244, 114, 182, 0.85)';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(px - nw / 2, py + 7, nw, 15);
+                    }
+                    ctx.fillStyle = isPlayer ? '#fde047' : isLover ? '#fbcfe8' : '#e2e8f0';
+                    ctx.fillText(displayLabel, px, py + 18);
 
                     if (bubble) {
                         ctx.font = '10px sans-serif';
@@ -1617,20 +1665,23 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                         r.py <= cameraRef.current.y + viewportSize.h + 60
                 );
                 const actors = [
-                    ...visibleResidents.map(r => ({
-                        y: r.py,
-                        draw: () => drawSprite(r.spriteUrl, r.px, r.py, r.dir, r.walkFrame, r.name, r.activityBubble, false)
-                    })),
+                    ...visibleResidents.map(r => {
+                        const isLover = playerLoverKeys.has(r.id) || playerLoverKeys.has(r.name);
+                        return {
+                            y: r.py,
+                            draw: () => drawSprite(r.spriteUrl, r.px, r.py, r.dir, r.walkFrame, r.name, r.activityBubble, false, isLover)
+                        };
+                    }),
                     {
                         y: p.y,
-                        draw: () => drawSprite(playerSpriteUrl, p.x, p.y, p.dir, p.walkFrame, characterName, undefined, true)
+                        draw: () => drawSprite(playerSpriteUrl, p.x, p.y, p.dir, p.walkFrame, characterName, undefined, true, false)
                     }
                 ].sort((a, b) => a.y - b.y);
                 actors.forEach(a => a.draw());
 
                 ctx.restore();
 
-                if (timeOfDay === 'Night') {
+                if (timeOfDay.period === 'night' || timeOfDay.period === 'dawn') {
                     ctx.fillStyle = 'rgba(10, 14, 42, 0.48)';
                     ctx.fillRect(0, 0, viewportSize.w, viewportSize.h);
                     const pxScreen = p.x - cameraRef.current.x;
@@ -1645,7 +1696,7 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                     ctx.arc(pxScreen, pyScreen, 105, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.restore();
-                } else if (timeOfDay === 'Evening') {
+                } else if (timeOfDay.period === 'sunset') {
                     ctx.fillStyle = 'rgba(190, 60, 40, 0.14)';
                     ctx.fillRect(0, 0, viewportSize.w, viewportSize.h);
                 }
@@ -1827,8 +1878,9 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
 
             {/* Top HUD */}
             <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
-                {/* Base Info Badge */}
-                <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl">
+                <div className="flex flex-col gap-1.5">
+                    {/* Base Info Badge */}
+                    <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl w-fit">
                     <Home size={16} className="text-amber-400 shrink-0" />
                     <div className="leading-tight">
                         <div className="text-xs sm:text-sm font-black text-amber-200 flex items-center gap-1.5">
@@ -1846,6 +1898,8 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                             <span className="text-sky-300">석재 {base?.resources?.stone || 0}</span>
                         </div>
                     </div>
+                </div>
+                <CanvasCharacterHud character={character} />
                 </div>
 
                 {/* Mode & Action Buttons */}
@@ -2174,48 +2228,54 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
 
             {/* Mobile D-Pad */}
             {mode === 'explore' && (
-                <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-85">
+                <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none">
                     <div />
                     <button
                         type="button"
-                        onTouchStart={() => (dpadRef.current = 'up')}
-                        onTouchEnd={() => (dpadRef.current = null)}
-                        onMouseDown={() => (dpadRef.current = 'up')}
-                        onMouseUp={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white"
+                        onPointerDown={() => { dpadRef.current = 'up'; }}
+                        onPointerUp={() => { dpadRef.current = null; }}
+                        onPointerLeave={() => { dpadRef.current = null; }}
+                        onPointerCancel={() => { dpadRef.current = null; }}
+                        className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                     >
                         <ArrowUp size={22} />
                     </button>
                     <div />
                     <button
                         type="button"
-                        onTouchStart={() => (dpadRef.current = 'left')}
-                        onTouchEnd={() => (dpadRef.current = null)}
-                        onMouseDown={() => (dpadRef.current = 'left')}
-                        onMouseUp={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white"
+                        onPointerDown={() => { dpadRef.current = 'left'; }}
+                        onPointerUp={() => { dpadRef.current = null; }}
+                        onPointerLeave={() => { dpadRef.current = null; }}
+                        onPointerCancel={() => { dpadRef.current = null; }}
+                        className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                     >
                         <ArrowLeft size={22} />
                     </button>
-                    <div />
                     <button
                         type="button"
-                        onTouchStart={() => (dpadRef.current = 'right')}
-                        onTouchEnd={() => (dpadRef.current = null)}
-                        onMouseDown={() => (dpadRef.current = 'right')}
-                        onMouseUp={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white"
+                        onClick={handleInteract}
+                        className="bg-amber-600/90 active:bg-amber-500 active:scale-95 border border-amber-300 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-lg"
+                    >
+                        확인
+                    </button>
+                    <button
+                        type="button"
+                        onPointerDown={() => { dpadRef.current = 'right'; }}
+                        onPointerUp={() => { dpadRef.current = null; }}
+                        onPointerLeave={() => { dpadRef.current = null; }}
+                        onPointerCancel={() => { dpadRef.current = null; }}
+                        className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                     >
                         <ArrowRight size={22} />
                     </button>
                     <div />
                     <button
                         type="button"
-                        onTouchStart={() => (dpadRef.current = 'down')}
-                        onTouchEnd={() => (dpadRef.current = null)}
-                        onMouseDown={() => (dpadRef.current = 'down')}
-                        onMouseUp={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white"
+                        onPointerDown={() => { dpadRef.current = 'down'; }}
+                        onPointerUp={() => { dpadRef.current = null; }}
+                        onPointerLeave={() => { dpadRef.current = null; }}
+                        onPointerCancel={() => { dpadRef.current = null; }}
+                        className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                     >
                         <ArrowDown size={22} />
                     </button>
@@ -2692,6 +2752,13 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                                 const sCost = cfg.stone || 0;
                                 const iCost = cfg.iron || 0;
                                 const mCost = cfg.manaCrystal || 0;
+                                const minBaseLv = fac.minLevel || 1;
+                                const meetsBaseLv = baseLevel >= minBaseLv;
+                                const isUniqueBuilt = Boolean(
+                                    fac.isUnique &&
+                                        ((base?.layout || []).some(inst => inst.type === fac.id) ||
+                                            (base?.facilities || []).includes(fac.id))
+                                );
                                 const affordable =
                                     (character.money || 0) >= gCost &&
                                     (base?.resources?.food || 0) >= fCost &&
@@ -2699,19 +2766,34 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                                     (base?.resources?.stone || 0) >= sCost &&
                                     (base?.resources?.iron || 0) >= iCost &&
                                     (base?.resources?.manaCrystal || 0) >= mCost;
+                                const canBuild = affordable && meetsBaseLv && !isUniqueBuilt;
                                 return (
                                     <div
                                         key={fac.id}
                                         className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-3"
                                     >
                                         <div className="min-w-0">
-                                            <div className="text-xs font-black text-white flex items-center gap-2">
+                                            <div className="text-xs font-black text-white flex items-center gap-1.5 flex-wrap">
                                                 <span>{fac.name}</span>
                                                 <span className="text-[10px] font-mono text-emerald-300 bg-emerald-950 px-1.5 py-0.5 rounded">
                                                     {foot.w}×{foot.h} 타일
                                                 </span>
+                                                <span
+                                                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                                                        meetsBaseLv
+                                                            ? 'bg-sky-950/70 border-sky-500/40 text-sky-300'
+                                                            : 'bg-rose-950/80 border-rose-500/50 text-rose-300'
+                                                    }`}
+                                                >
+                                                    기지 Lv.{minBaseLv}+
+                                                </span>
+                                                {fac.isUnique && (
+                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-500/40 text-amber-300">
+                                                        {isUniqueBuilt ? '보유중(고유)' : '고유'}
+                                                    </span>
+                                                )}
                                             </div>
-                                            <div className="text-[11px] text-slate-400 truncate">{fac.description}</div>
+                                            <div className="text-[11px] text-slate-400 truncate">{fac.desc}</div>
                                             <div className="text-[10px] mt-1 flex flex-wrap gap-2">
                                                 {gCost > 0 && (
                                                     <span className={(character.money || 0) >= gCost ? 'text-amber-300' : 'text-rose-400'}>
@@ -2747,14 +2829,14 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                                         </div>
                                         <button
                                             type="button"
-                                            disabled={!affordable}
+                                            disabled={!canBuild}
                                             onClick={() => {
                                                 setPlacingNewFacilityId(fac.id);
                                                 setShowNewFacilityPicker(false);
                                             }}
                                             className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 text-white text-xs font-black shrink-0"
                                         >
-                                            위치 선택
+                                            {isUniqueBuilt ? '보유중' : !meetsBaseLv ? `Lv.${minBaseLv} 필요` : '위치 선택'}
                                         </button>
                                     </div>
                                 );

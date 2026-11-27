@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, JobType, MilitaryRank } from '../types';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import { MILITARY_RANK_ORDER } from '../constants';
 import { generateName } from '../utils';
 import { REGIONAL_MERCENARY_GROUPS, DEFAULT_MERCENARY_GROUPS } from '../worldguild.ts';
@@ -1177,8 +1178,9 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
             />
 
             {/* Top HUD */}
-            <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-                <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl">
+            <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
+                <div className="flex flex-col gap-1.5">
+                    <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl w-fit">
                     {kind === 'Mercenary' ? (
                         <Sparkles size={15} className="text-red-400 shrink-0" />
                     ) : (
@@ -1190,6 +1192,8 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
                             각 구역 담당 NPC나 건물과 상호작용하세요 [Space]
                         </div>
                     </div>
+                </div>
+                <CanvasCharacterHud character={character} />
                 </div>
                 <div className="pointer-events-auto flex items-center gap-1.5">
                     {subRoom && (
@@ -1224,21 +1228,23 @@ const FactionCompoundCanvas: React.FC<FactionCompoundCanvasProps> = ({
             )}
 
             {/* Mobile D-Pad */}
-            <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-85">
+            <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none">
                 <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'up')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                <button type="button" onPointerDown={() => { dpadRef.current = 'up'; }} onPointerUp={() => { dpadRef.current = null; }} onPointerLeave={() => { dpadRef.current = null; }} onPointerCancel={() => { dpadRef.current = null; }} className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white">
                     <ArrowUp size={22} />
                 </button>
                 <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'left')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                <button type="button" onPointerDown={() => { dpadRef.current = 'left'; }} onPointerUp={() => { dpadRef.current = null; }} onPointerLeave={() => { dpadRef.current = null; }} onPointerCancel={() => { dpadRef.current = null; }} className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white">
                     <ArrowLeft size={22} />
                 </button>
-                <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'right')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                <button type="button" onClick={handleInteract} className="bg-amber-600/90 active:bg-amber-500 active:scale-95 border border-amber-300 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-lg">
+                    확인
+                </button>
+                <button type="button" onPointerDown={() => { dpadRef.current = 'right'; }} onPointerUp={() => { dpadRef.current = null; }} onPointerLeave={() => { dpadRef.current = null; }} onPointerCancel={() => { dpadRef.current = null; }} className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white">
                     <ArrowRight size={22} />
                 </button>
                 <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'down')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
+                <button type="button" onPointerDown={() => { dpadRef.current = 'down'; }} onPointerUp={() => { dpadRef.current = null; }} onPointerLeave={() => { dpadRef.current = null; }} onPointerCancel={() => { dpadRef.current = null; }} className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white">
                     <ArrowDown size={22} />
                 </button>
                 <div />

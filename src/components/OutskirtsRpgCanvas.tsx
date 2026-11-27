@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, Enemy } from '../types';
+import { CanvasCharacterHud } from './CanvasCharacterHud';
 import {
     getHuntBandsForLocation,
     getMonsterInfo,
@@ -1193,8 +1194,9 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
             />
 
             {/* Top HUD */}
-            <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-                <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-emerald-500/40 rounded-xl px-3 py-1.5 shadow-xl">
+            <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
+                <div className="flex flex-col gap-1.5">
+                    <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-emerald-500/40 rounded-xl px-3 py-1.5 shadow-xl w-fit">
                     {activeZone ? (
                         <Skull size={15} className="text-rose-400 shrink-0" />
                     ) : (
@@ -1219,6 +1221,8 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
                                 : '사냥할 영역 포탈로 들어가서 몬스터들을 추적하세요 [Space]'}
                         </div>
                     </div>
+                    </div>
+                    <CanvasCharacterHud character={character} />
                 </div>
                 <div className="pointer-events-auto flex items-center gap-1.5">
                     {activeZone && (
