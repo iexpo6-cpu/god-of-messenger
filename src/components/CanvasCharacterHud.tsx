@@ -1,13 +1,15 @@
 import React from 'react';
 import { Character } from '../types';
 import { calculateFinalStats } from '../utils';
+import { STATUS_AILMENTS_LIST } from '../constants';
+import { isRealTimeElixir } from '../services/elixirService';
 
 interface CanvasCharacterHudProps {
     character: Character;
     className?: string;
 }
 
-export const CanvasCharacterHud: React.FC<CanvasCharacterHudProps> = ({ character, className = '' }) => {
+export const CanvasCharacterHud: React.FC<CanvasCharacterHudProps> = React.memo(({ character, className = '' }) => {
     const { finalStats } = calculateFinalStats(character);
     const hp = Math.max(0, Math.round(character.stats.hp ?? 0));
     const maxHp = Math.max(1, Math.round(finalStats.maxHp || character.stats.maxHp || 100));
@@ -16,7 +18,13 @@ export const CanvasCharacterHud: React.FC<CanvasCharacterHudProps> = ({ characte
     const exp = Math.max(0, Math.round(character.currentExp ?? 0));
     const maxExp = Math.max(1, Math.round(character.maxExp || 100));
     const fatigue = Math.max(0, Math.min(100, Math.round(character.fatigue ?? 0)));
-    const statusEffects = (character.statusEffects || []).filter(Boolean);
+    const statusEffects = (character.statusEffects || []).filter((eff: any) => {
+        if (!eff) return false;
+        const name = eff.name || eff.type;
+        if (!name || name === 'None') return false;
+        if (['휴식', '완전 회복', '수면', '잠'].some(k => name.includes(k))) return false;
+        return true;
+    });
 
     const hpPct = Math.min(100, (hp / maxHp) * 100);
     const mpPct = Math.min(100, (mp / maxMp) * 100);
@@ -73,17 +81,49 @@ export const CanvasCharacterHud: React.FC<CanvasCharacterHudProps> = ({ characte
 
             {statusEffects.length > 0 && (
                 <div className="flex flex-wrap gap-1 pt-0.5 border-t border-slate-800/80">
-                    {statusEffects.slice(0, 4).map((eff: any, idx: number) => (
-                        <span
-                            key={eff.id || `${eff.type}_${idx}`}
-                            className="px-1.5 py-0.5 rounded bg-rose-950/90 border border-rose-500/50 text-rose-200 text-[9px] font-bold"
-                        >
-                            ⚠ {eff.name || eff.type}
-                            {eff.duration ? ` (${eff.duration})` : ''}
-                        </span>
-                    ))}
+                    {statusEffects.slice(0, 6).map((eff: any, idx: number) => {
+                        const name = eff.name || eff.type || '';
+                        const isDebuff = Boolean(eff.isDebuff) || STATUS_AILMENTS_LIST.includes(name);
+                        const isDiminished = Boolean(
+                            eff.isDiminished ||
+                            eff.effect?.includes('반감') ||
+                            name.includes('반감')
+                        );
+                        const isRegenBuff = !isDebuff && (
+                            eff.effect?.includes('HP') ||
+                            eff.effect?.includes('MP') ||
+                            name.includes('재생') ||
+                            name.includes('회복')
+                        );
+                        const isElixir = isRealTimeElixir(eff);
+                        const durationLabel = eff.duration && eff.duration > 0
+                            ? ` (${isElixir ? `${Math.ceil(Number(eff.duration) / 60)}m` : eff.duration})`
+                            : '';
+
+                        const badgeClass = isDebuff
+                            ? (['빙결', '속박', '감전'].includes(name)
+                                ? 'bg-purple-950/90 border-purple-500/50 text-purple-200'
+                                : 'bg-rose-950/90 border-rose-500/50 text-rose-200')
+                            : isDiminished
+                                ? 'bg-amber-950/90 border-amber-500/50 text-amber-200'
+                                : isRegenBuff
+                                    ? 'bg-emerald-950/90 border-emerald-500/50 text-emerald-200'
+                                    : 'bg-sky-950/90 border-sky-500/50 text-sky-200';
+
+                        const icon = isDebuff ? '⚠' : isRegenBuff ? '✚' : '▲';
+
+                        return (
+                            <span
+                                key={eff.id || `${name}_${idx}`}
+                                className={`px-1.5 py-0.5 rounded border text-[9px] font-bold ${badgeClass}`}
+                            >
+                                {icon} {name}
+                                {durationLabel}
+                            </span>
+                        );
+                    })}
                 </div>
             )}
         </div>
     );
-};
+});

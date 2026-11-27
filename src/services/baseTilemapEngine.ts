@@ -16,7 +16,6 @@ import {
     resolveCityCultureKey
 } from './cityAssetManifest';
 import { resolveEntityRpgSprite, SpriteDirection } from './rpgSpriteManifest';
-import { getCompanionRoutine } from './npcRoutineService';
 import { getTimeOfDay } from './gameTimeService';
 import { getConstructionRemainingTime } from './baseConstructionService';
 
@@ -302,6 +301,8 @@ export interface BaseTilemapData {
     floorOverrides: Record<string, BaseFloorTileId>;
     /** 충돌 판정용 희소 Set (key: "x,y") — 200x200에서도 초경량 & O(1) */
     solidSet: Set<string>;
+    /** 60Hz 충돌 판정용 고속 숫자 그리드 (cols * rows, 1 = solid, 0 = walkable) */
+    solidGrid?: Uint8Array;
     facilities: BaseFacilityNode[];
     decorations: BaseDecorationItem[];
     residents: BaseResidentEntity[];
@@ -448,20 +449,68 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
     }
 
     const solidSet = new Set<string>();
+    const solidGrid = new Uint8Array(cols * rows);
+    const occGrid = new Uint8Array(cols * rows);
+    const facTightGrid = new Uint8Array(cols * rows);
+    const markSolid = (tx: number, ty: number) => {
+        if (tx >= 0 && ty >= 0 && tx < cols && ty < rows) {
+            solidGrid[ty * cols + tx] = 1;
+            solidSet.add(`${tx},${ty}`);
+        }
+    };
+    const markFacilityOcc = (fx: number, fy: number, fw: number, fh: number) => {
+        const x0 = Math.max(0, fx - 1);
+        const y0 = Math.max(0, fy - 1);
+        const x1 = Math.min(cols - 1, fx + fw);
+        const y1 = Math.min(rows - 1, fy + fh);
+        for (let ty = y0; ty <= y1; ty++) {
+            const rowOff = ty * cols;
+            for (let tx = x0; tx <= x1; tx++) {
+                occGrid[rowOff + tx] = 1;
+            }
+        }
+        const tx0 = Math.max(0, fx);
+        const ty0 = Math.max(0, fy);
+        const tx1 = Math.min(cols - 1, fx + fw - 1);
+        const ty1 = Math.min(rows - 1, fy + fh - 1);
+        for (let ty = ty0; ty <= ty1; ty++) {
+            const rowOff = ty * cols;
+            for (let tx = tx0; tx <= tx1; tx++) {
+                facTightGrid[rowOff + tx] = 1;
+            }
+        }
+    };
+
     // 외곽 성벽 충돌
     for (let x = 0; x < cols; x++) {
-        solidSet.add(`${x},0`);
+        markSolid(x, 0);
         if (x < exitGate.x || x >= exitGate.x + exitGate.w) {
-            solidSet.add(`${x},${rows - 1}`);
+            markSolid(x, rows - 1);
         }
     }
     for (let y = 0; y < rows; y++) {
-        solidSet.add(`0,${y}`);
-        solidSet.add(`${cols - 1},${y}`);
+        markSolid(0, y);
+        markSolid(cols - 1, y);
     }
-    // 물 타일 충돌
+    // 물 타일 충돌 및 시설 배치 금지
     Object.entries(floorOverrides).forEach(([k, v]) => {
-        if (FLOOR_TILE_MAP[v]?.solid) solidSet.add(k);
+        const isWater = v === 'water';
+        const isSolidFloor = Boolean(FLOOR_TILE_MAP[v]?.solid);
+        if (!isWater && !isSolidFloor) return;
+        const comma = k.indexOf(',');
+        if (comma <= 0) return;
+        const tx = Number(k.slice(0, comma));
+        const ty = Number(k.slice(comma + 1));
+        if (tx >= 0 && ty >= 0 && tx < cols && ty < rows) {
+            if (isSolidFloor) {
+                solidGrid[ty * cols + tx] = 1;
+                solidSet.add(k);
+            }
+            if (isWater) {
+                occGrid[ty * cols + tx] = 1;
+                facTightGrid[ty * cols + tx] = 1;
+            }
+        }
     });
 
     // 2. 기지 본부(HQ) 배치
@@ -494,20 +543,33 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
     ];
     for (let y = hqY; y < hqY + hqFoot.h; y++) {
         for (let x = hqX; x < hqX + hqFoot.w; x++) {
-            solidSet.add(`${x},${y}`);
+            markSolid(x, y);
         }
     }
     solidSet.delete(`${hqDoorX},${hqY + hqFoot.h - 1}`);
+    if (hqDoorX >= 0 && hqDoorX < cols && hqY + hqFoot.h - 1 >= 0 && hqY + hqFoot.h - 1 < rows) {
+        solidGrid[(hqY + hqFoot.h - 1) * cols + hqDoorX] = 0;
+    }
+    markFacilityOcc(hqX, hqY, hqFoot.w, hqFoot.h);
 
-    // 담당자 조회 헬퍼
-    const allComps = [...(character.inactiveCompanions || []), ...(character.companions || [])];
-    const findCompById = (id?: string) => allComps.find(c => c.id === id);
+    // 담당자 조회 헬퍼 (O(1) Map 인덱스, null/undefined 안전 가드)
+    const compById = new Map<string, Companion>();
+    const addCompToIndex = (list?: (Companion | null | undefined)[]) => {
+        if (!Array.isArray(list)) return;
+        for (const c of list) {
+            if (c && c.id && !compById.has(c.id)) {
+                compById.set(c.id, c);
+            }
+        }
+    };
+    addCompToIndex(character.inactiveCompanions);
+    addCompToIndex(character.companions);
     const getAssignedCompsForInstance = (inst: FacilityInstance): Companion[] => {
         const result: Companion[] = [];
         const seen = new Set<string>();
         const pushId = (id?: string) => {
             if (!id || seen.has(id)) return;
-            const c = findCompById(id);
+            const c = compById.get(id);
             if (c) {
                 seen.add(id);
                 result.push(c);
@@ -524,35 +586,63 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         return result;
     };
 
-    // 3. 기존 시설들 자유 좌표 배치 (freeX/freeY가 있으면 그대로, 없으면 자연스러운 마을형 스파이럴 자동 배치)
+    // 3. 기존 시설들 자유 좌표 배치 (freeX/freeY가 있으면 그대로, 없으면 점유 그리드 기반 고속 자동 배치)
     const layoutList = (base?.layout || []).filter(inst => inst && inst.type);
     const assignedCompLocation = new Map<string, { px: number; py: number; bubble: string; facLabel: string }>();
     let monsterPenBounds: { minPx: number; maxPx: number; minPy: number; maxPy: number } | null = null;
 
+    const canPlaceOnGrid = (grid: Uint8Array, x: number, y: number, w: number, h: number): boolean => {
+        if (x < 2 || y < 2 || x + w > cols - 2 || y + h > rows - 3) return false;
+        if (x < exitGate.x + exitGate.w + 1 && x + w > exitGate.x - 1 && y + h > exitGate.y - 3) return false;
+        for (let ty = y; ty < y + h; ty++) {
+            const rowOff = ty * cols;
+            for (let tx = x; tx < x + w; tx++) {
+                if (grid[rowOff + tx] !== 0) return false;
+            }
+        }
+        return true;
+    };
+
     const findNaturalFreePos = (w: number, h: number, seedIdx: number): { x: number; y: number } => {
-        // 중앙 본부 좌우·하단에 자연스럽게 분산 (격자처럼 일렬로 붙지 않도록 오프셋 부여)
         const baseAnchorY = Math.min(rows - h - 4, hqDoorY + 4);
-        for (let radius = 0; radius < Math.max(cols, rows); radius += 2) {
-            const angleSteps = Math.max(8, radius * 2);
+        const maxRadius = Math.max(cols, rows);
+        for (let radius = 0; radius < maxRadius; radius += 2) {
+            const angleSteps = Math.max(8, Math.min(64, radius * 2));
             for (let s = 0; s < angleSteps; s++) {
                 const ang = ((s + (seedIdx % 5)) / angleSteps) * Math.PI * 2;
                 const candX = Math.round(cx - w / 2 + Math.cos(ang) * (radius + 4));
                 const candY = Math.round(baseAnchorY + Math.sin(ang) * (radius * 0.8 + 2));
-                if (canPlaceFacilityRect(cols, rows, facilities, floorOverrides, exitGate, candX, candY, w, h)) {
+                if (canPlaceOnGrid(occGrid, candX, candY, w, h)) {
                     return { x: candX, y: candY };
                 }
             }
         }
-        // 폴백 전체 스캔
-        for (let ty = 3; ty < rows - h - 3; ty += 2) {
-            for (let tx = 3; tx < cols - w - 3; tx += 2) {
-                if (canPlaceFacilityRect(cols, rows, facilities, floorOverrides, exitGate, tx, ty, w, h)) {
+        // 전체 맵 1칸 정밀 스캔 (O(cols * rows) 최악 시간)
+        for (let ty = 2; ty <= rows - h - 3; ty++) {
+            for (let tx = 2; tx <= cols - w - 2; tx++) {
+                if (canPlaceOnGrid(occGrid, tx, ty, w, h)) {
                     return { x: tx, y: ty };
                 }
             }
         }
-        return { x: 3, y: 3 };
+        // 여백 없이 밀착 가능한 빈 공간 스캔
+        for (let ty = 2; ty <= rows - h - 3; ty++) {
+            for (let tx = 2; tx <= cols - w - 2; tx++) {
+                if (canPlaceOnGrid(facTightGrid, tx, ty, w, h)) {
+                    return { x: tx, y: ty };
+                }
+            }
+        }
+        // 맵이 완전히 가득 찬 경우에도 (3,3) 중첩 대신 분산 배치
+        const spanX = Math.max(1, cols - w - 4);
+        const spanY = Math.max(1, rows - h - 5);
+        return {
+            x: 2 + ((seedIdx * 5) % spanX),
+            y: 2 + ((Math.floor(seedIdx / 8) * 5) % spanY)
+        };
     };
+
+    const facInfoById = new Map(FACILITIES_INFO.map(f => [f.id, f]));
 
     layoutList.forEach((inst, idx) => {
         const effectiveLv = Math.max(1, inst.underConstruction ? inst.targetLevel || inst.level || 1 : inst.level || 1);
@@ -571,8 +661,9 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
             tileX = autoPos.x;
             tileY = autoPos.y;
         }
+        markFacilityOcc(tileX, tileY, foot.w, foot.h);
 
-        const facInfo = FACILITIES_INFO.find(f => f.id === inst.type);
+        const facInfo = facInfoById.get(inst.type);
         const meta = FACILITY_VISUAL_META[inst.type] || { icon: '🏛️', color: '#94a3b8', activity: '⚙️ 시설 근무 중' };
         const isPersonalHome = inst.type === 'home' || inst.type === 'my_home';
         const isMonsterPen = inst.type === 'monster_farm' || inst.type === 'monster_ranch';
@@ -581,7 +672,7 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         if (!isMonsterPen && !isFarm) {
             for (let ty = tileY; ty < tileY + foot.h; ty++) {
                 for (let tx = tileX; tx < tileX + foot.w; tx++) {
-                    solidSet.add(`${tx},${ty}`);
+                    markSolid(tx, ty);
                 }
             }
         }
@@ -623,7 +714,7 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
             underConstruction: Boolean(inst.underConstruction),
             completionText: inst.underConstruction
                 ? remainingCheck && !remainingCheck.isCompleted
-                    ? remainingCheck.remainingText
+                    ? remainingCheck.text
                     : '공사 중'
                 : undefined,
             spriteUrl,
@@ -662,7 +753,7 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         d => d && d.x >= 1 && d.y >= 1 && d.x < cols - 1 && d.y < rows - 1
     );
     decorations.forEach(d => {
-        if (d.solid) solidSet.add(`${d.x},${d.y}`);
+        if (d.solid) markSolid(d.x, d.y);
     });
 
     // 5. 기지 거주민 & 시설 담당자 전원 라이브 스폰 (제한 없음)
@@ -678,7 +769,6 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
 
     const allInactiveLiving = (character.inactiveCompanions || []).filter(c => c && !c.isDead);
     const humanResidents = allInactiveLiving.filter(c => !isMonsterComp(c));
-    const monsterResidents = allInactiveLiving.filter(c => isMonsterComp(c));
 
     const residentSeenIds = new Set(humanResidents.map(c => c.id));
     (character.companions || []).forEach(c => {
@@ -689,17 +779,173 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
     });
 
     const timeOfDay = getTimeOfDay(character.currentTime || '12:00');
-    const curHour = parseInt((character.currentTime || '12:00').split(':')[0], 10) || 12;
+    const parsedHour = parseInt(String(character.currentTime || '12:00').split(':')[0], 10);
+    const curHour = Number.isNaN(parsedHour) ? 12 : parsedHour;
     const isRestHours = curHour >= 18 || curHour < 9;
     const houseAssigns = character.base?.houseAssignments || {};
+    const hasHouseAssigns = Object.keys(houseAssigns).length > 0;
     const housingNodes = facilities.filter(f => f.facilityType === 'housing' || f.facilityType === 'home' || f.facilityType === 'my_home');
     const roamAnchors: { x: number; y: number }[] = [
         ...housingNodes.map(h => ({ x: h.doorX + 0.5, y: h.doorY + 0.5 })),
-        ...facilities.slice(0, 12).map(f => ({ x: f.doorX + 0.5, y: f.doorY + 0.5 })),
+        ...facilities.map(f => ({ x: f.doorX + 0.5, y: f.doorY + 0.5 })),
         { x: cx - 3, y: hqDoorY + 1 },
         { x: cx + 3, y: hqDoorY + 1 },
         { x: cx, y: Math.min(rows - 4, hqDoorY + 4) }
     ];
+
+    // O(1) 루틴 작업장 조회 맵 사전 인덱싱 (npcRoutineService.getCompanionAssignmentName 동일 규칙)
+    const assignmentNameByCompId = new Map<string, string>();
+    const layoutTypeById = new Map<string, string>();
+    for (const inst of layoutList) {
+        if (inst.id) layoutTypeById.set(inst.id, inst.type);
+    }
+    if (base?.dispatched) {
+        for (const m of base.dispatched) {
+            if (!m) continue;
+            const dest = m.destination?.city || m.destination?.nation || '외곽';
+            const type = m.missionType || '';
+            const label =
+                type === 'PersonalLeave' ? '개인 휴가' :
+                type === 'RecruitTravel' ? '동료 영입 여정' :
+                type === 'WarInvasion' ? `전쟁 침공 파견 (${dest})` :
+                type === 'TempleProtection' ? `신전 수호 파견 (${dest})` :
+                type === 'Patrol' ? `군대 순찰 (${dest})` :
+                type === 'Suppression' ? `군대 토벌 (${dest})` :
+                type === 'Infiltration' ? `군대 잠입 (${dest})` :
+                type === 'Escort' ? `군대 호위 (${dest})` :
+                type === 'ScoutDispatch' ? `스카우트 파견 (${dest})` :
+                type === 'Expedition' ? `원정대 파견 (${dest})` :
+                `파견 근무 (${dest})`;
+            if (m.companionId && !assignmentNameByCompId.has(m.companionId)) {
+                assignmentNameByCompId.set(m.companionId, label);
+            }
+            const parts = (m as any).participants;
+            if (Array.isArray(parts)) {
+                for (const pid of parts) {
+                    if (pid && !assignmentNameByCompId.has(pid)) {
+                        assignmentNameByCompId.set(pid, label);
+                    }
+                }
+            }
+        }
+    }
+    if (character.mercenaryData?.groupMissions) {
+        for (const m of character.mercenaryData.groupMissions) {
+            if (!m || !Array.isArray(m.memberIds)) continue;
+            const label = `용병단 의뢰 (${m.title || '단체 의뢰'})`;
+            for (const mid of m.memberIds) {
+                if (mid && !assignmentNameByCompId.has(mid)) {
+                    assignmentNameByCompId.set(mid, label);
+                }
+            }
+        }
+    }
+    if (base?.assignments) {
+        const singleFacLabel = (key: string, facType: string): string => {
+            if (key.startsWith('temple_protection_')) return `${key.replace('temple_protection_', '')} 수호 기사`;
+            if (facType === 'farm') return '농장';
+            if (facType === 'mine') return '광산';
+            if (facType === 'training_exp') return '경험 훈련소';
+            if (facType === 'training_stat') return '스탯 훈련소';
+            if (facType === 'training_mastery') return '무기숙련 훈련장';
+            if (facType === 'training_style') return '전투스타일 훈련소';
+            if (facType === 'tactical_training') return '전술 훈련소';
+            if (facType === 'combat_training') return '전투 훈련소';
+            if (facType === 'sparring_arena') return '모의 대련장';
+            if (facType === 'training') return '훈련소';
+            if (facType === 'blacksmith' || facType === 'workshop') return '대장간';
+            if (facType === 'alchemy') return '연금술실';
+            if (facType === 'lab') return '연구소';
+            if (facType === 'monster_farm') return '몬스터 사육소';
+            if (facType === 'child_academy') return '유년 서당';
+            if (facType === 'monster_arena') return '몬스터 수련 투기장';
+            if (facType === 'cooking') return '요리 시설';
+            if (facType === 'dispatch') return '파견소';
+            if (facType === 'housing') return '숙소';
+            if (facType === 'storage') return '창고';
+            if (facType === 'defense') return '기지 방어소';
+            if (facType === 'back_alley') return '뒷골목';
+            if (facType === 'club') return '클럽';
+            if (facType === 'trade_exchange') return '물자 교류소';
+            return '기지 시설';
+        };
+        for (const [key, v] of Object.entries(base.assignments)) {
+            if (v && !assignmentNameByCompId.has(v)) {
+                const facType = layoutTypeById.get(key) || key;
+                assignmentNameByCompId.set(v, singleFacLabel(key, facType));
+            }
+        }
+    }
+    if (base?.multiAssignments) {
+        const multiFacLabel = (facType: string): string => {
+            if (facType.startsWith('farm')) return '농장';
+            if (facType.startsWith('mine')) return '광산';
+            if (facType.startsWith('blacksmith') || facType.startsWith('workshop')) return '제작소/대장간';
+            if (facType.startsWith('alchemy')) return '연금술실';
+            if (facType.startsWith('cooking')) return '요리 시설';
+            if (facType.startsWith('monster_farm')) return '사육소';
+            if (facType.startsWith('lab')) return '연구소';
+            if (facType.startsWith('training')) return '훈련소';
+            if (facType.startsWith('housing') || facType === 'housing') return '숙소';
+            return '기지 시설';
+        };
+        for (const [facilityId, idList] of Object.entries(base.multiAssignments)) {
+            if (!Array.isArray(idList)) continue;
+            const facType = layoutTypeById.get(facilityId) || facilityId;
+            const label = multiFacLabel(facType);
+            for (const cid of idList) {
+                if (cid && !assignmentNameByCompId.has(cid)) {
+                    assignmentNameByCompId.set(cid, label);
+                }
+            }
+        }
+    }
+    if (base?.combatTraining) {
+        for (const cTraining of Object.values(base.combatTraining)) {
+            if (!cTraining?.trainees) continue;
+            for (const t of cTraining.trainees) {
+                if (t?.companionId && !assignmentNameByCompId.has(t.companionId)) {
+                    assignmentNameByCompId.set(t.companionId, '전투 훈련소 수련장');
+                }
+            }
+        }
+    }
+
+    const getIndexedRoutineActivity = (compId: string): string => {
+        if (curHour >= 22 || curHour < 8) return '숙소에서 취침 중인 상태';
+        if (curHour >= 8 && curHour < 12) return '기지 식당에서 식사 및 담소';
+        const assignment = assignmentNameByCompId.get(compId);
+        const workplace = assignment || '기지 수련장';
+        const isLabor = assignment ? '노동 및 수련' : '자유 훈련 및 휴식';
+        return `${workplace}에서 ${isLabor}`;
+    };
+
+    const ensureNonSolidPos = (px: number, py: number): { px: number; py: number } => {
+        const tx = Math.max(1, Math.min(cols - 2, Math.floor(px / BASE_TILE_SIZE)));
+        const ty = Math.max(1, Math.min(rows - 2, Math.floor(py / BASE_TILE_SIZE)));
+        if (solidGrid[ty * cols + tx] === 0) return { px, py };
+        for (let r = 1; r <= 6; r++) {
+            for (let dy = -r; dy <= r; dy++) {
+                const ny = ty + dy;
+                if (ny < 1 || ny >= rows - 1) continue;
+                for (let dx = -r; dx <= r; dx++) {
+                    if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                    const nx = tx + dx;
+                    if (nx < 1 || nx >= cols - 1) continue;
+                    if (solidGrid[ny * cols + nx] === 0) {
+                        return {
+                            px: (nx + 0.5) * BASE_TILE_SIZE,
+                            py: (ny + 0.5) * BASE_TILE_SIZE
+                        };
+                    }
+                }
+            }
+        }
+        return {
+            px: (cx + 0.5) * BASE_TILE_SIZE,
+            py: (Math.min(rows - 3, hqDoorY + 1) + 0.5) * BASE_TILE_SIZE
+        };
+    };
 
     humanResidents.forEach((comp, idx) => {
         const assignedLoc = assignedCompLocation.get(comp.id);
@@ -712,7 +958,7 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         // 휴식/수면 시간대(18:00~08:59)에는 숙소에 귀가한 거주민은 기지 밖 마당에 보이지 않음 (경비·초소 근무 등 일부만 외부에 남음)
         if (isRestHours && housingNodes.length > 0 && !isGuardOrMilitary) {
             const hasAssignedHouse = Boolean(houseAssigns[comp.id]);
-            const unmappedResidentInHouse = Object.keys(houseAssigns).length === 0 && idx % 3 !== 0;
+            const unmappedResidentInHouse = !hasHouseAssigns && idx % 3 !== 0;
             if (hasAssignedHouse || unmappedResidentInHouse) {
                 return;
             }
@@ -745,13 +991,12 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
             homePy = (hNode.doorY + 0.45) * BASE_TILE_SIZE;
             activityBubble = '💤 숙소 휴식 중';
         } else {
-            try {
-                const routine = getCompanionRoutine(character, comp.id);
-                if (routine?.activity) activityBubble = routine.activity;
-            } catch {
-                // fallback
-            }
+            activityBubble = getIndexedRoutineActivity(comp.id);
         }
+
+        const safePos = ensureNonSolidPos(homePx, homePy);
+        homePx = safePos.px;
+        homePy = safePos.py;
 
         const spriteUrl = resolveEntityRpgSprite(comp as any, loc.region, loc.nation).url;
         residents.push({
@@ -778,8 +1023,12 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
     // 5-1. Lv.500+ & 라스트 클래스 이상 시 기지 방문 NPC '차원 현자 아스트라' 스폰
     if (hasDimensionalLeapEligible(character)) {
         const learnedLeap = hasDimensionalLeapSkill(character);
-        const sagePx = (cx + 2 + 0.5) * BASE_TILE_SIZE;
-        const sagePy = (Math.max(hqDoorY + 1, rows - 3) - 1 + 0.5) * BASE_TILE_SIZE;
+        const sageSafe = ensureNonSolidPos(
+            (cx + 2 + 0.5) * BASE_TILE_SIZE,
+            (Math.max(hqDoorY + 1, rows - 3) - 1 + 0.5) * BASE_TILE_SIZE
+        );
+        const sagePx = sageSafe.px;
+        const sagePy = sageSafe.py;
         const sageSpriteUrl = resolveEntityRpgSprite({ name: '차원 현자 아스트라', gender: '여성', role: '차원도약 전수자' } as any, '신계', loc.nation).url;
         residents.push({
             id: 'npc_dimensional_sage',
@@ -820,6 +1069,7 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
         buildingPackKey,
         floorOverrides,
         solidSet,
+        solidGrid,
         facilities,
         decorations,
         residents,
@@ -844,15 +1094,10 @@ export interface FacilityLevelUpSpaceValidation {
     reason?: string;
 }
 
-/**
- * 시설(또는 기지 본부 HQ)을 다음 레벨로 증축할 때 타일 면적이 +1×+1 증가하므로,
- * 현재 위치(tileX, tileY) 기준으로 주변 공간에 다른 시설·물 타일·조경물·성벽 침범이 없는지 검증합니다.
- */
-export const validateFacilityLevelUpSpace = (
-    character: Character,
+export const validateFacilityLevelUpSpaceFromMapData = (
+    mapData: BaseTilemapData,
     facilityOrInstanceId: string
 ): FacilityLevelUpSpaceValidation => {
-    const mapData = generateBaseTilemap(character);
     const isHq = facilityOrInstanceId === 'hq' || facilityOrInstanceId === 'base_hq';
     const targetNode = isHq
         ? mapData.facilities.find(f => f.isHq)
@@ -999,4 +1244,16 @@ export const validateFacilityLevelUpSpace = (
         tileX,
         tileY
     };
+};
+
+/**
+ * 시설(또는 기지 본부 HQ)을 다음 레벨로 증축할 때 타일 면적이 +1×+1 증가하므로,
+ * 현재 위치(tileX, tileY) 기준으로 주변 공간에 다른 시설·물 타일·조경물·성벽 침범이 없는지 검증합니다.
+ */
+export const validateFacilityLevelUpSpace = (
+    character: Character,
+    facilityOrInstanceId: string
+): FacilityLevelUpSpaceValidation => {
+    const mapData = generateBaseTilemap(character);
+    return validateFacilityLevelUpSpaceFromMapData(mapData, facilityOrInstanceId);
 };
