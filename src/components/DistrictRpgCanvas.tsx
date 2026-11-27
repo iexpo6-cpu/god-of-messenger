@@ -1476,11 +1476,51 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
                                 : r === rows - 1 && c >= 7 && c <= 10;
                             const isWall = r <= 1 || c === 0 || c === cols - 1 || (r === rows - 1 && !isExit);
                             if (isWall) {
-                                if (wallTileImg?.complete && wallTileImg.naturalWidth > 0) {
-                                    ctx.drawImage(wallTileImg, x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
+                                const isLeft = c === 0;
+                                const isRight = c === cols - 1;
+                                const isTopCap = r === 0;
+                                const isBottomCap = r === rows - 1;
+                                const capBase = isRoyal
+                                    ? (isAsiaCulture ? '#3b0a0a' : '#1e293b')
+                                    : (activeBuildingId === 'back_alley' || activeBuildingId === 'prophet_savas' || activeBuildingId === 'memorial' ? '#1e293b' : '#2a1810');
+                                const capTrim = isRoyal
+                                    ? '#d97706'
+                                    : (activeBuildingId === 'back_alley' || activeBuildingId === 'prophet_savas' || activeBuildingId === 'memorial' ? '#475569' : '#5c3a21');
+
+                                if (r === 1 && !isLeft && !isRight) {
+                                    // 정면 벽면 (r === 1 한 줄만 정면 벽 타일 사용)
+                                    if (wallTileImg?.complete && wallTileImg.naturalWidth > 0) {
+                                        ctx.drawImage(wallTileImg, x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
+                                    } else {
+                                        ctx.fillStyle = wallClr;
+                                        ctx.fillRect(x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
+                                    }
+                                    // 상단 모서리 캡 경계선
+                                    ctx.fillStyle = capTrim;
+                                    ctx.fillRect(x, y, CITY_TILE_SIZE, 3);
                                 } else {
-                                    ctx.fillStyle = wallClr;
+                                    // 탑다운 외벽 캡 (천장 상단, 좌/우측 측벽, 하단 벽)
+                                    ctx.fillStyle = capBase;
                                     ctx.fillRect(x, y, CITY_TILE_SIZE, CITY_TILE_SIZE);
+                                    ctx.fillStyle = capTrim;
+                                    if (isTopCap) {
+                                        ctx.fillRect(x, y + CITY_TILE_SIZE - 5, CITY_TILE_SIZE, 5);
+                                    }
+                                    if (isBottomCap) {
+                                        ctx.fillRect(x, y, CITY_TILE_SIZE, 6);
+                                        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                                        ctx.fillRect(x, y + 6, CITY_TILE_SIZE, 4);
+                                    }
+                                    if (isLeft) {
+                                        ctx.fillRect(x + CITY_TILE_SIZE - 8, y, 8, CITY_TILE_SIZE);
+                                        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                                        ctx.fillRect(x + CITY_TILE_SIZE - 12, y, 4, CITY_TILE_SIZE);
+                                    }
+                                    if (isRight) {
+                                        ctx.fillRect(x, y, 8, CITY_TILE_SIZE);
+                                        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                                        ctx.fillRect(x + 8, y, 4, CITY_TILE_SIZE);
+                                    }
                                 }
                                 continue;
                             }
