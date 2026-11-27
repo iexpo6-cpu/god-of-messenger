@@ -756,40 +756,61 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             { key: 'student_desk', tx: 8.2, ty: 6.2, w: 1.6, h: 1.5 },
                             { key: 'student_desk', tx: 12.9, ty: 6.2, w: 1.6, h: 1.5 }
                         ],
-                        npcs: [
-                            {
-                                id: `npc_subj_inst_${subj.type}`,
-                                name: subjInst.name,
-                                role: `${subj.title} 담당 교관`,
-                                tx: 6.4,
-                                ty: 3.3,
-                                gender: subjInst.gender,
-                                dialogue: `${subj.title}에 잘 왔어요! 앞의 교탁(${subj.statLabel})으로 다가가면 정규 수업을 수강할 수 있습니다.`,
-                                opensZone: 'Classroom'
-                            },
-                            {
-                                id: c1Obj?.id || 'npc_subj_stu1',
-                                name: c1,
-                                role: `${subj.title} 수강 학우`,
-                                tx: 4.5,
-                                ty: 8.2,
-                                gender: c1Gender,
-                                dialogue: `${subj.title} 수업은 ${subj.statLabel} 성장에 정말 도움이 많이 돼요!`,
-                                canBondAndSpar: true,
-                                npcLevel: c1Obj?.level || Math.max(3, character.level || 5)
-                            },
-                            {
-                                id: c2Obj?.id || 'npc_subj_stu2',
-                                name: c2,
-                                role: `${subj.title} 수강 학우`,
-                                tx: 13.5,
-                                ty: 8.2,
-                                gender: c2Gender,
-                                dialogue: `수업 전에 잠깐 실력 테스트로 대련 한 판 어때?`,
-                                canBondAndSpar: true,
-                                npcLevel: c2Obj?.level || Math.max(3, character.level || 5)
-                            }
-                        ]
+                        npcs: (() => {
+                            const subjIdx = Math.max(0, CLASSROOM_SUBJECT_ROOMS.findIndex(r => r.type === subj.type));
+                            const fallbacks: [string, string][] = [
+                                ['이도현', '박서윤'],
+                                ['정민수', '김채원'],
+                                ['오태양', '한유리'],
+                                ['신지호', '배수아'],
+                                ['류현성', '송지은'],
+                                ['임건우', '문하은']
+                            ];
+                            const [fb1, fb2] = fallbacks[subjIdx % fallbacks.length];
+                            const s1Idx = 2 + subjIdx * 2;
+                            const s2Idx = 3 + subjIdx * 2;
+                            const s1Obj = classmates[s1Idx];
+                            const s2Obj = classmates[s2Idx];
+                            const s1Name = s1Obj?.name || (isKorean ? fb1 : generateName(nation));
+                            const s2Name = s2Obj?.name || (isKorean ? fb2 : generateName(nation));
+                            const s1Gender: RpgSpriteGenderKey = s1Obj?.gender === '남성' ? 'male' : s1Obj?.gender === '여성' ? 'female' : 'male';
+                            const s2Gender: RpgSpriteGenderKey = s2Obj?.gender === '남성' ? 'male' : s2Obj?.gender === '여성' ? 'female' : 'female';
+                            const tierFb = activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41;
+                            return [
+                                {
+                                    id: `npc_subj_inst_${subj.type}`,
+                                    name: subjInst.name,
+                                    role: `${subj.title} 담당 교관`,
+                                    tx: 6.4,
+                                    ty: 3.3,
+                                    gender: subjInst.gender,
+                                    dialogue: `${subj.title}에 잘 왔어요! 앞의 교탁(${subj.statLabel})으로 다가가면 정규 수업을 수강할 수 있습니다.`,
+                                    opensZone: 'Classroom' as SchoolZone
+                                },
+                                {
+                                    id: s1Obj?.id || `npc_subj_${subj.type}_stu1`,
+                                    name: s1Name,
+                                    role: `${subj.title} 수강 학우`,
+                                    tx: 4.5,
+                                    ty: 8.2,
+                                    gender: s1Gender,
+                                    dialogue: `${subj.title} 수업은 ${subj.statLabel} 성장에 정말 도움이 많이 돼요!`,
+                                    canBondAndSpar: true,
+                                    npcLevel: s1Obj?.level || tierFb
+                                },
+                                {
+                                    id: s2Obj?.id || `npc_subj_${subj.type}_stu2`,
+                                    name: s2Name,
+                                    role: `${subj.title} 수강 학우`,
+                                    tx: 13.5,
+                                    ty: 8.2,
+                                    gender: s2Gender,
+                                    dialogue: `${subj.title} 실기 평가 전에 잠깐 실력 테스트로 대련 한 판 어때?`,
+                                    canBondAndSpar: true,
+                                    npcLevel: s2Obj?.level || (tierFb + 2)
+                                }
+                            ];
+                        })()
                     };
                 }
                 // 기숙사 복도 안내 교관은 교무실 담임과 겹치지 않는 전임 교관 배치
@@ -808,8 +829,8 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     ],
                     npcs: [
                         { id: 'npc_lect', name: isKorean ? '강혜진' : generateName(nation), role: '강의실 안내 교관', tx: 9, ty: 5.0, gender: 'female', dialogue: '각 과목 강의실 문을 통해 입장한 뒤 교탁에서 수업을 수강하세요!', opensZone: 'Classroom' },
-                        { id: c1Obj?.id || 'npc_stu1', name: c1, role: '같은 반 학우', tx: 5.2, ty: 10.2, gender: c1Gender, dialogue: '어느 과목 강의실로 들어갈래요? 복도 문으로 들어가면 바로 수업할 수 있어요!', canBondAndSpar: true, npcLevel: c1Obj?.level || Math.max(3, character.level || 5) },
-                        { id: c2Obj?.id || 'npc_stu2', name: c2, role: '같은 반 학우', tx: 13.2, ty: 10.2, gender: c2Gender, dialogue: '강의실 복도가 깔끔하게 정리됐네. 난 전투학실부터 들어갈 거야!', canBondAndSpar: true, npcLevel: c2Obj?.level || Math.max(3, character.level || 5) }
+                        { id: c1Obj?.id || 'npc_stu1', name: c1, role: '같은 반 학우', tx: 5.2, ty: 10.2, gender: c1Gender, dialogue: '어느 과목 강의실로 들어갈래요? 복도 문으로 들어가면 바로 수업할 수 있어요!', canBondAndSpar: true, npcLevel: c1Obj?.level || (activeSchoolTier === 'Elementary' ? 6 : activeSchoolTier === 'Middle' ? 21 : 38) },
+                        { id: c2Obj?.id || 'npc_stu2', name: c2, role: '같은 반 학우', tx: 13.2, ty: 10.2, gender: c2Gender, dialogue: '강의실 복도가 깔끔하게 정리됐네. 난 전투학실부터 들어갈 거야!', canBondAndSpar: true, npcLevel: c2Obj?.level || (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) }
                     ]
                 };
             }
