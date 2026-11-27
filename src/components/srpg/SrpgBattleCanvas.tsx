@@ -156,18 +156,16 @@ const SrpgBattleCanvas: React.FC<SrpgBattleCanvasProps> = ({
     const locNation = nation || character.currentLocation?.nation || '대한민국';
     const locCity = city || character.currentLocation?.city || '서울';
 
-    const battlefield = useMemo(
-        () =>
-            generateSrpgBattlefield({
-                cols,
-                rows,
-                region: locRegion,
-                nation: locNation,
-                city: locCity,
-                title,
-                subtitle: subtitle || `${locNation} · ${locCity}`
-            }),
-        [cols, rows, locRegion, locNation, locCity, title, subtitle]
+    const [battlefield, setBattlefield] = useState(() =>
+        generateSrpgBattlefield({
+            cols,
+            rows,
+            region: locRegion,
+            nation: locNation,
+            city: locCity,
+            title,
+            subtitle: subtitle || `${locNation} · ${locCity}`
+        })
     );
 
     const activeCompanions = useMemo(() => {
@@ -439,13 +437,25 @@ const SrpgBattleCanvas: React.FC<SrpgBattleCanvasProps> = ({
     // 유닛 턴 시작 시 행동 자원 복구 & 지형/버프 틱 처리
     const refreshUnitForTurn = useCallback(
         (unit: SrpgUnit): SrpgUnit => {
-            const tMeta = SRPG_TERRAIN_META[battlefield.grid[unit.row][unit.col]];
+            const terrain = battlefield.grid[unit.row][unit.col];
+            const tMeta = SRPG_TERRAIN_META[terrain];
             let nextHp = unit.hp;
             let nextMp = unit.mp;
             if (tMeta.healPct > 0 && nextHp < unit.maxHp) {
                 const heal = Math.round((unit.maxHp * tMeta.healPct) / 100);
                 nextHp = Math.min(unit.maxHp, nextHp + heal);
                 spawnFloatingText(unit.row, unit.col, `+${heal.toLocaleString()} 요새회복`, '#34d399', 0.95);
+                if (terrain === 'fort') {
+                    const usedRow = unit.row;
+                    const usedCol = unit.col;
+                    setBattlefield(prev => {
+                        if (prev.grid[usedRow]?.[usedCol] !== 'fort') return prev;
+                        const nextGrid = prev.grid.map((r, rIdx) =>
+                            rIdx === usedRow ? r.map((cell, cIdx) => (cIdx === usedCol ? 'plain' : cell)) : r
+                        );
+                        return { ...prev, grid: nextGrid };
+                    });
+                }
             }
             if (tMeta.skillPowerBonus > 0) {
                 nextMp = Math.min(unit.maxMp, nextMp + Math.round(unit.maxMp * 0.12));

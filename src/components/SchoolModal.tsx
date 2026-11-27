@@ -5,6 +5,7 @@ import { X, BookOpen, GraduationCap, Users, PenTool, Sword, Trophy, Medal, Star,
 import { addDays, getYear, generateClassmates, addMasteryExp, generateTournamentBracket, generateName, getWeaponTypeFromItem, getTierByLevel, generateCompanionStats, generateDefaultVisualUrl, findAvailableBattlePosition, calculateFinalStats } from '../utils';
 import { WEAPON_TYPE_KOREAN, MAX_PARTY_SIZE, WORLD_GEOGRAPHY, SCHOOL_CONFIG } from '../constants';
 import { chatWithStudent } from '../services/geminiService';
+import { ensureHomeroomTeacher } from '../services/schoolTeacherService';
 import ActionResultModal, { ResultData } from './ActionResultModal';
 import TournamentModal from './TournamentModal';
 import ClubModal from './ClubModal';
@@ -160,71 +161,11 @@ const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, o
     // [NEW] 담임 교사 생성 및 배정 로직
     useEffect(() => {
         if (!character.schoolData || character.job !== JobType.STUDENT) return;
-        
-        // 담임 교사가 없거나, 학년이 바뀌었는데(이건 별도 로직 필요하지만 일단 없음 체크) 교사가 없는 경우
         if (!character.schoolData.homeroomTeacher) {
-            const teacherGender = Math.random() > 0.5 ? '남성' : '여성';
-            const teacherGenderParam = teacherGender === '남성' ? 'male' : 'female';
-            const teacherAge = 25 + Math.floor(Math.random() * 20);
-            
-            const teacherLevel = 50 + (character.schoolData.grade * 10);
-            const teacherStats = generateCompanionStats(teacherLevel);
-            const teacherTier = getTierByLevel(teacherLevel);
-            
-            const mbtiTypes = [
-                'ISTJ', 'ISFJ', 'INFJ', 'INTJ', 
-                'ISTP', 'ISFP', 'INFP', 'INTP', 
-                'ESTP', 'ESFP', 'ENFP', 'ENTP', 
-                'ESTJ', 'ESFJ', 'ENFJ', 'ENTJ'
-            ];
-            const teacherMBTI = mbtiTypes[Math.floor(Math.random() * mbtiTypes.length)];
-
-            // [MODIFIED] 담임 교사 국적 생성 로직 (학교 소재지 우선, 20% 확률로 타 국적)
-            const schoolNation = character.currentLocation?.nation || character.nation;
-            let teacherNation = schoolNation;
-            
-            if (Math.random() < 0.2) {
-                const allNations: string[] = [];
-                Object.values(WORLD_GEOGRAPHY).forEach(region => {
-                    if (region) Object.keys(region).forEach(n => allNations.push(n));
-                });
-                if (allNations.length > 0) {
-                    teacherNation = allNations[Math.floor(Math.random() * allNations.length)];
-                }
+            const { updatedChar, createdTeacher } = ensureHomeroomTeacher(character);
+            if (createdTeacher) {
+                onUpdateCharacter(updatedChar, `[학교] ${character.schoolData.grade}학년 담임 교사 '${createdTeacher.name}' 선생님이 배정되었습니다.`);
             }
-
-            const teacherName = generateName(teacherNation, teacherGenderParam);
-            const teacher: SimpleStudent = {
-                id: `teacher_${Math.random().toString(36).substr(2, 9)}`,
-                name: teacherName,
-                age: `${teacherAge}세`,
-                gender: teacherGender,
-                race: character.race,
-                nation: teacherNation,
-                level: teacherLevel, 
-                personality: teacherMBTI,
-                appearance: '단정한 정장 차림',
-                classType: '교사',
-                stats: teacherStats,
-                affection: 5,
-                job: JobType.TEACHER,
-                isPastConnection: true,
-                classTier: teacherTier,
-                visualUrl: generateDefaultVisualUrl(teacherName, teacherNation, character.race, teacherGender),
-                reputation: 1000 + Math.floor(Math.random() * 500),
-                merit: 1000 + Math.floor(Math.random() * 500),
-            };
-
-            const newChar = { ...character };
-            newChar.schoolData.homeroomTeacher = teacher;
-            
-            // 사회적 관계망에 추가
-            if (!newChar.socialNetwork) newChar.socialNetwork = [];
-            if (!newChar.socialNetwork.find(n => n.id === teacher.id)) {
-                 newChar.socialNetwork.push(teacher);
-            }
-            
-            onUpdateCharacter(newChar, `[학교] ${character.schoolData.grade}학년 담임 교사 '${teacher.name}' 선생님이 배정되었습니다.`);
         }
     }, [character.schoolData?.grade]);
 

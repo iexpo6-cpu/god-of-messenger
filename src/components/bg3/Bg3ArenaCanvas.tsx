@@ -323,7 +323,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
 
     const resolvedArenaTier: Bg3ArenaTier = arenaTier || (isLargeWar ? 'war' : 'boss');
 
-    const arena = useMemo(
+    const baseArena = useMemo(
         () =>
             generateBg3Arena({
                 region: region || character.currentLocation?.region,
@@ -335,6 +335,14 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 arenaTier: resolvedArenaTier
             }),
         [region, nation, city, character.currentLocation, title, subtitle, resolvedArenaTier]
+    );
+    const [usedFortIds, setUsedFortIds] = useState<string[]>([]);
+    const arena = useMemo(
+        () =>
+            usedFortIds.length === 0
+                ? baseArena
+                : { ...baseArena, obstacles: baseArena.obstacles.filter(o => !usedFortIds.includes(o.id)) },
+        [baseArena, usedFortIds]
     );
     const arenaW = arena.width;
     const arenaH = arena.height;
@@ -1924,18 +1932,30 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             // Tick buffs, surfaces, passive turn effects (CombatUtils.processTurnStart & processPassiveTurnEffects), role MP regen, and reset action economy
             setSurfaces(prev => prev.map(s => ({ ...s, turns: s.turns - 1 })).filter(s => s.turns > 0));
             const roundLogs: string[] = [];
+            const consumedFortIdsThisRound = new Set<string>();
             const working = [...unitsRef.current];
             for (let idx = 0; idx < working.length; idx++) {
                 const u = working[idx];
                 if (u.hp <= 0) continue;
 
-                // 1. 지형 회복 / 화염 지면
+                // 1. 지형 회복 / 화염 지면 (전투 요새 fort는 1회 사용 후 소멸)
                 let terrainHeal = 0;
+                let usedFortObsId: string | null = null;
                 arena.obstacles.forEach(o => {
+                    if (consumedFortIdsThisRound.has(o.id)) return;
                     if (o.healPct && distPx(u.x, u.y, o.x, o.y) <= o.radius + 26) {
-                        terrainHeal = Math.max(terrainHeal, Math.round((u.maxHp * o.healPct) / 100));
+                        const candidate = Math.round((u.maxHp * o.healPct) / 100);
+                        if (candidate > terrainHeal) {
+                            terrainHeal = candidate;
+                            usedFortObsId = o.kind === 'fort' ? o.id : null;
+                        }
                     }
                 });
+                if (usedFortObsId && u.hp < u.maxHp) {
+                    consumedFortIdsThisRound.add(usedFortObsId);
+                    const fortIdToRemove = usedFortObsId;
+                    setUsedFortIds(prev => (prev.includes(fortIdToRemove) ? prev : [...prev, fortIdToRemove]));
+                }
                 const onFire = surfacesRef.current.find(s => s.type === 'fire' && distPx(u.x, u.y, s.x, s.y) <= s.radius);
                 const burn = onFire ? Math.max(40, Math.round(u.maxHp * 0.06)) : 0;
                 if (terrainHeal > 0) addFloatText(u.x, u.y - 24, `+${formatCompactKorean(terrainHeal)} HP`, '#4ade80', 0.95);
@@ -2909,7 +2929,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
 
                 // 전술 오브젝트 효과 안내 라벨 (숲 회피+, 성채 방어+, 제단 회복+ 등)
                 const obsTip = obs.healPct
-                    ? `✨ ${obs.label} (매턴 +${obs.healPct}%)`
+                    ? (obs.kind === 'fort' ? `✨ ${obs.label} (1회 +${obs.healPct}%)` : `✨ ${obs.label} (매턴 +${obs.healPct}%)`)
                     : obs.defBonus
                         ? `🛡️ ${obs.label} (방어 +${obs.defBonus})`
                         : obs.evaBonus

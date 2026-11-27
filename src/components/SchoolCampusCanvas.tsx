@@ -6,6 +6,7 @@ import { CanvasCharacterHud } from './CanvasCharacterHud';
 import { SCHOOL_CONFIG, WEAPON_TYPE_KOREAN } from '../constants';
 import { addMasteryExp, generateDefaultVisualUrl, generateName, getWeaponTypeFromItem } from '../utils';
 import { processTimeSkip } from '../services/timeEngine';
+import { ensureHomeroomTeacher } from '../services/schoolTeacherService';
 import { chatWithStudent } from '../services/geminiService';
 import {
     getBuildingSpriteUrl,
@@ -377,6 +378,18 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
         setAiChatInput('');
         setIsAiChatLoading(false);
     }, [activeDialogue?.id, activeDialogue?.name]);
+
+    // 캠퍼스 진입 직후 담임 교사가 아직 미배정이면 교무실 열기 전에 선배정하여 NPC 교체 방지
+    useEffect(() => {
+        if (!character.schoolData || character.job !== JobType.STUDENT || character.schoolData.homeroomTeacher) return;
+        const { updatedChar, createdTeacher } = ensureHomeroomTeacher(character);
+        if (createdTeacher) {
+            onUpdateCharacter(
+                updatedChar,
+                `[학교] ${character.schoolData.grade}학년 담임 교사 '${createdTeacher.name}' 선생님이 배정되었습니다.`
+            );
+        }
+    }, [character.schoolData?.grade, character.schoolData?.homeroomTeacher, character.job]);
 
     const campusPeriodNotice = useMemo<{ kind: 'exam' | 'tournament'; badge: string; detail: string } | null>(() => {
         const sc = character.schoolData;
@@ -3237,6 +3250,18 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                         onClick={() => {
                                             const amb = activityEventReport.pendingAmbush;
                                             setActivityEventReport(null);
+                                            const cleanedChar: any = {
+                                                ...character,
+                                                pendingAmbush: character.pendingAmbush?.sourceId === amb?.sourceId ? undefined : character.pendingAmbush,
+                                                pendingAmbushes: Array.isArray((character as any).pendingAmbushes)
+                                                    ? (character as any).pendingAmbushes.filter((a: any) => a?.sourceId !== amb?.sourceId)
+                                                    : undefined,
+                                                queuedAmbush: character.queuedAmbush?.sourceId === amb?.sourceId ? undefined : character.queuedAmbush,
+                                                queuedAmbushes: Array.isArray(character.queuedAmbushes)
+                                                    ? character.queuedAmbushes.filter((a: any) => a?.sourceId !== amb?.sourceId)
+                                                    : undefined
+                                            };
+                                            onUpdateCharacter(cleanedChar);
                                             onStartBattle(amb.enemies, 'relation_battle', amb.sourceId);
                                         }}
                                         className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black cursor-pointer"

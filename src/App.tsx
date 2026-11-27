@@ -1,11 +1,21 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react';
+
+// 새로고침 시 이전 세션의 캔버스 복귀 토큰이 남아 다른 세이브/초기 화면에서도 캔버스가 자동 열리지 않도록 초기화
+if (typeof window !== 'undefined') {
+  try {
+    sessionStorage.removeItem('shinryoku_school_resume');
+    sessionStorage.removeItem('shinryoku_school_campus_state');
+    sessionStorage.removeItem('shinryoku_outskirts_resume');
+    sessionStorage.removeItem('shinryoku_overland_resume');
+  } catch {}
+}
 import { useGame, createInitialParticipantStates } from './hooks/useGame';
 import { useElixirTimer } from './hooks/useElixirTimer';
 import { GameProvider } from './context/GameContext';
 import { Character, Companion, Skill, BondSkill, SkillType, BattleRole, DivineDiplomacyStatus, DiplomaticStatus, ClassTier,SimpleStudent, Item, ItemRarity, Stats, WeaponType, CapturedMonster, Location, Enemy, CombatState, MercenaryRank, Quest, JobType, MilitaryRank, RelationType, InterviewData, CombatStyle, TrainerBranch, BaseDefenseReportData } from './types';
 import { FACILITIES_INFO, ENHANCEMENT_CAPS,START_DATE, SELL_PRICES, BASE_LEVEL_CONFIG, INITIAL_BASE, ENHANCEMENT_CONFIG, MAX_STORAGE_SIZE, MAX_PARTY_SIZE, BASE_RESIDENT_LIMIT, FACILITY_UPGRADE_CONFIG, WORLD_GEOGRAPHY, MERCENARY_RANK_SCORE, TEMPLE_MESSENGER_MAP, BASE_MONSTERS, BASE_UPGRADE_COSTS, FACILITY_CONSTRUCTION_COSTS, BASE_GRID_EXPANSION_COSTS, COMBAT_STYLE_CONFIG } from './constants';
-import { calculateItemPrice, addMasteryExp, addDays, applyConsumableEffect,generateLevelByRank,generateCompanionStats, getCharacterMaxLevel, getMonsterMaxLevel, generateNameWithSurname, calculateFinalStats, getYear,generateName, getTierByLevel, generateEnemyStats, getRegionByNation, calculateInventorySize, generateDefaultVisualUrl, getRaceByNation, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalWorkshopCapacity, calculateTotalLabLevel, calculateTotalTrainingLevel, gainProfessionExp, unassignFromTraining, assignRandomCombatStyle, getFacilityTrainingLimit, getTrainerBranchMultiplier, addTrainerExpToAssignedTrainers, generateProceduralEnemy, calculateResearcherBonus, getRequiredExp, calculateItemCPDelta, findAvailableBattlePosition, checkWeaponMasteryEquipRequirement, generateLoot, getWeaponTypeFromItem, calculateRewardBonuses, getWeaponMasteryMultiplier, getSkillMasteryMultiplier } from './utils';
+import { calculateItemPrice, addMasteryExp, addDays, applyConsumableEffect,generateLevelByRank,generateCompanionStats, getCharacterMaxLevel, getMonsterMaxLevel, generateNameWithSurname, calculateFinalStats, getYear,generateName, getTierByLevel, generateEnemyStats, getRegionByNation, calculateInventorySize, generateDefaultVisualUrl, getRaceByNation, calculateTotalStorageCapacity, calculateTotalHousingCapacity, calculateTotalWorkshopCapacity, calculateTotalLabLevel, calculateTotalTrainingLevel, gainProfessionExp, unassignFromTraining, assignRandomCombatStyle, getFacilityTrainingLimit, getTrainerBranchMultiplier, addTrainerExpToAssignedTrainers, generateProceduralEnemy, calculateResearcherBonus, getRequiredExp, getStatPointsPerLevel, calculateItemCPDelta, findAvailableBattlePosition, checkWeaponMasteryEquipRequirement, generateLoot, getWeaponTypeFromItem, calculateRewardBonuses, getWeaponMasteryMultiplier, getSkillMasteryMultiplier } from './utils';
 import { MountCombatService } from './services/mountCombatService';
 import { tickPostCombatStatusEffects } from './services/bg3CombatSyncBridge';
 import { updateBondSkillMastery } from './services/combatUtils';
@@ -510,7 +520,17 @@ const App: React.FC = () => {
             return;
         }
         const ambush = character.pendingAmbush;
-        const newChar = { ...character, pendingAmbush: undefined };
+        const newChar: any = {
+            ...character,
+            pendingAmbush: undefined,
+            pendingAmbushes: Array.isArray((character as any).pendingAmbushes)
+                ? (character as any).pendingAmbushes.filter((a: any) => a?.sourceId !== ambush.sourceId)
+                : undefined,
+            queuedAmbush: character.queuedAmbush?.sourceId === ambush.sourceId ? undefined : character.queuedAmbush,
+            queuedAmbushes: Array.isArray(character.queuedAmbushes)
+                ? character.queuedAmbushes.filter((a: any) => a?.sourceId !== ambush.sourceId)
+                : undefined
+        };
         setCharacter(newChar);
         handleBattleTrigger(ambush.enemies, 'relation_battle', ambush.sourceId);
         
@@ -7437,14 +7457,9 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                             lvl += 1;
                                             leveledUp = true;
                                             reqExp = getRequiredExp(lvl);
-                                            nextStatPoints += 5; // 정규 레벨업 스탯 포인트 지급!
-                                            nextStats.maxHp = Math.round((nextStats.maxHp || 100) * 1.03 + 25);
-                                            nextStats.maxMp = Math.round((nextStats.maxMp || 50) * 1.02 + 10);
-                                            nextStats.str = (nextStats.str || 10) + 3;
-                                            nextStats.agi = (nextStats.agi || 10) + 3;
-                                            nextStats.int = (nextStats.int || 10) + 3;
-                                            nextStats.wis = (nextStats.wis || 10) + 3;
-                                            nextStats.def = (nextStats.def || 10) + 2;
+                                            nextStatPoints += getStatPointsPerLevel({ ...(entity as any), level: lvl });
+                                            nextStats.maxHp = (nextStats.maxHp || lvl * 20) + 20;
+                                            nextStats.maxMp = (nextStats.maxMp || lvl * 20) + 20;
                                         }
                                         if (lvl >= effectiveMaxLv) {
                                             curExp = Math.min(curExp, reqExp);
