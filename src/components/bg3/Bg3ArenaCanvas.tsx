@@ -1530,8 +1530,8 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                         dir: faceDir,
                         mp: nextMp,
                         hasAction: false,
-                        // 스킬 사용 시 잔여 이동 거리 0으로 고정 (스킬 사용 후 추가 이동 불가)
-                        remainingMeters: skill ? 0 : u.remainingMeters
+                        // 기본 공격 및 스킬 사용 시 잔여 이동 거리 0으로 고정 (공격 후 추가 이동 불가)
+                        remainingMeters: 0
                     };
                 }
                 if (bondCompId && u.sourceCompanionId === bondCompId) {
@@ -2887,16 +2887,75 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     ctx.restore();
                 }
 
-                // Enemy melee threat circles (red dashed)
+                // Enemy melee threat circles & expected attack/threat range (move + attack range)
+                const hoverPt = hoverWorldRef.current;
                 unitsRef.current.forEach(e => {
-                    if (e.team === 'enemy' && e.hp > 0 && e.hasReaction) {
+                    if (e.team === 'enemy' && e.hp > 0) {
+                        if (e.hasReaction) {
+                            ctx.save();
+                            ctx.strokeStyle = 'rgba(244, 63, 94, 0.34)';
+                            ctx.lineWidth = 1.5;
+                            ctx.setLineDash([4, 4]);
+                            ctx.beginPath();
+                            ctx.arc(e.x, e.y, metersToPx(e.meleeThreatMeters), 0, Math.PI * 2);
+                            ctx.stroke();
+                            ctx.restore();
+                        }
+
+                        const baseAtkM = getBg3SkillTargeting(e, null).rangeMeters;
+                        let maxSkillM = baseAtkM;
+                        for (const sk of e.skills || []) {
+                            if (sk.type !== SkillType.HEAL && sk.type !== SkillType.BUFF && (sk.mpCost || 0) <= e.mp) {
+                                const skR = getBg3SkillTargeting(e, sk).rangeMeters;
+                                if (skR > maxSkillM) maxSkillM = skR;
+                            }
+                        }
+                        const totalThreatM = e.moveMeters + maxSkillM;
+                        const totalThreatPx = metersToPx(totalThreatM);
+                        const isHoveredEnemy = !!hoverPt && distPx(hoverPt.x, hoverPt.y, e.x, e.y) <= e.radius + 20;
+
                         ctx.save();
-                        ctx.strokeStyle = 'rgba(244, 63, 94, 0.34)';
-                        ctx.lineWidth = 1.5;
-                        ctx.setLineDash([4, 4]);
-                        ctx.beginPath();
-                        ctx.arc(e.x, e.y, metersToPx(e.meleeThreatMeters), 0, Math.PI * 2);
-                        ctx.stroke();
+                        if (isHoveredEnemy) {
+                            ctx.fillStyle = 'rgba(244, 63, 94, 0.08)';
+                            ctx.strokeStyle = 'rgba(251, 113, 133, 0.85)';
+                            ctx.lineWidth = 2.2;
+                            ctx.setLineDash([7, 5]);
+                            ctx.beginPath();
+                            ctx.arc(e.x, e.y, totalThreatPx, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.stroke();
+
+                            // Move-only inner dashed ring
+                            ctx.strokeStyle = 'rgba(251, 146, 60, 0.55)';
+                            ctx.lineWidth = 1.4;
+                            ctx.setLineDash([3, 4]);
+                            ctx.beginPath();
+                            ctx.arc(e.x, e.y, metersToPx(e.moveMeters), 0, Math.PI * 2);
+                            ctx.stroke();
+
+                            const threatLabel = `⚠️ ${e.name} 예상 사거리 ${totalThreatM.toFixed(1)}m (이동 ${e.moveMeters.toFixed(1)} + 공격 ${maxSkillM.toFixed(1)})`;
+                            ctx.font = 'bold 11px sans-serif';
+                            const tTw = ctx.measureText(threatLabel).width + 14;
+                            const labelY = Math.max(24, e.y - totalThreatPx - 22);
+                            ctx.fillStyle = 'rgba(24, 6, 12, 0.9)';
+                            ctx.setLineDash([]);
+                            ctx.beginPath();
+                            ctx.roundRect(e.x - tTw / 2, labelY, tTw, 18, 6);
+                            ctx.fill();
+                            ctx.strokeStyle = '#fb7185';
+                            ctx.lineWidth = 1.2;
+                            ctx.stroke();
+                            ctx.textAlign = 'center';
+                            ctx.fillStyle = '#fecdd3';
+                            ctx.fillText(threatLabel, e.x, labelY + 13);
+                        } else {
+                            ctx.strokeStyle = 'rgba(244, 63, 94, 0.16)';
+                            ctx.lineWidth = 1.2;
+                            ctx.setLineDash([5, 6]);
+                            ctx.beginPath();
+                            ctx.arc(e.x, e.y, totalThreatPx, 0, Math.PI * 2);
+                            ctx.stroke();
+                        }
                         ctx.restore();
                     }
                 });

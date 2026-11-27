@@ -67,7 +67,50 @@ export const archiveSchoolSocialNetwork = (char: Character, nextYear: number) =>
 };
 
 /**
- * [NEW] 장학금 지급 로직 (6개월 단위, 전교 1~3등 대상)
+ * 실시간 학급/전교 예상 석차 계산 (SchoolModal, SchoolCampusCanvas, 장학금 공통 단일 소스)
+ */
+export const calculateLiveSchoolRank = (character: Character): {
+    classRank: number;
+    schoolEstimatedRank: number;
+    totalClassmates: number;
+    playerTotalScore: number;
+} => {
+    const stats = character.stats || ({} as any);
+    const pStr = stats.str || 10;
+    const pInt = stats.int || 10;
+    const pDef = stats.def || 10;
+    const pAgi = stats.agi || 10;
+    const pWis = stats.wis || 10;
+    const pCtrl = stats.ctrl || 10;
+    const pLvl = character.level || 1;
+    const pWritten = Math.floor((pInt + pWis) * 1.5 + pLvl * 3);
+    const pPractical = Math.floor((pStr + pDef + pAgi + pCtrl) * 1.0 + pLvl * 3);
+    const pTotal = pWritten + pPractical;
+
+    const classmates = character.schoolData?.classmates || [];
+    const allScores: { id: string; score: number }[] = [{ id: 'player', score: pTotal }];
+
+    for (const s of classmates) {
+        const st = s.stats || ({} as any);
+        const sWritten = Math.floor(((st.int || 10) + (st.wis || 10)) * 1.5 + (s.level || 1) * 3);
+        const sPractical = Math.floor(((st.str || 10) + (st.def || 10) + (st.agi || 10) + (st.ctrl || 10)) * 1.0 + (s.level || 1) * 3);
+        allScores.push({ id: s.id, score: sWritten + sPractical });
+    }
+
+    allScores.sort((a, b) => b.score - a.score);
+    const classRank = Math.max(1, allScores.findIndex(item => item.id === 'player') + 1);
+    const schoolEstimatedRank = Math.max(1, classRank * 5 - 2);
+
+    return {
+        classRank,
+        schoolEstimatedRank,
+        totalClassmates: allScores.length,
+        playerTotalScore: pTotal
+    };
+};
+
+/**
+ * [NEW] 장학금 지급 로직 (6개월 단위, 우리 반 1~3등 대상)
  */
 const processSchoolScholarship = (currentRef: Character, monthNum: number, allLogs: string[]) => {
     if (!currentRef.schoolData || currentRef.schoolData.isGraduated) return;
@@ -77,43 +120,7 @@ const processSchoolScholarship = (currentRef: Character, monthNum: number, allLo
         const currentYearMonth = currentRef.currentDate?.substring(0, 7);
         if (currentRef.schoolData.lastScholarshipDate === currentYearMonth) return;
 
-        // Player Score Calculation (Matching SchoolModal's getRankingData)
-        const pStr = currentRef.stats.str || 10;
-        const pInt = currentRef.stats.int || 10;
-        const pDef = currentRef.stats.def || 10;
-        const pAgi = currentRef.stats.agi || 10;
-        const pWis = currentRef.stats.wis || 10;
-        const pCtrl = currentRef.stats.ctrl || 10;
-        const pLvl = currentRef.level || 1;
-
-        const pWritten = Math.floor((pInt + pWis) * 1.5 + pLvl * 3);
-        const pPractical = Math.floor((pStr + pDef + pAgi + pCtrl) * 1.0 + pLvl * 3);
-        const pTotal = pWritten + pPractical;
-
-        // Classmates Score Calculation (Matching SchoolModal's getRankingData)
-        const classmates = currentRef.schoolData.classmates || [];
-        const classmateScores = classmates.map(s => {
-            const sStr = s.stats.str || 10;
-            const sInt = s.stats.int || 10;
-            const sDef = s.stats.def || 10;
-            const sAgi = s.stats.agi || 10;
-            const sWis = s.stats.wis || 10;
-            const sCtrl = s.stats.ctrl || 10;
-            const sLvl = s.level || 1;
-
-            const sWritten = Math.floor((sInt + sWis) * 1.5 + sLvl * 3);
-            const sPractical = Math.floor((sStr + sDef + sAgi + sCtrl) * 1.0 + sLvl * 3);
-            return sWritten + sPractical;
-        });
-
-        // Combine all and sort
-        const allScores = [
-            { id: 'player', score: pTotal },
-            ...classmates.map((s, idx) => ({ id: s.id, score: classmateScores[idx] }))
-        ];
-        allScores.sort((a, b) => b.score - a.score);
-        
-        const rank = allScores.findIndex(item => item.id === 'player') + 1;
+        const { classRank: rank } = calculateLiveSchoolRank(currentRef);
 
         // Sync with schoolData.rank so it works with Titles and other systems
         currentRef.schoolData.rank = rank;
@@ -122,7 +129,7 @@ const processSchoolScholarship = (currentRef: Character, monthNum: number, allLo
             const rewardGold = (4 - rank) * 10000 * (currentRef.schoolData.grade);
             currentRef.money += rewardGold;
             currentRef.schoolData.lastScholarshipDate = currentYearMonth;
-            allLogs.push(`[장학금] 우수한 성적(전교 ${rank}등)을 인정받아 장학금 ${rewardGold.toLocaleString()}G를 수령했습니다!`);
+            allLogs.push(`[장학금] 우수한 성적(우리 반 ${rank}등)을 인정받아 장학금 ${rewardGold.toLocaleString()}G를 수령했습니다!`);
         }
     }
 };

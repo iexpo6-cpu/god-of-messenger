@@ -6,6 +6,7 @@ import { CanvasCharacterHud } from './CanvasCharacterHud';
 import { SCHOOL_CONFIG, WEAPON_TYPE_KOREAN } from '../constants';
 import { addMasteryExp, generateDefaultVisualUrl, generateName, getWeaponTypeFromItem } from '../utils';
 import { processTimeSkip } from '../services/timeEngine';
+import { calculateLiveSchoolRank } from '../services/SchooltimeEngine';
 import { ensureHomeroomTeacher } from '../services/schoolTeacherService';
 import { chatWithStudent } from '../services/geminiService';
 import {
@@ -2395,7 +2396,10 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                     {character.schoolData.grade}학년 {character.schoolData.classNumber}반
                                 </span>
                                 <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-300 text-[10px]">
-                                    전교 {character.schoolData.rank ? `${character.schoolData.rank}등` : '집계중'}
+                                    {(() => {
+                                        const r = calculateLiveSchoolRank(character);
+                                        return `반 ${r.classRank}등 · 전교 ~${r.schoolEstimatedRank}등`;
+                                    })()}
                                 </span>
                             </div>
                             <div className="flex items-center gap-2 text-[10px] text-slate-300 font-semibold flex-wrap">
@@ -2643,12 +2647,12 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                     <>
                                         <button
                                             onClick={() => {
-                                                const rank = character.schoolData?.rank || 30;
+                                                const { classRank: rank, schoolEstimatedRank } = calculateLiveSchoolRank(character);
                                                 const advice = rank <= 10
-                                                    ? `현재 교내 석차 ${rank}위로 최상위권이네요! 이 페이스를 유지하면 승급 시험도 무난히 통과할 수 있을 거예요.`
+                                                    ? `현재 우리 반 석차 ${rank}위(전교 약 ${schoolEstimatedRank}위 권)로 최상위권이네요! 이 페이스를 유지하면 승급 시험도 무난히 통과할 수 있을 거예요.`
                                                     : rank <= 30
-                                                        ? `현재 교내 석차 ${rank}위입니다. 강의실에서 부족한 능력치 수업을 듣고 도서관에서 제어력(CTRL)을 보강해보세요.`
-                                                        : `현재 교내 석차 ${rank}위라 조금 더 분발이 필요해요. 강의실 수업과 도서관 독서를 병행하면 성적이 빠르게 오를 거예요!`;
+                                                        ? `현재 우리 반 석차 ${rank}위(전교 약 ${schoolEstimatedRank}위 권)입니다. 강의실에서 부족한 능력치 수업을 듣고 도서관에서 제어력(CTRL)을 보강해보세요.`
+                                                        : `현재 우리 반 석차 ${rank}위(전교 약 ${schoolEstimatedRank}위 권)라 조금 더 분발이 필요해요. 강의실 수업과 도서관 독서를 병행하면 성적이 빠르게 오를 거예요!`;
                                                 setActiveDialogue(prev => prev ? { ...prev, text: advice } : null);
                                             }}
                                             className="px-3 py-1.5 rounded-lg bg-indigo-900/70 hover:bg-indigo-800 border border-indigo-500/60 text-indigo-200 text-[11px] font-bold cursor-pointer"
@@ -2872,10 +2876,21 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                 <button onClick={() => setShowReportDirect(false)} className="text-slate-400 hover:text-white cursor-pointer"><X size={18} /></button>
                             </div>
                             <div className="space-y-2 text-xs">
-                                <div className="flex justify-between p-2.5 bg-amber-950/30 rounded-xl border border-amber-800/50">
-                                    <span className="text-slate-300 font-bold">교내 석차</span>
-                                    <span className="font-black text-amber-300">{character.schoolData?.rank || '-'}위</span>
-                                </div>
+                                {(() => {
+                                    const r = calculateLiveSchoolRank(character);
+                                    return (
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="flex justify-between p-2.5 bg-amber-950/30 rounded-xl border border-amber-800/50">
+                                                <span className="text-slate-300 font-bold">우리 반 석차</span>
+                                                <span className="font-black text-amber-300">{r.classRank}위 / {r.totalClassmates}명</span>
+                                            </div>
+                                            <div className="flex justify-between p-2.5 bg-amber-950/30 rounded-xl border border-amber-800/50">
+                                                <span className="text-slate-300 font-bold">전교 예상 순위</span>
+                                                <span className="font-black text-amber-300">#{r.schoolEstimatedRank}위 권</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="p-2 bg-slate-950 rounded-lg border border-slate-800">
                                         <div className="text-slate-400">중간고사</div>

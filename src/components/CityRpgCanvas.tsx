@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { Character, CityTier, DistrictType } from '../types';
+import { Character, CityTier, DistrictType, SocialAppointment } from '../types';
 import { CanvasCharacterHud } from './CanvasCharacterHud';
+import { AppointmentEncounterModal } from './AppointmentEncounterModal';
 import { CanvasVisualEvent, drawCanvasSpeechBubble } from '../utils/canvasEventVisualizer';
 import {
     buildCityTilemap,
@@ -69,6 +70,10 @@ export interface CityRpgCanvasProps {
     onOpenTranscendentArena?: () => void;
     onOpenAbyssTower?: () => void;
     onInspectCompanion?: (companionId: string) => void;
+    onUpdateCharacter?: (newChar: Character, logMsg?: string) => void;
+    onStartBattle?: (enemy: any, type?: string, source?: string, targetCity?: string, targetNation?: string) => void;
+    onAction?: (action: string, mpCost?: number, stateOverride?: Character) => void;
+    onOpenRegionalAdmin?: () => void;
 }
 
 interface TrailPoint {
@@ -125,12 +130,15 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     onOpenBeastCity,
     onOpenTranscendentArena,
     onOpenAbyssTower,
-    onInspectCompanion
+    onInspectCompanion,
+    onUpdateCharacter,
+    onStartBattle
 }) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const [canvasSize, setCanvasSize] = useState({ width: 960, height: 560 });
     const [dialogue, setDialogue] = useState<ActiveDialogue | null>(null);
+    const [selectedAppointment, setSelectedAppointment] = useState<SocialAppointment | null>(null);
     const [typedChars, setTypedChars] = useState(0);
     const [nearbyLabel, setNearbyLabel] = useState<string>('');
     const [showQuickBar, setShowQuickBar] = useState<boolean>(() =>
@@ -291,9 +299,28 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 waitTimer: number;
                 walkFrame: number;
                 animTimer: number;
+                appointment?: SocialAppointment;
             }
         >
     >([]);
+
+    const activeAppointments = useMemo(() => {
+        const isWithinOneHour = (time1?: string, time2?: string): boolean => {
+            if (!time1 || !time2) return true;
+            const [h1, m1] = time1.split(':').map(Number);
+            const [h2, m2] = time2.split(':').map(Number);
+            if (Number.isNaN(h1) || Number.isNaN(h2)) return true;
+            return Math.abs(h1 * 60 + (m1 || 0) - (h2 * 60 + (m2 || 0))) <= 60;
+        };
+        return (character.socialAppointments || []).filter(
+            appt =>
+                appt.status === 'pending' &&
+                appt.location.nation === nation &&
+                appt.location.city === city &&
+                appt.appointmentDate === character.currentDate &&
+                isWithinOneHour(appt.appointmentTime, currentTime)
+        );
+    }, [character.socialAppointments, character.currentDate, nation, city, currentTime]);
     const cameraRef = useRef({ x: 0, y: 0, zoom: 1.5 });
     const particlesRef = useRef<DustParticle[]>([]);
     const dialogueOpenRef = useRef(false);
@@ -330,6 +357,72 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
         }));
         setDialogue(null);
     }, [mapData]);
+
+    // 약속 NPC 실시간 동기화 (약속 시간 ±1시간 내 해당 도시에 스폰)
+    useEffect(() => {
+        const baseNpcs = npcsRef.current.filter(n => !n.appointment);
+        const allKnownNpcs = [
+            ...(character.socialNetwork || []),
+            ...(character.schoolData?.classmates || [])
+        ];
+        const apptNpcs = activeAppointments.map((appt, idx) => {
+            const matched = allKnownNpcs.find(n => n.id === appt.targetId || n.name === appt.targetName);
+            const { regionKey, genderKey } = resolveEntityRpgSprite({
+                nation: matched?.nation || nation,
+                race: matched?.race,
+                gender: matched?.gender
+            });
+            // 스폰 지점 근처의 이동 가능한 타일 탐색
+            const baseX = mapData.spawnPos.x;
+            const baseY = mapData.spawnPos.y;
+            let spawnTx = baseX;
+            let spawnTy = baseY;
+            const offsets = [
+                [2, 1], [-2, 1], [1, 2], [-1, 2], [2, -1], [-2, -1], [3, 0], [-3, 0], [0, 3]
+            ];
+            for (let step = 0; step < offsets.length; step++) {
+                const [ox, oy] = offsets[(step + idx) % offsets.length];
+                const cx = baseX + ox;
+                const cy = baseY + oy;
+                if (
+                    cy >= 1 &&
+                    cy < mapData.solid.length - 1 &&
+                    cx >= 1 &&
+                    cx < (mapData.solid[0]?.length || 0) - 1 &&
+                    !mapData.solid[cy][cx]
+                ) {
+                    spawnTx = cx;
+                    spawnTy = cy;
+                    break;
+                }
+            }
+            return {
+                id: `appt_${appt.id}`,
+                name: appt.targetName,
+                role: appt.type === 'duel' ? '⚔️ 결투 약속' : '📅 약속 상대',
+                regionKey,
+                gender: genderKey,
+                spriteKey: `${regionKey}_${genderKey}`,
+                x: spawnTx,
+                y: spawnTy,
+                homeX: spawnTx,
+                homeY: spawnTy,
+                dir: 'down' as SpriteDirection,
+                dialogues: [
+                    appt.note || `${appt.targetName}: "약속 시간(${appt.appointmentTime || '지금'})에 맞춰 와주셨군요!"`
+                ],
+                px: spawnTx * CITY_TILE_SIZE + CITY_TILE_SIZE / 2,
+                py: spawnTy * CITY_TILE_SIZE + CITY_TILE_SIZE / 2,
+                targetX: spawnTx,
+                targetY: spawnTy,
+                waitTimer: 999,
+                walkFrame: 1,
+                animTimer: 0,
+                appointment: appt
+            };
+        });
+        npcsRef.current = [...baseNpcs, ...apptNpcs];
+    }, [activeAppointments, mapData, character.socialNetwork, character.schoolData, nation]);
 
     // 컨테이너 리사이즈 감지
     useEffect(() => {
@@ -461,6 +554,10 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             } else {
                 target.npc.dir = dy > 0 ? 'down' : 'up';
             }
+            if ((target.npc as any).appointment) {
+                setSelectedAppointment((target.npc as any).appointment);
+                return;
+            }
             setDialogue({
                 npcName: target.npc.name,
                 npcRole: target.npc.role,
@@ -589,6 +686,10 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             const ntx = Math.floor(clickedNpc.px / CITY_TILE_SIZE);
             const nty = Math.floor(clickedNpc.py / CITY_TILE_SIZE);
             if (Math.hypot(ntx - start.x, nty - start.y) <= 1.6) {
+                if ((clickedNpc as any).appointment) {
+                    setSelectedAppointment((clickedNpc as any).appointment);
+                    return;
+                }
                 setDialogue({
                     npcName: clickedNpc.name,
                     npcRole: clickedNpc.role,
@@ -735,16 +836,20 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                                 p.pendingPortal = null;
                                 triggerPortalAction(pt);
                             } else if (p.pendingNpc) {
-                                const npc = p.pendingNpc;
+                                const npc = p.pendingNpc as any;
                                 p.pendingNpc = null;
-                                setDialogue({
-                                    npcName: npc.name,
-                                    npcRole: npc.role,
-                                    spriteUrl: npc.spriteUrl,
-                                    lines: npc.dialogues,
-                                    lineIndex: 0
-                                });
-                                setTypedChars(0);
+                                if (npc.appointment) {
+                                    setSelectedAppointment(npc.appointment);
+                                } else {
+                                    setDialogue({
+                                        npcName: npc.name,
+                                        npcRole: npc.role,
+                                        spriteUrl: npc.spriteUrl,
+                                        lines: npc.dialogues,
+                                        lineIndex: 0
+                                    });
+                                    setTypedChars(0);
+                                }
                             }
                         }
                     } else {
@@ -1324,12 +1429,25 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                             renderSprite(ctx, npcUrl, npc.px, npc.py + 12, npc.dir, npc.walkFrame, npc.regionKey, npc.gender);
                             ctx.font = 'bold 10px sans-serif';
                             ctx.textAlign = 'center';
-                            ctx.fillStyle = 'rgba(15,23,42,0.78)';
+                            if ((npc as any).appointment) {
+                                const badgeText = `📅 약속 (${(npc as any).appointment.appointmentTime || '지금'})`;
+                                const bw = ctx.measureText(badgeText).width + 12;
+                                ctx.fillStyle = 'rgba(131, 24, 67, 0.92)';
+                                ctx.beginPath();
+                                ctx.roundRect(npc.px - bw / 2, npc.py - 62, bw, 15, 4);
+                                ctx.fill();
+                                ctx.strokeStyle = '#f472b6';
+                                ctx.lineWidth = 1;
+                                ctx.stroke();
+                                ctx.fillStyle = '#fbcfe8';
+                                ctx.fillText(badgeText, npc.px, npc.py - 51);
+                            }
+                            ctx.fillStyle = (npc as any).appointment ? 'rgba(49, 16, 46, 0.88)' : 'rgba(15,23,42,0.78)';
                             const nw = ctx.measureText(npc.name).width + 10;
                             ctx.beginPath();
                             ctx.roundRect(npc.px - nw / 2, npc.py - 44, nw, 15, 4);
                             ctx.fill();
-                            ctx.fillStyle = '#e2e8f0';
+                            ctx.fillStyle = (npc as any).appointment ? '#fde68a' : '#e2e8f0';
                             ctx.fillText(npc.name, npc.px, npc.py - 33);
                         }
                     });
@@ -1573,13 +1691,14 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     }
                 }
                 // 미니맵 NPC & 플레이어 점
-                ctx.fillStyle = '#4ade80';
                 npcsRef.current.forEach(n => {
+                    ctx.fillStyle = (n as any).appointment ? '#f472b6' : '#4ade80';
+                    const size = (n as any).appointment ? mmScale + 1 : mmScale;
                     ctx.fillRect(
                         mmX + Math.floor(n.px / ts) * mmScale,
                         mmY + Math.floor(n.py / ts) * mmScale,
-                        mmScale,
-                        mmScale
+                        size,
+                        size
                     );
                 });
                 ctx.fillStyle = '#fde047';
@@ -1817,7 +1936,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             )}
 
             {/* 하단 접이식 빠른 이동 퀵바 (걷지 않고 즉시 구역 진입 지원) */}
-            {!dialogue && (
+            {!dialogue && !selectedAppointment && (
                 <div className="absolute bottom-2 left-2 right-2 z-20 flex flex-col items-center pointer-events-none">
                     <button
                         type="button"
@@ -1844,6 +1963,29 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                         </div>
                     )}
                 </div>
+            )}
+
+            {selectedAppointment && (
+                <AppointmentEncounterModal
+                    isOpen={true}
+                    character={character}
+                    appointment={selectedAppointment}
+                    onClose={() => setSelectedAppointment(null)}
+                    onUpdateCharacter={(updater) => {
+                        if (!onUpdateCharacter) return;
+                        if (typeof updater === 'function') {
+                            onUpdateCharacter(updater(character), '도시 약속 만남');
+                        } else {
+                            onUpdateCharacter(updater, '도시 약속 만남');
+                        }
+                    }}
+                    onBattle={(enemy, type, source) => {
+                        setSelectedAppointment(null);
+                        if (onStartBattle) {
+                            onStartBattle(enemy, type, source, city, nation);
+                        }
+                    }}
+                />
             )}
         </div>
     );

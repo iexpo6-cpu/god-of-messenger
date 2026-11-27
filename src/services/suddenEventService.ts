@@ -122,8 +122,8 @@ export const rollSuddenPostCombatEvent = (
         };
     }
 
-    // 2. ⚔️ 「라이벌 / 수배범 / 타락한 사자의 기습 난입」 (1.0% 확률: 1.5 ~ 2.5)
-    if (roll < 2.5) {
+    // 2. ⚔️ 「라이벌 / 수배범 / 타락한 사자의 기습 난입」 (0.25% 확률: 1.5 ~ 1.75)
+    if (roll < 1.75) {
         const levelUpCount = Math.floor(Math.random() * 3) + 1; // 1 ~ 3회분 레벨업 경험치
         const playerLevel = Math.max(1, character.level || 1);
 

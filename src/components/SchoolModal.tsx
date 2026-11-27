@@ -23,6 +23,7 @@ import {
 } from '../services/studentMentoringService';
 import * as SchoolActions from '../Schoolaction';
 import { processTimeSkip } from '../services/timeEngine';
+import { calculateLiveSchoolRank } from '../services/SchooltimeEngine';
 
 interface Props {
     character: Character;
@@ -1162,9 +1163,7 @@ const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, o
     };
 
     const getClassRank = () => {
-        const rankingList = getRankingData();
-        const playerEntry = rankingList.find(item => item.isPlayer);
-        return playerEntry ? playerEntry.rank : 1;
+        return calculateLiveSchoolRank(character).classRank;
     };
 
     const getSchoolTopRankers = (): LeaderboardItem[] => {
@@ -2705,6 +2704,12 @@ const SchoolModal: React.FC<Props> = ({ character, onClose, onUpdateCharacter, o
                                                 <Shield size={14} className="text-amber-400"/> 학적 및 상벌 현황
                                             </div>
                                             <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between items-center p-2 rounded-lg bg-slate-900/60 border border-slate-800">
+                                                    <span className="text-slate-300">우리 반 석차 / 전교 예상</span>
+                                                    <span className="font-bold text-amber-400">
+                                                        {getClassRank()}위 / 전교 ~{Math.max(1, getClassRank() * 5 - 2)}위 권
+                                                    </span>
+                                                </div>
                                                 <div className="flex justify-between items-center p-2 rounded-lg bg-slate-900/60 border border-slate-800">
                                                     <span className="text-slate-300">학교 평판</span>
                                                     <span className="font-bold text-indigo-400">{school.reputation} pt</span>

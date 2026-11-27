@@ -791,9 +791,9 @@ export function processMidnightMilestone(
     let ambushAlert: string | undefined = undefined;
     if (!options?.isDungeonOrCombat && charCopy.socialNetwork && charCopy.socialNetwork.length > 0) {
         try {
-            // 1) 영원의 라이벌 기습/결투 신청 (0.4% - 기존 대비 1/10)
+            // 1) 영원의 라이벌 기습/결투 신청 (0.1%)
             const eternalRival = charCopy.socialNetwork.find(n => n && n.isEternalRival && !n.isPurged && !n.isDead);
-            if (eternalRival && Math.random() < 0.004) {
+            if (eternalRival && Math.random() < 0.001) {
                 const enemiesList = createRivalEnemies(eternalRival);
                 const messageIntro = `당신의 영원한 숙적 ${eternalRival.name}이(가) 정예 결사대 동료들을 이끌고 나타나 결투를 신청했습니다!`;
 
