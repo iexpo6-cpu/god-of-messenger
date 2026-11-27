@@ -1891,25 +1891,59 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
             )}
 
             {/* Mobile D-Pad */}
-            <div className="absolute bottom-4 right-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-85">
-                <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'up')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
-                    <ArrowUp size={22} />
-                </button>
-                <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'left')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
-                    <ArrowLeft size={22} />
-                </button>
-                <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'right')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
-                    <ArrowRight size={22} />
-                </button>
-                <div />
-                <button type="button" onTouchStart={() => (dpadRef.current = 'down')} onTouchEnd={() => (dpadRef.current = null)} className="bg-slate-900/90 border border-slate-600 rounded-xl flex items-center justify-center text-white">
-                    <ArrowDown size={22} />
-                </button>
-                <div />
-            </div>
+            <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none">
+                        <div />
+                        <button
+                            type="button"
+                            onPointerDown={() => { dpadRef.current = "up"; }}
+                            onPointerUp={() => { dpadRef.current = null; }}
+                            onPointerLeave={() => { dpadRef.current = null; }}
+                            onPointerCancel={() => { dpadRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                        >
+                            <ArrowUp size={22} />
+                        </button>
+                        <div />
+                        <button
+                            type="button"
+                            onPointerDown={() => { dpadRef.current = "left"; }}
+                            onPointerUp={() => { dpadRef.current = null; }}
+                            onPointerLeave={() => { dpadRef.current = null; }}
+                            onPointerCancel={() => { dpadRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                        >
+                            <ArrowLeft size={22} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleInteract}
+                            className="bg-amber-600/90 active:bg-amber-500 active:scale-95 border border-amber-300 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-lg"
+                        >
+                            확인
+                        </button>
+                        <button
+                            type="button"
+                            onPointerDown={() => { dpadRef.current = "right"; }}
+                            onPointerUp={() => { dpadRef.current = null; }}
+                            onPointerLeave={() => { dpadRef.current = null; }}
+                            onPointerCancel={() => { dpadRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                        >
+                            <ArrowRight size={22} />
+                        </button>
+                        <div />
+                        <button
+                            type="button"
+                            onPointerDown={() => { dpadRef.current = "down"; }}
+                            onPointerUp={() => { dpadRef.current = null; }}
+                            onPointerLeave={() => { dpadRef.current = null; }}
+                            onPointerCancel={() => { dpadRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                        >
+                            <ArrowDown size={22} />
+                        </button>
+                        <div />
+                    </div>
 
             {/* NPC Dialogue Card */}
             {selectedNpc && (

@@ -2885,62 +2885,58 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
 
                 {/* Mobile D-Pad */}
                 <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none">
-                    <div />
-                    <button
-                        type="button"
-                        onTouchStart={() => (dpadRef.current = 'up')}
-                        onTouchEnd={() => (dpadRef.current = null)}
-                        onMouseDown={() => (dpadRef.current = 'up')}
-                        onMouseUp={() => (dpadRef.current = null)}
-                        onMouseLeave={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-xl flex items-center justify-center text-white text-base font-bold"
-                    >
-                        ▲
-                    </button>
-                    <div />
-                    <button
-                        type="button"
-                        onTouchStart={() => (dpadRef.current = 'left')}
-                        onTouchEnd={() => (dpadRef.current = null)}
-                        onMouseDown={() => (dpadRef.current = 'left')}
-                        onMouseUp={() => (dpadRef.current = null)}
-                        onMouseLeave={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-xl flex items-center justify-center text-white text-base font-bold"
-                    >
-                        ◀
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleInteract}
-                        className="bg-cyan-600/90 active:bg-cyan-500 border border-cyan-400 rounded-lg flex items-center justify-center text-white text-[10px] font-black"
-                    >
-                        OK
-                    </button>
-                    <button
-                        type="button"
-                        onTouchStart={() => (dpadRef.current = 'right')}
-                        onTouchEnd={() => (dpadRef.current = null)}
-                        onMouseDown={() => (dpadRef.current = 'right')}
-                        onMouseUp={() => (dpadRef.current = null)}
-                        onMouseLeave={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-xl flex items-center justify-center text-white text-base font-bold"
-                    >
-                        ▶
-                    </button>
-                    <div />
-                    <button
-                        type="button"
-                        onTouchStart={() => (dpadRef.current = 'down')}
-                        onTouchEnd={() => (dpadRef.current = null)}
-                        onMouseDown={() => (dpadRef.current = 'down')}
-                        onMouseUp={() => (dpadRef.current = null)}
-                        onMouseLeave={() => (dpadRef.current = null)}
-                        className="bg-slate-900/90 active:bg-cyan-700 border border-slate-600 rounded-xl flex items-center justify-center text-white text-base font-bold"
-                    >
-                        ▼
-                    </button>
-                    <div />
-                </div>
+                        <div />
+                        <button
+                            type="button"
+                            onPointerDown={() => { dpadRef.current = "up"; }}
+                            onPointerUp={() => { dpadRef.current = null; }}
+                            onPointerLeave={() => { dpadRef.current = null; }}
+                            onPointerCancel={() => { dpadRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                        >
+                            "▲"
+                        </button>
+                        <div />
+                        <button
+                            type="button"
+                            onPointerDown={() => { dpadRef.current = "left"; }}
+                            onPointerUp={() => { dpadRef.current = null; }}
+                            onPointerLeave={() => { dpadRef.current = null; }}
+                            onPointerCancel={() => { dpadRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                        >
+                            "◀"
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleInteract}
+                            className="bg-amber-600/90 active:bg-amber-500 active:scale-95 border border-amber-300 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-lg"
+                        >
+                            확인
+                        </button>
+                        <button
+                            type="button"
+                            onPointerDown={() => { dpadRef.current = "right"; }}
+                            onPointerUp={() => { dpadRef.current = null; }}
+                            onPointerLeave={() => { dpadRef.current = null; }}
+                            onPointerCancel={() => { dpadRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                        >
+                            "▶"
+                        </button>
+                        <div />
+                        <button
+                            type="button"
+                            onPointerDown={() => { dpadRef.current = "down"; }}
+                            onPointerUp={() => { dpadRef.current = null; }}
+                            onPointerLeave={() => { dpadRef.current = null; }}
+                            onPointerCancel={() => { dpadRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
+                        >
+                            "▼"
+                        </button>
+                        <div />
+                    </div>
 
                 {showClubVisualModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85">

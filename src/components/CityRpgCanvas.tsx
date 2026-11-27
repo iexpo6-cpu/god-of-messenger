@@ -1657,57 +1657,59 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             {/* 모바일 컴팩트 가상 D-Pad (좌하단) + 확인 버튼 (우하단) — 퀵바 펼침 시 자동으로 위로 이동해 겹침 방지 */}
             {!dialogue && (
                 <>
-                    <div className={`absolute left-2.5 z-20 grid grid-cols-3 gap-0.5 w-24 h-24 transition-all ${showQuickBar ? 'bottom-[74px]' : 'bottom-9'}`}>
+                    <div className={`absolute left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none transition-all ${showQuickBar ? "bottom-[78px]" : "bottom-10"}`}>
                         <div />
                         <button
                             type="button"
-                            onPointerDown={() => { dpadDirRef.current = 'up'; }}
+                            onPointerDown={() => { dpadDirRef.current = "up"; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
+                            onPointerCancel={() => { dpadDirRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                         >
-                            <ArrowUp size={14} />
+                            <ArrowUp size={22} />
                         </button>
                         <div />
                         <button
                             type="button"
-                            onPointerDown={() => { dpadDirRef.current = 'left'; }}
+                            onPointerDown={() => { dpadDirRef.current = "left"; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
+                            onPointerCancel={() => { dpadDirRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                         >
-                            <ArrowLeft size={14} />
+                            <ArrowLeft size={22} />
                         </button>
-                        <div className="rounded-lg bg-slate-950/50 border border-slate-800/70" />
                         <button
                             type="button"
-                            onPointerDown={() => { dpadDirRef.current = 'right'; }}
+                            onClick={handleInteract}
+                            className="bg-amber-600/90 active:bg-amber-500 active:scale-95 border border-amber-300 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-lg"
+                        >
+                            확인
+                        </button>
+                        <button
+                            type="button"
+                            onPointerDown={() => { dpadDirRef.current = "right"; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
+                            onPointerCancel={() => { dpadDirRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                         >
-                            <ArrowRight size={14} />
+                            <ArrowRight size={22} />
                         </button>
                         <div />
                         <button
                             type="button"
-                            onPointerDown={() => { dpadDirRef.current = 'down'; }}
+                            onPointerDown={() => { dpadDirRef.current = "down"; }}
                             onPointerUp={() => { dpadDirRef.current = null; }}
                             onPointerLeave={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/75 active:bg-amber-600/85 border border-slate-600/80 rounded-lg flex items-center justify-center text-white"
+                            onPointerCancel={() => { dpadDirRef.current = null; }}
+                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
                         >
-                            <ArrowDown size={14} />
+                            <ArrowDown size={22} />
                         </button>
                         <div />
                     </div>
-
-                    <button
-                        type="button"
-                        onClick={handleInteract}
-                        className={`absolute right-2.5 z-20 w-12 h-12 rounded-full bg-amber-600/90 active:scale-95 border-2 border-amber-300 text-white font-black text-[11px] shadow-xl flex flex-col items-center justify-center transition-all ${showQuickBar ? 'bottom-[82px]' : 'bottom-12'}`}
-                    >
-                        <span>확인</span>
-                    </button>
                 </>
             )}
 
