@@ -542,6 +542,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             ...rivalPlazaActor,
             {
                 id: 'stu_elem_1',
+                npcLevel: 4,
                 name: isKorean ? '한소희' : generateName(nation),
                 role: '초급 레귤러스 1학년',
                 tx: 5.5,
@@ -551,6 +552,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_elem_2',
+                npcLevel: 13,
                 name: isKorean ? '김민준' : generateName(nation),
                 role: '초급 레귤러스 3학년',
                 tx: 8.5,
@@ -560,6 +562,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_mid_1',
+                npcLevel: 28,
                 name: isKorean ? '박지훈' : generateName(nation),
                 role: '중급 검술부 에이스',
                 tx: 12.2,
@@ -569,6 +572,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_mid_2',
+                npcLevel: 22,
                 name: isKorean ? '최유진' : generateName(nation),
                 role: '중급 도서부원',
                 tx: 16.5,
@@ -578,6 +582,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_high_1',
+                npcLevel: 52,
                 name: isKorean ? '이서연' : generateName(nation),
                 role: '고급 아카데미 수석',
                 tx: 20.5,
@@ -587,6 +592,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
             },
             {
                 id: 'stu_high_2',
+                npcLevel: 46,
                 name: isKorean ? '송시우' : generateName(nation),
                 role: '고급부 안내 위원',
                 tx: 22.8,
@@ -836,7 +842,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                 ? `안녕 후배! ${tierLabel} 도서관 서적들은 신력 제어력(CTRL)을 기르는 데 정말 큰 도움이 돼.`
                                 : `선배님 안녕하세요! 저도 ${tierLabel} 마법 이론서를 보면서 열심히 공부하고 있어요!`,
                             canBondAndSpar: true,
-                            npcLevel: Math.max(4, (character.level || 5) + (isSenior ? 2 : -1))
+                            npcLevel: activeSchoolTier === 'Elementary' ? (isSenior ? 14 : 5) : activeSchoolTier === 'Middle' ? (isSenior ? 29 : 19) : (isSenior ? 49 : 36)
                         }
                     ]
                 };
@@ -852,7 +858,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     ],
                     npcs: [
                         { id: 'npc_trainer', name: isKorean ? '백무진' : generateName(nation), role: '수석 무술 교관', tx: 9, ty: 5.5, gender: 'male', dialogue: '실전 수련과 대련을 시작하려면 말을 걸어라!', opensZone: 'Training' },
-                        { id: 'npc_spar', name: isKorean ? '송아린' : generateName(nation), role: '무술부 생도', tx: 5, ty: 6.5, gender: 'female', dialogue: '오늘도 기초 체력과 무기 숙련도를 100회씩 단련하는 중이에요!', canBondAndSpar: true, npcLevel: Math.max(4, character.level || 5) }
+                        { id: 'npc_spar', name: isKorean ? '송아린' : generateName(nation), role: '무술부 생도', tx: 5, ty: 6.5, gender: 'female', dialogue: '오늘도 기초 체력과 무기 숙련도를 100회씩 단련하는 중이에요!', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) }
                     ]
                 };
             case 'Club': {
@@ -861,24 +867,24 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     const clubSpec = CLUB_DESK_SPECS.find(c => c.club === activeClubRoom);
                     const clubNpcs: Record<string, SchoolNpcActor[]> = {
                         [ClubType.MELEE]: [
-                            { id: 'npc_club_melee', name: isKorean ? '강태오' : generateName(nation), role: '근접 무기부 부장', tx: 4.5, ty: 4.5, gender: 'male', dialogue: '검과 창의 극의를 함께 수련하지 않을래? 대련도 언제든 환영이야!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.SWORDSMAN },
-                            { id: 'npc_club_melee_2', name: isKorean ? '임지훈' : generateName(nation), role: '근접 무기부 부원', tx: 12.5, ty: 5.5, gender: 'male', dialogue: '오늘도 목검 휘두르기 500회 완료했어!', canBondAndSpar: true, npcLevel: Math.max(4, character.level || 5), combatStyle: CombatStyle.SWORDSMAN },
+                            { id: 'npc_club_melee', name: isKorean ? '강태오' : generateName(nation), role: '근접 무기부 부장', tx: 4.5, ty: 4.5, gender: 'male', dialogue: '검과 창의 극의를 함께 수련하지 않을래? 대련도 언제든 환영이야!', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 3, combatStyle: CombatStyle.SWORDSMAN },
+                            { id: 'npc_club_melee_2', name: isKorean ? '임지훈' : generateName(nation), role: '근접 무기부 부원', tx: 12.5, ty: 5.5, gender: 'male', dialogue: '오늘도 목검 휘두르기 500회 완료했어!', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41), combatStyle: CombatStyle.SWORDSMAN },
                         ],
                         [ClubType.RANGED]: [
-                            { id: 'npc_club_ranged', name: isKorean ? '신유나' : generateName(nation), role: '원거리 무기부 부장', tx: 4.5, ty: 4.5, gender: 'female', dialogue: '백발백중의 정밀 사격을 배우고 싶다면 바람의 흐름을 읽어!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.ARCHER },
-                            { id: 'npc_club_ranged_2', name: isKorean ? '한별' : generateName(nation), role: '원거리 무기부 부원', tx: 12.5, ty: 5.5, gender: 'female', dialogue: '새로 맞춘 활 시위 탄성이 정말 좋네요.', canBondAndSpar: true, npcLevel: Math.max(4, character.level || 5), combatStyle: CombatStyle.ARCHER },
+                            { id: 'npc_club_ranged', name: isKorean ? '신유나' : generateName(nation), role: '원거리 무기부 부장', tx: 4.5, ty: 4.5, gender: 'female', dialogue: '백발백중의 정밀 사격을 배우고 싶다면 바람의 흐름을 읽어!', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 3, combatStyle: CombatStyle.ARCHER },
+                            { id: 'npc_club_ranged_2', name: isKorean ? '한별' : generateName(nation), role: '원거리 무기부 부원', tx: 12.5, ty: 5.5, gender: 'female', dialogue: '새로 맞춘 활 시위 탄성이 정말 좋네요.', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41), combatStyle: CombatStyle.ARCHER },
                         ],
                         [ClubType.MAGIC_ENG]: [
-                            { id: 'npc_club_magic', name: isKorean ? '최민혁' : generateName(nation), role: '마법 공학부 부장', tx: 4.5, ty: 4.5, gender: 'male', dialogue: '신력과 마도 공학의 결합은 무궁무진해. 한 번 겨뤄볼래?', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 2), combatStyle: CombatStyle.MAGE },
-                            { id: 'npc_club_magic_2', name: isKorean ? '윤서아' : generateName(nation), role: '마법 공학부 연구원', tx: 12.5, ty: 5.5, gender: 'female', dialogue: '신력 증폭 회로 효율이 어제보다 12% 올랐어요!', canBondAndSpar: true, npcLevel: Math.max(4, character.level || 5), combatStyle: CombatStyle.MAGE },
+                            { id: 'npc_club_magic', name: isKorean ? '최민혁' : generateName(nation), role: '마법 공학부 부장', tx: 4.5, ty: 4.5, gender: 'male', dialogue: '신력과 마도 공학의 결합은 무궁무진해. 한 번 겨뤄볼래?', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 5, combatStyle: CombatStyle.MAGE },
+                            { id: 'npc_club_magic_2', name: isKorean ? '윤서아' : generateName(nation), role: '마법 공학부 연구원', tx: 12.5, ty: 5.5, gender: 'female', dialogue: '신력 증폭 회로 효율이 어제보다 12% 올랐어요!', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41), combatStyle: CombatStyle.MAGE },
                         ],
                         [ClubType.COUNCIL]: [
-                            { id: 'npc_club_council', name: isKorean ? '오서현' : generateName(nation), role: '학생회장', tx: 4.5, ty: 4.5, gender: 'female', dialogue: '학교의 질서와 축제를 함께 기획할 유능한 학우가 와서 든든해.', canBondAndSpar: true, npcLevel: Math.max(5, (character.level || 5) + 2) },
-                            { id: 'npc_club_council_2', name: isKorean ? '도진우' : generateName(nation), role: '학생회 부회장', tx: 12.5, ty: 5.5, gender: 'male', dialogue: '예산안 결재와 동아리 지원금 정산 중이에요.', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1) },
+                            { id: 'npc_club_council', name: isKorean ? '오서현' : generateName(nation), role: '학생회장', tx: 4.5, ty: 4.5, gender: 'female', dialogue: '학교의 질서와 축제를 함께 기획할 유능한 학우가 와서 든든해.', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 7 },
+                            { id: 'npc_club_council_2', name: isKorean ? '도진우' : generateName(nation), role: '학생회 부회장', tx: 12.5, ty: 5.5, gender: 'male', dialogue: '예산안 결재와 동아리 지원금 정산 중이에요.', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 3 },
                         ],
                         [ClubType.DISCIPLINARY]: [
-                            { id: 'npc_club_disc', name: isKorean ? '장현우' : generateName(nation), role: '선도부장', tx: 4.5, ty: 4.5, gender: 'male', dialogue: '교내 치안을 지키는 선도부다. 실력 검증 대련을 해볼 텐가?', canBondAndSpar: true, npcLevel: Math.max(5, (character.level || 5) + 2), combatStyle: CombatStyle.SPEARMAN },
-                            { id: 'npc_club_disc_2', name: isKorean ? '차예린' : generateName(nation), role: '선도부원', tx: 12.5, ty: 5.5, gender: 'female', dialogue: '야간 순찰 준비 완료! 교칙 위반자는 용납하지 않아요.', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.SPEARMAN },
+                            { id: 'npc_club_disc', name: isKorean ? '장현우' : generateName(nation), role: '선도부장', tx: 4.5, ty: 4.5, gender: 'male', dialogue: '교내 치안을 지키는 선도부다. 실력 검증 대련을 해볼 텐가?', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 7, combatStyle: CombatStyle.SPEARMAN },
+                            { id: 'npc_club_disc_2', name: isKorean ? '차예린' : generateName(nation), role: '선도부원', tx: 12.5, ty: 5.5, gender: 'female', dialogue: '야간 순찰 준비 완료! 교칙 위반자는 용납하지 않아요.', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 3, combatStyle: CombatStyle.SPEARMAN },
                         ],
                     };
                     return {
@@ -906,11 +912,11 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         }))
                     ],
                     npcs: [
-                        { id: 'npc_club_melee', name: isKorean ? '강태오' : generateName(nation), role: '근접 무기부', tx: 3.8, ty: 4.0, gender: 'male', dialogue: '검과 창의 극의를 함께 수련하지 않을래? 대련도 언제든 환영이야!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.SWORDSMAN },
-                        { id: 'npc_club_ranged', name: isKorean ? '신유나' : generateName(nation), role: '원거리 무기부', tx: 9.5, ty: 4.0, gender: 'female', dialogue: '백발백중의 정밀 사격을 배우고 싶다면 원거리 무기부로 들어와!', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 1), combatStyle: CombatStyle.ARCHER },
-                        { id: 'npc_club_magic', name: isKorean ? '최민혁' : generateName(nation), role: '마법 공학부', tx: 15.0, ty: 4.0, gender: 'male', dialogue: '신력과 마도 공학의 결합은 무궁무진해. 한 번 겨뤄볼래?', canBondAndSpar: true, npcLevel: Math.max(4, (character.level || 5) + 2), combatStyle: CombatStyle.MAGE },
-                        { id: 'npc_club_council', name: isKorean ? '오서현' : generateName(nation), role: '학생회', tx: 5.5, ty: 8.6, gender: 'female', dialogue: '학교의 질서와 축제를 함께 기획할 유능한 학우를 찾고 있어.', canBondAndSpar: true, npcLevel: Math.max(5, (character.level || 5) + 2), opensZone: 'Club' },
-                        { id: 'npc_club_disc', name: isKorean ? '장현우' : generateName(nation), role: '선도부', tx: 14.0, ty: 8.6, gender: 'male', dialogue: '교내 치안을 지키는 선도부다. 실력 검증 대련을 해볼 텐가?', canBondAndSpar: true, npcLevel: Math.max(5, (character.level || 5) + 2), combatStyle: CombatStyle.SPEARMAN }
+                        { id: 'npc_club_melee', name: isKorean ? '강태오' : generateName(nation), role: '근접 무기부', tx: 3.8, ty: 4.0, gender: 'male', dialogue: '검과 창의 극의를 함께 수련하지 않을래? 대련도 언제든 환영이야!', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 3, combatStyle: CombatStyle.SWORDSMAN },
+                        { id: 'npc_club_ranged', name: isKorean ? '신유나' : generateName(nation), role: '원거리 무기부', tx: 9.5, ty: 4.0, gender: 'female', dialogue: '백발백중의 정밀 사격을 배우고 싶다면 원거리 무기부로 들어와!', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 3, combatStyle: CombatStyle.ARCHER },
+                        { id: 'npc_club_magic', name: isKorean ? '최민혁' : generateName(nation), role: '마법 공학부', tx: 15.0, ty: 4.0, gender: 'male', dialogue: '신력과 마도 공학의 결합은 무궁무진해. 한 번 겨뤄볼래?', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 5, combatStyle: CombatStyle.MAGE },
+                        { id: 'npc_club_council', name: isKorean ? '오서현' : generateName(nation), role: '학생회', tx: 5.5, ty: 8.6, gender: 'female', dialogue: '학교의 질서와 축제를 함께 기획할 유능한 학우를 찾고 있어.', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 7, opensZone: 'Club' },
+                        { id: 'npc_club_disc', name: isKorean ? '장현우' : generateName(nation), role: '선도부', tx: 14.0, ty: 8.6, gender: 'male', dialogue: '교내 치안을 지키는 선도부다. 실력 검증 대련을 해볼 텐가?', canBondAndSpar: true, npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 7, combatStyle: CombatStyle.SPEARMAN }
                     ]
                 };
             }
@@ -971,7 +977,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             gender: roomGenderKey,
                             dialogue: '반은 달라도 같은 학년 기숙사잖아! 오늘 수업 어땠어?',
                             canBondAndSpar: true,
-                            npcLevel: Math.max(4, (character.level || 5) + 1)
+                            npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 3
                         }
                     );
                 }
@@ -988,7 +994,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                             ? '밤이 늦어서 다들 기숙사로 들어왔어. 내일 수업을 위해 푹 쉬자!'
                             : '기숙사 방이 조용해서 혼자 마력 명상하기 좋네.',
                         canBondAndSpar: true,
-                        npcLevel: Math.max(4, character.level || 5)
+                        npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41)
                     },
                     {
                         id: 'dorm_res_2',
@@ -999,7 +1005,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                         gender: roomGenderKey,
                         dialogue: '필요하면 침대에서 바로 휴식해! 컨디션 회복이 최고야.',
                         canBondAndSpar: true,
-                        npcLevel: Math.max(4, (character.level || 5) + 1)
+                        npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 3
                     },
                     ...(isSchoolNight
                         ? [
@@ -1012,7 +1018,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                   gender: roomGenderKey,
                                   dialogue: '야간 통금 시간이라 교정에서 방금 기숙사로 돌아왔어. 오늘 하루도 수고했어!',
                                   canBondAndSpar: true,
-                                  npcLevel: Math.max(4, character.level || 5)
+                                  npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41)
                               },
                               {
                                   id: 'dorm_night_return_2',
@@ -1023,7 +1029,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                   gender: roomGenderKey,
                                   dialogue: '밤에는 다른 건물들이 전부 잠겨서 기숙사에서 내일을 준비하는 게 제일 좋아.',
                                   canBondAndSpar: true,
-                                  npcLevel: Math.max(4, (character.level || 5) + 1)
+                                  npcLevel: (activeSchoolTier === 'Elementary' ? 8 : activeSchoolTier === 'Middle' ? 23 : 41) + 3
                               }
                           ]
                         : [])
@@ -1731,10 +1737,54 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                     ctx.fillRect(x, y, ts, ts);
                                 }
                             } else {
-                                if (wallImg?.complete && wallImg.naturalWidth > 0) ctx.drawImage(wallImg, x, y, ts, ts);
-                                else {
-                                    ctx.fillStyle = activeSchoolTier === 'High' ? '#312e81' : '#334155';
-                                    ctx.fillRect(x, y, ts, ts);
+                                const isLeft = c === 0;
+                                const isRight = c === cols - 1;
+                                const isBottom = r === rows - 1;
+                                if (r === 0 && !isLeft && !isRight) {
+                                    if (wallImg?.complete && wallImg.naturalWidth > 0) ctx.drawImage(wallImg, x, y, ts, ts);
+                                    else {
+                                        ctx.fillStyle = activeSchoolTier === 'High' ? '#312e81' : '#334155';
+                                        ctx.fillRect(x, y, ts, ts);
+                                    }
+                                    ctx.fillStyle = '#1c1917';
+                                    ctx.fillRect(x, y, ts, 6);
+                                    ctx.fillStyle = '#57534e';
+                                    ctx.fillRect(x, y + 6, ts, 3);
+                                } else {
+                                    if (groundImg?.complete && groundImg.naturalWidth > 0) ctx.drawImage(groundImg, x, y, ts, ts);
+                                    else {
+                                        ctx.fillStyle = '#22543d';
+                                        ctx.fillRect(x, y, ts, ts);
+                                    }
+                                    ctx.fillStyle = '#292524';
+                                    if (isLeft) {
+                                        ctx.fillRect(x, y, 22, ts);
+                                        ctx.fillStyle = '#57534e';
+                                        ctx.fillRect(x + 20, y, 4, ts);
+                                        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                                        ctx.fillRect(x + 24, y, 6, ts);
+                                    }
+                                    if (isRight) {
+                                        ctx.fillRect(x + ts - 22, y, 22, ts);
+                                        ctx.fillStyle = '#57534e';
+                                        ctx.fillRect(x + ts - 24, y, 4, ts);
+                                        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                                        ctx.fillRect(x + ts - 30, y, 6, ts);
+                                    }
+                                    if (isBottom) {
+                                        ctx.fillRect(x, y + ts - 22, ts, 22);
+                                        ctx.fillStyle = '#57534e';
+                                        ctx.fillRect(x, y + ts - 25, ts, 4);
+                                        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                                        ctx.fillRect(x, y + ts - 29, ts, 4);
+                                    }
+                                    if (r === 0 && (isLeft || isRight)) {
+                                        ctx.fillStyle = '#292524';
+                                        ctx.fillRect(x, y, ts, ts);
+                                        ctx.fillStyle = '#57534e';
+                                        ctx.fillRect(isLeft ? x + ts - 4 : x, y, 4, ts);
+                                        ctx.fillRect(x, y + ts - 4, ts, 4);
+                                    }
                                 }
                             }
                             continue;

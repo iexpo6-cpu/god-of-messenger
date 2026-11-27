@@ -2597,17 +2597,22 @@ export const generateClassmates = (
 
         let level = 1;
         const jitter = Math.floor(Math.random() * 5) - 2;
+        const isProdigy = Math.random() < 0.15;
 
         if (tier === 'Elementary' || tier === '초급') {
-            level = Math.floor(Math.random() * 5) + 1 + jitter;
+            const base = grade === 1 ? 3 : grade === 2 ? 8 : 13;
+            level = base + jitter + (isProdigy ? 3 : 0);
+            level = Math.max(1, Math.min(isProdigy ? 18 : 15, level));
         } else if (tier === 'Middle' || tier === '중급') {
-            const base = grade === 1 ? 6 : grade === 2 ? 10 : 13;
-            level = base + Math.floor(Math.random() * 4) + jitter;
+            const base = grade === 1 ? 18 : grade === 2 ? 23 : 28;
+            level = base + jitter + (isProdigy ? 4 : 0);
+            level = Math.max(16, Math.min(isProdigy ? 34 : 30, level));
         } else if (tier === 'High' || tier === '고급') {
-            const base = grade === 1 ? 16 : grade === 2 ? 21 : 26;
-            level = base + Math.floor(Math.random() * 5) + jitter;
+            const base = grade === 1 ? 34 : grade === 2 ? 41 : 47;
+            level = base + jitter + (isProdigy ? 6 : 0);
+            level = Math.max(31, Math.min(isProdigy ? 56 : 50, level));
         } else if (tier === 'University') {
-            level = 30 + Math.floor(Math.random() * 15) + jitter;
+            level = 52 + Math.floor(Math.random() * 18) + jitter;
         }
         level = Math.max(1, level);
 
