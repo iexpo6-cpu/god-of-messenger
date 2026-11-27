@@ -1,10 +1,160 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Character, Companion, Skill, BondSkill, SkillType, SkillTarget, ClassTier, RelationType } from '../types';
 import { X, Sparkles, Sword, Zap, Shield, Activity, Plus, Trash2, Info, User, Users, CheckCircle2, AlertCircle, HelpCircle, ChevronDown, ChevronUp, Flame, Lock } from 'lucide-react';
 import { cleanInvalidBondSkills } from '../services/relationService';
 import { areSiblings, isHalfSibling } from '../services/siblingService';
 import { extractSkillEffectInfo, combineEffectDescriptions, amplifyStatusEffectDescription } from '../services/BondSkillService';
+import {
+    DIRECTION_ROW_MAP,
+    getCachedRpgSpriteImage,
+    loadRpgSpriteImage,
+    resolveEntityRpgSprite
+} from '../services/rpgSpriteManifest';
+
+const BondComboTrainingStage: React.FC<{
+    sourceEntity: any;
+    partnerEntity: Companion;
+    sourceSkillName?: string;
+    partnerSkillName?: string;
+    comboTitle?: string;
+    isSynergy?: boolean;
+    replaySeed: number;
+}> = ({ sourceEntity, partnerEntity, sourceSkillName, partnerSkillName, comboTitle, isSynergy, replaySeed }) => {
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const sourceSpriteUrl = useMemo(
+        () => resolveEntityRpgSprite(sourceEntity).url,
+        [sourceEntity?.id, sourceEntity?.name, sourceEntity?.rpgSpriteKey, sourceEntity?.customSpriteUrl]
+    );
+    const partnerSpriteUrl = useMemo(
+        () => resolveEntityRpgSprite(partnerEntity as any).url,
+        [partnerEntity?.id, partnerEntity?.name, partnerEntity?.rpgSpriteKey, partnerEntity?.customSpriteUrl]
+    );
+
+    useEffect(() => {
+        if (sourceSpriteUrl) loadRpgSpriteImage(sourceSpriteUrl);
+        if (partnerSpriteUrl) loadRpgSpriteImage(partnerSpriteUrl);
+    }, [sourceSpriteUrl, partnerSpriteUrl]);
+
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        let rafId = 0;
+        const startMs = performance.now();
+
+        const loop = (now: number) => {
+            const elapsed = ((now - startMs) / 1000) % 3.2; // 3.2초 주기 연계기 훈련 루프
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // 배경 훈련장 바닥
+            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, '#0f172a');
+            grad.addColorStop(1, '#1e1b4b');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.strokeStyle = 'rgba(236, 72, 153, 0.25)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(w / 2, h - 24, 150, 18, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // 페이즈 계산: 0~1.0 준비, 1.0~1.8 중앙 돌진 & 연계 발동, 1.8~2.6 폭발 이펙트, 2.6~3.2 복귀
+            const dash =
+                elapsed < 0.8
+                    ? 0
+                    : elapsed < 1.3
+                        ? (elapsed - 0.8) / 0.5
+                        : elapsed < 2.3
+                            ? 1
+                            : Math.max(0, 1 - (elapsed - 2.3) / 0.9);
+
+            const lx = 78 + dash * (w / 2 - 112);
+            const rx = w - 78 - dash * (w / 2 - 112);
+            const baseY = h - 30;
+            const walkFrame = Math.floor(elapsed * 8) % 3;
+
+            const drawActor = (url: string, x: number, dir: 'right' | 'left', fallbackColor: string, label: string) => {
+                const img = url ? getCachedRpgSpriteImage(url) : null;
+                ctx.fillStyle = 'rgba(0,0,0,0.4)';
+                ctx.beginPath();
+                ctx.ellipse(x, baseY + 6, 16, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                if (img && img.complete && img.naturalWidth > 0) {
+                    const fw = img.naturalWidth / 3;
+                    const fh = img.naturalHeight / 4;
+                    const row = DIRECTION_ROW_MAP[dir] ?? 0;
+                    ctx.drawImage(img, walkFrame * fw, row * fh, fw, fh, Math.round(x - 24), Math.round(baseY - 46), 48, 52);
+                } else {
+                    ctx.fillStyle = fallbackColor;
+                    ctx.beginPath();
+                    ctx.arc(x, baseY - 18, 14, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.font = 'bold 10px sans-serif';
+                ctx.fillStyle = '#f8fafc';
+                ctx.textAlign = 'center';
+                ctx.fillText(label, x, baseY + 18);
+            };
+
+            drawActor(sourceSpriteUrl, lx, 'right', '#38bdf8', sourceEntity?.name || '플레이어');
+            drawActor(partnerSpriteUrl, rx, 'left', '#f472b6', partnerEntity?.name || '동료');
+
+            // 중앙 연계기 합동 이펙트
+            if (elapsed >= 1.15 && elapsed <= 2.45) {
+                const p = (elapsed - 1.15) / 1.3;
+                const radius = 18 + p * (isSynergy ? 64 : 48);
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, 1 - p * 0.85);
+                ctx.strokeStyle = isSynergy ? '#fbbf24' : '#ec4899';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(w / 2, baseY - 22, radius, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(w / 2 - radius * 0.8, baseY - 22 - radius * 0.5);
+                ctx.lineTo(w / 2 + radius * 0.8, baseY - 22 + radius * 0.5);
+                ctx.moveTo(w / 2 + radius * 0.8, baseY - 22 - radius * 0.5);
+                ctx.lineTo(w / 2 - radius * 0.8, baseY - 22 + radius * 0.5);
+                ctx.stroke();
+
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillStyle = isSynergy ? '#fde047' : '#f9a8d4';
+                ctx.textAlign = 'center';
+                ctx.fillText(
+                    `✨ ${comboTitle || `${sourceSkillName || '스킬'} × ${partnerSkillName || '스킬'}`}`,
+                    w / 2,
+                    22
+                );
+                ctx.restore();
+            } else {
+                ctx.font = 'bold 11px sans-serif';
+                ctx.fillStyle = '#cbd5e1';
+                ctx.textAlign = 'center';
+                ctx.fillText('⚔️ 인연 합동 연계기 훈련 중...', w / 2, 20);
+            }
+
+            rafId = requestAnimationFrame(loop);
+        };
+
+        rafId = requestAnimationFrame(loop);
+        return () => cancelAnimationFrame(rafId);
+    }, [sourceSpriteUrl, partnerSpriteUrl, sourceEntity?.name, partnerEntity?.name, sourceSkillName, partnerSkillName, comboTitle, isSynergy, replaySeed]);
+
+    return (
+        <div className="rounded-xl overflow-hidden border border-pink-500/40 bg-slate-950/90">
+            <canvas ref={canvasRef} width={440} height={138} className="w-full h-[138px] block" />
+        </div>
+    );
+};
 
 // 신력계통 시너지 매핑 테이블
 const SYNERGY_MAP: Record<string, string[]> = {
@@ -47,6 +197,7 @@ const BondSkillBookModal: React.FC<Props> = ({ character, companion, onClose, on
     const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
     const [showGuide, setShowGuide] = useState(false); // [MODIFIED] Default to collapsed to keep view clean
     const [customSelectedElement, setCustomSelectedElement] = useState<string>('');
+    const [comboReplaySeed, setComboReplaySeed] = useState(0);
 
     // Clean up any severed bond skills on mount
     useEffect(() => {
@@ -1385,6 +1536,29 @@ const BondSkillBookModal: React.FC<Props> = ({ character, companion, onClose, on
                                                     </div>
                                                 </div>
                                             )}
+
+                                            {/* 두 인연 스프라이트 합동 연계기 훈련 시각화 */}
+                                            <div className="space-y-1.5">
+                                                <div className="flex items-center justify-between text-[11px] font-bold text-pink-300">
+                                                    <span>⚔️ 인연 연계기 합동 훈련 미리보기</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setComboReplaySeed(s => s + 1)}
+                                                        className="px-2 py-0.5 rounded bg-pink-900/60 hover:bg-pink-800/80 border border-pink-500/50 text-[10px] text-pink-200"
+                                                    >
+                                                        동작 다시보기
+                                                    </button>
+                                                </div>
+                                                <BondComboTrainingStage
+                                                    sourceEntity={currentSource}
+                                                    partnerEntity={companion}
+                                                    sourceSkillName={selectedPlayerSkill.name}
+                                                    partnerSkillName={selectedCompanionSkill.name}
+                                                    comboTitle={skillName.trim() || undefined}
+                                                    isSynergy={hasElementSynergy}
+                                                    replaySeed={comboReplaySeed}
+                                                />
+                                            </div>
 
                                             {/* 신력계통 조각 요구 정보 */}
                                             {calculatedSkillElement && calculatedSkillElement !== '무속성' && (

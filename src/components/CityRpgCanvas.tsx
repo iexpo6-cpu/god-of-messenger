@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Character, CityTier, DistrictType } from '../types';
 import { CanvasCharacterHud } from './CanvasCharacterHud';
+import { CanvasVisualEvent, drawCanvasSpeechBubble } from '../utils/canvasEventVisualizer';
 import {
     buildCityTilemap,
     CITY_TILE_SIZE,
@@ -257,6 +258,29 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
         pendingNpc: null as CityNpcEntity | null
     });
     const trailRef = useRef<TrailPoint[]>([]);
+    const cityEvents = useMemo<CanvasVisualEvent[]>(
+        () => ((character.recentCanvasEvents || []) as CanvasVisualEvent[]).filter(e => e?.domain === 'city'),
+        [character.recentCanvasEvents]
+    );
+    const cityEventsRef = useRef<CanvasVisualEvent[]>(cityEvents);
+    cityEventsRef.current = cityEvents;
+    const [showCityEventDrawer, setShowCityEventDrawer] = useState(false);
+    const [activeCityTicker, setActiveCityTicker] = useState<CanvasVisualEvent | null>(null);
+    const cityVisualUntilRef = useRef<number>(0);
+    const seenCityEvIdsRef = useRef<Set<string>>(new Set());
+
+    useEffect(() => {
+        if (cityEvents.length === 0) return;
+        const fresh = cityEvents.find(ev => !seenCityEvIdsRef.current.has(ev.id));
+        cityEvents.forEach(ev => seenCityEvIdsRef.current.add(ev.id));
+        if (fresh) {
+            cityVisualUntilRef.current = Date.now() + 5000;
+            setActiveCityTicker(fresh);
+            const timer = setTimeout(() => setActiveCityTicker(null), 4800);
+            return () => clearTimeout(timer);
+        }
+    }, [cityEvents]);
+
     const npcsRef = useRef<
         Array<
             CityNpcEntity & {
@@ -1498,6 +1522,25 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                     ctx.restore();
                 }
 
+                // TimeEngine 도시 전보/성전 말풍선 (진입 후 5초간 1회 재생)
+                const curCityEvents = cityEventsRef.current;
+                if (cityVisualUntilRef.current > Date.now() && curCityEvents.length > 0 && npcsRef.current.length > 0) {
+                    const topEv = curCityEvents[0];
+                    const targetNpc =
+                        npcsRef.current.find(n => (topEv.actorName && n.name === topEv.actorName) || n.role.includes('경비') || n.role.includes('안내')) ||
+                        npcsRef.current[0];
+                    if (targetNpc) {
+                        drawCanvasSpeechBubble(
+                            ctx,
+                            targetNpc.x,
+                            targetNpc.y,
+                            topEv.emoji,
+                            topEv.bubbleText || topEv.title,
+                            topEv.tone
+                        );
+                    }
+                }
+
                 ctx.restore();
 
                 // Layer 5: 우측 상단 컴팩트 미니맵 (모바일에서는 초소형 레이더로 시야 방해 최소화)
@@ -1654,6 +1697,62 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                                 <span>클릭 또는 Space / Enter 계속</span>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {activeCityTicker && !dialogue && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 max-w-[90vw] pointer-events-auto">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setActiveCityTicker(null);
+                            setShowCityEventDrawer(true);
+                        }}
+                        className="px-3.5 py-1.5 rounded-full bg-slate-950/92 border border-amber-400/70 text-amber-200 text-xs font-black shadow-2xl flex items-center gap-2 backdrop-blur-sm animate-in fade-in slide-in-from-top-2"
+                    >
+                        <span>{activeCityTicker.emoji}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-[10px] text-amber-300">{activeCityTicker.badge}</span>
+                        <span className="truncate max-w-[220px] sm:max-w-[360px]">{activeCityTicker.description}</span>
+                    </button>
+                </div>
+            )}
+
+            {cityEvents.length > 0 && !dialogue && (
+                <div className="absolute top-3 right-36 sm:right-48 z-20">
+                    <button
+                        type="button"
+                        onClick={() => setShowCityEventDrawer(v => !v)}
+                        className="px-2.5 py-1 rounded-xl bg-slate-950/90 hover:bg-slate-900 border border-amber-500/50 text-amber-200 text-[11px] font-black shadow-lg"
+                    >
+                        📜 도시 소식 ({cityEvents.length})
+                    </button>
+                </div>
+            )}
+
+            {showCityEventDrawer && cityEvents.length > 0 && (
+                <div className="absolute top-12 right-4 z-30 w-80 max-w-[90vw] bg-slate-950/95 border border-slate-700 rounded-2xl p-3 shadow-2xl space-y-2 backdrop-blur-md">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                        <span className="text-xs font-black text-amber-300">📜 최근 도시 · 세계 전보</span>
+                        <button
+                            type="button"
+                            onClick={() => setShowCityEventDrawer(false)}
+                            className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300"
+                        >
+                            닫기
+                        </button>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                        {cityEvents.map(ev => (
+                            <div key={ev.id} className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] space-y-0.5">
+                                <div className="flex items-center gap-1.5 font-bold text-white">
+                                    <span>{ev.emoji}</span>
+                                    <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[9px] text-amber-300">{ev.badge}</span>
+                                    <span className="truncate">{ev.title}</span>
+                                </div>
+                                <p className="text-[10px] text-slate-300 leading-snug">{ev.description}</p>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}

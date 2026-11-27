@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, Enemy, Location } from '../../types';
 import { WORLD_GEOGRAPHY } from '../../constants';
+import { getSeasonFromDate } from '../../utils/canvasEventVisualizer';
 import {
     getCachedCityAssetImage,
     getInteriorPropSpriteUrl,
@@ -176,6 +177,17 @@ export const OverlandExploreCanvas: React.FC<OverlandExploreCanvasProps> = ({
             }
         } catch {}
     }, [character.id]);
+
+    const prevOverlandDateRef = useRef<string | undefined>(character.currentDate);
+    useEffect(() => {
+        if (character.currentDate && prevOverlandDateRef.current && character.currentDate !== prevOverlandDateRef.current) {
+            prevOverlandDateRef.current = character.currentDate;
+            setToastMsg('🌙 자정이 지나 동료들과 야영하며 하루를 정리했습니다.');
+            const t = setTimeout(() => setToastMsg(null), 3200);
+            return () => clearTimeout(t);
+        }
+        prevOverlandDateRef.current = character.currentDate;
+    }, [character.currentDate]);
 
     const nextWaypoint = useMemo<OverlandWaypoint | null>(() => {
         if (routeWaypoints.length === 0) return null;
@@ -1079,6 +1091,24 @@ export const OverlandExploreCanvas: React.FC<OverlandExploreCanvasProps> = ({
                 ctx.textAlign = 'center';
                 ctx.fillText(character.name, p.x, p.y + 14);
 
+                // 계절 파티클 25개 경량 풀링 오버레이
+                const season = getSeasonFromDate(character.currentDate);
+                const sColor =
+                    season === 'spring'
+                        ? 'rgba(251, 207, 232, 0.7)'
+                        : season === 'summer'
+                            ? 'rgba(253, 224, 71, 0.65)'
+                            : season === 'autumn'
+                                ? 'rgba(251, 146, 60, 0.75)'
+                                : 'rgba(226, 232, 240, 0.8)';
+                ctx.fillStyle = sColor;
+                const tSec = Date.now() / 1000;
+                for (let si = 0; si < 25; si++) {
+                    const px = ((si * 97 + tSec * (season === 'autumn' ? 22 : 12)) % worldW + worldW) % worldW;
+                    const py = ((si * 67 + tSec * (season === 'summer' ? 8 : 24)) % worldH + worldH) % worldH;
+                    ctx.fillRect(Math.round(px), Math.round(py), 2.5, 2.5);
+                }
+
                 ctx.restore();
             }
 
@@ -1086,7 +1116,7 @@ export const OverlandExploreCanvas: React.FC<OverlandExploreCanvasProps> = ({
         };
         rafId = requestAnimationFrame(loop);
         return () => cancelAnimationFrame(rafId);
-    }, [viewport, cultureKey, huntStyle, playerSpriteUrl, spriteInfo, cityPortals, fieldProps, merchantPos, nextWaypoint, waypointPortalPos, curCity, nation, region, character, onTriggerBattle]);
+    }, [viewport, cultureKey, huntStyle, playerSpriteUrl, spriteInfo, cityPortals, fieldProps, merchantPos, nextWaypoint, waypointPortalPos, curCity, nation, region, character.name, character.currentDate, onTriggerBattle]);
 
     const supplyCost = Math.max(150, character.level * 25);
 

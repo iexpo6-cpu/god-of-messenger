@@ -1847,6 +1847,7 @@ export interface Character {
   messages?: any[]; // [NEW] 가문 서신 및 시스템 기록 메시지 보관함
   bufferedTimeSkipReports?: any[]; // [NEW] 던전/전투 중 발생한 일일 결산 완충 보관용
   pendingDeceasedAlerts?: DeceasedAlertInfo[]; // [NEW] 자연사 발생 알림 대기 목록
+  recentCanvasEvents?: any[]; // [NEW] 캔버스 시각화용 최근 TimeEngine 이벤트 큐
   currentLocation?: Location;
   schoolData?: SchoolData;
   mercenaryData?: MercenaryData;

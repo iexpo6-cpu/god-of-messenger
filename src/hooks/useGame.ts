@@ -22,6 +22,7 @@ import { NATION_RELICS, NATION_HEROES  } from '../nationLoreData';
 import { NATION_LIST} from '../nationalDiplomacy';
 import { handleSchoolPromoteAction } from '../schoolpromote'
 import { processTimeSkip, condenseSystemLogs } from '../services/timeEngine';
+import { parseTimeEngineLogsToCanvasEvents } from '../utils/canvasEventVisualizer';
 import { purgeDeceasedCompanions } from '../services/deathTimeEngine';
 import { generateInitialDiplomacy } from '../nationalDiplomacy';
 import { DIVINE_WAR_CONSTANTS } from '../divineWarSystem';
@@ -1577,6 +1578,22 @@ export const useGame = () => {
 
         // 압축 요약 로그 일괄 출력
         const condensedLogs = condenseSystemLogs(accumTimePassageLogs, daysPassed);
+        const nextCanvasEvents = parseTimeEngineLogsToCanvasEvents(
+            condensedLogs,
+            timeSkipRes.worldNews,
+            timeSkipRes.dailyReport,
+            timeAdvancedChar.currentDate
+        );
+        if (nextCanvasEvents.length > 0) {
+            const existingEvents = Array.isArray(timeAdvancedChar.recentCanvasEvents)
+                ? timeAdvancedChar.recentCanvasEvents
+                : [];
+            const mergedMap = new Map<string, any>();
+            [...existingEvents, ...nextCanvasEvents].forEach(ev => {
+                if (ev?.id) mergedMap.set(ev.id, ev);
+            });
+            timeAdvancedChar.recentCanvasEvents = Array.from(mergedMap.values()).slice(-12);
+        }
         condensedLogs.forEach((sysLog, idx) => {
             setTimeout(() => addToLog(sysLog), idx * 100);
         });

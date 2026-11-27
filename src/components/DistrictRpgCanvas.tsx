@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, CityTier, Item } from '../types';
 import { CanvasCharacterHud } from './CanvasCharacterHud';
+import { CanvasVisualEvent, drawCanvasSpeechBubble } from '../utils/canvasEventVisualizer';
 import { SHOP_INVENTORY, NATION_SPECIFIC_ITEMS, getCityScroll } from '../ItemData';
 import {
     getCachedCityAssetImage,
@@ -698,6 +699,25 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
     }, [activeBuildingId, namePool, royalCourtNames, city, nation, region, character.currentDate, character.lastInnWandererDate, backAlleyTargets, makeNpc]);
 
     const currentNpcs = activeBuildingId ? interiorNpcs : streetNpcs;
+    const districtEvents = useMemo<CanvasVisualEvent[]>(
+        () => ((character.recentCanvasEvents || []) as CanvasVisualEvent[]).filter(e => e?.domain === 'district'),
+        [character.recentCanvasEvents]
+    );
+    const districtEventsRef = useRef<CanvasVisualEvent[]>(districtEvents);
+    districtEventsRef.current = districtEvents;
+    const [showDistrictEventDrawer, setShowDistrictEventDrawer] = useState(false);
+    const districtVisualUntilRef = useRef<number>(0);
+    const seenDistrictEvIdsRef = useRef<Set<string>>(new Set());
+
+    useEffect(() => {
+        if (districtEvents.length === 0) return;
+        const hasFresh = districtEvents.some(ev => !seenDistrictEvIdsRef.current.has(ev.id));
+        districtEvents.forEach(ev => seenDistrictEvIdsRef.current.add(ev.id));
+        if (hasFresh) {
+            districtVisualUntilRef.current = Date.now() + 5000;
+        }
+    }, [districtEvents]);
+
     const npcsRef = useRef<DistrictNpcNode[]>(currentNpcs);
     useEffect(() => {
         npcsRef.current = currentNpcs.map(n => ({ ...n }));
@@ -1801,6 +1821,40 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
                     ctx.fillRect(0, 0, mapW, mapH);
                 }
 
+                // 추모비 촛불/반딧불 파티클 & 구역 TimeEngine 소문·시세 말풍선
+                if (!activeBuildingId && memorialGraves.length > 0 && district === 'Residential') {
+                    const latestGrave = memorialGraves[memorialGraves.length - 1];
+                    const gx = latestGrave.tx * CITY_TILE_SIZE + CITY_TILE_SIZE / 2;
+                    const gy = latestGrave.ty * CITY_TILE_SIZE + CITY_TILE_SIZE / 2;
+                    const tNow = Date.now() / 600;
+                    ctx.save();
+                    for (let gi = 0; gi < 4; gi++) {
+                        const fx = gx + Math.sin(tNow + gi * 1.7) * 14;
+                        const fy = gy - 12 + Math.cos(tNow * 1.3 + gi) * 8;
+                        ctx.fillStyle = 'rgba(253, 224, 71, 0.72)';
+                        ctx.fillRect(Math.round(fx), Math.round(fy), 2.5, 2.5);
+                    }
+                    ctx.restore();
+                }
+
+                const curDistrictEvents = districtEventsRef.current;
+                if (districtVisualUntilRef.current > Date.now() && curDistrictEvents.length > 0 && npcsRef.current.length > 0) {
+                    const topEv = curDistrictEvents[0];
+                    const targetNpc =
+                        npcsRef.current.find(n => topEv.actorName && n.name === topEv.actorName) ||
+                        npcsRef.current[0];
+                    if (targetNpc) {
+                        drawCanvasSpeechBubble(
+                            ctx,
+                            targetNpc.px,
+                            targetNpc.py,
+                            topEv.emoji,
+                            topEv.bubbleText || topEv.title,
+                            topEv.tone
+                        );
+                    }
+                }
+
                 ctx.restore();
             }
 
@@ -1891,6 +1945,45 @@ const DistrictRpgCanvas: React.FC<DistrictRpgCanvasProps> = ({
                     >
                         [Space / 터치] {nearbyLabel}
                     </button>
+                </div>
+            )}
+
+            {districtEvents.length > 0 && !selectedNpc && (
+                <div className="absolute top-3 right-3 z-20">
+                    <button
+                        type="button"
+                        onClick={() => setShowDistrictEventDrawer(v => !v)}
+                        className="px-2.5 py-1 rounded-xl bg-slate-950/90 hover:bg-slate-900 border border-purple-500/50 text-purple-200 text-[11px] font-black shadow-lg"
+                    >
+                        💬 구역 소식 ({districtEvents.length})
+                    </button>
+                </div>
+            )}
+
+            {showDistrictEventDrawer && districtEvents.length > 0 && (
+                <div className="absolute top-12 right-3 z-30 w-80 max-w-[90vw] bg-slate-950/95 border border-slate-700 rounded-2xl p-3 shadow-2xl space-y-2 backdrop-blur-md">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                        <span className="text-xs font-black text-purple-300">💬 최근 구역 · 소문 소식</span>
+                        <button
+                            type="button"
+                            onClick={() => setShowDistrictEventDrawer(false)}
+                            className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300"
+                        >
+                            닫기
+                        </button>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                        {districtEvents.map(ev => (
+                            <div key={ev.id} className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] space-y-0.5">
+                                <div className="flex items-center gap-1.5 font-bold text-white">
+                                    <span>{ev.emoji}</span>
+                                    <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[9px] text-purple-300">{ev.badge}</span>
+                                    <span className="truncate">{ev.title}</span>
+                                </div>
+                                <p className="text-[10px] text-slate-300 leading-snug">{ev.description}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 

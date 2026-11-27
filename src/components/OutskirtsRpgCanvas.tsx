@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, Enemy } from '../types';
 import { CanvasCharacterHud } from './CanvasCharacterHud';
+import { CanvasVisualEvent, drawCanvasSpeechBubble, getSeasonFromDate } from '../utils/canvasEventVisualizer';
 import {
     getHuntBandsForLocation,
     getMonsterInfo,
@@ -229,6 +230,31 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
             color: DIFFICULTY_COLORS[idx % DIFFICULTY_COLORS.length]
         }));
     }, [nation, region, city]);
+
+    const [showExploreEventDrawer, setShowExploreEventDrawer] = useState(false);
+
+    const exploreEvents = useMemo<CanvasVisualEvent[]>(
+        () => ((character.recentCanvasEvents || []) as CanvasVisualEvent[]).filter(e => e?.domain === 'explore'),
+        [character.recentCanvasEvents]
+    );
+    const exploreEventsRef = useRef<CanvasVisualEvent[]>(exploreEvents);
+    exploreEventsRef.current = exploreEvents;
+    const hasPendingAmbushRef = useRef<boolean>(false);
+    hasPendingAmbushRef.current = Boolean(character.pendingAmbush);
+    const currentDateRef = useRef<string | undefined>(character.currentDate);
+    currentDateRef.current = character.currentDate;
+    const exploreVisualUntilRef = useRef<number>(0);
+    const seenExploreEvIdsRef = useRef<Set<string>>(new Set());
+    const seasonParticlesRef = useRef<{ x: number; y: number; vx: number; vy: number }[] | null>(null);
+
+    useEffect(() => {
+        if (exploreEvents.length === 0) return;
+        const hasFresh = exploreEvents.some(ev => !seenExploreEvIdsRef.current.has(ev.id));
+        exploreEvents.forEach(ev => seenExploreEvIdsRef.current.add(ev.id));
+        if (hasFresh) {
+            exploreVisualUntilRef.current = Date.now() + 5000;
+        }
+    }, [exploreEvents]);
 
     const activeZoneIndex = useMemo(
         () => (activeZone ? zones.findIndex(z => z.zone.id === activeZone.zone.id) : -1),
@@ -1152,6 +1178,48 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
                     ctx.fillRect(0, 0, mapW, mapH);
                 }
 
+                // 계절 파티클 25개 풀링 + 외곽 위협 말풍선
+                const season = getSeasonFromDate(currentDateRef.current);
+                if (!seasonParticlesRef.current) {
+                    seasonParticlesRef.current = Array.from({ length: 25 }, () => ({
+                        x: Math.random() * mapW,
+                        y: Math.random() * mapH,
+                        vx: season === 'autumn' ? 14 + Math.random() * 14 : (Math.random() - 0.5) * 14,
+                        vy: season === 'summer' ? (Math.random() - 0.5) * 10 : 18 + Math.random() * 16
+                    }));
+                }
+                const sColor =
+                    season === 'spring'
+                        ? 'rgba(251, 207, 232, 0.72)'
+                        : season === 'summer'
+                            ? 'rgba(253, 224, 71, 0.7)'
+                            : season === 'autumn'
+                                ? 'rgba(251, 146, 60, 0.75)'
+                                : 'rgba(226, 232, 240, 0.8)';
+                ctx.save();
+                ctx.fillStyle = sColor;
+                const sp = seasonParticlesRef.current;
+                for (let si = 0; si < sp.length; si++) {
+                    const pt = sp[si];
+                    pt.x = (pt.x + pt.vx * dt + mapW) % mapW;
+                    pt.y = (pt.y + pt.vy * dt + mapH) % mapH;
+                    ctx.fillRect(Math.round(pt.x), Math.round(pt.y), season === 'summer' ? 2.5 : 3, 3);
+                }
+                ctx.restore();
+
+                const curExploreEvents = exploreEventsRef.current;
+                if ((exploreVisualUntilRef.current > Date.now() && curExploreEvents.length > 0) || hasPendingAmbushRef.current) {
+                    const topEv = curExploreEvents[0];
+                    drawCanvasSpeechBubble(
+                        ctx,
+                        p.x,
+                        p.y,
+                        topEv?.emoji || '⚡',
+                        topEv?.bubbleText || '주변에 강적의 기척이!',
+                        topEv?.tone || 'warning'
+                    );
+                }
+
                 ctx.restore();
             }
 
@@ -1253,6 +1321,45 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
                     >
                         [Space / 터치] {nearbyLabel}
                     </button>
+                </div>
+            )}
+
+            {exploreEvents.length > 0 && !selectedZone && !activeZone && (
+                <div className="absolute top-3 right-3 z-20">
+                    <button
+                        type="button"
+                        onClick={() => setShowExploreEventDrawer(v => !v)}
+                        className="px-2.5 py-1 rounded-xl bg-slate-950/90 hover:bg-slate-900 border border-amber-500/50 text-amber-200 text-[11px] font-black shadow-lg"
+                    >
+                        ⚡ 외곽 경보 ({exploreEvents.length})
+                    </button>
+                </div>
+            )}
+
+            {showExploreEventDrawer && exploreEvents.length > 0 && (
+                <div className="absolute top-12 right-3 z-30 w-80 max-w-[90vw] bg-slate-950/95 border border-slate-700 rounded-2xl p-3 shadow-2xl space-y-2 backdrop-blur-md">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                        <span className="text-xs font-black text-amber-300">⚡ 외곽 위험 · 라이벌 경보</span>
+                        <button
+                            type="button"
+                            onClick={() => setShowExploreEventDrawer(false)}
+                            className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300"
+                        >
+                            닫기
+                        </button>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                        {exploreEvents.map(ev => (
+                            <div key={ev.id} className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] space-y-0.5">
+                                <div className="flex items-center gap-1.5 font-bold text-white">
+                                    <span>{ev.emoji}</span>
+                                    <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[9px] text-amber-300">{ev.badge}</span>
+                                    <span className="truncate">{ev.title}</span>
+                                </div>
+                                <p className="text-[10px] text-slate-300 leading-snug">{ev.description}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 

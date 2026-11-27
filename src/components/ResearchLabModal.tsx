@@ -11,6 +11,7 @@ import {
     AlertTriangle, RefreshCw, Trash2, FlaskConical, Award, ArrowUpCircle, UserCheck, ChevronRight, Sliders, HelpCircle, User
 } from 'lucide-react';
 import { SkillCraftHelpModal } from './SkillCraftHelpModal';
+import BondSkillBookModal from './BondSkillBookModal';
 import { getSkillTierRank } from './CombatVFX';
 import { 
     calculateTotalLabLevel, calculateResearcherBonus, getResearcherRankTitle, 
@@ -41,7 +42,7 @@ const GRADIENT_PRESETS = [
 
 import { RPG_SKILL_ICONS as BASE_ICONS } from '../services/rpgIconService';
 
-export type LabTab = 'research' | 'limit_break' | 'forget' | 'researchers';
+export type LabTab = 'research' | 'limit_break' | 'forget' | 'researchers' | 'bond_skill';
 
 interface Props {
     isOpen: boolean;
@@ -83,6 +84,7 @@ export const ResearchLabModal: React.FC<Props> = ({
     const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
     const [skillToForget, setSkillToForget] = useState<any>(null);
     const [showCraftHelp, setShowCraftHelp] = useState(false);
+    const [bondTargetCompanion, setBondTargetCompanion] = useState<Companion | null>(null);
     const [resultData, setResultData] = useState<ResultData | null>(null);
     const [researchCount, setResearchCount] = useState<number>(1); // 연마 횟수 (1~10회)
     const [processingProgress, setProcessingProgress] = useState<number>(0);
@@ -705,6 +707,17 @@ export const ResearchLabModal: React.FC<Props> = ({
                         <FlaskConical size={14} className="text-cyan-400" />
                         <span>연구원 관리</span>
                     </button>
+                    <button
+                        onClick={() => setActiveTab('bond_skill')}
+                        className={`px-3 py-2.5 font-bold text-xs sm:text-sm border-b-2 flex items-center gap-1.5 shrink-0 transition-colors ${
+                            activeTab === 'bond_skill'
+                                ? 'border-pink-500 text-pink-300 bg-pink-950/30'
+                                : 'border-transparent text-slate-400 hover:text-slate-200'
+                        }`}
+                    >
+                        <Heart size={14} className="text-pink-400" />
+                        <span>인연 스킬 연구</span>
+                    </button>
                 </div>
 
                 {/* Toast Notification Alert */}
@@ -731,6 +744,62 @@ export const ResearchLabModal: React.FC<Props> = ({
 
                 {/* 4. Tab Content Area */}
                 <div className="flex-1 overflow-hidden flex flex-col p-2.5 sm:p-5">
+                    {activeTab === 'bond_skill' && (
+                        <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-1">
+                            <div className="p-3.5 rounded-xl bg-gradient-to-r from-pink-950/50 via-purple-950/40 to-slate-900 border border-pink-500/40">
+                                <h3 className="text-sm font-black text-pink-200 flex items-center gap-2">
+                                    <Heart size={16} className="text-pink-400" />
+                                    인연(유대) 스킬 연구실
+                                </h3>
+                                <p className="text-xs text-slate-300 mt-1">
+                                    깊은 유대를 맺은 동료를 선택해 두 인연의 스킬을 융합하고 연계기 합동 훈련을 진행하세요.
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                {[...(character.companions || []), ...(character.inactiveCompanions || [])]
+                                    .filter(c => c && !c.isDead && !c.isPurged)
+                                    .map(comp => {
+                                        const bondCount = (character.bondSkills || []).filter(
+                                            bs => bs.partnerId === comp.id || (bs as any).sourceId === comp.id
+                                        ).length;
+                                        return (
+                                            <button
+                                                key={comp.id}
+                                                type="button"
+                                                onClick={() => setBondTargetCompanion(comp)}
+                                                className="p-3 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700 hover:border-pink-400/70 text-left transition-all flex items-center justify-between gap-2.5 group"
+                                            >
+                                                <div className="flex items-center gap-2.5 min-w-0">
+                                                    {comp.visualUrl ? (
+                                                        <img
+                                                            src={comp.visualUrl}
+                                                            alt={comp.name}
+                                                            className="w-11 h-11 rounded-xl object-cover border border-pink-500/40 shrink-0"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-11 h-11 rounded-xl bg-pink-950/50 border border-pink-500/40 flex items-center justify-center text-pink-300 shrink-0">
+                                                            <User size={18} />
+                                                        </div>
+                                                    )}
+                                                    <div className="min-w-0">
+                                                        <div className="text-xs font-black text-white truncate group-hover:text-pink-300">
+                                                            {comp.name}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400 truncate">
+                                                            Lv.{comp.level} · 호감도 {comp.affection || 0}
+                                                        </div>
+                                                        <div className="text-[10px] text-pink-300 font-bold mt-0.5">
+                                                            보유 인연 스킬 {bondCount}개
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <ChevronRight size={16} className="text-slate-500 group-hover:text-pink-400 shrink-0" />
+                                            </button>
+                                        );
+                                    })}
+                            </div>
+                        </div>
+                    )}
                     
                     {/* Tier Filters for list-based tabs (Research & Limit Break) */}
                     {(activeTab === 'research' || activeTab === 'limit_break') && (
@@ -1426,6 +1495,15 @@ export const ResearchLabModal: React.FC<Props> = ({
                     <ActionResultModal
                         data={resultData}
                         onClose={() => setResultData(null)}
+                    />
+                )}
+
+                {bondTargetCompanion && (
+                    <BondSkillBookModal
+                        character={character}
+                        companion={bondTargetCompanion}
+                        onClose={() => setBondTargetCompanion(null)}
+                        onUpdateCharacter={onUpdateCharacter}
                     />
                 )}
 

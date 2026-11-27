@@ -23,6 +23,7 @@ import { NATION_THEMES, HUNT_LEVEL_BANDS, getMonsterPoolForBand } from '../monst
 
 import { INSTANT_DUNGEON_BOSS_TEMPLATES, generateInstantDungeonBoss } from '../data/instantDungeonBoss';
 import { INSTANT_DUNGEON_MONSTER_TEMPLATES, generateInstantDungeonMonster } from '../data/instantDungeonMonster';
+import { parseTimeEngineLogsToCanvasEvents } from '../utils/canvasEventVisualizer';
 import { checkAndGenerateMonthlyWorldNews } from './worldNewsService';
 import { generateBlackMarketInventory } from '../ItemData';
 import { resolveIncidentConflicts, registerAmbush } from './incidentQueue';
@@ -431,10 +432,18 @@ export const processTimeSkip = (character: Character, days: number): TimeSkipRes
         };
     }
 
+    const condensedLogs = condenseSystemLogs(allSystemLogs, days);
+    const visualEvents = parseTimeEngineLogsToCanvasEvents(
+        condensedLogs,
+        worldNews,
+        consolidatedReport,
+        currentChar.currentDate
+    );
+
     return {
         updatedCharacter: currentChar,
-        systemLogs: condenseSystemLogs(allSystemLogs, days),
-        triggeredEvents: [],
+        systemLogs: condensedLogs,
+        triggeredEvents: visualEvents,
         dailyReport: consolidatedReport,
         worldNews: worldNews.length > 0 ? worldNews : undefined
     };

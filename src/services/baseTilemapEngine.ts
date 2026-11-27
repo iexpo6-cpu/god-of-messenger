@@ -955,6 +955,10 @@ export const generateBaseTilemap = (character: Character): BaseTilemapData => {
                 assignedLoc.facLabel.includes('병영') ||
                 assignedLoc.facLabel.includes('감시') ||
                 assignedLoc.facLabel.includes('방어'));
+        // 활동 시간대(!isRestHours)에는 시설 담당자가 해당 시설 내부에만 머무르도록 기지 외부 마당 스폰에서 제외 (경비/방어 초소 제외)
+        if (!isRestHours && assignedLoc && !isGuardOrMilitary) {
+            return;
+        }
         // 휴식/수면 시간대(18:00~08:59)에는 숙소에 귀가한 거주민은 기지 밖 마당에 보이지 않음 (경비·초소 근무 등 일부만 외부에 남음)
         if (isRestHours && housingNodes.length > 0 && !isGuardOrMilitary) {
             const hasAssignedHouse = Boolean(houseAssigns[comp.id]);

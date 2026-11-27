@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { BaseDecorationItem, Character, FacilityInstance, JobType } from '../types';
 import { CanvasCharacterHud } from './CanvasCharacterHud';
+import { CanvasVisualEvent } from '../utils/canvasEventVisualizer';
 import { FACILITIES_INFO, FACILITY_CONSTRUCTION_COSTS, FACILITY_UPGRADE_CONFIG } from '../constants';
 import {
     BASE_DECORATION_CATALOG,
@@ -149,9 +150,25 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
     const [nearbyLabel, setNearbyLabel] = useState<string | null>(null);
     const [showMinimap, setShowMinimap] = useState(true);
     const [showWarpList, setShowWarpList] = useState(false);
+    const [showBaseEventDrawer, setShowBaseEventDrawer] = useState(false);
+
+    const baseEvents = useMemo<CanvasVisualEvent[]>(
+        () => ((character.recentCanvasEvents || []) as CanvasVisualEvent[]).filter(e => e?.domain === 'base'),
+        [character.recentCanvasEvents]
+    );
+    const baseVisualQueueRef = useRef<
+        { x: number; y: number; text: string; color: string; border: string; expiresAt: number; floatUp: boolean }[]
+    >([]);
+    const baseEventParticlesRef = useRef<
+        { x: number; y: number; vx: number; vy: number; color: string; life: number; maxLife: number }[]
+    >([]);
+    const seenBaseEventIdsRef = useRef<Set<string>>(new Set());
+    const hasPendingAttackRef = useRef<boolean>(false);
+    hasPendingAttackRef.current = Boolean(character.pendingBaseAttackEvent);
 
     const base = character.base;
     const loc = base?.location || character.currentLocation || { region: '아시아', nation: '대한민국', city: '서울' };
+    const mapHourBucket = Math.floor((parseInt((character.currentTime || '12:00').split(':')[0] || '12', 10) || 12) / 4);
     const mapData = useMemo(
         () => generateBaseTilemap(character),
         [
@@ -173,15 +190,14 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             base?.houseAssignments,
             base?.dispatched,
             base?.combatTraining,
-            character.companions,
-            character.inactiveCompanions,
-            character.mercenaryData?.groupMissions,
-            character.currentLocation,
+            character.companions?.length,
+            character.inactiveCompanions?.length,
+            character.mercenaryData?.groupMissions?.length,
+            character.currentLocation?.city,
             character.currentDate,
-            character.currentTime,
+            mapHourBucket,
             character.level,
-            character.classTier,
-            character.skills
+            character.classTier
         ]
     );
     const baseLevel = mapData.baseLevel;
@@ -240,6 +256,86 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
 
     const residentsRef = useRef<BaseResidentEntity[]>(mapData.residents);
     const monstersRef = useRef<BaseFarmMonsterEntity[]>(mapData.farmMonsters);
+    const mapFacilitiesRef = useRef(mapData.facilities);
+    mapFacilitiesRef.current = mapData.facilities;
+
+    const enqueueBaseVisualEvents = useCallback(
+        (evList: CanvasVisualEvent[], forceReplay = false) => {
+            if (!evList || evList.length === 0) return;
+            const nowMs = Date.now();
+            const toneColors: Record<string, { color: string; border: string }> = {
+                positive: { color: 'rgba(6, 78, 59, 0.94)', border: '#34d399' },
+                negative: { color: 'rgba(136, 19, 55, 0.94)', border: '#fb7185' },
+                warning: { color: 'rgba(120, 53, 15, 0.95)', border: '#fbbf24' },
+                special: { color: 'rgba(49, 46, 129, 0.94)', border: '#a78bfa' },
+                neutral: { color: 'rgba(15, 23, 42, 0.92)', border: '#38bdf8' }
+            };
+            const facs = mapFacilitiesRef.current || [];
+            const hqFac = facs[0];
+            const defaultX = hqFac ? (hqFac.tileX + hqFac.tileW / 2) * BASE_TILE_SIZE : 400;
+            const defaultY = hqFac ? (hqFac.tileY + hqFac.tileH / 2) * BASE_TILE_SIZE : 400;
+
+            for (const ev of evList) {
+                if (!forceReplay && seenBaseEventIdsRef.current.has(ev.id)) continue;
+                seenBaseEventIdsRef.current.add(ev.id);
+                if (baseVisualQueueRef.current.length >= 12) break;
+
+                let tx = defaultX;
+                let ty = defaultY;
+                let floatUp = false;
+
+                if (ev.actorName) {
+                    const matchedRes = residentsRef.current.find(r => r.name === ev.actorName);
+                    if (matchedRes) {
+                        tx = matchedRes.px;
+                        ty = matchedRes.py;
+                    }
+                } else if (ev.facilityType) {
+                    const matchedFac = facs.find(f => f.type === ev.facilityType || f.type.includes(ev.facilityType!));
+                    if (matchedFac) {
+                        tx = (matchedFac.tileX + matchedFac.tileW / 2) * BASE_TILE_SIZE;
+                        ty = (matchedFac.tileY + matchedFac.tileH / 2) * BASE_TILE_SIZE;
+                        floatUp = true;
+                    }
+                } else if (ev.kind === 'base_harvest' || ev.kind === 'base_build_complete') {
+                    floatUp = true;
+                }
+
+                const pal = toneColors[ev.tone] || toneColors.neutral;
+                baseVisualQueueRef.current.push({
+                    x: tx,
+                    y: ty,
+                    text: (ev.floatingText || ev.bubbleText || `${ev.emoji} ${ev.title}`).slice(0, 22),
+                    color: pal.color,
+                    border: pal.border,
+                    expiresAt: nowMs + 4500,
+                    floatUp
+                });
+
+                if (baseEventParticlesRef.current.length < 25) {
+                    const pCount = Math.min(4, 25 - baseEventParticlesRef.current.length);
+                    for (let pi = 0; pi < pCount; pi++) {
+                        baseEventParticlesRef.current.push({
+                            x: tx + (Math.random() - 0.5) * 20,
+                            y: ty - 16,
+                            vx: (Math.random() - 0.5) * 32,
+                            vy: -18 - Math.random() * 24,
+                            color: pal.border,
+                            life: 0,
+                            maxLife: 1.4
+                        });
+                    }
+                }
+            }
+        },
+        []
+    );
+
+    useEffect(() => {
+        if (baseEvents.length > 0) {
+            enqueueBaseVisualEvents(baseEvents, false);
+        }
+    }, [baseEvents, enqueueBaseVisualEvents]);
     const hoverTileRef = useRef<{ x: number; y: number } | null>(null);
     const hoverWorldRef = useRef<{ wx: number; wy: number } | null>(null);
     const prevNearbyLabelRef = useRef<string | null>(null);
@@ -413,6 +509,25 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
     }, [character.companions, character.inactiveCompanions, character.socialNetwork]);
     const playerLoverKeysRef = useRef(playerLoverKeys);
     playerLoverKeysRef.current = playerLoverKeys;
+
+    const companionPartnerMap = useMemo(() => {
+        const map = new Map<string, string>();
+        const all = [...(character.companions || []), ...(character.inactiveCompanions || [])];
+        all.forEach((c: any) => {
+            if (!c?.id || !c.relations) return;
+            for (const [targetId, rel] of Object.entries<any>(c.relations)) {
+                if (targetId === 'player') continue;
+                if (rel?.type === 'Lover' || rel?.type === 'Spouse' || rel?.type === '연인' || rel?.type === '배우자') {
+                    map.set(c.id, targetId);
+                    map.set(targetId, c.id);
+                    break;
+                }
+            }
+        });
+        return map;
+    }, [character.companions, character.inactiveCompanions]);
+    const companionPartnerMapRef = useRef(companionPartnerMap);
+    companionPartnerMapRef.current = companionPartnerMap;
 
     useEffect(() => {
         mapDataVersionRef.current += 1;
@@ -1503,11 +1618,19 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                         }
                     }
                 } else if (r.wanderTimer <= 0) {
-                    r.wanderTimer = 2.4 + Math.random() * 3.5;
-                    const angle = Math.random() * Math.PI * 2;
-                    const radius = 20 + Math.random() * 52;
-                    r.targetPx = r.homePx + Math.cos(angle) * radius;
-                    r.targetPy = r.homePy + Math.sin(angle) * radius;
+                    const partnerId = companionPartnerMapRef.current.get(r.id);
+                    const partnerRes = partnerId ? resList.find(p2 => p2.id === partnerId) : undefined;
+                    if (partnerRes && Math.random() < 0.8) {
+                        r.wanderTimer = 1.6 + Math.random() * 1.8;
+                        r.targetPx = partnerRes.px + (Math.random() - 0.5) * 32;
+                        r.targetPy = partnerRes.py + (Math.random() - 0.5) * 28;
+                    } else {
+                        r.wanderTimer = 2.4 + Math.random() * 3.5;
+                        const angle = Math.random() * Math.PI * 2;
+                        const radius = 20 + Math.random() * 52;
+                        r.targetPx = r.homePx + Math.cos(angle) * radius;
+                        r.targetPy = r.homePy + Math.sin(angle) * radius;
+                    }
                 }
             }
 
@@ -2261,9 +2384,19 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                     }
 
                     if (a.isLover) {
-                        ctx.font = '12px sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText('💕', px, py - (a.bubble ? 66 : 48) + heartBob);
+                        const heartSprite = getCachedBadgeSprite(
+                            'lover_heart',
+                            '12px sans-serif',
+                            '💕',
+                            18,
+                            4,
+                            16,
+                            'rgba(0,0,0,0)',
+                            null,
+                            '#f472b6',
+                            13
+                        );
+                        ctx.drawImage(heartSprite, Math.round(px - heartSprite.width / 2), Math.round(py - (a.bubble ? 79 : 61) + heartBob));
                     }
 
                     if (a.showNameplate) {
@@ -2307,6 +2440,52 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                     }
                 }
 
+                // 5.5 Pooled TimeEngine Event Visuals (max 12 badges, max 25 particles, cached sprite)
+                const evQueue = baseVisualQueueRef.current;
+                if (evQueue.length > 0) {
+                    const nowMs = Date.now();
+                    for (let ei = evQueue.length - 1; ei >= 0; ei--) {
+                        const ev = evQueue[ei];
+                        if (nowMs >= ev.expiresAt) {
+                            evQueue.splice(ei, 1);
+                            continue;
+                        }
+                        if (ev.x < vMinX - 80 || ev.x > vMaxX + 80 || ev.y < vMinY - 80 || ev.y > vMaxY + 80) continue;
+                        const progress = Math.max(0, Math.min(1, 1 - (ev.expiresAt - nowMs) / 4500));
+                        const dyOffset = ev.floatUp ? -Math.round(progress * 26) : Math.round(Math.sin(nowMs / 180) * 2.5);
+                        const evSprite = getCachedBadgeSprite(
+                            `bev:${ev.text}:${ev.border}`,
+                            'bold 10px sans-serif',
+                            ev.text,
+                            68,
+                            14,
+                            18,
+                            ev.color,
+                            ev.border,
+                            '#f8fafc',
+                            13
+                        );
+                        ctx.drawImage(evSprite, Math.round(ev.x - evSprite.width / 2), Math.round(ev.y - 62 + dyOffset));
+                    }
+                }
+                const evParts = baseEventParticlesRef.current;
+                if (evParts.length > 0) {
+                    for (let pi = evParts.length - 1; pi >= 0; pi--) {
+                        const pt = evParts[pi];
+                        pt.life += dt;
+                        if (pt.life >= pt.maxLife) {
+                            evParts.splice(pi, 1);
+                            continue;
+                        }
+                        pt.x += pt.vx * dt;
+                        pt.y += pt.vy * dt;
+                        ctx.globalAlpha = Math.max(0, 1 - pt.life / pt.maxLife);
+                        ctx.fillStyle = pt.color;
+                        ctx.fillRect(Math.round(pt.x), Math.round(pt.y), 3, 3);
+                    }
+                    ctx.globalAlpha = 1;
+                }
+
                 ctx.restore();
 
                 if (timeOfDay.period === 'night' || timeOfDay.period === 'dawn') {
@@ -2335,6 +2514,16 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                 } else if (timeOfDay.period === 'sunset') {
                     ctx.fillStyle = 'rgba(190, 60, 40, 0.14)';
                     ctx.fillRect(0, 0, curViewport.w, curViewport.h);
+                }
+
+                if (hasPendingAttackRef.current) {
+                    const pulse = 0.25 + Math.abs(Math.sin(Date.now() / 320)) * 0.35;
+                    ctx.save();
+                    ctx.globalAlpha = pulse;
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 6;
+                    ctx.strokeRect(3, 3, curViewport.w - 6, curViewport.h - 6);
+                    ctx.restore();
                 }
             }
 
@@ -2649,8 +2838,53 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                     >
                         <DoorOpen size={13} /> 도시로
                     </button>
+                    {baseEvents.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setShowBaseEventDrawer(v => !v)}
+                            className="px-2.5 py-1.5 rounded-xl text-xs font-black bg-rose-900/90 hover:bg-rose-800 border border-rose-400/60 text-rose-100 flex items-center gap-1 shadow-lg animate-pulse"
+                        >
+                            <span>🔔 기지 소식 ({baseEvents.length})</span>
+                        </button>
+                    )}
                 </div>
             </div>
+
+            {showBaseEventDrawer && baseEvents.length > 0 && (
+                <div className="absolute top-16 right-4 z-30 w-80 max-w-[90vw] bg-slate-950/95 border border-slate-700 rounded-2xl p-3 shadow-2xl space-y-2 backdrop-blur-md">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                        <span className="text-xs font-black text-amber-300">🔔 최근 기지 이벤트 ({baseEvents.length})</span>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onClick={() => enqueueBaseVisualEvents(baseEvents, true)}
+                                className="px-2 py-0.5 rounded bg-indigo-700 hover:bg-indigo-600 text-[10px] font-bold text-white"
+                            >
+                                연출 다시보기
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowBaseEventDrawer(false)}
+                                className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-[10px] font-bold text-slate-300"
+                            >
+                                닫기
+                            </button>
+                        </div>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                        {baseEvents.map(ev => (
+                            <div key={ev.id} className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] space-y-0.5">
+                                <div className="flex items-center gap-1.5 font-bold text-white">
+                                    <span>{ev.emoji}</span>
+                                    <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[9px] text-amber-300">{ev.badge}</span>
+                                    <span className="truncate">{ev.title}</span>
+                                </div>
+                                <p className="text-[10px] text-slate-300 leading-snug">{ev.description}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Facility Quick-Warp Dropdown */}
             {showWarpList && (
