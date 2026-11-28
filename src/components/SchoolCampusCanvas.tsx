@@ -2556,6 +2556,9 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                     ? parseInt(roleGradeMatch[1], 10)
                                                     : (activeDormRoom?.grade || newChar.schoolData?.grade || 1);
                                                 const expectedAge = sourcePerson?.age || (activeDialogue.isTeacher ? '32세' : `${tierBaseAge + resolvedGrade}세`);
+                                                const curYearNum = parseInt((character.currentDate || '2000-01-01').split('-')[0], 10) || 2000;
+                                                const parsedAgeNum = parseInt(String(expectedAge).replace(/[^0-9]/g, ''), 10) || (activeDialogue.isTeacher ? 32 : tierBaseAge + resolvedGrade);
+                                                const expectedBirthYear = sourcePerson?.birthYear || (curYearNum - parsedAgeNum);
                                                 const expectedGender = sourcePerson?.gender || (activeDialogue.gender === 'male' ? '남성' : '여성');
                                                 const expectedClassType = sourcePerson?.classType || (activeDialogue.isTeacher ? '교사' : JobType.STUDENT);
                                                 const expectedVisual = sourcePerson?.visualUrl || resolveNpcVisual(npcId, activeDialogue.name, expectedGender === '남성' ? 'male' : 'female', activeDialogue.isTeacher);
@@ -2565,6 +2568,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                         id: sourcePerson?.id || npcId,
                                                         name: activeDialogue.name,
                                                         age: expectedAge,
+                                                        birthYear: expectedBirthYear,
                                                         gender: expectedGender,
                                                         race: sourcePerson?.race || character.race || '인간',
                                                         nation: sourcePerson?.nation || nation,
@@ -2585,6 +2589,7 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                     ex.affection = finalAff;
                                                     ex.isPastConnection = true;
                                                     ex.age = expectedAge;
+                                                    if (!ex.birthYear) ex.birthYear = expectedBirthYear;
                                                     ex.gender = expectedGender;
                                                     ex.classType = expectedClassType;
                                                     ex.visualUrl = expectedVisual;
