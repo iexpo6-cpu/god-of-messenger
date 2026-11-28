@@ -156,6 +156,7 @@ import {
 
 export interface Bg3BattleResult {
     isVictory: boolean;
+    isRetreat?: boolean;
     turns: number;
     playerFinalHp: number;
     playerFinalMp?: number;
@@ -1119,7 +1120,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 const compStatuses: Record<string, any[]> = {};
                 nextUnits.forEach(u => {
                     if (u.sourceCompanionId) {
-                        compHps[u.sourceCompanionId] = Math.max(1, u.hp);
+                        compHps[u.sourceCompanionId] = Math.max(0, u.hp);
                         compMps[u.sourceCompanionId] = Math.max(0, u.mp);
                         compStatuses[u.sourceCompanionId] = Array.isArray((u.sourceEntity as any)?.statusEffects)
                             ? [...(u.sourceEntity as any).statusEffects]
@@ -1130,7 +1131,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     onComplete({
                         isVictory: false,
                         turns: curRound,
-                        playerFinalHp: playerUnit ? 1 : Math.max(1, character.stats.hp || 1),
+                        playerFinalHp: playerUnit ? Math.max(0, playerUnit.hp) : 0,
                         playerFinalMp: playerUnit ? Math.max(0, playerUnit.mp) : Math.max(0, character.stats.mp || 0),
                         companionFinalHps: compHps,
                         companionFinalMps: compMps,
@@ -1149,6 +1150,39 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
         },
         [onComplete]
     );
+
+    const handleLiveRetreat = useCallback(() => {
+        const curUnits = unitsRef.current;
+        const playerUnit = curUnits.find(u => u.isPlayer);
+        const compHps: Record<string, number> = {};
+        const compMps: Record<string, number> = {};
+        const compStatuses: Record<string, any[]> = {};
+        curUnits.forEach(u => {
+            if (u.sourceCompanionId) {
+                compHps[u.sourceCompanionId] = Math.max(0, u.hp);
+                compMps[u.sourceCompanionId] = Math.max(0, u.mp);
+                compStatuses[u.sourceCompanionId] = Array.isArray((u.sourceEntity as any)?.statusEffects)
+                    ? [...(u.sourceEntity as any).statusEffects]
+                    : [];
+            }
+        });
+        onComplete({
+            isVictory: false,
+            isRetreat: true,
+            turns: roundNum,
+            playerFinalHp: playerUnit ? Math.max(1, playerUnit.hp) : Math.max(1, character.stats.hp || 1),
+            playerFinalMp: playerUnit ? Math.max(0, playerUnit.mp) : Math.max(0, character.stats.mp || 0),
+            companionFinalHps: compHps,
+            companionFinalMps: compMps,
+            defeatedEnemyCount: curUnits.filter(u => u.team === 'enemy' && u.hp <= 0).length,
+            usedSkillsByUnit: usedSkillsByUnitRef.current,
+            attackCountByUnit: attackCountByUnitRef.current,
+            playerFinalStatusEffects: playerUnit && Array.isArray((playerUnit.sourceEntity as any)?.statusEffects)
+                ? [...(playerUnit.sourceEntity as any).statusEffects]
+                : [...(character.statusEffects || [])],
+            companionFinalStatusEffects: compStatuses
+        });
+    }, [onComplete, roundNum, character]);
 
     // Smooth walk / jump animation
     const animateMove = useCallback(
@@ -4037,7 +4071,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     {canFlee && onRetreat && (
                         <button
                             type="button"
-                            onClick={onRetreat}
+                            onClick={handleLiveRetreat}
                             className="p-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-400 hover:text-rose-300"
                             title="전장 후퇴 (일반 사냥 전용)"
                         >
@@ -4994,7 +5028,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                                     const roll = Math.random() * 100;
                                     if (roll < fleeChance) {
                                         pushCombatLog(`🏃 ${activeUnit.name} 도주 성공! (성공률 ${fleeChance}%)`, 'heal', roundNum);
-                                        onRetreat();
+                                        handleLiveRetreat();
                                     } else {
                                         addFloatText(activeUnit.x, activeUnit.y - 30, `❌ 도주 실패! (${fleeChance}%)`, '#f43f5e', 1.15);
                                         const failMsg = `❌ ${activeUnit.name}이(가) 도주에 실패하여 주행동을 소모했습니다! (성공률 ${fleeChance}%)`;

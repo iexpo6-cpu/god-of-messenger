@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Character, ClubType, CombatStyle, JobType, SchoolTier, SimpleStudent, WeaponType } from '../types';
+import { Character, ClubType, CombatStyle, Companion, JobType, SchoolTier, SimpleStudent, WeaponType } from '../types';
 import { drawCanvasNightOverlay, isNightTime } from '../utils/canvasNightOverlay';
 import { SchoolVisualEvent, parseSchooltimeLogsToVisualEvents, drawSchoolCutsceneBubble } from '../utils/schoolEventVisualizer';
 import { CanvasCharacterHud } from './CanvasCharacterHud';
-import { SCHOOL_CONFIG, WEAPON_TYPE_KOREAN } from '../constants';
-import { addMasteryExp, generateDefaultVisualUrl, generateName, getWeaponTypeFromItem } from '../utils';
+import { MAX_PARTY_SIZE, SCHOOL_CONFIG, WEAPON_TYPE_KOREAN } from '../constants';
+import { addMasteryExp, calculateFinalStats, generateCompanionStats, generateDefaultVisualUrl, generateName, getWeaponTypeFromItem } from '../utils';
 import { processTimeSkip } from '../services/timeEngine';
 import { calculateLiveSchoolRank } from '../services/SchooltimeEngine';
 import { ensureHomeroomTeacher } from '../services/schoolTeacherService';
@@ -2646,6 +2646,74 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                 <Swords size={13} /> 친선 대련 신청
                                             </button>
                                         )}
+                                        {(() => {
+                                            if (activeDialogue.isTeacher) return null;
+                                            const npcId = activeDialogue.id || `campus_${activeDialogue.name}`;
+                                            const alreadyRecruited =
+                                                character.companions.some(c => c.id === npcId || c.name === activeDialogue.name) ||
+                                                (character.inactiveCompanions?.some(c => c.id === npcId || c.name === activeDialogue.name) ?? false);
+                                            if (alreadyRecruited) return null;
+                                            const snMatch = character.socialNetwork?.find(n => n.id === npcId || n.name === activeDialogue.name);
+                                            const cmMatch = character.schoolData?.classmates?.find(c => c.id === npcId || c.name === activeDialogue.name);
+                                            const curAff = Math.max(snMatch?.affection || 0, cmMatch?.affection || 0);
+                                            if (curAff < 80) return null;
+                                            const isRivalNpc = Boolean(cmMatch?.isEternalRival || snMatch?.isEternalRival);
+                                            if (isRivalNpc) return null;
+                                            return (
+                                                <button
+                                                    onClick={() => {
+                                                        if (character.companions.length >= MAX_PARTY_SIZE) {
+                                                            setCampusToast(`동료창이 가득 찼습니다! (최대 ${MAX_PARTY_SIZE}명)`);
+                                                            setTimeout(() => setCampusToast(null), 2600);
+                                                            return;
+                                                        }
+                                                        const acceptChance = Math.min(0.95, 0.55 + (curAff - 80) * 0.02);
+                                                        if (Math.random() > acceptChance) {
+                                                            setActiveDialogue(prev => prev ? { ...prev, text: `고마운 제안이지만... 지금은 아직 내 수련과 목표에 더 집중하고 싶어. 미안하지만 이번엔 정중히 거절할게.` } : null);
+                                                            setCampusToast(`${activeDialogue.name}이(가) 동료 영입 제안을 정중히 거절했습니다.`);
+                                                            setTimeout(() => setCampusToast(null), 2600);
+                                                            return;
+                                                        }
+                                                        const newChar = JSON.parse(JSON.stringify(character)) as Character;
+                                                        const src = snMatch || cmMatch;
+                                                        const lv = src?.level || activeDialogue.npcLevel || Math.max(3, character.level || 5);
+                                                        const compGender = src?.gender || (activeDialogue.gender === 'male' ? '남성' : '여성');
+                                                        const compStats = src?.stats ? { ...src.stats, maxHp: (src.stats as any).maxHp || src.stats.hp || lv * 20, mp: (src.stats as any).mp || 50, maxMp: (src.stats as any).maxMp || 50 } : generateCompanionStats(lv);
+                                                        const curYr = parseInt((character.currentDate || '2000-01-01').split('-')[0], 10) || 2000;
+                                                        const parsedAge = parseInt(String(src?.age || '18').replace(/[^0-9]/g, ''), 10) || 18;
+                                                        const newComp: Companion = {
+                                                            id: src?.id || npcId,
+                                                            name: activeDialogue.name,
+                                                            age: parsedAge,
+                                                            birthYear: src?.birthYear || (curYr - parsedAge),
+                                                            gender: compGender,
+                                                            race: src?.race || character.race || '인간',
+                                                            nation: src?.nation || nation,
+                                                            job: JobType.STUDENT,
+                                                            level: lv,
+                                                            currentExp: 0,
+                                                            maxExp: lv * 100,
+                                                            personality: src?.personality || '성실함',
+                                                            appearance: src?.appearance || '단정한 교복',
+                                                            visualUrl: src?.visualUrl || resolveNpcVisual(npcId, activeDialogue.name, compGender === '남성' ? 'male' : 'female'),
+                                                            stats: compStats as any,
+                                                            affection: curAff,
+                                                            combatStyle: src?.combatStyle || activeDialogue.combatStyle || CombatStyle.SWORDSMAN,
+                                                            skills: [],
+                                                            equipment: { weapon: null, armor: null, accessory: null },
+                                                        };
+                                                        newChar.companions = [...(newChar.companions || []), newComp];
+                                                        onUpdateCharacter(newChar, `[동료 영입] ${activeDialogue.name}이(가) 호감도(${curAff})를 바탕으로 당신의 동료로 합류했습니다!`);
+                                                        setActiveDialogue(prev => prev ? { ...prev, text: `네 제안이라면 기꺼이 함께할게! 앞으로 잘 부탁해, ${character.name}!` } : null);
+                                                        setCampusToast(`🎉 ${activeDialogue.name}이(가) 동료로 합류했습니다!`);
+                                                        setTimeout(() => setCampusToast(null), 2800);
+                                                    }}
+                                                    className="px-3 py-1.5 rounded-lg bg-emerald-900/75 hover:bg-emerald-800 border border-emerald-400/60 text-emerald-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    <UserPlus size={13} /> 동료 영입 제안 (호감도 {curAff})
+                                                </button>
+                                            );
+                                        })()}
                                     </>
                                 )}
                                 {activeDialogue.isTeacher && (
@@ -2958,9 +3026,29 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                 newChar.currentExp = (newChar.currentExp || 0) + bookSnap.expGain;
                                                 newChar.exp = (newChar.exp || 0) + bookSnap.expGain;
                                                 const timeRes = processTimeSkip(newChar, bookSnap.daysElapsed || 3);
+                                                const updatedLibChar = timeRes.updatedCharacter;
+                                                const libFin = calculateFinalStats(updatedLibChar).finalStats;
+                                                updatedLibChar.stats.hp = Math.max(updatedLibChar.stats.hp || 0, libFin.maxHp || updatedLibChar.stats.maxHp || 100);
+                                                updatedLibChar.stats.mp = Math.max(updatedLibChar.stats.mp || 0, libFin.maxMp || updatedLibChar.stats.maxMp || 50);
+                                                if (Array.isArray(updatedLibChar.companions)) {
+                                                    updatedLibChar.companions = updatedLibChar.companions.map(c => {
+                                                        const cf = calculateFinalStats(c as any).finalStats;
+                                                        return { ...c, stats: { ...c.stats, hp: Math.max(c.stats?.hp || 0, cf.maxHp || c.stats?.maxHp || 100), mp: Math.max(c.stats?.mp || 0, cf.maxMp || c.stats?.maxMp || 50) } };
+                                                    });
+                                                }
+                                                let forbiddenWarnMsg = '';
+                                                if (bookSnap.hpCost && Math.random() < 0.3) {
+                                                    if (updatedLibChar.schoolData) {
+                                                        updatedLibChar.schoolData.warnings = (updatedLibChar.schoolData.warnings || 0) + 1;
+                                                        if (updatedLibChar.schoolData.homeroomTeacher) {
+                                                            updatedLibChar.schoolData.homeroomTeacher.affection = Math.max(-100, (updatedLibChar.schoolData.homeroomTeacher.affection || 0) - 10);
+                                                        }
+                                                    }
+                                                    forbiddenWarnMsg = ' (⚠️ 금서 열람 적발: 경고 +1, 담임 호감도 -10)';
+                                                }
                                                 const libEvents = parseSchooltimeLogsToVisualEvents(timeRes.systemLogs || []);
-                                                const libGain = `CTRL +${bookSnap.ctrlGain}, ${bookSnap.statKey.toUpperCase()} +${bookSnap.statGain}, EXP +${bookSnap.expGain}`;
-                                                onUpdateCharacter(timeRes.updatedCharacter, `[도서관] '${bookSnap.title}' 정독 (${bookSnap.daysElapsed || 3}일 경과)! (${libGain})`);
+                                                const libGain = `CTRL +${bookSnap.ctrlGain}, ${bookSnap.statKey.toUpperCase()} +${bookSnap.statGain}, EXP +${bookSnap.expGain}, HP/MP 회복${forbiddenWarnMsg}`;
+                                                onUpdateCharacter(updatedLibChar, `[도서관] '${bookSnap.title}' 정독 (${bookSnap.daysElapsed || 3}일 경과)! (${libGain})`);
                                                 setActivityProgress(null);
                                                 if (libEvents.length > 0) {
                                                     setActivityEventReport({
@@ -3115,7 +3203,12 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                                 else if (subjSnap.type === 'Magic') { entity.stats.int += 2 * val; }
                                                 else if (subjSnap.type === 'Divine') { entity.stats.ctrl = (entity.stats.ctrl || 10) + 2 * val; }
                                                 else if (subjSnap.type === 'Strategy') { entity.stats.wis += 2 * val; }
-                                                else if (subjSnap.type === 'Physical') { entity.stats.def += 2 * val; }
+                                                else if (subjSnap.type === 'Physical') {
+                                                    const hpGain = 10 * val;
+                                                    entity.stats.def += 2 * val;
+                                                    entity.stats.maxHp = (entity.stats.maxHp || 100) + hpGain;
+                                                    entity.stats.hp = (entity.stats.hp || 100) + hpGain;
+                                                }
                                                 else if (subjSnap.type === 'Weapon') {
                                                     const wt = ('id' in entity) ? (entity.equipment?.weapon ? getWeaponTypeFromItem(entity.equipment.weapon) : null) : wepSnap;
                                                     if (wt) {
@@ -3126,9 +3219,15 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                                             }
                                         };
                                         applyToEntity(newChar);
+                                        const pFin = calculateFinalStats(newChar).finalStats;
+                                        newChar.stats.hp = Math.max(newChar.stats.hp || 0, pFin.maxHp || newChar.stats.maxHp || 100);
+                                        newChar.stats.mp = Math.max(newChar.stats.mp || 0, pFin.maxMp || newChar.stats.maxMp || 50);
                                         newChar.companions = (newChar.companions || []).map(c => {
                                             const nc = { ...c, stats: { ...c.stats }, weaponMastery: { ...(c.weaponMastery || {}) } };
                                             applyToEntity(nc);
+                                            const cFin = calculateFinalStats(nc as any).finalStats;
+                                            nc.stats.hp = Math.max(nc.stats.hp || 0, cFin.maxHp || nc.stats.maxHp || 100);
+                                            nc.stats.mp = Math.max(nc.stats.mp || 0, cFin.maxMp || nc.stats.maxMp || 50);
                                             return nc;
                                         });
                                         if (newChar.inactiveCompanions) {

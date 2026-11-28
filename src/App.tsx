@@ -7514,7 +7514,9 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                                             ),
                                             stats: {
                                                 ...character.stats,
-                                                hp: Math.max(1, Math.min(playerMaxHpFinal, srpgResult.playerFinalHp)),
+                                                hp: (srpgResult.isVictory || srpgResult.isRetreat)
+                                                    ? Math.max(1, Math.min(playerMaxHpFinal, srpgResult.playerFinalHp))
+                                                    : Math.max(0, Math.min(playerMaxHpFinal, srpgResult.playerFinalHp)),
                                                 mp: typeof srpgResult.playerFinalMp === 'number'
                                                     ? Math.max(0, Math.min(playerMaxMpFinal, srpgResult.playerFinalMp))
                                                     : character.stats.mp

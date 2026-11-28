@@ -430,8 +430,19 @@ const ClubModal: React.FC<Props> = ({ character, onUpdateCharacter }) => {
             newChar.clubData.activityCount += 1;
             newChar.clubData.contribution += 10;
         }
+        newChar.stats = {
+            ...newChar.stats,
+            hp: newChar.stats.maxHp || 100,
+            mp: newChar.stats.maxMp || 50
+        };
+        if (Array.isArray(newChar.companions)) {
+            newChar.companions = newChar.companions.map(c => ({
+                ...c,
+                stats: { ...c.stats, hp: c.stats?.maxHp || c.stats?.hp || 100, mp: c.stats?.maxMp || c.stats?.mp || 50 }
+            }));
+        }
 
-        onUpdateCharacter(newChar, `[동아리 활동] ${characterClub} 활동에 참여하여 하루를 보냈습니다.`);
+        onUpdateCharacter(newChar, `[동아리 활동] ${characterClub} 활동에 참여하여 하루를 보냈습니다. (HP/MP 회복)`);
         setResultData(result);
     };
 
@@ -565,10 +576,22 @@ const ClubModal: React.FC<Props> = ({ character, onUpdateCharacter }) => {
         }
         newChar.clubData.activityCount += 1;
         newChar.clubData.contribution += opt.contributionGain;
+        newChar.stats = {
+            ...newChar.stats,
+            hp: newChar.stats.maxHp || 100,
+            mp: newChar.stats.maxMp || 50
+        };
+        if (Array.isArray(newChar.companions)) {
+            newChar.companions = newChar.companions.map(c => ({
+                ...c,
+                stats: { ...c.stats, hp: c.stats?.maxHp || c.stats?.hp || 100, mp: c.stats?.maxMp || c.stats?.mp || 50 }
+            }));
+        }
         resultItems.push({ label: '동아리 기여도', after: `+${opt.contributionGain} pt` });
+        resultItems.push({ label: 'HP / MP', after: '100% 회복' });
         resultItems.push({ label: '소요 시간', after: '1일 경과' });
 
-        onUpdateCharacter(newChar, `[동아리 활동] ${characterClub} - ${opt.title} 수행 완료 (날짜: ${newChar.currentDate})`);
+        onUpdateCharacter(newChar, `[동아리 활동] ${characterClub} - ${opt.title} 수행 완료 (날짜: ${newChar.currentDate}, HP/MP 회복)`);
         
         setResultData({
             type: 'success',
