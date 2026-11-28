@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Character } from '../types';
 import { CanvasCharacterHud } from './CanvasCharacterHud';
+import { UnifiedCanvasDpad } from './UnifiedCanvasDpad';
+import { CanvasZoomControls, useCanvasZoom } from '../hooks/useCanvasZoom';
 import {
     BASE_TILE_SIZE,
     BaseFacilityNode,
@@ -529,6 +531,8 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
     });
     const keysRef = useRef<Set<string>>(new Set());
     const dpadRef = useRef<SpriteDirection | null>(null);
+    const dpadVectorRef = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
+    const { zoom: canvasZoom, zoomRef, zoomIn, zoomOut, resetZoom, pinchHandlers } = useCanvasZoom();
     const cameraRef = useRef({ x: 0, y: 0 });
     const exitCooldownRef = useRef<number>(Date.now() + 700);
 
@@ -675,8 +679,9 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
         const canvas = canvasRef.current;
         if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
-        const wx = e.clientX - rect.left + cameraRef.current.x;
-        const wy = e.clientY - rect.top + cameraRef.current.y;
+        const zoom = zoomRef.current;
+        const wx = (e.clientX - rect.left + cameraRef.current.x) / zoom;
+        const wy = (e.clientY - rect.top + cameraRef.current.y) / zoom;
 
         for (const r of residentsRef.current) {
             if (Math.hypot(wx - r.px, wy - (r.py - 14)) <= 26) {
@@ -761,6 +766,10 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
             if (keys.has('arrowright') || keys.has('d') || dpadRef.current === 'right') vx += 1;
             if (keys.has('arrowup') || keys.has('w') || dpadRef.current === 'up') vy -= 1;
             if (keys.has('arrowdown') || keys.has('s') || dpadRef.current === 'down') vy += 1;
+            if (vx === 0 && vy === 0 && (dpadVectorRef.current.vx !== 0 || dpadVectorRef.current.vy !== 0)) {
+                vx = dpadVectorRef.current.vx;
+                vy = dpadVectorRef.current.vy;
+            }
 
             const speed = 200;
             const maxStep = speed * dt;
@@ -913,14 +922,17 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
 
             const mapW = mapData.cols * BASE_TILE_SIZE;
             const mapH = mapData.rows * BASE_TILE_SIZE;
+            const zoom = zoomRef.current;
+            const scaledW = mapW * zoom;
+            const scaledH = mapH * zoom;
             const camX =
-                mapW <= viewportSize.w
-                    ? -(viewportSize.w - mapW) / 2
-                    : Math.max(0, Math.min(mapW - viewportSize.w, p.x - viewportSize.w / 2));
+                scaledW <= viewportSize.w
+                    ? -(viewportSize.w - scaledW) / 2
+                    : Math.max(0, Math.min(scaledW - viewportSize.w, p.x * zoom - viewportSize.w / 2));
             const camY =
-                mapH <= viewportSize.h
-                    ? -(viewportSize.h - mapH) / 2
-                    : Math.max(0, Math.min(mapH - viewportSize.h, p.y - viewportSize.h / 2));
+                scaledH <= viewportSize.h
+                    ? -(viewportSize.h - scaledH) / 2
+                    : Math.max(0, Math.min(scaledH - viewportSize.h, p.y * zoom - viewportSize.h / 2));
             cameraRef.current = { x: Math.round(camX), y: Math.round(camY) };
 
             const canvas = canvasRef.current;
@@ -930,6 +942,7 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
                 ctx.fillRect(0, 0, viewportSize.w, viewportSize.h);
                 ctx.save();
                 ctx.translate(-cameraRef.current.x, -cameraRef.current.y);
+                ctx.scale(zoom, zoom);
 
                 const wallColors = WALL_PALETTE[mapData.blueprint.wallTheme];
                 const floorDef = FLOOR_TILE_MAP[mapData.floorTile];
@@ -1157,13 +1170,15 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
                 width={viewportSize.w}
                 height={viewportSize.h}
                 onClick={handleCanvasClick}
+                {...pinchHandlers}
+                style={{ touchAction: 'none' }}
                 className="block w-full h-full cursor-pointer"
             />
 
             {/* Top HUD */}
             <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
                 <div className="flex flex-col gap-1.5">
-                    <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl w-fit">
+                    <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-xl w-fit">
                     <Sparkles size={16} className="text-amber-400 shrink-0" />
                     <div className="leading-tight">
                         <div className="text-xs sm:text-sm font-black text-amber-200 flex items-center gap-1.5">
@@ -1173,7 +1188,7 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
                                 실내 {mapData.cols}×{mapData.rows}
                             </span>
                         </div>
-                        <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                        <div className="hidden sm:flex text-[10px] text-slate-400 items-center gap-2 mt-0.5">
                             <span>배치 인원 {mapData.residents.length}명</span>
                             {mapData.monsters.length > 0 && <span>몬스터 {mapData.monsters.length}마리</span>}
                             <span>작업대를 클릭하거나 다가가서 [Space]를 누르세요</span>
@@ -1272,60 +1287,20 @@ const FacilityInteriorCanvas: React.FC<FacilityInteriorCanvasProps> = ({
                 </div>
             )}
 
-            {/* Mobile D-Pad */}
-            <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none">
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "up"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowUp size={22} />
-                        </button>
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "left"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowLeft size={22} />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleInteract}
-                            className="bg-amber-600/90 active:bg-amber-500 active:scale-95 border border-amber-300 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-lg"
-                        >
-                            확인
-                        </button>
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "right"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowRight size={22} />
-                        </button>
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "down"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowDown size={22} />
-                        </button>
-                        <div />
-                    </div>
+            {/* 통합 D-Pad + 카메라 줌 컨트롤 */}
+            <UnifiedCanvasDpad
+                dpadDirRef={dpadRef}
+                dpadVectorRef={dpadVectorRef}
+                onInteract={handleInteract}
+                className="bottom-4 left-4"
+            />
+            <CanvasZoomControls
+                zoom={canvasZoom}
+                onZoomIn={zoomIn}
+                onZoomOut={zoomOut}
+                onReset={resetZoom}
+                className="top-14 right-2.5 sm:top-16 sm:right-3.5"
+            />
 
             {selectedResident && (
                 <ResidentQuickCard

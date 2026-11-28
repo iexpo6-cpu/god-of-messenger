@@ -3,6 +3,8 @@ import { Character, ClubType, CombatStyle, Companion, JobType, SchoolTier, Simpl
 import { drawCanvasNightOverlay, isNightTime } from '../utils/canvasNightOverlay';
 import { SchoolVisualEvent, parseSchooltimeLogsToVisualEvents, drawSchoolCutsceneBubble } from '../utils/schoolEventVisualizer';
 import { CanvasCharacterHud } from './CanvasCharacterHud';
+import { UnifiedCanvasDpad } from './UnifiedCanvasDpad';
+import { CanvasZoomControls, useCanvasZoom } from '../hooks/useCanvasZoom';
 import { MAX_PARTY_SIZE, SCHOOL_CONFIG, WEAPON_TYPE_KOREAN } from '../constants';
 import { addMasteryExp, calculateFinalStats, generateCompanionStats, generateDefaultVisualUrl, generateName, getWeaponTypeFromItem } from '../utils';
 import { processTimeSkip } from '../services/timeEngine';
@@ -305,6 +307,8 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
     const containerRef = useRef<HTMLDivElement | null>(null);
     const npcOffsetsRef = useRef<Record<string, { dx: number; dy: number; vx: number; vy: number; timer: number; dir: SpriteDirection }>>({});
     const dpadRef = useRef<'up' | 'down' | 'left' | 'right' | null>(null);
+    const dpadVectorRef = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
+    const { zoom: canvasZoom, zoomRef, zoomIn, zoomOut, resetZoom, pinchHandlers } = useCanvasZoom();
     const savedCampusState = useMemo(() => {
         try {
             const raw = sessionStorage.getItem('shinryoku_school_campus_state');
@@ -1558,6 +1562,10 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                 if (keys.has('arrowright') || keys.has('d') || dpadRef.current === 'right') vx += 1;
                 if (keys.has('arrowup') || keys.has('w') || dpadRef.current === 'up') vy -= 1;
                 if (keys.has('arrowdown') || keys.has('s') || dpadRef.current === 'down') vy += 1;
+                if (vx === 0 && vy === 0 && (dpadVectorRef.current.vx !== 0 || dpadVectorRef.current.vy !== 0)) {
+                    vx = dpadVectorRef.current.vx;
+                    vy = dpadVectorRef.current.vy;
+                }
 
                 let moving = false;
                 let stepX = 0;
@@ -1702,17 +1710,23 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
 
             const mapW = cols * ts;
             const mapH = rows * ts;
-            cameraRef.current.x = Math.round(Math.max(0, Math.min(Math.max(0, mapW - viewport.w), p.x - viewport.w / 2)));
-            cameraRef.current.y = Math.round(Math.max(0, Math.min(Math.max(0, mapH - viewport.h), p.y - viewport.h / 2)));
+            const zoom = zoomRef.current;
+            const scaledW = mapW * zoom;
+            const scaledH = mapH * zoom;
+            cameraRef.current.x = scaledW < viewport.w
+                ? -Math.floor((viewport.w - scaledW) / 2)
+                : Math.round(Math.max(0, Math.min(scaledW - viewport.w, p.x * zoom - viewport.w / 2)));
+            cameraRef.current.y = scaledH < viewport.h
+                ? -Math.floor((viewport.h - scaledH) / 2)
+                : Math.round(Math.max(0, Math.min(scaledH - viewport.h, p.y * zoom - viewport.h / 2)));
 
             const canvas = canvasRef.current;
             const ctx = canvas?.getContext('2d');
             if (canvas && ctx) {
                 ctx.clearRect(0, 0, viewport.w, viewport.h);
                 ctx.save();
-                const offX = mapW < viewport.w ? Math.floor((viewport.w - mapW) / 2) : -cameraRef.current.x;
-                const offY = mapH < viewport.h ? Math.floor((viewport.h - mapH) / 2) : -cameraRef.current.y;
-                ctx.translate(offX, offY);
+                ctx.translate(-cameraRef.current.x, -cameraRef.current.y);
+                ctx.scale(zoom, zoom);
 
                 const groundImg =
                     getCachedCityAssetImage(getAcademyAssetUrl(`${academyTileCulture}/tile_ground.png`)) ||
@@ -2374,35 +2388,34 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     ref={canvasRef}
                     width={viewport.w}
                     height={viewport.h}
+                    {...pinchHandlers}
+                    style={{ touchAction: 'none' }}
                     className="w-full h-full block cursor-crosshair"
                     onClick={e => {
                         const rect = e.currentTarget.getBoundingClientRect();
-                        const mapW = campusDims.cols * CITY_TILE_SIZE;
-                        const mapH = campusDims.rows * CITY_TILE_SIZE;
-                        const offX = mapW < viewport.w ? Math.floor((viewport.w - mapW) / 2) : -cameraRef.current.x;
-                        const offY = mapH < viewport.h ? Math.floor((viewport.h - mapH) / 2) : -cameraRef.current.y;
-                        playerRef.current.targetX = e.clientX - rect.left - offX;
-                        playerRef.current.targetY = e.clientY - rect.top - offY;
+                        const zoom = zoomRef.current;
+                        playerRef.current.targetX = (e.clientX - rect.left + cameraRef.current.x) / zoom;
+                        playerRef.current.targetY = (e.clientY - rect.top + cameraRef.current.y) / zoom;
                     }}
                 />
 
-                <div className="absolute top-3 left-3 z-20 pointer-events-none flex flex-col gap-1.5 max-w-[260px]">
+                <div className="absolute top-2.5 left-2.5 z-20 pointer-events-none flex flex-col gap-1 max-w-[260px]">
                     <CanvasCharacterHud character={character} />
                     {character.job === JobType.STUDENT && character.schoolData && !character.schoolData.isGraduated && (
-                        <div className="px-3 py-2 rounded-xl bg-slate-950/88 border border-cyan-500/40 shadow-lg backdrop-blur-sm space-y-1">
-                            <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-black text-cyan-200">
+                        <div className="px-2 py-1 sm:px-3 sm:py-2 rounded-xl bg-slate-950/88 border border-cyan-500/40 shadow-lg backdrop-blur-sm space-y-0.5 sm:space-y-1">
+                            <div className="flex items-center gap-1.5 flex-wrap text-[10px] sm:text-[11px] font-black text-cyan-200">
                                 <span>
                                     {character.schoolData.tier === 'Elementary' ? '초급부' : character.schoolData.tier === 'Middle' ? '중급부' : '고급부'}{' '}
                                     {character.schoolData.grade}학년 {character.schoolData.classNumber}반
                                 </span>
-                                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-300 text-[10px]">
+                                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-300 text-[9px] sm:text-[10px]">
                                     {(() => {
                                         const r = calculateLiveSchoolRank(character);
                                         return `반 ${r.classRank}등 · 전교 ~${r.schoolEstimatedRank}등`;
                                     })()}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-2 text-[10px] text-slate-300 font-semibold flex-wrap">
+                            <div className="hidden sm:flex items-center gap-2 text-[10px] text-slate-300 font-semibold flex-wrap">
                                 <span>⭐ 평판 <strong className="text-emerald-300">{character.schoolData.reputation ?? 0}</strong></span>
                                 <span>·</span>
                                 <span>
@@ -3399,60 +3412,20 @@ export const SchoolCampusCanvas: React.FC<SchoolCampusCanvasProps> = ({
                     </div>
                 )}
 
-                {/* Mobile D-Pad */}
-                <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none">
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "up"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white text-base font-bold"
-                        >
-                            ▲
-                        </button>
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "left"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white text-base font-bold"
-                        >
-                            ◀
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleInteract}
-                            className="bg-amber-600/90 active:bg-amber-500 active:scale-95 border border-amber-300 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-lg"
-                        >
-                            확인
-                        </button>
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "right"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white text-base font-bold"
-                        >
-                            ▶
-                        </button>
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "down"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white text-base font-bold"
-                        >
-                            ▼
-                        </button>
-                        <div />
-                    </div>
+                {/* 통합 D-Pad + 카메라 줌 컨트롤 */}
+                <UnifiedCanvasDpad
+                    dpadDirRef={dpadRef}
+                    dpadVectorRef={dpadVectorRef}
+                    onInteract={handleInteract}
+                    className="bottom-4 left-4"
+                />
+                <CanvasZoomControls
+                    zoom={canvasZoom}
+                    onZoomIn={zoomIn}
+                    onZoomOut={zoomOut}
+                    onReset={resetZoom}
+                    className="top-14 right-2.5 sm:top-16 sm:right-3.5"
+                />
 
                 {showClubVisualModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85">

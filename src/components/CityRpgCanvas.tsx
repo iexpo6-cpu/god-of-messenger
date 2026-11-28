@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Character, CityTier, DistrictType, SocialAppointment } from '../types';
 import { CanvasCharacterHud } from './CanvasCharacterHud';
+import { UnifiedCanvasDpad } from './UnifiedCanvasDpad';
+import { CanvasZoomControls, useCanvasZoom } from '../hooks/useCanvasZoom';
 import { AppointmentEncounterModal } from './AppointmentEncounterModal';
 import { CanvasVisualEvent, drawCanvasSpeechBubble } from '../utils/canvasEventVisualizer';
 import {
@@ -254,6 +256,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
     // 2. 런타임 게임 상태 Refs (60fps 루프용)
     const keysPressedRef = useRef<Set<string>>(new Set());
     const dpadDirRef = useRef<SpriteDirection | null>(null);
+    const dpadVectorRef = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
+    const { zoom, zoomRef, zoomIn, zoomOut, resetZoom, pinchHandlers } = useCanvasZoom();
     const playerRef = useRef({
         x: mapData.spawnPos.x * CITY_TILE_SIZE + CITY_TILE_SIZE / 2,
         y: mapData.spawnPos.y * CITY_TILE_SIZE + CITY_TILE_SIZE / 2,
@@ -792,6 +796,10 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 if (keys.has('arrowdown') || keys.has('s') || dpadDirRef.current === 'down') vy += 1;
                 if (keys.has('arrowleft') || keys.has('a') || dpadDirRef.current === 'left') vx -= 1;
                 if (keys.has('arrowright') || keys.has('d') || dpadDirRef.current === 'right') vx += 1;
+                if (dpadVectorRef.current.vx !== 0 || dpadVectorRef.current.vy !== 0) {
+                    vx = dpadVectorRef.current.vx;
+                    vy = dpadVectorRef.current.vy;
+                }
 
                 const isRunning = keys.has('shift');
                 const speed = (isRunning ? 225 : 148) * dt;
@@ -968,9 +976,7 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
             const viewW = canvasSize.width;
             const viewH = canvasSize.height;
 
-            // 모바일 화면에서는 시야를 넓혀 적당한 크기로, 데스크톱에서는 1.4배로 여백 0% 보장
-            const minZoom = viewW < 480 ? 0.85 : viewW < 768 ? 1.05 : 1.4;
-            const zoom = Math.max(minZoom, viewW / worldW, viewH / worldH);
+            const zoom = Math.max(zoomRef.current, viewW / worldW, viewH / worldH);
             cameraRef.current.zoom = zoom;
             const visibleWorldW = viewW / zoom;
             const visibleWorldH = viewH / zoom;
@@ -1744,6 +1750,8 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 width={canvasSize.width}
                 height={canvasSize.height}
                 onClick={handleCanvasClick}
+                {...pinchHandlers}
+                style={{ touchAction: 'none' }}
                 className="relative z-10 block w-full h-full cursor-pointer"
             />
 
@@ -1876,62 +1884,22 @@ const CityRpgCanvas: React.FC<CityRpgCanvasProps> = ({
                 </div>
             )}
 
-            {/* 모바일 컴팩트 가상 D-Pad (좌하단) + 확인 버튼 (우하단) — 퀵바 펼침 시 자동으로 위로 이동해 겹침 방지 */}
+            {/* 통합 D-Pad (8방향 드래그 + 확인 버튼) + 카메라 줌 컨트롤 */}
             {!dialogue && (
                 <>
-                    <div className={`absolute left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none transition-all ${showQuickBar ? "bottom-[78px]" : "bottom-10"}`}>
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadDirRef.current = "up"; }}
-                            onPointerUp={() => { dpadDirRef.current = null; }}
-                            onPointerLeave={() => { dpadDirRef.current = null; }}
-                            onPointerCancel={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowUp size={22} />
-                        </button>
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadDirRef.current = "left"; }}
-                            onPointerUp={() => { dpadDirRef.current = null; }}
-                            onPointerLeave={() => { dpadDirRef.current = null; }}
-                            onPointerCancel={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowLeft size={22} />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleInteract}
-                            className="bg-amber-600/90 active:bg-amber-500 active:scale-95 border border-amber-300 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-lg"
-                        >
-                            확인
-                        </button>
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadDirRef.current = "right"; }}
-                            onPointerUp={() => { dpadDirRef.current = null; }}
-                            onPointerLeave={() => { dpadDirRef.current = null; }}
-                            onPointerCancel={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowRight size={22} />
-                        </button>
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadDirRef.current = "down"; }}
-                            onPointerUp={() => { dpadDirRef.current = null; }}
-                            onPointerLeave={() => { dpadDirRef.current = null; }}
-                            onPointerCancel={() => { dpadDirRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowDown size={22} />
-                        </button>
-                        <div />
-                    </div>
+                    <UnifiedCanvasDpad
+                        dpadDirRef={dpadDirRef}
+                        dpadVectorRef={dpadVectorRef}
+                        onInteract={handleInteract}
+                        className={showQuickBar ? 'bottom-[78px] left-4' : 'bottom-10 left-4'}
+                    />
+                    <CanvasZoomControls
+                        zoom={canvasZoom}
+                        onZoomIn={zoomIn}
+                        onZoomOut={zoomOut}
+                        onReset={resetZoom}
+                        className="top-[96px] right-2.5 sm:top-[142px] sm:right-3.5"
+                    />
                 </>
             )}
 

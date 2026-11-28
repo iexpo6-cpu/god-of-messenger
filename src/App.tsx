@@ -6211,7 +6211,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
 
   return (
     <GameProvider character={character} combatState={combatState} setCharacter={setCharacter} setCombatState={setCombatState} handleAction={handleActionWithTime}>
-      <div className="flex flex-col h-screen bg-slate-950 text-slate-200 overflow-hidden font-sans">
+      <div className="flex flex-col h-[100dvh] bg-slate-950 text-slate-200 overflow-hidden font-sans">
       {/* 하루 결산 완충 장치: 가벼운 상단 텍스트 알림 배너 */}
       <AnimatePresence>
         {dayChangeToast && (
@@ -7820,7 +7820,7 @@ const handleStartPvpBattle = (enemies: Enemy[], code: string) => {
                             )}
 
                              {/* Collapsible, Toggleable Floating Log Chat Overlay */}
-                            <div className="absolute left-3 bottom-3 sm:left-4 sm:bottom-4 z-40 flex flex-col items-start gap-2">
+                            <div className="absolute right-3 bottom-2.5 sm:right-4 sm:bottom-3 z-40 flex flex-col items-end gap-2">
                                 {isLogChatOpen ? (
                                     <motion.div 
                                         drag

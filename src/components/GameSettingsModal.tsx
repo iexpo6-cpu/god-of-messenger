@@ -196,6 +196,35 @@ const GameSettingsModalComponent: React.FC<Props> = ({
     } catch {}
     window.dispatchEvent(new CustomEvent('shinryoku-canvas-controls-change'));
   };
+  const [dpadSize, setDpadSize] = useState<'small' | 'medium' | 'large'>(() => {
+    try {
+      const v = localStorage.getItem('shinryoku_dpad_size');
+      return v === 'small' || v === 'large' ? v : 'medium';
+    } catch {
+      return 'medium';
+    }
+  });
+  const [dpadOpacity, setDpadOpacity] = useState<'solid' | 'translucent'>(() => {
+    try {
+      return localStorage.getItem('shinryoku_dpad_opacity') === 'translucent' ? 'translucent' : 'solid';
+    } catch {
+      return 'solid';
+    }
+  });
+  const handleChangeDpadSize = (val: 'small' | 'medium' | 'large') => {
+    setDpadSize(val);
+    try {
+      localStorage.setItem('shinryoku_dpad_size', val);
+    } catch {}
+    window.dispatchEvent(new CustomEvent('shinryoku-canvas-controls-change'));
+  };
+  const handleChangeDpadOpacity = (val: 'solid' | 'translucent') => {
+    setDpadOpacity(val);
+    try {
+      localStorage.setItem('shinryoku_dpad_opacity', val);
+    } catch {}
+    window.dispatchEvent(new CustomEvent('shinryoku-canvas-controls-change'));
+  };
 
   // Mailbox Filter Settings State
   const [mailboxSettings, setMailboxSettings] = useState<MailboxFilterSettings>(() => {
@@ -901,6 +930,54 @@ const GameSettingsModalComponent: React.FC<Props> = ({
                     >
                       끄기
                     </button>
+                  </div>
+                </div>
+
+                {/* D-Pad 크기 조절 */}
+                <div className="p-2.5 bg-slate-950 border border-slate-800/90 rounded-xl flex items-center justify-between gap-3 pt-2">
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-200 block truncate">D-Pad 크기</span>
+                    <span className="text-[10px] text-slate-400 block truncate">
+                      모바일/태블릿 화면 크기에 맞춰 방향키 크기 조절
+                    </span>
+                  </div>
+                  <div className="flex bg-slate-900 rounded-lg p-0.5 border border-slate-800 shrink-0">
+                    {([['small', '작게'], ['medium', '보통'], ['large', '크게']] as const).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleChangeDpadSize(key)}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded ${
+                          dpadSize === key ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* D-Pad 투명도 조절 */}
+                <div className="p-2.5 bg-slate-950 border border-slate-800/90 rounded-xl flex items-center justify-between gap-3 pt-2">
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-200 block truncate">D-Pad 투명도</span>
+                    <span className="text-[10px] text-slate-400 block truncate">
+                      반투명 설정 시 방향키 뒤의 맵 시야 확보
+                    </span>
+                  </div>
+                  <div className="flex bg-slate-900 rounded-lg p-0.5 border border-slate-800 shrink-0">
+                    {([['solid', '진하게'], ['translucent', '반투명']] as const).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => handleChangeDpadOpacity(key)}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded ${
+                          dpadOpacity === key ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </section>

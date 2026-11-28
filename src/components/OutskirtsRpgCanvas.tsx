@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Character, Enemy } from '../types';
 import { CanvasCharacterHud } from './CanvasCharacterHud';
+import { UnifiedCanvasDpad } from './UnifiedCanvasDpad';
+import { CanvasZoomControls, useCanvasZoom } from '../hooks/useCanvasZoom';
 import { CanvasVisualEvent, drawCanvasSpeechBubble, getSeasonFromDate } from '../utils/canvasEventVisualizer';
 import {
     getHuntBandsForLocation,
@@ -489,6 +491,8 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
     });
     const keysRef = useRef<Set<string>>(new Set());
     const dpadRef = useRef<SpriteDirection | null>(null);
+    const dpadVectorRef = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
+    const { zoom: canvasZoom, zoomRef, zoomIn, zoomOut, resetZoom, pinchHandlers } = useCanvasZoom();
     const cameraRef = useRef({ x: 0, y: 0 });
     const exitCooldownRef = useRef<number>(Date.now() + 700);
     const battleGraceRef = useRef<number>(Date.now() + 1200);
@@ -644,12 +648,9 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
         const canvas = canvasRef.current;
         if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
-        const mapW = cols * CITY_TILE_SIZE;
-        const mapH = rows * CITY_TILE_SIZE;
-        const offsetX = mapW < viewportSize.w ? Math.floor((viewportSize.w - mapW) / 2) : -cameraRef.current.x;
-        const offsetY = mapH < viewportSize.h ? Math.floor((viewportSize.h - mapH) / 2) : -cameraRef.current.y;
-        const wx = e.clientX - rect.left - offsetX;
-        const wy = e.clientY - rect.top - offsetY;
+        const zoom = zoomRef.current;
+        const wx = (e.clientX - rect.left + cameraRef.current.x) / zoom;
+        const wy = (e.clientY - rect.top + cameraRef.current.y) / zoom;
 
         if (!activeZone) {
             for (const z of zones) {
@@ -722,6 +723,10 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
             if (keys.has('arrowright') || keys.has('d') || dpadRef.current === 'right') vx += 1;
             if (keys.has('arrowup') || keys.has('w') || dpadRef.current === 'up') vy -= 1;
             if (keys.has('arrowdown') || keys.has('s') || dpadRef.current === 'down') vy += 1;
+            if (vx === 0 && vy === 0 && (dpadVectorRef.current.vx !== 0 || dpadVectorRef.current.vy !== 0)) {
+                vx = dpadVectorRef.current.vx;
+                vy = dpadVectorRef.current.vy;
+            }
 
             const speed = 200;
             const maxStep = speed * dt;
@@ -863,21 +868,23 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
 
             const mapW = cols * CITY_TILE_SIZE;
             const mapH = rows * CITY_TILE_SIZE;
-            cameraRef.current.x = Math.round(
-                Math.max(0, Math.min(Math.max(0, mapW - viewportSize.w), p.x - viewportSize.w / 2))
-            );
-            cameraRef.current.y = Math.round(
-                Math.max(0, Math.min(Math.max(0, mapH - viewportSize.h), p.y - viewportSize.h / 2))
-            );
+            const zoom = zoomRef.current;
+            const scaledW = mapW * zoom;
+            const scaledH = mapH * zoom;
+            cameraRef.current.x = scaledW < viewportSize.w
+                ? -Math.floor((viewportSize.w - scaledW) / 2)
+                : Math.round(Math.max(0, Math.min(scaledW - viewportSize.w, p.x * zoom - viewportSize.w / 2)));
+            cameraRef.current.y = scaledH < viewportSize.h
+                ? -Math.floor((viewportSize.h - scaledH) / 2)
+                : Math.round(Math.max(0, Math.min(scaledH - viewportSize.h, p.y * zoom - viewportSize.h / 2)));
 
             const canvas = canvasRef.current;
             const ctx = canvas?.getContext('2d');
             if (canvas && ctx) {
                 ctx.clearRect(0, 0, viewportSize.w, viewportSize.h);
                 ctx.save();
-                const offsetX = mapW < viewportSize.w ? Math.floor((viewportSize.w - mapW) / 2) : -cameraRef.current.x;
-                const offsetY = mapH < viewportSize.h ? Math.floor((viewportSize.h - mapH) / 2) : -cameraRef.current.y;
-                ctx.translate(offsetX, offsetY);
+                ctx.translate(-cameraRef.current.x, -cameraRef.current.y);
+                ctx.scale(zoom, zoom);
 
                 const groundImg = getCachedCityAssetImage(getTerrainTileUrl(cultureKey, 'ground'));
                 const roadImg = getCachedCityAssetImage(getTerrainTileUrl(cultureKey, 'road'));
@@ -1258,13 +1265,15 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
                 width={viewportSize.w}
                 height={viewportSize.h}
                 onClick={handleCanvasClick}
+                {...pinchHandlers}
+                style={{ touchAction: 'none' }}
                 className="block w-full h-full cursor-pointer"
             />
 
             {/* Top HUD */}
             <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
                 <div className="flex flex-col gap-1.5">
-                    <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-emerald-500/40 rounded-xl px-3 py-1.5 shadow-xl w-fit">
+                    <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-emerald-500/40 rounded-xl px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-xl w-fit">
                     {activeZone ? (
                         <Skull size={15} className="text-rose-400 shrink-0" />
                     ) : (
@@ -1283,7 +1292,7 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
                                 </span>
                             )}
                         </div>
-                        <div className="text-[10px] text-slate-400">
+                        <div className="hidden sm:block text-[10px] text-slate-400">
                             {activeZone
                                 ? '필드 몬스터와 접촉하거나 클릭해 전투에 돌입하세요 (처치 시 일정 시간 후 리젠)'
                                 : '사냥할 영역 포탈로 들어가서 몬스터들을 추적하세요 [Space]'}
@@ -1363,60 +1372,20 @@ const OutskirtsRpgCanvas: React.FC<OutskirtsRpgCanvasProps> = ({
                 </div>
             )}
 
-            {/* Mobile D-Pad */}
-            <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none">
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "up"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowUp size={22} />
-                        </button>
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "left"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowLeft size={22} />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleInteract}
-                            className="bg-amber-600/90 active:bg-amber-500 active:scale-95 border border-amber-300 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-lg"
-                        >
-                            확인
-                        </button>
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "right"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowRight size={22} />
-                        </button>
-                        <div />
-                        <button
-                            type="button"
-                            onPointerDown={() => { dpadRef.current = "down"; }}
-                            onPointerUp={() => { dpadRef.current = null; }}
-                            onPointerLeave={() => { dpadRef.current = null; }}
-                            onPointerCancel={() => { dpadRef.current = null; }}
-                            className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                        >
-                            <ArrowDown size={22} />
-                        </button>
-                        <div />
-                    </div>
+            {/* 통합 D-Pad + 카메라 줌 컨트롤 */}
+            <UnifiedCanvasDpad
+                dpadDirRef={dpadRef}
+                dpadVectorRef={dpadVectorRef}
+                onInteract={handleInteract}
+                className="bottom-4 left-4"
+            />
+            <CanvasZoomControls
+                zoom={canvasZoom}
+                onZoomIn={zoomIn}
+                onZoomOut={zoomOut}
+                onReset={resetZoom}
+                className="top-14 right-2.5 sm:top-16 sm:right-3.5"
+            />
 
             {/* Selected Hunt Zone Entry Card */}
             {selectedZone && !activeZone && (

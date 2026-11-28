@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { BaseDecorationItem, Character, FacilityInstance, JobType } from '../types';
 import { CanvasCharacterHud } from './CanvasCharacterHud';
+import { UnifiedCanvasDpad } from './UnifiedCanvasDpad';
+import { CanvasZoomControls, useCanvasZoom } from '../hooks/useCanvasZoom';
 import { CanvasVisualEvent } from '../utils/canvasEventVisualizer';
 import { FACILITIES_INFO, FACILITY_CONSTRUCTION_COSTS, FACILITY_UPGRADE_CONFIG } from '../constants';
 import {
@@ -673,6 +675,8 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
     });
     const keysRef = useRef<Set<string>>(new Set());
     const dpadRef = useRef<SpriteDirection | null>(null);
+    const dpadVectorRef = useRef<{ vx: number; vy: number }>({ vx: 0, vy: 0 });
+    const { zoom: canvasZoom, zoomRef, zoomIn, zoomOut, resetZoom, pinchHandlers } = useCanvasZoom();
     const cameraRef = useRef({
         x: Math.max(0, mapData.spawnPos.x * BASE_TILE_SIZE - 480),
         y: Math.max(0, mapData.spawnPos.y * BASE_TILE_SIZE - 300)
@@ -1244,8 +1248,9 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
         const canvas = canvasRef.current;
         if (!canvas) return null;
         const rect = canvas.getBoundingClientRect();
-        const wx = e.clientX - rect.left + cameraRef.current.x;
-        const wy = e.clientY - rect.top + cameraRef.current.y;
+        const zoom = zoomRef.current;
+        const wx = (e.clientX - rect.left + cameraRef.current.x) / zoom;
+        const wy = (e.clientY - rect.top + cameraRef.current.y) / zoom;
         return { wx, wy, tx: Math.floor(wx / BASE_TILE_SIZE), ty: Math.floor(wy / BASE_TILE_SIZE) };
     };
 
@@ -1466,6 +1471,10 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             if (keys.has('arrowright') || keys.has('d') || dpadRef.current === 'right') vx += 1;
             if (keys.has('arrowup') || keys.has('w') || dpadRef.current === 'up') vy -= 1;
             if (keys.has('arrowdown') || keys.has('s') || dpadRef.current === 'down') vy += 1;
+            if (vx === 0 && vy === 0 && (dpadVectorRef.current.vx !== 0 || dpadVectorRef.current.vy !== 0)) {
+                vx = dpadVectorRef.current.vx;
+                vy = dpadVectorRef.current.vy;
+            }
 
             const speed = mode === 'explore' ? 210 : 320; // 편집 모드에서는 대형 맵을 더 빠르게 탐색!
             const maxStep = speed * dt;
@@ -1540,8 +1549,15 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             // 2. Camera follow (smooth lerp just like CityRpgCanvas)
             const mapW = m.cols * BASE_TILE_SIZE;
             const mapH = m.rows * BASE_TILE_SIZE;
-            const desiredCamX = Math.max(0, Math.min(Math.max(0, mapW - curViewport.w), p.x - curViewport.w / 2));
-            const desiredCamY = Math.max(0, Math.min(Math.max(0, mapH - curViewport.h), p.y - curViewport.h / 2));
+            const zoom = zoomRef.current;
+            const scaledW = mapW * zoom;
+            const scaledH = mapH * zoom;
+            const desiredCamX = scaledW <= curViewport.w
+                ? -(curViewport.w - scaledW) / 2
+                : Math.max(0, Math.min(scaledW - curViewport.w, p.x * zoom - curViewport.w / 2));
+            const desiredCamY = scaledH <= curViewport.h
+                ? -(curViewport.h - scaledH) / 2
+                : Math.max(0, Math.min(scaledH - curViewport.h, p.y * zoom - curViewport.h / 2));
             cameraRef.current.x += (desiredCamX - cameraRef.current.x) * Math.min(1, dt * 14);
             cameraRef.current.y += (desiredCamY - cameraRef.current.y) * Math.min(1, dt * 14);
             const camX = Math.round(cameraRef.current.x);
@@ -1553,10 +1569,10 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             const offscreenDt = runOffscreenAi ? offscreenAiAccum : 0;
             if (runOffscreenAi) offscreenAiAccum = 0;
 
-            const aiMinX = camX - 120;
-            const aiMaxX = camX + curViewport.w + 120;
-            const aiMinY = camY - 120;
-            const aiMaxY = camY + curViewport.h + 120;
+            const aiMinX = camX / zoom - 120;
+            const aiMaxX = (camX + curViewport.w) / zoom + 120;
+            const aiMinY = camY / zoom - 120;
+            const aiMaxY = (camY + curViewport.h) / zoom + 120;
             const resList = residentsRef.current;
             for (let i = 0; i < resList.length; i++) {
                 const r = resList[i];
@@ -1685,6 +1701,7 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                 ctx.clearRect(0, 0, curViewport.w, curViewport.h);
                 ctx.save();
                 ctx.translate(-camX, -camY);
+                ctx.scale(zoom, zoom);
 
                 const groundImg = getCachedCityAssetImage(getTerrainTileUrl(m.cultureKey, 'ground'));
                 const roadImg = getCachedCityAssetImage(getTerrainTileUrl(m.cultureKey, 'road'));
@@ -2750,6 +2767,8 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                 onMouseUp={handleCanvasMouseUp}
                 onMouseLeave={handleCanvasMouseLeave}
                 onClick={handleCanvasClick}
+                {...pinchHandlers}
+                style={{ touchAction: 'none' }}
                 className="block w-full h-full cursor-pointer"
             />
 
@@ -2757,7 +2776,7 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
             <div className="absolute top-2 left-2 right-2 z-20 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
                 <div className="flex flex-col gap-1.5">
                     {/* Base Info Badge */}
-                    <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-3 py-1.5 shadow-xl w-fit">
+                    <div className="pointer-events-auto flex items-center gap-2 bg-slate-950/95 border border-amber-500/40 rounded-xl px-2.5 py-1 sm:px-3 sm:py-1.5 shadow-xl w-fit">
                     <Home size={16} className="text-amber-400 shrink-0" />
                     <div className="leading-tight">
                         <div className="text-xs sm:text-sm font-black text-amber-200 flex items-center gap-1.5">
@@ -2767,7 +2786,7 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                                 {mapData.cols}×{mapData.rows} / 최대 {maxSizeForLevel}×{maxSizeForLevel}
                             </span>
                         </div>
-                        <div className="text-[10px] text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
+                        <div className="hidden sm:flex text-[10px] text-slate-400 flex-wrap items-center gap-2 mt-0.5">
                             <span>거주민 {actualHumanResidentCount}명</span>
                             <span>몬스터 {actualMonsterCount}마리</span>
                             <span className="text-amber-300">{(character.money || 0).toLocaleString()} G</span>
@@ -3148,62 +3167,22 @@ const BaseRpgCanvas: React.FC<BaseRpgCanvasProps> = ({
                 </div>
             )}
 
-            {/* Mobile D-Pad */}
+            {/* 통합 D-Pad + 카메라 줌 컨트롤 */}
             {mode === 'explore' && (
-                <div className="absolute bottom-4 left-4 z-20 grid grid-cols-3 gap-1.5 w-36 h-36 sm:w-40 sm:h-40 opacity-90 select-none">
-                    <div />
-                    <button
-                        type="button"
-                        onPointerDown={() => { dpadRef.current = 'up'; }}
-                        onPointerUp={() => { dpadRef.current = null; }}
-                        onPointerLeave={() => { dpadRef.current = null; }}
-                        onPointerCancel={() => { dpadRef.current = null; }}
-                        className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                    >
-                        <ArrowUp size={22} />
-                    </button>
-                    <div />
-                    <button
-                        type="button"
-                        onPointerDown={() => { dpadRef.current = 'left'; }}
-                        onPointerUp={() => { dpadRef.current = null; }}
-                        onPointerLeave={() => { dpadRef.current = null; }}
-                        onPointerCancel={() => { dpadRef.current = null; }}
-                        className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                    >
-                        <ArrowLeft size={22} />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleInteract}
-                        className="bg-amber-600/90 active:bg-amber-500 active:scale-95 border border-amber-300 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-lg"
-                    >
-                        확인
-                    </button>
-                    <button
-                        type="button"
-                        onPointerDown={() => { dpadRef.current = 'right'; }}
-                        onPointerUp={() => { dpadRef.current = null; }}
-                        onPointerLeave={() => { dpadRef.current = null; }}
-                        onPointerCancel={() => { dpadRef.current = null; }}
-                        className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                    >
-                        <ArrowRight size={22} />
-                    </button>
-                    <div />
-                    <button
-                        type="button"
-                        onPointerDown={() => { dpadRef.current = 'down'; }}
-                        onPointerUp={() => { dpadRef.current = null; }}
-                        onPointerLeave={() => { dpadRef.current = null; }}
-                        onPointerCancel={() => { dpadRef.current = null; }}
-                        className="bg-slate-900/85 active:bg-amber-600/85 border border-slate-600/80 rounded-xl flex items-center justify-center text-white"
-                    >
-                        <ArrowDown size={22} />
-                    </button>
-                    <div />
-                </div>
+                <UnifiedCanvasDpad
+                    dpadDirRef={dpadRef}
+                    dpadVectorRef={dpadVectorRef}
+                    onInteract={handleInteract}
+                    className="bottom-4 left-4"
+                />
             )}
+            <CanvasZoomControls
+                zoom={canvasZoom}
+                onZoomIn={zoomIn}
+                onZoomOut={zoomOut}
+                onReset={resetZoom}
+                className="top-14 right-2.5 sm:top-16 sm:right-3.5"
+            />
 
             {/* Resident Quick Card */}
             {selectedResident && (
