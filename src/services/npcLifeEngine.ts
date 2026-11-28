@@ -394,20 +394,20 @@ export const processNpcLifeEvents = (character: Character, days: number): { upda
 
      network.forEach((npc) => {
         if (npc.isPurged) return;
-        const age = npc.birthYear ? currentYear - npc.birthYear : 20;
+        const age = npc.birthYear ? currentYear - npc.birthYear : (parseInt(String(npc.age || '').replace(/[^0-9]/g, ''), 10) || 20);
+        const playerAge = character.birthYear ? currentYear - character.birthYear : (character.age || 20);
 
         if (!npc.isSpouse && !npc.partnerId && age >= 20) {
             // A. 인맥 내 결혼 시도 (우선순위)
             const isMale = npc.gender?.includes('남') || false;
-            const potentials = (network || []).filter(n => 
-                n &&
-                !n.isPurged && 
-                n.id !== npc.id && 
-                ((isMale && !n.gender?.includes('남')) || (!isMale && n.gender?.includes('남'))) &&
-                !n.partnerId &&
-                npc.relations?.[n.id] &&
-                npc.relations[n.id].affection >= 80
-            );
+            const potentials = (network || []).filter(n => {
+                if (!n || n.isPurged || n.id === npc.id || n.partnerId) return false;
+                const pAge = n.birthYear ? currentYear - n.birthYear : (parseInt(String(n.age || '').replace(/[^0-9]/g, ''), 10) || 20);
+                if (pAge < 20) return false;
+                return ((isMale && !n.gender?.includes('남')) || (!isMale && n.gender?.includes('남'))) &&
+                    npc.relations?.[n.id] &&
+                    npc.relations[n.id].affection >= 80;
+            });
 
             if (potentials.length > 0 && Math.random() < 0.1) {
                 const partner = potentials[Math.floor(Math.random() * potentials.length)];
@@ -437,7 +437,7 @@ export const processNpcLifeEvents = (character: Character, days: number): { upda
                 // 새로운 배우자 생성 (외부인)
                 const spouseId = `npc_spouse_${npc.id}_${Date.now()}`;
                 const spouseName = generateName(npc.nation, genderParam);
-                const spouseAge = age + (Math.floor(Math.random() * 7) - 3);
+                const spouseAge = Math.max(20, age + (Math.floor(Math.random() * 7) - 3));
                 
                 // 관계 설정 (Spouse Relation)
                 const relationToSpouse: CompanionRelation = {
@@ -480,8 +480,8 @@ export const processNpcLifeEvents = (character: Character, days: number): { upda
                 npc.relations[spouseId] = { targetId: spouseId, affection: 100, type: RelationType.SPOUSE }; 
                 
                 network.push(newSpouse);
-                // [NEW] Trigger choice event for NPC marriage if player has positive affection
-                if (npc.affection > 0 && !newChar.pendingChoiceEvent) {
+                // [NEW] Trigger choice event for NPC marriage if player is adult and has positive affection
+                if (playerAge >= 20 && npc.affection > 0 && !newChar.pendingChoiceEvent) {
                     newChar.pendingChoiceEvent = {
                         id: `wedding_gift_npc_${npc.id}_${spouseId}_${Date.now()}`,
                         title: "인연의 기쁜 소식",
@@ -707,29 +707,29 @@ export const processNpcLifeEvents = (character: Character, days: number): { upda
             }
 
             const prevLv = npc.level;
-            let levelGain = 1; // 기본 월 1레벨 완만 성장
+            let levelGain = 0;
 
-            // 플레이어보다 레벨이 낮더라도 즉시 추월하지 않고 천천히 추격 (최대 플레이어 레벨의 90% 상한)
-            const targetCap = Math.max(1, Math.floor(newChar.level * 0.9));
+            // 플레이어보다 레벨이 낮더라도 완만하게 추격 (최대 플레이어 레벨의 85% 상한, 월 최대 +1)
+            const targetCap = Math.max(1, Math.floor(newChar.level * 0.85));
             if (npc.level < targetCap) {
-                levelGain = Math.min(2, targetCap - npc.level);
+                levelGain = Math.random() < 0.65 ? 1 : 0;
                 npc.level += levelGain;
             } else if (npc.level < newChar.level) {
-                npc.level += 1;
-                levelGain = 1;
+                levelGain = Math.random() < 0.45 ? 1 : 0;
+                npc.level += levelGain;
             } else {
-                // 이미 플레이어 이상이면 아주 천천히만 성장 (35% 확률로 +1)
-                levelGain = Math.random() < 0.35 ? 1 : 0;
+                // 이미 플레이어 이상이면 매우 천천히만 성장 (15% 확률로 +1)
+                levelGain = Math.random() < 0.15 ? 1 : 0;
                 npc.level += levelGain;
             }
 
-            const boost = levelGain * 12; // 밸런스 조정: 레벨당 12 스탯 상승
+            const boost = levelGain * 6; // 밸런스 조정: 레벨당 6 스탯 상승
             if (!npc.stats) npc.stats = {};
             npc.stats.str = (npc.stats.str || 10) + boost;
             npc.stats.int = (npc.stats.int || 10) + boost;
             npc.stats.def = (npc.stats.def || 10) + boost;
             npc.stats.agi = (npc.stats.agi || 10) + boost;
-            npc.stats.hp = (npc.stats.hp || 100) + (levelGain * 120);
+            npc.stats.hp = (npc.stats.hp || 100) + (levelGain * 60);
             npc.stats.maxHp = (npc.stats.maxHp || npc.stats.hp);
             upgradeNpcSkillsOnGrowth(npc, prevLv);
 

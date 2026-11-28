@@ -22,7 +22,6 @@ import { NATION_RELICS, NATION_HEROES  } from '../nationLoreData';
 import { NATION_LIST} from '../nationalDiplomacy';
 import { handleSchoolPromoteAction } from '../schoolpromote'
 import { processTimeSkip, condenseSystemLogs } from '../services/timeEngine';
-import { parseTimeEngineLogsToCanvasEvents } from '../utils/canvasEventVisualizer';
 import { purgeDeceasedCompanions } from '../services/deathTimeEngine';
 import { generateInitialDiplomacy } from '../nationalDiplomacy';
 import { DIVINE_WAR_CONSTANTS } from '../divineWarSystem';
@@ -34,7 +33,6 @@ import { calculateDotDamage } from '../services/dotDamageService';
 import { elixirRealtimeService } from '../services/elixirRealtimeService';
 import { GameStorage } from '@/storage';
 import { CompanionTacticsService } from '../services/companionTacticsService';
-import { TITLES } from '../titles';
 import { MountCombatService } from '../services/mountCombatService';
 import { applySparringManualCombatResult } from '../services/sparringCombatService';
 import { executeBondSkillUtility, cleanUpBondSkillBuffIfBaseSkillUsed } from '../services/BondSkillService';
@@ -230,56 +228,6 @@ export const useGame = () => {
   const prevNationRef = useRef<string>(character.nation);
   const justLoadedRef = useRef<boolean>(false);
   const isAutoSavingRef = useRef<boolean>(false);
-  const prevAvailableTitlesRef = useRef<Set<string>>(new Set(character.availableTitles || []));
-  const prevTitleViewRef = useRef<string>(view);
-  const pendingTitleIdsRef = useRef<string[]>([]);
-
-  useEffect(() => {
-    const curTitles = (character.availableTitles || []).filter(Boolean);
-    if (justLoadedRef.current || view !== 'game' || prevTitleViewRef.current !== 'game') {
-      prevAvailableTitlesRef.current = new Set(curTitles);
-      prevTitleViewRef.current = view;
-      pendingTitleIdsRef.current = [];
-      return;
-    }
-
-    const newlyUnlocked = curTitles.filter(id => !prevAvailableTitlesRef.current.has(id));
-    prevAvailableTitlesRef.current = new Set(curTitles);
-
-    if (newlyUnlocked.length > 0) {
-      const names = newlyUnlocked.map(id => TITLES[id]?.name || id);
-      addToLog(`[칭호 획득] 🏅 새로운 칭호 '${names.join(', ')}'을(를) 획득했습니다!`);
-      pendingTitleIdsRef.current = [
-        ...pendingTitleIdsRef.current,
-        ...newlyUnlocked.filter(id => !pendingTitleIdsRef.current.includes(id))
-      ];
-    }
-  }, [character.availableTitles, view]);
-
-  useEffect(() => {
-    if (
-      view === 'game' &&
-      sceneType === 'normal' &&
-      !resultModalData &&
-      !combatResultData &&
-      pendingTitleIdsRef.current.length > 0
-    ) {
-      const ids = [...pendingTitleIdsRef.current];
-      pendingTitleIdsRef.current = [];
-      setResultModalData({
-        type: 'levelup',
-        title: '🏅 새로운 칭호 획득!',
-        message: '새로운 칭호를 해금했습니다. 장비/칭호 창에서 장착할 수 있습니다.',
-        items: ids.map(id => {
-          const t = TITLES[id];
-          return {
-            label: t?.name || id,
-            after: t?.description || '칭호 획득'
-          };
-        })
-      });
-    }
-  }, [view, sceneType, resultModalData, combatResultData, character.availableTitles]);
 
   const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -434,8 +382,8 @@ export const useGame = () => {
             const rival = classmates[rivalIdx];
             const isRecruited = character.companions.some(c => c.id === rival.id) || 
                               (character.inactiveCompanions?.some(c => c.id === rival.id) || false);
-           if (!isRecruited && Math.random() < 0.3) {
-                const growthLevel = Math.floor(Math.random()*2+1);
+           if (!isRecruited && Math.random() < 0.15) {
+                const growthLevel = 1;
                 const statBoost = growthLevel * 2;
                 const updatedRival = {
                     ...rival,
@@ -1578,22 +1526,6 @@ export const useGame = () => {
 
         // 압축 요약 로그 일괄 출력
         const condensedLogs = condenseSystemLogs(accumTimePassageLogs, daysPassed);
-        const nextCanvasEvents = parseTimeEngineLogsToCanvasEvents(
-            condensedLogs,
-            timeSkipRes.worldNews,
-            timeSkipRes.dailyReport,
-            timeAdvancedChar.currentDate
-        );
-        if (nextCanvasEvents.length > 0) {
-            const existingEvents = Array.isArray(timeAdvancedChar.recentCanvasEvents)
-                ? timeAdvancedChar.recentCanvasEvents
-                : [];
-            const mergedMap = new Map<string, any>();
-            [...existingEvents, ...nextCanvasEvents].forEach(ev => {
-                if (ev?.id) mergedMap.set(ev.id, ev);
-            });
-            timeAdvancedChar.recentCanvasEvents = Array.from(mergedMap.values()).slice(-12);
-        }
         condensedLogs.forEach((sysLog, idx) => {
             setTimeout(() => addToLog(sysLog), idx * 100);
         });
@@ -7261,19 +7193,8 @@ dom.corruption += 10000;
     setIsLoading(false);
   };
 
-  const clearCanvasResumeStorage = () => {
-    if (typeof window === 'undefined') return;
-    try {
-      sessionStorage.removeItem('shinryoku_school_resume');
-      sessionStorage.removeItem('shinryoku_school_campus_state');
-      sessionStorage.removeItem('shinryoku_outskirts_resume');
-      sessionStorage.removeItem('shinryoku_overland_resume');
-    } catch {}
-  };
-
   const handleNewGame = () => { 
     justLoadedRef.current = true;
-    clearCanvasResumeStorage();
     setView('creation'); setCharacter(INITIAL_CHARACTER); setMessages([]); setChoices([]); 
   };
 
@@ -7305,7 +7226,6 @@ dom.corruption += 10000;
           const data = await GameStorage.get(key); 
           if (data) { 
               justLoadedRef.current = true;
-              clearCanvasResumeStorage();
               const loadedChar = purgeDeceasedCompanions(data.character);
               elixirRealtimeService.reinitializeFromCharacter(loadedChar);
               setCharacter(loadedChar); setMessages(data.messages); setChoices(data.choices || []); setSceneType(data.sceneType || 'normal');

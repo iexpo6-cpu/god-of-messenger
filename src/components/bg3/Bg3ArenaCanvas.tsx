@@ -323,7 +323,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
 
     const resolvedArenaTier: Bg3ArenaTier = arenaTier || (isLargeWar ? 'war' : 'boss');
 
-    const baseArena = useMemo(
+    const arena = useMemo(
         () =>
             generateBg3Arena({
                 region: region || character.currentLocation?.region,
@@ -335,14 +335,6 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                 arenaTier: resolvedArenaTier
             }),
         [region, nation, city, character.currentLocation, title, subtitle, resolvedArenaTier]
-    );
-    const [usedFortIds, setUsedFortIds] = useState<string[]>([]);
-    const arena = useMemo(
-        () =>
-            usedFortIds.length === 0
-                ? baseArena
-                : { ...baseArena, obstacles: baseArena.obstacles.filter(o => !usedFortIds.includes(o.id)) },
-        [baseArena, usedFortIds]
     );
     const arenaW = arena.width;
     const arenaH = arena.height;
@@ -1530,8 +1522,8 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                         dir: faceDir,
                         mp: nextMp,
                         hasAction: false,
-                        // 기본 공격 및 스킬 사용 시 잔여 이동 거리 0으로 고정 (공격 후 추가 이동 불가)
-                        remainingMeters: 0
+                        // 스킬 사용 시 잔여 이동 거리 0으로 고정 (스킬 사용 후 추가 이동 불가)
+                        remainingMeters: skill ? 0 : u.remainingMeters
                     };
                 }
                 if (bondCompId && u.sourceCompanionId === bondCompId) {
@@ -1932,30 +1924,18 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
             // Tick buffs, surfaces, passive turn effects (CombatUtils.processTurnStart & processPassiveTurnEffects), role MP regen, and reset action economy
             setSurfaces(prev => prev.map(s => ({ ...s, turns: s.turns - 1 })).filter(s => s.turns > 0));
             const roundLogs: string[] = [];
-            const consumedFortIdsThisRound = new Set<string>();
             const working = [...unitsRef.current];
             for (let idx = 0; idx < working.length; idx++) {
                 const u = working[idx];
                 if (u.hp <= 0) continue;
 
-                // 1. 지형 회복 / 화염 지면 (전투 요새 fort는 1회 사용 후 소멸)
+                // 1. 지형 회복 / 화염 지면
                 let terrainHeal = 0;
-                let usedFortObsId: string | null = null;
                 arena.obstacles.forEach(o => {
-                    if (consumedFortIdsThisRound.has(o.id)) return;
                     if (o.healPct && distPx(u.x, u.y, o.x, o.y) <= o.radius + 26) {
-                        const candidate = Math.round((u.maxHp * o.healPct) / 100);
-                        if (candidate > terrainHeal) {
-                            terrainHeal = candidate;
-                            usedFortObsId = o.kind === 'fort' ? o.id : null;
-                        }
+                        terrainHeal = Math.max(terrainHeal, Math.round((u.maxHp * o.healPct) / 100));
                     }
                 });
-                if (usedFortObsId && u.hp < u.maxHp) {
-                    consumedFortIdsThisRound.add(usedFortObsId);
-                    const fortIdToRemove = usedFortObsId;
-                    setUsedFortIds(prev => (prev.includes(fortIdToRemove) ? prev : [...prev, fortIdToRemove]));
-                }
                 const onFire = surfacesRef.current.find(s => s.type === 'fire' && distPx(u.x, u.y, s.x, s.y) <= s.radius);
                 const burn = onFire ? Math.max(40, Math.round(u.maxHp * 0.06)) : 0;
                 if (terrainHeal > 0) addFloatText(u.x, u.y - 24, `+${formatCompactKorean(terrainHeal)} HP`, '#4ade80', 0.95);
@@ -2352,6 +2332,12 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
 
         // Item Targeting Mode (고정 타겟 범위 내 아군/적군/부활 무덤 선택 사용!)
         if (actionMode === 'item' && pendingItemUse) {
+            if (!activeUnit.hasAction) {
+                setBannerMsg('공격(주행동) 후에는 아이템을 사용할 수 없습니다.');
+                setPendingItemUse(null);
+                setActionMode('move');
+                return;
+            }
             const { item, quantity, rangeMeters, isEnemyTarget, isRevive } = pendingItemUse;
             const clickedItemTarget = isEnemyTarget
                 ? units.find(u => u.team === 'enemy' && u.hp > 0 && distPx(pt.x, pt.y, u.x, u.y) <= u.radius + 18)
@@ -2887,75 +2873,16 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     ctx.restore();
                 }
 
-                // Enemy melee threat circles & expected attack/threat range (move + attack range)
-                const hoverPt = hoverWorldRef.current;
+                // Enemy melee threat circles (red dashed)
                 unitsRef.current.forEach(e => {
-                    if (e.team === 'enemy' && e.hp > 0) {
-                        if (e.hasReaction) {
-                            ctx.save();
-                            ctx.strokeStyle = 'rgba(244, 63, 94, 0.34)';
-                            ctx.lineWidth = 1.5;
-                            ctx.setLineDash([4, 4]);
-                            ctx.beginPath();
-                            ctx.arc(e.x, e.y, metersToPx(e.meleeThreatMeters), 0, Math.PI * 2);
-                            ctx.stroke();
-                            ctx.restore();
-                        }
-
-                        const baseAtkM = getBg3SkillTargeting(e, null).rangeMeters;
-                        let maxSkillM = baseAtkM;
-                        for (const sk of e.skills || []) {
-                            if (sk.type !== SkillType.HEAL && sk.type !== SkillType.BUFF && (sk.mpCost || 0) <= e.mp) {
-                                const skR = getBg3SkillTargeting(e, sk).rangeMeters;
-                                if (skR > maxSkillM) maxSkillM = skR;
-                            }
-                        }
-                        const totalThreatM = e.moveMeters + maxSkillM;
-                        const totalThreatPx = metersToPx(totalThreatM);
-                        const isHoveredEnemy = !!hoverPt && distPx(hoverPt.x, hoverPt.y, e.x, e.y) <= e.radius + 20;
-
+                    if (e.team === 'enemy' && e.hp > 0 && e.hasReaction) {
                         ctx.save();
-                        if (isHoveredEnemy) {
-                            ctx.fillStyle = 'rgba(244, 63, 94, 0.08)';
-                            ctx.strokeStyle = 'rgba(251, 113, 133, 0.85)';
-                            ctx.lineWidth = 2.2;
-                            ctx.setLineDash([7, 5]);
-                            ctx.beginPath();
-                            ctx.arc(e.x, e.y, totalThreatPx, 0, Math.PI * 2);
-                            ctx.fill();
-                            ctx.stroke();
-
-                            // Move-only inner dashed ring
-                            ctx.strokeStyle = 'rgba(251, 146, 60, 0.55)';
-                            ctx.lineWidth = 1.4;
-                            ctx.setLineDash([3, 4]);
-                            ctx.beginPath();
-                            ctx.arc(e.x, e.y, metersToPx(e.moveMeters), 0, Math.PI * 2);
-                            ctx.stroke();
-
-                            const threatLabel = `⚠️ ${e.name} 예상 사거리 ${totalThreatM.toFixed(1)}m (이동 ${e.moveMeters.toFixed(1)} + 공격 ${maxSkillM.toFixed(1)})`;
-                            ctx.font = 'bold 11px sans-serif';
-                            const tTw = ctx.measureText(threatLabel).width + 14;
-                            const labelY = Math.max(24, e.y - totalThreatPx - 22);
-                            ctx.fillStyle = 'rgba(24, 6, 12, 0.9)';
-                            ctx.setLineDash([]);
-                            ctx.beginPath();
-                            ctx.roundRect(e.x - tTw / 2, labelY, tTw, 18, 6);
-                            ctx.fill();
-                            ctx.strokeStyle = '#fb7185';
-                            ctx.lineWidth = 1.2;
-                            ctx.stroke();
-                            ctx.textAlign = 'center';
-                            ctx.fillStyle = '#fecdd3';
-                            ctx.fillText(threatLabel, e.x, labelY + 13);
-                        } else {
-                            ctx.strokeStyle = 'rgba(244, 63, 94, 0.16)';
-                            ctx.lineWidth = 1.2;
-                            ctx.setLineDash([5, 6]);
-                            ctx.beginPath();
-                            ctx.arc(e.x, e.y, totalThreatPx, 0, Math.PI * 2);
-                            ctx.stroke();
-                        }
+                        ctx.strokeStyle = 'rgba(244, 63, 94, 0.34)';
+                        ctx.lineWidth = 1.5;
+                        ctx.setLineDash([4, 4]);
+                        ctx.beginPath();
+                        ctx.arc(e.x, e.y, metersToPx(e.meleeThreatMeters), 0, Math.PI * 2);
+                        ctx.stroke();
                         ctx.restore();
                     }
                 });
@@ -2988,7 +2915,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
 
                 // 전술 오브젝트 효과 안내 라벨 (숲 회피+, 성채 방어+, 제단 회복+ 등)
                 const obsTip = obs.healPct
-                    ? (obs.kind === 'fort' ? `✨ ${obs.label} (1회 +${obs.healPct}%)` : `✨ ${obs.label} (매턴 +${obs.healPct}%)`)
+                    ? `✨ ${obs.label} (매턴 +${obs.healPct}%)`
                     : obs.defBonus
                         ? `🛡️ ${obs.label} (방어 +${obs.defBonus})`
                         : obs.evaBonus
@@ -5042,7 +4969,7 @@ export const Bg3ArenaCanvas: React.FC<Bg3ArenaCanvasProps> = ({
                     </button>
                     <button
                         type="button"
-                        disabled={!isPlayerTurn || isBusy || !activeUnit?.hasBonusAction}
+                        disabled={!isPlayerTurn || isBusy || !activeUnit?.hasAction || !activeUnit?.hasBonusAction}
                         onClick={() => setShowItemModal(true)}
                         className="px-2 py-1.5 rounded-lg text-xs font-bold bg-slate-900 border border-amber-500/50 text-amber-300 hover:bg-amber-950/60 flex items-center gap-1 disabled:opacity-40"
                     >
